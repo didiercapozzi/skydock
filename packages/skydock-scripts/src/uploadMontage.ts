@@ -55,14 +55,10 @@ const resolveFilm = async (artifacts: ReturnType<typeof montageArtifacts>, hasVi
    be made — another disk — the file is copied. */
 const readyOf = (dir: string) => path.join(dir, '.send')
 
-const linkInto = (file: string, to: string) => {
-  fs.mkdirSync(path.dirname(to), { recursive: true })
-  fs.rmSync(to, { force: true })
-  try {
-    fs.linkSync(file, to)
-  } catch {
-    fs.copyFileSync(file, to)
-  }
+const linkInto = async (file: string, to: string) => {
+  await fs.promises.mkdir(path.dirname(to), { recursive: true })
+  await fs.promises.rm(to, { force: true })
+  await fs.promises.link(file, to).catch(() => fs.promises.copyFile(file, to))
   return to
 }
 
@@ -136,7 +132,9 @@ const uploadMontage = async ({
     } else
       built.set(
         item.key,
-        item.entries.map((entry) => linkInto(entry.file, path.join(ready, entry.name)))
+        await Promise.all(
+          item.entries.map((entry) => linkInto(entry.file, path.join(ready, entry.name)))
+        )
       )
   }
 

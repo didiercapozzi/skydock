@@ -97,7 +97,6 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
       }
     },
     { path: '/api/nas', action: async () => ({ ok: true }) },
-    { path: '/api/upload-progress', loader: () => null },
     { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   const screen = await render(createElement(Stub, { initialEntries: ['/'] }))

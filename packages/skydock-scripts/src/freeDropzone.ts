@@ -3,6 +3,7 @@ import { fileStatus, outputKeyOf } from './fileStatus'
 import { freeablePlace } from './freeable'
 import { removeFile, removeTree } from './freeMontage'
 import { hashFile } from './lib/fs'
+import { inJob } from './live'
 import { statProcessedOutputs } from './manifest'
 import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
@@ -43,11 +44,17 @@ const freeableIn = (manifest: Manifest, destination: string) => {
   )
 }
 
-const proveOnStorage = async (files: ManifestFile[], session: NasSession) => {
+const proveOnStorage = async (
+  files: ManifestFile[],
+  session: NasSession,
+  /* said once for each file proved, with its name */
+  step: (name: string) => void
+) => {
   const problems: string[] = []
   for (const file of files) {
     const sent = file.uploaded!
     const label = lastSegment(sent.remotePath)
+    step(label)
     const [here, there] = await Promise.all([
       hashFile(sent.localPath).catch(() => null),
       dsmFileMd5(session.hostname, session.sessionId, sent.remotePath)
@@ -75,43 +82,55 @@ const freeDropzone = async ({
   const { jumps, files, kept } = freeableIn(manifest, destination)
   if (files.length === 0)
     throw new Error(`Nothing of ${destination} is on the storage yet — upload it first.`)
-  const problems = await proveOnStorage(files, session)
-  if (problems.length > 0)
-    throw new Error(`Not freed, nothing was deleted: ${problems.join('; ')}.`)
+  return inJob(
+    { type: 'free-place', label: destination, total: files.length * 2 + 1 },
+    async (freeing) => {
+      const problems = await proveOnStorage(files, session, (name) => {
+        freeing.checking(name)
+        freeing.step()
+      })
+      if (problems.length > 0)
+        throw new Error(`Not freed, nothing was deleted: ${problems.join('; ')}.`)
 
-  const going = new Set(files.map((f) => f.id))
-  const originals = path.join(outputDir, 'original_files')
-  const proxies = path.join(outputDir, 'proxies')
-  const processed = path.join(outputDir, 'processed')
-  /* an original another jump still holds, and is not being freed with this one, stays */
-  const heldElsewhere = (file: ManifestFile) =>
-    [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].some(
-      (other) => other.path === file.path && !other.freed && !going.has(other.id)
-    )
-  let bytes = 0
-  /* its original stayed, so the file is still here: freed is the file not being here, and saying it
+      const going = new Set(files.map((f) => f.id))
+      const originals = path.join(outputDir, 'original_files')
+      const proxies = path.join(outputDir, 'proxies')
+      const processed = path.join(outputDir, 'processed')
+      /* an original another jump still holds, and is not being freed with this one, stays */
+      const heldElsewhere = (file: ManifestFile) =>
+        [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].some(
+          (other) => other.path === file.path && !other.freed && !going.has(other.id)
+        )
+      let bytes = 0
+      /* its original stayed, so the file is still here: freed is the file not being here, and saying it
      of one on the disk would lock it and have a camera pass it over */
-  const stayed = new Set<string>()
-  for (const file of files) {
-    bytes += removeFile(processed, file.processed?.path)
-    if (heldElsewhere(file)) {
-      if (file.id) stayed.add(file.id)
-      continue
-    }
-    bytes += removeFile(originals, file.path)
-    if (file.proxy && file.proxy !== file.path) bytes += removeFile(proxies, file.proxy)
-  }
-  for (const jump of jumps) bytes += removeTree(proxies, getCutProxyDir(outputDir, jump.id))
+      const stayed = new Set<string>()
+      for (const file of files) {
+        freeing.working(file.filename)
+        bytes += await removeFile(processed, file.processed?.path)
+        if (heldElsewhere(file)) {
+          if (file.id) stayed.add(file.id)
+          freeing.step()
+          continue
+        }
+        bytes += await removeFile(originals, file.path)
+        if (file.proxy && file.proxy !== file.path) bytes += await removeFile(proxies, file.proxy)
+        freeing.step()
+      }
+      for (const jump of jumps)
+        bytes += await removeTree(proxies, getCutProxyDir(outputDir, jump.id))
 
-  const result = {
-    groupIds: jumps.map((g) => g.id),
-    fileIds: files.flatMap((f) => (f.id && !stayed.has(f.id) ? [f.id] : [])),
-    bytes,
-    at: Math.floor(Date.now() / 1000),
-    kept
-  }
-  markDropzoneFreed(manifest, result)
-  return result
+      const result = {
+        groupIds: jumps.map((g) => g.id),
+        fileIds: files.flatMap((f) => (f.id && !stayed.has(f.id) ? [f.id] : [])),
+        bytes,
+        at: Math.floor(Date.now() / 1000),
+        kept
+      }
+      markDropzoneFreed(manifest, result)
+      return result
+    }
+  )
 }
 
 /* written into whichever manifest is current when it is done, as for a montage */

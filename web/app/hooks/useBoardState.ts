@@ -98,7 +98,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   /* A page loaded mid-upload takes it up the same way: the upload shows as going, no Upload is
      offered on top of it, and the board asks to hear when it is done. */
   const [upload, setUpload] = useState(loaded.uploading)
-  const [cancelling, setCancelling] = useState(false)
   /* `?? {}` because a board with no manifest has no clips to know anything about, and one map
      arriving empty is not a reason for the whole screen to fail to draw */
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaded.outputs ?? {})
@@ -237,7 +236,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   if (jobs.data && jobs.data !== seenJob) {
     setSeenJob(jobs.data)
     setUpload(null)
-    setCancelling(false)
     adopt(jobs.data)
   }
 
@@ -366,13 +364,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     setUpload(going)
     jobs.submit({ url: '/api/manifest', actionArgs })
   }
-  /* stopped at any moment; the answer comes once it has stopped */
-  const cancelUpload = () => {
-    if (!upload || cancelling) return
-    setCancelling(true)
-    jobs.submit({ url: '/api/manifest', actionArgs: { intent: 'cancel-upload' } })
-  }
-
   /* Every edit is the same three steps — clear the last message, mark what is working, ask the
      server — so they are written once. `label` is what `busy` is compared against to decide which
      button says it is running. */
@@ -434,9 +425,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     /* the key of what is being uploaded, and how the board names it */
     uploading: upload?.key ?? null,
     uploadLabel: upload?.label ?? null,
-    cancelling,
     sendUpload,
-    cancelUpload,
     manifest,
     send,
     scan,

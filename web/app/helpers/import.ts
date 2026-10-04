@@ -59,7 +59,7 @@ const pathOf = (file: File) => {
 
 /* Where a file already is, with what the drag could say about it without opening anything: enough
    to name it and size it in the list, and to hand the server its address instead of its bytes. */
-type DroppedAt = { at: string; name: string; size: number }
+type DroppedAt = { at: string; name: string; size: number; file: File }
 
 /* A folder, which is not copied but opened out. Where its address is known the server finds what is
    inside it, on the machine it was dragged from; where it is not — a browser, with no app around
@@ -79,7 +79,14 @@ const isDirectoryEntry = (entry: FileSystemEntry): entry is FileSystemDirectoryE
 const isFileEntry = (entry: FileSystemEntry): entry is FileSystemFileEntry => entry.isFile
 
 /* One file about to be copied in: what to send, and what to call it while it is being sent. */
-type Coming = { what: File | string; name: string; size: number }
+type Coming = {
+  what: File | string
+  name: string
+  size: number
+  /* the file itself, kept beside its address: a server that cannot see the address — a window on one
+     machine, the board's server on another — is sent the bytes instead */
+  file?: File
+}
 
 const importAnswerSchema = z.object({
   ok: z.boolean(),
@@ -163,7 +170,7 @@ const whatIsComing = async (list: Dropped[]): Promise<Coming[]> => {
   return [
     ...list.flatMap((what) =>
       !(what instanceof File) && !isFolder(what)
-        ? [{ what: what.at, name: what.name, size: what.size }]
+        ? [{ what: what.at, name: what.name, size: what.size, file: what.file }]
         : []
     ),
     ...inside.map((file) => ({ what: file.path, name: file.name, size: file.size })),
@@ -173,37 +180,60 @@ const whatIsComing = async (list: Dropped[]): Promise<Coming[]> => {
   ]
 }
 
-/* What this copy is called while it runs, so the server can say how far through it is and the board
-   knows which row that belongs to. A file has no id until its bytes have landed, and its name is no
-   name: two cards hold a GX010001.MP4 each. Where it is in the drop is the one thing both ends know
-   before anything is sent. */
-const tokenFor = (index: number) => `drop-${index}`
+/* What a file of a drop is called while it runs, so the server can say how far through it is and the board
+   knows which row that belongs to. A file has no id until its bytes have landed, and its name is no name:
+   two cards hold a GX010001.MP4 each. Where it is in the drop is the one thing both ends know before
+   anything is sent. */
+const keyFor = (index: number) => `drop-${index}`
+
+/* The drop is told to the server before anything is sent — what it is made of, and where it goes — so the
+   corner shows the whole list from the first byte and counts it down; and told again when it is over. */
+const tell = (batch: string, what: 'begin' | 'end', body?: object) =>
+  fetch(`/api/import?${what}=1&batch=${batch}`, {
+    method: 'POST',
+    ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {})
+  }).catch(() => undefined)
 
 /* Each file is copied to this machine in turn — its bytes sent to the import route beside where it
    goes, or its address when that is what the drop gave — and the tally of how it went is what the
    board is told once all are in. */
-const importFiles = async (
-  list: Coming[],
-  target: string,
-  where: string,
-  /* said before each one is sent: which it is of how many, and how many have gone wrong so far */
-  onEach: (index: number, total: number, name: string, failed: number) => void
-) => {
+const importFiles = async (list: Coming[], target: string, where: string) => {
   const tally: ImportOutcome = { added: [], moved: [], there: 0, kept: [], failed: [], where }
+  const batch = crypto.randomUUID()
+  await tell(batch, 'begin', {
+    batch,
+    where,
+    files: list.map(({ name, size }, index) => ({ key: keyFor(index), name, size }))
+  })
   for (const [index, coming] of list.entries()) {
-    const { what, name, size } = coming
-    onEach(index, list.length, name, tally.failed.length)
-    const watching = { token: tokenFor(index), size: String(size) }
-    const params = new URLSearchParams(
-      typeof what === 'string'
-        ? { target, path: what, ...watching }
-        : { target, filename: what.name, lastModified: String(what.lastModified), ...watching }
-    )
+    const { name, size } = coming
+    let { what } = coming
+    const watching = { batch, key: keyFor(index), size: String(size) }
+    const send = (sending: File | string) =>
+      fetch(
+        `/api/import?${new URLSearchParams(
+          typeof sending === 'string'
+            ? { target, path: sending, ...watching }
+            : {
+                target,
+                filename: sending.name,
+                lastModified: String(sending.lastModified),
+                ...watching
+              }
+        ).toString()}`,
+        { method: 'POST', ...(typeof sending === 'string' ? {} : { body: sending }) }
+      )
     try {
-      const res = await fetch(`/api/import?${params.toString()}`, {
-        method: 'POST',
-        ...(typeof what === 'string' ? {} : { body: what })
-      })
+      let res = await send(what)
+      /* the address was the window's, and the server cannot read it: it is somewhere else, so the
+         bytes are what travel */
+      if (res.status === 422 && typeof what === 'string' && coming.file) {
+        const refused = importAnswerSchema.safeParse(await res.clone().json())
+        if (refused.success && /not a file this machine can read/.test(refused.data.error ?? '')) {
+          what = coming.file
+          res = await send(what)
+        }
+      }
       const answer = importAnswerSchema.safeParse(await res.json())
       const said = answer.success ? answer.data : null
       if (!said?.ok) tally.failed.push(`${name}: ${said?.error ?? 'refused'}`)
@@ -218,6 +248,7 @@ const importFiles = async (
       tally.failed.push(`${name}: the copy was cut off`)
     }
   }
+  await tell(batch, 'end')
   return tally
 }
 
@@ -232,7 +263,7 @@ const droppedIn = (e: React.DragEvent): Dropped[] => {
   if (items.length === 0)
     return droppedFiles(e).map((file) => {
       const address = pathOf(file)
-      return address ? { at: address, name: file.name, size: file.size } : file
+      return address ? { at: address, name: file.name, size: file.size, file } : file
     })
   return items.flatMap((item) => {
     const file = item.getAsFile()
@@ -246,7 +277,7 @@ const droppedIn = (e: React.DragEvent): Dropped[] => {
         : null
     const carried: Dropped | null = file
       ? address
-        ? { at: address, name: file.name, size: file.size }
+        ? { at: address, name: file.name, size: file.size, file }
         : file
       : null
     const what = folder ?? carried
@@ -254,5 +285,5 @@ const droppedIn = (e: React.DragEvent): Dropped[] => {
   })
 }
 
-export { droppedFiles, droppedIn, fromComputer, importFiles, pathOf, tokenFor, whatIsComing }
+export { droppedFiles, droppedIn, fromComputer, importFiles, pathOf, whatIsComing }
 export type { Coming, Dropped }

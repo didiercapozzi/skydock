@@ -13,7 +13,7 @@ import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { BrowserWindow, Menu, app, dialog, ipcMain, shell } from 'electron'
+import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
 import type { WebContents } from 'electron'
 import updater from 'electron-updater'
 import { z } from 'zod'
@@ -271,7 +271,8 @@ const runningNow = async (window: BrowserWindow) => {
     const address = new URL('/api/busy', window.webContents.getURL())
     const said = z
       .object({ running: z.string().nullable() })
-      .safeParse(await (await fetch(address)).json())
+      /* a server too busy to answer in two seconds must not keep the window from closing */
+      .safeParse(await (await fetch(address, { signal: AbortSignal.timeout(2000) })).json())
     return said.success ? said.data.running : null
   } catch {
     return null
@@ -330,6 +331,9 @@ const isPreviewAddress = (asked: string, board: string) => {
    instead of piling windows up, and asking for it brings it to the front when it is under the board. */
 let previewWindow: BrowserWindow | null = null
 
+/* what the window is before the page has drawn: the ground's own colour, so nothing flashes */
+const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a0f14' : '#e3edf1')
+
 const raise = (window: BrowserWindow) => {
   if (window.isMinimized()) window.restore()
   window.show()
@@ -353,11 +357,10 @@ const openWindow = (address: string) => {
     minWidth: 900,
     minHeight: 600,
     autoHideMenuBar: true,
-    /* No frame of the desktop's, and nothing behind the page: the space between the panels is the
-       desktop itself. The page draws its own title bar, and asks the window to do what its buttons say. */
+    /* No frame of the desktop's, and the window is solid: nothing of the desktop shows through. The page
+       draws its own buttons, and asks the window to do what they say. */
     frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
+    backgroundColor: groundColour(),
     webPreferences: {
       preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
       zoomFactor: zoom
@@ -383,8 +386,7 @@ const openWindow = (address: string) => {
           minHeight: 600,
           autoHideMenuBar: true,
           frame: false,
-          transparent: true,
-          backgroundColor: '#00000000',
+          backgroundColor: groundColour(),
           webPreferences: {
             preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
             zoomFactor: zoom

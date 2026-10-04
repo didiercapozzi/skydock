@@ -7,14 +7,7 @@
    The work folder is the server's whole world, so changing it is the window's to do: it asks, and
    starts the server again there. Nothing else of the app is reachable from the page. */
 
-import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
-
-/* The window has no frame and nothing behind the page, so what shows between the panels is a pane
-   colour at half strength — white in the light theme — with the desktop faintly through it, rather
-   than the desktop bare. Inserted here, before the page is drawn, so nothing flashes opaque first. */
-webFrame.insertCSS(
-  'html, body { background: transparent !important } .ground { background: color-mix(in srgb, var(--color-pane) 50%, transparent) !important; border-radius: 18px }'
-)
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 contextBridge.exposeInMainWorld('skydock', {
   /* the address of a file let go on the window, or nothing when the engine will not say */

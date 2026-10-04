@@ -1,8 +1,20 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
-    "defaultMode": "auto",
     "allow": ["Read", "Bash(*)"],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~*)",
+      "Bash(rm -rf /workspace)",
+      "Bash(rm -rf /workspace/*)",
+      "Bash(rm -rf /mnt/osmo*)",
+      "Bash(git push --force*)",
+      "Bash(cat /workspace/.env*)",
+      "Bash(cat .env*)",
+      "Bash(grep * /workspace/.env*)",
+      "Read(/workspace/.env)"
+    ],
     "ask": [
       "Bash(rm -rf *)",
       "Bash(git commit*)",
@@ -17,19 +29,9 @@
       "Bash(apt-get *)",
       "Bash(docker *)"
     ],
-    "deny": [
-      "Bash(rm -rf /)",
-      "Bash(rm -rf /*)",
-      "Bash(rm -rf ~*)",
-      "Bash(rm -rf /workspace)",
-      "Bash(rm -rf /workspace/*)",
-      "Bash(rm -rf /mnt/osmo*)",
-      "Bash(git push --force*)",
-      "Bash(cat /workspace/.env*)",
-      "Bash(cat .env*)",
-      "Bash(grep * /workspace/.env*)",
-      "Read(/workspace/.env)"
-    ]
+    "defaultMode": "auto"
   },
-  "model": "sonnet"
+  "model": "sonnet",
+  "agentPushNotifEnabled": true,
+  "inputNeededNotifEnabled": true
 }

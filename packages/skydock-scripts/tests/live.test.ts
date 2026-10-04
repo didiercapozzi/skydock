@@ -3,7 +3,7 @@ import { describe, it, expect, afterAll, beforeEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { following, publish, subscribe } from '../src/live'
+import { following, job, publish, subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { durationIn, positionIn, runWatched } from '../src/tools'
 
@@ -115,22 +115,38 @@ describe('what is happening to the files, said as it happens', () => {
     expect(heard).toEqual([{ kind: 'file', work: 'proxy', fileId: 'running', percent: 60 }])
   })
 
-  /* the card's list is said once; a board opened half way through still gets it, and how each file
-     so far went */
-  it('tells a late listener the card being copied, with how every file so far went', () => {
-    const files = [
-      { name: 'a.MP4', size: 1 },
-      { name: 'b.MP4', size: 2 }
-    ]
-    const copying = { kind: 'camera', camera: 'GOPRO', state: 'copying', total: 2 } as const
-    publish({ ...copying, done: 0, copied: 0, skipped: 0, files })
-    publish({ ...copying, done: 1, copied: 0, skipped: 1, last: 'skipped' })
+  /* a task's list is said once; a board opened half way through still gets it, and how every row so far
+     went — as one snapshot, whatever order they were told in */
+  it('tells a late listener the task under way, with how every row so far went', () => {
+    const copying = job({ type: 'camera-copy', label: 'GOPRO', total: 2 })
+    copying.rows([
+      { key: '0', name: 'a.MP4', size: 1 },
+      { key: '1', name: 'b.MP4', size: 2 }
+    ])
+    copying.row({ key: '0', at: 'skipped' })
 
     listen()
 
-    expect(heard).toEqual([
-      { ...copying, done: 1, copied: 0, skipped: 1, last: 'skipped', files, outcomes: ['skipped'] }
-    ])
+    expect(heard).toHaveLength(1)
+    expect(heard[0]).toMatchObject({
+      kind: 'job',
+      type: 'camera-copy',
+      label: 'GOPRO',
+      rows: [
+        { key: '0', name: 'a.MP4', size: 1, at: 'skipped' },
+        { key: '1', name: 'b.MP4', size: 2, at: 'later' }
+      ]
+    })
+    copying.finish()
+  })
+
+  it('does not tell a late listener of a task that has ended', () => {
+    const copying = job({ type: 'camera-copy', label: 'GOPRO', total: 1 })
+    copying.finish()
+
+    listen()
+
+    expect(heard).toEqual([])
   })
 
   it('stops telling whoever stopped listening', () => {

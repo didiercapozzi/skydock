@@ -1,5 +1,6 @@
-import { plural, t } from '@lingui/core/macro'
-import { useBringing, useCameraCopy, useDeletingAll, useLiveProxies } from '../hooks/liveStore'
+import { t } from '@lingui/core/macro'
+import { useJobs } from '../hooks/liveStore'
+import { bytesPartOf, looksOf, partOf } from './jobs-panel'
 import { Icon } from './icons'
 import type { IconName } from './icons'
 
@@ -27,86 +28,19 @@ const Bar = ({ label, part }: { label: string; part: number }) => {
   )
 }
 
-const RunningNow = ({
-  uploading,
-  importing,
-  proxies
-}: {
-  /* the upload going out, named as the board names it, and how far through its bytes */
-  uploading: { label: string; part: number } | null
-  /* files being copied in from the computer */
-  importing: { where: string; done: number; total: number } | null
-  /* the small copies of the clips, how many are made out of how many want one */
-  proxies?: { ready: number; total: number; waiting: number }
-}) => {
-  const camera = useCameraCopy()
-  const bringing = useBringing()
-  const deleting = Object.values(useDeletingAll())
-  const making = useLiveProxies()
-  const going: Going[] = []
-  if (uploading) {
-    const label = uploading.label
-    going.push({
-      key: 'upload',
-      icon: 'upload',
-      label: t`Uploading ${label}`,
-      detail: `${Math.round(uploading.part * 100)}%`,
-      part: uploading.part
+const RunningNow = () => {
+  const going: Going[] = useJobs()
+    .filter((job) => job.stage !== 'failed')
+    .map((job) => {
+      const part = job.type === 'upload' ? bytesPartOf(job) : partOf(job)
+      return {
+        key: job.id,
+        icon: looksOf(job).icon,
+        label: looksOf(job).title,
+        detail: job.type === 'upload' ? `${Math.round(part * 100)}%` : `${job.done}/${job.total}`,
+        part
+      }
     })
-  }
-  if (importing) {
-    const { where, done, total } = importing
-    going.push({
-      key: 'import',
-      icon: 'copying',
-      label: t`Copying in ${where}`,
-      detail: t`${done} of ${plural(total, { one: '# file', other: '# files' })}`,
-      part: total > 0 ? done / total : 0
-    })
-  }
-  if (camera) {
-    const name = camera.camera
-    const { done, total } = camera
-    going.push({
-      key: 'camera',
-      icon: 'camera',
-      label: t`Copying ${name}`,
-      detail: t`${done} of ${plural(total, { one: '# file', other: '# files' })}`,
-      part: total > 0 ? (done + (camera.part ?? 0)) / total : 0
-    })
-  }
-  if (bringing && bringing.state === 'going') {
-    const name = bringing.name
-    going.push({
-      key: 'bring',
-      icon: 'back',
-      label: t`Bringing back ${name}`,
-      detail: `${Math.round(bringing.part * 100)}%`,
-      part: bringing.part
-    })
-  }
-  const left = deleting.filter((d) => d.stage !== 'done' && d.stage !== 'failed')
-  if (deleting.length > 0 && left.length > 0) {
-    const all = deleting.length
-    const part = deleting.reduce((n, d) => n + (d.stage === 'done' ? 1 : d.part), 0) / all
-    going.push({
-      key: 'delete',
-      icon: 'camera',
-      label: t`Deleting from the camera`,
-      detail: plural(all, { one: '# file', other: '# files' }),
-      part
-    })
-  }
-  if (proxies && (proxies.waiting > 0 || making.length > 0)) {
-    const { ready, total } = proxies
-    going.push({
-      key: 'proxies',
-      icon: 'play',
-      label: t`Making small copies`,
-      detail: t`${ready} of ${total}`,
-      part: total > 0 ? (ready + (making[0] ? making[0].percent / 100 : 0)) / total : 0
-    })
-  }
   if (going.length === 0) return null
   return (
     <ul

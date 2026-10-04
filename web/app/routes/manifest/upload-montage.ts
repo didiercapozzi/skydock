@@ -62,7 +62,7 @@ const sendMontage = async (
       target.uploaded = result.record
       if (result.record.shareUrl) target.publish = { shareUrl: result.record.shareUrl }
     }
-    report.done(result.skipped)
+    report.done()
     saveManifest(manifestPath, saved)
     return pastCancelling(async () => {
       const listed = target ? entryOfMontage(target, montagesRemoteDir(saved, session)) : null
@@ -92,7 +92,7 @@ const sendMontage = async (
   /* one upload at a time: a second is refused before it touches what the first is showing */
   try {
     return await runUpload({ key, label, groupIds: [group.id] }, async () => {
-      const report = uploadReporter({ scope: key, label, groupId: group.id, outputDir })
+      const report = uploadReporter({ label, outputDir })
       try {
         return await send(report)
       } catch (err) {

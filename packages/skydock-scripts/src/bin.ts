@@ -5,7 +5,8 @@ import { isMediaName } from './constants'
 import { computeFileId } from './fileId'
 import { landingFor } from './copy'
 import { moveFile, mtimeOf } from './lib/fs'
-import { cameraTimes } from './scan'
+import { inJob } from './live'
+import { shotTimes } from './scan'
 import type { Manifest } from './types'
 import { getTrashDir } from './utils'
 
@@ -99,19 +100,22 @@ const bringBackFromBin = async ({
       `Nothing was brought back: ${strangers.map((f) => path.basename(f)).join(', ')} ${strangers.length === 1 ? 'is' : 'are'} not in the bin.`
     )
   const known = new Set(manifest.files.flatMap((f) => (f.id ? [f.id] : [])))
-  const times = cameraTimes(paths)
-  const back: string[] = []
-  const kept: string[] = []
-  for (const file of paths) {
-    if (known.has(await computeFileId(file))) {
-      kept.push(path.basename(file))
-      continue
+  return inJob({ type: 'bin', label: '', total: paths.length }, async (bringing) => {
+    const times = await shotTimes(paths)
+    const back: string[] = []
+    const kept: string[] = []
+    for (const file of paths) {
+      bringing.working(path.basename(file))
+      if (known.has(await computeFileId(file))) kept.push(path.basename(file))
+      else {
+        const shot = times.get(file) ?? mtimeOf(file)
+        await moveFile(file, landingFor(outputDir, path.basename(file), shot))
+        back.push(path.basename(file))
+      }
+      bringing.step()
     }
-    const shot = times.get(file) ?? mtimeOf(file)
-    await moveFile(file, landingFor(outputDir, path.basename(file), shot))
-    back.push(path.basename(file))
-  }
-  return { back, kept }
+    return { back, kept }
+  })
 }
 
 export { bringBackFromBin, listBin }

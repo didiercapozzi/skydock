@@ -1,5 +1,8 @@
+import * as crypto from 'node:crypto'
 import { z } from 'zod'
 import { proxyFactSchema, montageFactSchema } from './boardAnswer'
+import { recordTransfer } from './transfers'
+import type { Transfer } from './transfers'
 import { jumpMomentsSchema } from './types'
 
 /* What is happening to a file right now, said as it happens so the board can show it without
@@ -9,6 +12,53 @@ import { jumpMomentsSchema } from './types'
 /* The work done to one file that is shown on it while it runs: copying it for handing over, making
    its small copy for playing, and finding where the jump is in it. */
 const workSchema = z.enum(['process', 'proxy', 'moments'])
+
+/* the tasks that report as jobs */
+const jobTypeSchema = z.enum([
+  'free',
+  'free-place',
+  'scan',
+  'copy-back',
+  'bin',
+  'trash',
+  'template',
+  'bring',
+  'camera-delete',
+  'import',
+  'proxy',
+  'moments',
+  'process',
+  'camera-copy',
+  'upload'
+])
+
+/* One thing a job is doing to a file, or to a step: where it has got to, how far through it is, and
+   — in a word the board turns into its own language — what is happening to it. `key` tells it from the
+   others when two share a name. */
+const jobRowSchema = z.object({
+  key: z.string(),
+  name: z.string(),
+  size: z.number(),
+  at: z.enum(['later', 'now', 'done', 'skipped', 'failed']),
+  /* between 0 and 1, for the one under way */
+  part: z.number().optional(),
+  phase: z.string().optional(),
+  /* what is worth saying of it when it did not go as asked — why it stayed */
+  note: z.string().optional(),
+  /* where it is going, when it goes somewhere — a folder on the storage */
+  to: z.string().optional()
+})
+
+/* how a task ended, when the board has to look again at what it changed */
+const jobOutcomeSchema = z.object({
+  state: z.enum(['done', 'gone', 'stopped', 'failed']),
+  copied: z.number(),
+  skipped: z.number(),
+  unreadable: z.array(z.string()).optional()
+})
+
+/* what is said of one row: its key, and whatever of it changed */
+const jobRowPatchSchema = jobRowSchema.partial().required({ key: true })
 
 const liveEventSchema = z.discriminatedUnion('kind', [
   /* a file being worked on, and how far through it */
@@ -38,46 +88,12 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     fact: montageFactSchema,
     rendered: z.boolean()
   }),
-  /* A camera plugged in and being copied off, by the name it is mounted under: how far through its
-     files, how many were new and how many already here — and how it ended. */
-  z.object({
-    kind: z.literal('camera'),
-    camera: z.string(),
-    state: z.enum(['copying', 'done', 'gone', 'failed', 'stopped']),
-    done: z.number(),
-    total: z.number(),
-    copied: z.number(),
-    skipped: z.number(),
-    reason: z.string().optional(),
-    /* every file on the card, said once as the copy starts */
-    files: z.array(z.object({ name: z.string(), size: z.number() })).optional(),
-    /* how the file just finished went */
-    last: z.enum(['copied', 'skipped', 'failed']).optional(),
-    /* files the card would not give up, passed over */
-    unreadable: z.array(z.string()).optional(),
-    /* how far through the file being copied now, between 0 and 1 */
-    part: z.number().optional(),
-    /* how every finished file went, in order — kept for a board that starts listening mid-copy */
-    outcomes: z.array(z.enum(['copied', 'skipped', 'failed'])).optional()
-  }),
   /* The board's own record (manifest.json and its groups) changed under nobody's hand here — another
      tab, a script, a hand edit, work done outside the page — and has stopped changing. `stamp` says
      which state it is, so a board that has already adopted it can tell. */
   z.object({
     kind: z.literal('board'),
     stamp: z.string()
-  }),
-  /* A file being fetched back from the storage onto this machine: how far through it is, and how it
-     ended. Named by the file's id, which the board knows it by. */
-  z.object({
-    kind: z.literal('bring'),
-    fileId: z.string(),
-    name: z.string(),
-    state: z.enum(['going', 'done', 'failed']),
-    /* between 0 and 1 */
-    part: z.number(),
-    size: z.number(),
-    reason: z.string().optional()
   }),
   /* the room left on the output folder's disk, said when it changes enough to matter */
   z.object({
@@ -86,44 +102,31 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     total: z.number(),
     level: z.enum(['ok', 'low', 'full'])
   }),
-  /* One file being copied in from the computer, while it is. A drop of one long clip is minutes of
-     nothing to look at otherwise: the board has the list and the count from the start, and this is
-     how far through the one being copied it is. Named by a token the page chose before it sent
-     anything, because a file has no id here until its bytes have landed and been read. */
+  /* A task with no file of its own to show — freeing a montage, scanning, putting files back — said as it
+     goes: what it is, how far through its steps, and the thing being done now. It is the one shape every
+     such task reports in, and the one panel in the corner draws them all. */
   z.object({
-    kind: z.literal('import'),
-    token: z.string(),
-    done: z.number(),
-    total: z.number(),
-    /* copying it in, then reading what came — the date it was taken, the name it will be known by.
-       The reading is quick beside the copy and says nothing about how long it has left, but it is
-       not nothing, and a bar that sat full with no word would look stuck. `done` ends it. */
-    phase: z.enum(['copying', 'reading', 'done'])
-  }),
-  /* One file being deleted off a camera: first read through to be proved, then moved into the bin. `part`
-     is how far through the whole of it, between 0 and 1, the two steps together. Named by the file's
-     path on the card, which is what the camera page lists it by. */
-  z.object({
-    kind: z.literal('camera-delete'),
-    path: z.string(),
-    /* `checked` is proved and waiting: nothing is moved until every file asked for is proved */
-    stage: z.enum(['checking', 'checked', 'moving', 'done', 'failed']),
-    part: z.number(),
-    /* how big the file is, so the row can say how much of it */
-    size: z.number().optional()
-  }),
-  /* A montage being freed from this machine: how far through proving the storage holds it and then
-     deleting what is here, and the thing being looked at. Named by the montage's group. */
-  z.object({
-    kind: z.literal('free'),
-    groupId: z.string(),
+    kind: z.literal('job'),
+    id: z.string(),
+    type: jobTypeSchema,
+    /* what it is about — a passenger, a folder, a camera */
     label: z.string(),
-    stage: z.enum(['checking', 'deleting', 'done', 'failed']),
+    /* `checking` is proving something before anything is changed; `working` is changing it */
+    stage: z.enum(['checking', 'working', 'done', 'failed']),
     done: z.number(),
     total: z.number(),
-    /* the file being checked or deleted, when there is one */
+    /* the file or step being done now, when there is one */
     name: z.string().optional(),
-    reason: z.string().optional()
+    reason: z.string().optional(),
+    /* which part of its work it is at, in a word the board turns into its own language — an upload zips,
+       then checks what the storage holds, then sends */
+    phase: z.string().optional(),
+    /* every file or step it is made of, said whole once — and then one at a time, as each changes */
+    rows: z.array(jobRowSchema).optional(),
+    row: jobRowPatchSchema.optional(),
+    /* how it ended, for the board to look again at what it changed: a camera copied off says how many came
+       and how many were here already, and whether it was stopped or the card was taken out */
+    outcome: jobOutcomeSchema.optional()
   }),
   /* The cameras plugged in right now, said each time one comes or goes. `over` is how each one
      hands its files over: a drive the machine mounted, or MTP — a camera with no drive to offer,
@@ -151,6 +154,15 @@ declare global {
   var skydockLive: Bus | undefined
 }
 
+type JobRow = z.infer<typeof jobRowSchema>
+type JobRowPatch = z.infer<typeof jobRowPatchSchema>
+
+/* a row changed: the one with its key takes what was said, and one never mentioned before joins */
+const mergeRow = (rows: JobRow[], patch: JobRowPatch) =>
+  rows.some((row) => row.key === patch.key)
+    ? rows.map((row) => (row.key === patch.key ? { ...row, ...patch } : row))
+    : [...rows, { name: patch.key, size: 0, at: 'later' as const, ...patch }]
+
 const bus = () => (globalThis.skydockLive ??= { listeners: new Set(), underWay: new Map() })
 
 const publish = (event: LiveEvent) => {
@@ -160,24 +172,19 @@ const publish = (event: LiveEvent) => {
   /* whoever starts listening hears which cameras are plugged in, not only the next change */
   if (event.kind === 'cameras') underWay.set('cameras', event)
   if (event.kind === 'disk') underWay.set('disk', event)
-  /* a copy under way is heard by a board opened in the middle of it; one that ended is not */
-  if (event.kind === 'import') {
-    if (event.phase === 'done') underWay.delete(`import:${event.token}`)
-    else underWay.set(`import:${event.token}`, event)
-  }
-  /* a copy's list is said once, so what is kept for a late listener carries it on, with how every
-     file so far went */
-  if (event.kind === 'camera') {
-    const key = `camera:${event.camera}`
-    const before = underWay.get(key)
-    const kept = before?.kind === 'camera' && !event.files ? before : undefined
-    if (event.state === 'copying')
+  /* a job under way is heard by a board opened in the middle of it; one that ended is not */
+  if (event.kind === 'job') {
+    const key = `job:${event.id}`
+    if (event.stage === 'done' || event.stage === 'failed') underWay.delete(key)
+    else {
+      const before = underWay.get(key)
+      const known = before?.kind === 'job' ? (before.rows ?? []) : []
       underWay.set(key, {
         ...event,
-        files: event.files ?? kept?.files,
-        outcomes: [...(kept?.outcomes ?? []), ...(event.last ? [event.last] : [])]
+        row: undefined,
+        rows: event.rows ?? (event.row ? mergeRow(known, event.row) : known)
       })
-    else underWay.delete(key)
+    }
   }
   for (const listener of listeners) listener(event)
 }
@@ -220,5 +227,173 @@ const following = (work: z.infer<typeof workSchema>, fileId: string | undefined)
   }
 }
 
-export { following, liveEventSchema, publish, subscribe }
-export type { LiveEvent }
+/* One task's steps, said from start to end: it begins, each step forward as it comes, and how it ended.
+   `total` is the number of steps and may be raised as they become known. */
+const job = ({
+  type,
+  label,
+  total,
+  record
+}: {
+  type: z.infer<typeof jobTypeSchema>
+  label: string
+  total: number
+  /* kept with the other transfers when it ends (RULES, Transfers): what kind it is filed as, the folder
+     the history lives in, where what it handled went, when it went anywhere, and whether a task that did
+     nothing and failed at nothing is left out */
+  record?: {
+    kind: Transfer['kind']
+    outputDir?: string
+    to?: string
+    label?: string
+    quietIfIdle?: boolean
+    /* what was here already is counted and not listed */
+    passOver?: boolean
+  }
+}) => {
+  const id = crypto.randomUUID()
+  let done = 0
+  let steps = total
+  /* everything it was made of, as it stands — what the history is written from */
+  let known: JobRow[] = []
+  let stage: 'checking' | 'working' = 'working'
+  /* which part of its work it is at, kept so that every later word still says it */
+  let phase: string | undefined
+  /* how far each row was last said to be, so a bar moves a step at a time and not on every chunk */
+  const told = new Map<string, number>()
+  const keep = (state: 'done' | 'failed' | 'cancelled', reason?: string) => {
+    if (!record) return
+    /* what did something is listed; what was here already is only counted — unless it has something to say */
+    const passed = record.passOver ? known.filter((row) => row.at === 'skipped' && !row.note) : []
+    const listed = known.filter((row) => !passed.includes(row))
+    if (record.quietIfIdle && state === 'done' && !listed.some((row) => row.at !== 'later')) return
+    try {
+      recordTransfer(
+        {
+          kind: record.kind,
+          label: record.label ?? known[0]?.name ?? label,
+          state,
+          ...(reason ? { reason } : {}),
+          items: listed.map((row) => ({
+            name: row.name,
+            size: row.size,
+            ...(row.note ? { note: row.note } : {}),
+            ...(row.to ? { to: row.to } : record.to && row.at === 'done' ? { to: record.to } : {}),
+            result:
+              row.at === 'done'
+                ? ('done' as const)
+                : row.at === 'skipped'
+                  ? ('skipped' as const)
+                  : row.at === 'failed'
+                    ? ('failed' as const)
+                    : ('left' as const)
+          })),
+          ...(passed.length > 0 ? { passedOver: passed.length } : {})
+        },
+        record.outputDir
+      )
+    } catch {
+      /* a history that cannot be written is no reason to fail what it is the history of */
+    }
+  }
+  const say = (
+    now: 'checking' | 'working' | 'done' | 'failed',
+    more: {
+      name?: string
+      reason?: string
+      phase?: string
+      rows?: JobRow[]
+      row?: JobRowPatch
+      outcome?: z.infer<typeof jobOutcomeSchema>
+    } = {}
+  ) => {
+    if (now === 'checking' || now === 'working') stage = now
+    if (more.phase) phase = more.phase
+    if (more.rows) known = more.rows
+    if (more.row) known = mergeRow(known, more.row)
+    if (record && (now === 'done' || now === 'failed'))
+      keep(
+        now === 'failed' ? 'failed' : more.outcome?.state === 'stopped' ? 'cancelled' : 'done',
+        more.reason
+      )
+    publish({
+      kind: 'job',
+      id,
+      type,
+      label,
+      stage: now,
+      done: Math.min(done, steps),
+      total: steps,
+      ...(more.name ? { name: more.name } : {}),
+      ...(more.reason ? { reason: more.reason } : {}),
+      ...(phase ? { phase } : {}),
+      ...(more.rows ? { rows: more.rows } : {}),
+      ...(more.row ? { row: more.row } : {}),
+      ...(more.outcome ? { outcome: more.outcome } : {})
+    })
+  }
+  say('working')
+  return {
+    /* proving, naming what is looked at */
+    checking: (name?: string) => say('checking', { name }),
+    /* it has moved on to another part of its work, naming what is done now when there is something */
+    phase: (phase: string, name?: string) => say(stage, { phase, name }),
+    /* changing, naming what is done now */
+    working: (name?: string) => say('working', { name }),
+    /* one step is finished */
+    step: () => {
+      done++
+    },
+    /* how many steps are finished, when that is counted elsewhere */
+    at: (steps_done: number) => {
+      done = steps_done
+    },
+    expect: (more: number) => {
+      steps = more
+    },
+    /* everything it is made of, said once, so the list is there before the first is begun */
+    rows: (all: Array<Pick<JobRow, 'key' | 'name' | 'size'> & Partial<JobRow>>) =>
+      say(stage, { rows: all.map((one) => ({ at: 'later' as const, ...one })) }),
+    /* one of them changed: begun, moved on, finished or failed */
+    row: (patch: JobRowPatch) => {
+      if (patch.part !== undefined && patch.at === 'now' && !patch.phase) {
+        const last = told.get(patch.key) ?? -1
+        if (patch.part < 1 && last >= 0 && patch.part < last + STEP / 100) return
+        told.set(patch.key, patch.part)
+      }
+      say(stage, { row: patch })
+    },
+    /* it ended; when the board has to look again at what it changed, how it came out is said with it */
+    finish: (ended?: { outcome?: z.infer<typeof jobOutcomeSchema>; reason?: string }) => {
+      done = steps
+      say('done', ended)
+    },
+    /* what was under way when it failed did not get done, and says so */
+    fail: (reason: string, outcome?: z.infer<typeof jobOutcomeSchema>) =>
+      say('failed', {
+        reason,
+        ...(outcome ? { outcome } : {}),
+        rows: known.map((row) => (row.at === 'now' ? { ...row, at: 'failed' as const } : row))
+      })
+  }
+}
+
+/* A task run as a job: it ends well when the work returns and says why when it throws, so no task has to
+   remember to say either. */
+const inJob = async <T>(
+  start: Parameters<typeof job>[0],
+  work: (running: ReturnType<typeof job>) => Promise<T>
+) => {
+  const running = job(start)
+  try {
+    const result = await work(running)
+    running.finish()
+    return result
+  } catch (e) {
+    running.fail(e instanceof Error ? e.message : String(e))
+    throw e
+  }
+}
+
+export { following, inJob, job, liveEventSchema, mergeRow, publish, subscribe }
+export type { JobRow, LiveEvent }

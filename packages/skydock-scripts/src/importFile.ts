@@ -5,11 +5,13 @@ import { pipeline } from 'node:stream/promises'
 import type { Readable } from 'node:stream'
 import { MEDIA_EXTENSIONS_SET } from './constants'
 import { counted } from './lib/counted'
+import { gentleWriter } from './lib/gentle'
 import { landingFor } from './copy'
-import { publish } from './live'
+import { dropRow } from './dropJobs'
+import { copyBegins } from './lib/quiet'
 import { loadManifest, saveManifest } from './manifest'
-import { cameraTimes } from './scan'
-import { copyFiles, moveFiles } from './moveFiles'
+import { shotTimes } from './scan'
+import { copyFiles, moveFiles, shotTimesFor } from './moveFiles'
 import { frozenMontages, isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
@@ -23,6 +25,9 @@ import { passengerOf } from './workspace'
 
    Where it goes is where it was dropped: into a montage, as a lone file of a dropzone, or loose in the
    sorting area. */
+
+/* which drop a file is of, and which of its rows */
+type ImportDrop = { batch: string; key: string }
 
 type ImportTarget =
   | { kind: 'group'; groupId: string }
@@ -69,12 +74,12 @@ const placeOf = (manifest: Manifest, id: string) => {
 
    Dropped anywhere else — a dropzone, the sorting area — it is a file on its own rather than a
    jump's, so it moves there, as a drag on the board would have moved it. */
-const placeExisting = (
+const placeExisting = async (
   manifest: Manifest,
   outputDir: string,
   file: ManifestFile,
   target: ImportTarget
-): ImportResult => {
+): Promise<ImportResult> => {
   const id = file.id!
   const inGroup = manifest.groups.find((g) => g.files.some((f) => f.id === id))
   /* a jump holds this footage whether as the file itself or as a copy of it, and both are the same
@@ -106,38 +111,40 @@ const placeExisting = (
       reason: `${placeOf(manifest, id)}’s montage has an edit, so nothing leaves it — drop it on a jump to put it in that jump as well`
     }
   const from = placeOf(manifest, id)
-  moveFiles(
-    manifest,
-    new Set([id]),
+  const to =
     target.kind === 'group'
       ? { targetGroupId: target.groupId }
       : { destination: target.kind === 'destination' ? target.name.trim() : null }
-  )
+  moveFiles(manifest, new Set([id]), {
+    ...to,
+    shot: await shotTimesFor(manifest, new Set([id]), to)
+  })
   return { filename: file.filename, outcome: 'moved', from }
 }
 
-/* How far through one file's bytes we are, said as they go by rather than asked for afterwards,
-   counted and hashed on the way (lib/counted). Without a token nobody is watching, and a copy nobody
+/* How far through one file's bytes we are, said as they go by rather than asked for afterwards, counted
+   and hashed on the way (lib/counted). Without a drop to say it to, nobody is watching, and a copy nobody
    is watching costs nothing to run. */
-const counting = (token: string | undefined, total: number) => {
-  let over = false
-  const tell = (done: number, phase: 'copying' | 'reading' | 'done') => {
-    if (token) publish({ kind: 'import', token, done, total, phase })
+const counting = (drop: ImportDrop | undefined, total: number) => {
+  const tell = (part: number, phase?: string) => {
+    if (drop && total > 0)
+      dropRow(drop.batch, {
+        key: drop.key,
+        at: 'now',
+        part: Math.min(1, part),
+        ...(phase ? { phase } : {})
+      })
   }
-  const bytes = counted((done) => tell(done, 'copying'))
+  const bytes = counted((done) => tell(done / total))
   return {
     through: bytes.through,
+    /* said before the first byte is read: a file on a slow or far disk can take a while to give one, and
+       the board then shows the copy as begun rather than nothing at all */
+    begun: () => tell(0),
     id: bytes.id,
     /* The copy is over and the reading of it has begun: still something happening, and the board is
        told which, so a full bar is never a bar with nothing behind it. */
-    reading: () => tell(total, 'reading'),
-    /* Nothing left to watch, whether it landed or failed: a bar left part full is a bar nothing
-       will ever fill. */
-    ended: () => {
-      if (over) return
-      over = true
-      tell(total, 'done')
-    }
+    reading: () => tell(1, 'reading')
   }
 }
 
@@ -147,7 +154,7 @@ const importFile = async ({
   lastModified,
   body,
   target,
-  token,
+  drop,
   size
 }: {
   outputDir: string
@@ -156,9 +163,9 @@ const importFile = async ({
   lastModified: number
   body: Readable
   target: ImportTarget
-  /* what the page calls this copy while it is running, chosen before it sent anything: a file has
+  /* which drop this file is of, and which of its rows it is, chosen before anything was sent: a file has
      no id here until its bytes have landed and been read */
-  token?: string
+  drop?: ImportDrop
   /* how big it is, as the page or the machine already knew — nothing is said without it */
   size?: number
 }): Promise<ImportResult> => {
@@ -191,9 +198,11 @@ const importFile = async ({
   const incoming = path.join(outputDir, '.incoming')
   fs.mkdirSync(incoming, { recursive: true })
   const partial = path.join(incoming, `${crypto.randomBytes(8).toString('hex')}-${filename}`)
-  const counted = counting(size && size > 0 ? token : undefined, size ?? 0)
+  const counted = counting(drop, size ?? 0)
+  const copyEnds = copyBegins()
   try {
-    await pipeline(body, counted.through, fs.createWriteStream(partial))
+    counted.begun()
+    await pipeline(body, counted.through, gentleWriter(partial))
     counted.reading()
     const when = new Date(
       Number.isFinite(lastModified) && lastModified > 0 ? lastModified : Date.now()
@@ -206,13 +215,13 @@ const importFile = async ({
     const existing = manifest.files.find((f) => f.id === id)
     if (existing) {
       fs.rmSync(partial, { force: true })
-      const result = placeExisting(manifest, outputDir, existing, target)
+      const result = await placeExisting(manifest, outputDir, existing, target)
       if (result.outcome === 'moved' || result.outcome === 'copied')
         saveManifest(manifestPath, manifest)
       return result
     }
 
-    const mtime = cameraTimes([partial]).get(partial) ?? Math.floor(when.getTime() / 1000)
+    const mtime = (await shotTimes([partial])).get(partial) ?? Math.floor(when.getTime() / 1000)
     const dest = landingFor(outputDir, filename, mtime)
     fs.renameSync(partial, dest)
 
@@ -232,7 +241,7 @@ const importFile = async ({
     saveManifest(manifestPath, manifest)
     return { filename: file.filename, outcome: 'added' }
   } finally {
-    counted.ended()
+    copyEnds()
     fs.rmSync(partial, { force: true })
     /* the holding folder is only there while a file is arriving; one another arrival is using, or
        has already removed, is left alone */
@@ -243,4 +252,4 @@ const importFile = async ({
 }
 
 export { importFile, originalEntry }
-export type { ImportTarget }
+export type { ImportDrop, ImportTarget }

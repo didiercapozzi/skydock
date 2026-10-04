@@ -10,7 +10,8 @@ import { WindowControls } from './window-bar'
 import { Icon } from './icons'
 import { MenuItem, SettingsMenu, SettingsRow, TOOL } from './settings-menu'
 import { setFileView, useFileView } from '../hooks/useFileView'
-import { useCameraCopy } from '../hooks/liveStore'
+import { useJobs } from '../hooks/liveStore'
+import { headlineOf } from './jobs-panel'
 import { useZoom } from '../hooks/useZoom'
 import {
   setDetailsColumn,
@@ -272,7 +273,6 @@ const StatusBar = ({
   jumps,
   disk,
   nas,
-  uploading,
   transfers
 }: {
   proxies: { ready: number; waiting: number; total: number }
@@ -281,30 +281,13 @@ const StatusBar = ({
   /* the room left on the output folder's disk; said only once it runs low */
   disk?: { free: number; level: 'ok' | 'low' | 'full' } | null
   nas: { connected: boolean; host: string | null; user: string | null; links: NasLink[] }
-  /* what is going up right now, and how far through, between 0 and 1 */
-  uploading: { label: string; part: number } | null
   /* the panel of what was sent and copied, opened at any time — even when it is all done */
   transfers: { open: boolean; onToggle: () => void }
 }) => {
   const zoom = useZoom()
-  /* a card being copied is heard here, so its bytes move this line and nothing else */
-  const copy = useCameraCopy()
-  const copyWhat = copy?.camera ?? ''
-  const copyDone = copy?.done ?? 0
-  const copyTotal = copy?.total ?? 0
-  const working = copy
-    ? {
-        icon: 'copying' as const,
-        what: t`${copyWhat} · copying ${copyDone} of ${copyTotal}`,
-        part: copyTotal > 0 ? copyDone / copyTotal : 0
-      }
-    : uploading
-      ? {
-          icon: 'upload' as const,
-          what: t`Uploading ${uploading.label}`,
-          part: uploading.part
-        }
-      : null
+  /* what is under way is heard here, so its bytes move this line and nothing else */
+  const going = useJobs().find((job) => job.stage !== 'failed')
+  const working = going ? headlineOf(going) : null
   /* named, so a translator reads what each one is */
   const left = disk ? formatSize(disk.free) : ''
   const { ready, total, waiting } = proxies

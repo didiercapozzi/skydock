@@ -172,11 +172,24 @@ msgstr "{0, plural, one {ceci n’est plus sur le stockage :} other {ceux-ci ne 
 msgid "{0, plural, one {Uploaded # file} other {Uploaded # files}}"
 msgstr "{0, plural, one {# fichier envoyé} other {# fichiers envoyés}}"
 
+#. placeholder {0}: job.label
+#. placeholder {1}: job.done
+#. placeholder {2}: job.total
+#: app/components/jobs-panel.tsx
+msgid "{0} · copying {1} of {2}"
+msgstr "{0} · copie de {1} sur {2}"
+
 #. placeholder {0}: index + 1
 #. placeholder {1}: files.length
 #: app/components/preview-drawer.tsx
 msgid "{0} of {1}"
 msgstr "{0} sur {1}"
+
+#. placeholder {0}: job.done
+#. placeholder {1}: job.total
+#: app/components/jobs-panel.tsx
+msgid "{0} of {1} steps"
+msgstr "{0} étapes sur {1}"
 
 #. placeholder {0}: formatSize(stored)
 #: app/components/montage-view.tsx
@@ -191,10 +204,6 @@ msgstr "Montage de {0}"
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
 msgstr "{addedCount, plural, one {# fichier ajouté} other {# fichiers ajoutés}} à {where}"
-
-#: app/components/running-now.tsx
-msgid "{all, plural, one {# file} other {# files}}"
-msgstr "{all, plural, one {# fichier} other {# fichiers}}"
 
 #: app/helpers/notes.ts
 msgid "{back, plural, one {# file} other {# files}} back in Fresh files, out of the bin."
@@ -216,7 +225,7 @@ msgstr "{copied, plural, one {# fichier recopié} other {# fichiers recopiés}} 
 msgid "{copied, plural, one {# file} other {# files}} copied back off the camera, {skipped} already here — ready to process again."
 msgstr "{copied, plural, one {# fichier recopié} other {# fichiers recopiés}} depuis la caméra, {skipped} déjà ici — prêts à être préparés à nouveau."
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "{copied, plural, one {# new file copied} other {# new files copied}}"
 msgstr "{copied, plural, one {# nouveau fichier copié} other {# nouveaux fichiers copiés}}"
 
@@ -231,10 +240,6 @@ msgstr "{copies, plural, one {# copie préparée est supprimée} other {# copies
 #: app/components/take-back-dialog.tsx
 msgid "{copies, plural, one {the # processed copy} other {the # processed copies}}"
 msgstr "{copies, plural, one {la # copie préparée} other {les # copies préparées}}"
-
-#: app/components/board-header.tsx
-msgid "{copyWhat} · copying {copyDone} of {copyTotal}"
-msgstr "{copyWhat} · copie {copyDone} sur {copyTotal}"
 
 #: app/components/montage-card.tsx
 msgid "{count, plural, one {# clip} other {# clips}}"
@@ -296,33 +301,33 @@ msgstr "{doing} {name}"
 msgid "{done} done"
 msgstr "{done} faits"
 
-#: app/components/running-now.tsx
-msgid "{done} of {total, plural, one {# file} other {# files}}"
-msgstr "{done} sur {total, plural, one {# fichier} other {# fichiers}}"
+#: app/components/jobs-panel.tsx
+msgid "{done} of {total, plural, one {# clip} other {# clips}} made — they play and scrub at once with one"
+msgstr "{done} sur {total, plural, one {# clip} other {# clips}} faits — ils se lisent et se parcourent aussitôt avec leur petite copie"
 
-#: app/components/import-panel.tsx
-msgid "{done} of {total} copied into the originals — {size} in all"
-msgstr "{done} sur {total} copiés dans les originaux — {size} au total"
+#: app/components/jobs-panel.tsx
+msgid "{done} of {total, plural, one {# clip} other {# clips}} read for where the jump is"
+msgstr "{done} sur {total, plural, one {# clip} other {# clips}} lus pour trouver où est le saut"
 
-#: app/components/camera-panel.tsx
-msgid "{done} of {total} gone over"
-msgstr "{done} sur {total} parcourus"
+#: app/components/jobs-panel.tsx
+msgid "{done} of {total, plural, one {# file} other {# files}} deleted"
+msgstr "{done} sur {total, plural, one {# fichier} other {# fichiers}} supprimés"
 
-#: app/components/camera-panel.tsx
-msgid "{done} of {total} gone over — {size} on the card"
-msgstr "{done} sur {total} parcourus — {size} sur la carte"
+#: app/components/jobs-panel.tsx
+msgid "{done} of {total, plural, one {# file} other {# files}} prepared"
+msgstr "{done} sur {total, plural, one {# fichier} other {# fichiers}} préparés"
 
-#: app/components/free-panel.tsx
-msgid "{done} of {total} steps"
-msgstr "{done} étapes sur {total}"
+#: app/components/jobs-panel.tsx
+msgid "{done} of {total} brought back"
+msgstr "{done} sur {total} rapatriés"
+
+#: app/components/jobs-panel.tsx
+msgid "{done} of {total} copied into the originals"
+msgstr "{done} sur {total} copiés dans les originaux"
 
 #: app/routes/place.tsx
 msgid "{editLocked} Open it in kdenlive, or reset the montage."
 msgstr "{editLocked} Ouvrez-le dans kdenlive, ou réinitialisez le montage."
-
-#: app/components/import-panel.tsx
-msgid "{failed} could not be added — the board will say why when the drop is done."
-msgstr "{failed} n’a pas pu être ajouté — le tableau dira pourquoi une fois le dépôt terminé."
 
 #: app/helpers/notes.ts
 msgid "{file} has been added to {where}"
@@ -364,13 +369,9 @@ msgstr "{filesAdded, plural, one {# nouveau fichier} other {# nouveaux fichiers}
 msgid "{filesGone, plural, one {# file left the board} other {# files left the board}}"
 msgstr "{filesGone, plural, one {# fichier a quitté le tableau} other {# fichiers ont quitté le tableau}}"
 
-#: app/components/delete-panel.tsx
-msgid "{finished} of {count, plural, one {# file} other {# files}} deleted"
-msgstr "{finished} sur {count, plural, one {# fichier supprimé} other {# fichiers supprimés}}"
-
-#: app/components/upload-panel.tsx
-msgid "{finished} of {count, plural, one {# item} other {# items}} on the storage — {size} in all"
-msgstr "{finished} sur {count, plural, one {# élément} other {# éléments}} sur le stockage — {size} au total"
+#: app/components/jobs-panel.tsx
+msgid "{finished} of {count, plural, one {# item} other {# items}} on the storage — {bytes} in all"
+msgstr "{finished} sur {count, plural, one {# élément} other {# éléments}} sur le stockage — {bytes} en tout"
 
 #: app/components/email-dialog.tsx
 msgid "{firstname} can take the link with a phone, before the email has even gone."
@@ -470,10 +471,6 @@ msgstr "{more, plural, one {… et # de plus, non listé ici.} other {… et # d
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  de {filename}"
 
-#: app/components/bring-panel.tsx
-msgid "{name} — {bytes}"
-msgstr "{name} — {bytes}"
-
 #: app/routes/place.tsx
 msgid "{name} was not sent from this machine, so it cannot come back."
 msgstr "{name} n’a pas été envoyé depuis cette machine : il ne peut pas revenir."
@@ -544,21 +541,9 @@ msgstr "{proxiesWaiting, plural, one {# proxy en attente} other {# proxys en att
 msgid "{read} of {clips} clips have been read for where the jump is in them. They are read in the background; each clip says how far it has got."
 msgstr "{read} clips sur {clips} ont été lus pour trouver où est le saut. Ils sont lus en arrière-plan ; chaque clip dit où il en est."
 
-#: app/components/proxy-panel.tsx
-msgid "{ready} of {total, plural, one {# clip} other {# clips}} have their small copy"
-msgstr "{ready} sur {total, plural, one {# clip a} other {# clips ont}} sa petite copie"
-
-#: app/components/running-now.tsx
-msgid "{ready} of {total}"
-msgstr "{ready} sur {total}"
-
 #: app/components/board-header.tsx
 msgid "{ready} of {total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn."
 msgstr "{ready} clips sur {total} ont leur petite copie. Elles se font en arrière-plan ; le compte se met à jour chaque fois que le tableau est redessiné."
-
-#: app/components/proxy-panel.tsx
-msgid "{ready} of {total} ready — they play and scrub at once with one"
-msgstr "{ready} sur {total} prêtes — elles se lisent et se parcourent tout de suite"
 
 #: app/components/free-place-dialog.tsx
 msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
@@ -568,7 +553,7 @@ msgstr "{reshaped, plural, one {# fichier est parti} other {# fichiers sont part
 msgid "{retimed, plural, one {Changed the time of # file} other {Changed the time of # files}}"
 msgstr "{retimed, plural, one {Heure changée sur # fichier} other {Heure changée sur # fichiers}}"
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "{skipped, plural, one {# already here} other {# already here}}"
 msgstr "{skipped, plural, one {# déjà ici} other {# déjà ici}}"
 
@@ -873,13 +858,13 @@ msgstr "Ajouter une destination…"
 msgid "Add link"
 msgstr "Ajouter le lien"
 
-#: app/components/import-panel.tsx
-msgid "Adding {total} to {where}"
-msgstr "Ajout de {total} à {where}"
+#: app/components/jobs-panel.tsx
+msgid "Adding {label}"
+msgstr "Ajout dans {label}"
 
-#: app/components/import-panel.tsx
-msgid "Adding to {where}"
-msgstr "Ajout à {where}"
+#: app/components/jobs-panel.tsx
+msgid "Adding the template {label}"
+msgstr "Ajout du modèle {label}"
 
 #: app/components/free-dialog.tsx
 msgid "After this the montage lives on the storage only: it cannot be processed, edited or uploaded again from here, and a rescan leaves it as it is. If any check fails, nothing at all is deleted, and it says which."
@@ -902,12 +887,12 @@ msgstr "Tout est fait — livré {delivered}, envoyé {0}, libéré {freed}"
 msgid "all up"
 msgstr "tout envoyé"
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "already here"
 msgstr "déjà ici"
 
+#: app/components/jobs-panel.tsx
 #: app/components/transfers-panel.tsx
-#: app/components/upload-panel.tsx
 msgid "already on the storage"
 msgstr "déjà sur le stockage"
 
@@ -923,8 +908,8 @@ msgstr "déjà là"
 msgid "Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name."
 msgstr "Déjà envoyé — un nouveau nom implique de préparer et d’envoyer à nouveau, et l’ancien dossier reste sur le stockage sous l’ancien nom."
 
+#: app/components/jobs-panel.tsx
 #: app/components/transfers-panel.tsx
-#: app/components/upload-panel.tsx
 msgid "already uploaded — not sent again"
 msgstr "déjà envoyé — pas renvoyé"
 
@@ -1062,12 +1047,7 @@ msgstr "Rapatrier ramène un fichier sur cette machine. Rien n'est supprimé du 
 msgid "Bring back to Fresh files"
 msgstr "Remettre dans Nouveaux fichiers"
 
-#: app/components/bring-panel.tsx
-#: app/components/running-now.tsx
-msgid "Bringing back {name}"
-msgstr "Récupération de {name}"
-
-#: app/components/bring-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Bringing back from the storage"
 msgstr "Récupération depuis le stockage"
 
@@ -1075,17 +1055,22 @@ msgstr "Récupération depuis le stockage"
 msgid "Bringing back…"
 msgstr "Récupération…"
 
+#: app/components/jobs-panel.tsx
+msgid "Bringing files back from the bin"
+msgstr "Récupération de fichiers depuis la corbeille"
+
 #: app/components/templates-dialog.tsx
 msgid "Bringing in {bringing}…"
 msgstr "Importation de {bringing}…"
 
+#: app/components/jobs-panel.tsx
 #: app/components/transfers-panel.tsx
 msgid "Brought back"
 msgstr "Récupéré"
 
-#: app/components/bring-panel.tsx
-msgid "Brought back of {name}"
-msgstr "Récupéré de {name}"
+#: app/components/jobs-panel.tsx
+msgid "Brought back from the bin"
+msgstr "Récupéré de la corbeille"
 
 #: app/components/upload-dialog.tsx
 msgid "Build each item once, then send it to every destination it is in"
@@ -1121,6 +1106,7 @@ msgstr "annuler"
 #: app/components/delete-jump-dialog.tsx
 #: app/components/free-dialog.tsx
 #: app/components/free-place-dialog.tsx
+#: app/components/jobs-panel.tsx
 #: app/components/jump-name.tsx
 #: app/components/montage-card.tsx
 #: app/components/nas-folder-browser.tsx
@@ -1129,7 +1115,6 @@ msgstr "annuler"
 #: app/components/remove-place-dialog.tsx
 #: app/components/take-back-dialog.tsx
 #: app/components/upload-dialog.tsx
-#: app/components/upload-panel.tsx
 #: app/routes/place.tsx
 msgid "Cancel"
 msgstr "Annuler"
@@ -1138,11 +1123,7 @@ msgstr "Annuler"
 msgid "cancelled"
 msgstr "annulé"
 
-#: app/components/upload-panel.tsx
-msgid "Cancelled — nothing was recorded"
-msgstr "Annulé — rien n’a été enregistré"
-
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Cancelling…"
 msgstr "Annulation…"
 
@@ -1179,7 +1160,7 @@ msgstr "Vérifier et libérer environ {about}"
 msgid "Check the storage again"
 msgstr "Revérifier le stockage"
 
-#: app/components/delete-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "checked — waiting to move"
 msgstr "vérifié — en attente de déplacement"
 
@@ -1188,7 +1169,7 @@ msgid "Checked — waiting to move"
 msgstr "Vérifié — en attente de déplacement"
 
 #: app/components/camera-files.tsx
-#: app/components/delete-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Checking"
 msgstr "Vérification"
 
@@ -1196,7 +1177,7 @@ msgstr "Vérification"
 msgid "Checking and deleting…"
 msgstr "Vérification et suppression…"
 
-#: app/components/free-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Checking the storage"
 msgstr "Vérification du stockage"
 
@@ -1353,6 +1334,10 @@ msgstr "Connexion…"
 msgid "copied"
 msgstr "copié"
 
+#: app/components/jobs-panel.tsx
+msgid "Copied back"
+msgstr "Recopié"
+
 #: app/components/camera-files.tsx
 msgid "Copied here and on the storage — can be deleted from the camera"
 msgstr "Copié ici et sur le stockage — peut être supprimé de la caméra"
@@ -1369,17 +1354,17 @@ msgstr "Copié ici, pas encore sur le stockage — envoyez-le, ou mettez-le à l
 msgid "Copied in"
 msgstr "Copié depuis l’ordinateur"
 
-#: app/components/import-panel.tsx
-msgid "Copied into {where}"
-msgstr "Copié dans {where}"
+#: app/components/jobs-panel.tsx
+msgid "Copied into {label}"
+msgstr "Copié dans {label}"
 
 #: app/components/transfers-panel.tsx
 msgid "Copied off"
 msgstr "Copié depuis la caméra"
 
-#: app/components/camera-panel.tsx
-msgid "Copied off {camera}"
-msgstr "Copié depuis {camera}"
+#: app/components/jobs-panel.tsx
+msgid "Copied off {label}"
+msgstr "Copié depuis {label}"
 
 #: app/components/camera-files.tsx
 msgid "copied off and listed here — delete on the camera itself"
@@ -1479,14 +1464,9 @@ msgstr "Copier ce qui est nouveau sur chaque caméra branchée — ce qui est d�
 msgid "Copy what is not on this machine yet, without unplugging the camera — what is here already is passed over"
 msgstr "Copier ce qui n’est pas encore sur cette machine, sans débrancher la caméra — ce qui est déjà ici est ignoré"
 
-#: app/components/camera-panel.tsx
-#: app/components/import-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Copying"
 msgstr "Copie"
-
-#: app/components/camera-panel.tsx
-msgid "Copying {camera}"
-msgstr "Copie de {camera}"
 
 #: app/components/camera-files.tsx
 msgid "Copying {camera} — the header shows how far it has got."
@@ -1500,23 +1480,31 @@ msgstr "Copie de {camera} arrêtée à la demande — {tally} ; le reste est tou
 msgid "Copying {camera} stopped: {why} — {tally}"
 msgstr "La copie de {camera} s’est arrêtée : {why} — {tally}"
 
-#: app/components/running-now.tsx
-msgid "Copying {name}"
-msgstr "Copie de {name}"
+#: app/components/jobs-panel.tsx
+msgid "Copying {label}"
+msgstr "Copie de {label}"
 
 #: app/components/board-header.tsx
 msgid "Copying a camera, making proxies, processing and saving the board all need room on this disk. Free some space: delete what you no longer need, or free uploaded jumps and montages from here."
 msgstr "Copier une caméra, créer les proxys, préparer et enregistrer le tableau demandent tous de la place sur ce disque. Libérez de l’espace : supprimez ce dont vous n’avez plus besoin, ou libérez ici les sauts et montages déjà envoyés."
 
-#: app/components/running-now.tsx
-msgid "Copying in {where}"
-msgstr "Copie de {where} depuis l’ordinateur"
+#: app/components/jobs-panel.tsx
+msgid "Copying files back"
+msgstr "Recopie de fichiers"
 
-#: app/components/camera-panel.tsx
-msgid "Copying the camera {camera}"
-msgstr "Copie de la caméra {camera}"
+#: app/components/jobs-panel.tsx
+msgid "Copying the camera {label}"
+msgstr "Copie de la caméra {label}"
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
+msgid "Copying the files back off the card"
+msgstr "Recopie des fichiers depuis la carte"
+
+#: app/components/jobs-panel.tsx
+msgid "Copying the template’s files"
+msgstr "Copie des fichiers du modèle"
+
+#: app/components/jobs-panel.tsx
 msgid "could not be read"
 msgstr "n’a pas pu être lu"
 
@@ -1615,7 +1603,7 @@ msgid "Delete or ⌫"
 msgstr "Suppr ou ⌫"
 
 #: app/components/bin-files.tsx
-#: app/components/delete-panel.tsx
+#: app/components/jobs-panel.tsx
 #: app/components/transfers-panel.tsx
 msgid "Deleted from the camera"
 msgstr "Supprimé de la caméra"
@@ -1632,7 +1620,7 @@ msgstr "Supprimé de cette machine"
 msgid "Deletes what is here once the storage is proved to hold it. Asks first."
 msgstr "Supprime ce qui est ici une fois que le stockage a prouvé le contenir. Demande d'abord."
 
-#: app/components/free-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Deleting"
 msgstr "Suppression"
 
@@ -1640,8 +1628,7 @@ msgstr "Suppression"
 msgid "Deleting {path}"
 msgstr "Suppression de {path}"
 
-#: app/components/delete-panel.tsx
-#: app/components/running-now.tsx
+#: app/components/jobs-panel.tsx
 msgid "Deleting from the camera"
 msgstr "Suppression depuis la caméra"
 
@@ -1649,9 +1636,13 @@ msgstr "Suppression depuis la caméra"
 msgid "Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself."
 msgstr "La suppression vérifie chaque fichier contre le stockage en le relisant octet par octet, ce qui exige que la caméra soit lisible comme des fichiers. Supprimez-les sur la caméra elle-même."
 
-#: app/components/free-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Deleting what is here, and the whole of its folder"
 msgstr "Suppression de ce qui est ici, et de tout son dossier"
+
+#: app/components/jobs-panel.tsx
+msgid "Deleting what is here, file by file"
+msgstr "Suppression de ce qui est ici, fichier par fichier"
 
 #: app/components/preview-drawer.tsx
 msgid "Delivered as a landscape clip: the picture in the middle, the sides filled with it blurred — nothing cut away"
@@ -1692,8 +1683,7 @@ msgstr "Se déconnecter"
 msgid "Disconnect the storage"
 msgstr "Déconnecter le stockage"
 
-#: app/components/bring-panel.tsx
-#: app/components/free-panel.tsx
+#: app/components/jobs-panel.tsx
 #: app/components/notice.tsx
 msgid "Dismiss"
 msgstr "Fermer"
@@ -1703,10 +1693,6 @@ msgstr "Fermer"
 #: app/components/transfers-panel.tsx
 msgid "done"
 msgstr "terminé"
-
-#: app/components/upload-panel.tsx
-msgid "Done"
-msgstr "Terminé"
 
 #: app/components/email-dialog.tsx
 msgid "Done — back to this email"
@@ -1962,7 +1948,7 @@ msgstr "Ressenti, au plus haut"
 msgid "Fetch it back onto this machine"
 msgstr "La récupérer sur cette machine"
 
-#: app/components/bring-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Fetching"
 msgstr "Récupération"
 
@@ -1998,6 +1984,10 @@ msgstr "Des fichiers sont en cours de copie"
 #: app/components/comparison-dialog.tsx
 msgid "Files of {jump}"
 msgstr "Fichiers de {jump}"
+
+#: app/components/jobs-panel.tsx
+msgid "Files prepared"
+msgstr "Fichiers préparés"
 
 #: app/components/montage-steps.tsx
 msgid "Files ready"
@@ -2044,6 +2034,10 @@ msgstr "Retrouver les repères"
 #: app/components/file-list.tsx
 msgid "Finding the jump"
 msgstr "Recherche du saut"
+
+#: app/components/jobs-panel.tsx
+msgid "Finding the jumps"
+msgstr "Recherche des sauts"
 
 #: app/components/file-browser.tsx
 msgid "Fold this day"
@@ -2176,7 +2170,7 @@ msgstr "Libéré de cette machine — il n’y a pas de fichier ici à copier."
 msgid "Freed from this machine {freed}"
 msgstr "Libéré de cette machine le {freed}"
 
-#: app/components/free-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Freed of {label}"
 msgstr "Libération de {label}"
 
@@ -2184,7 +2178,7 @@ msgstr "Libération de {label}"
 msgid "freefall"
 msgstr "chute libre"
 
-#: app/components/free-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Freeing {label}"
 msgstr "Libération de {label}"
 
@@ -2471,6 +2465,10 @@ msgstr "Saut du {day} · livré le {0}"
 msgid "Jumps"
 msgstr "Sauts"
 
+#: app/components/jobs-panel.tsx
+msgid "Jumps found"
+msgstr "Sauts trouvés"
+
 #: app/components/templates-dialog.tsx
 msgid "kdenlive version not said"
 msgstr "version de kdenlive non indiquée"
@@ -2621,11 +2619,11 @@ msgstr "Local"
 msgid "Look again"
 msgstr "Regarder à nouveau"
 
-#: app/components/upload-panel.tsx
-msgid "Looking at what the storage holds — {checked} of {totalFiles}"
-msgstr "Vérification du contenu du stockage — {checked} sur {totalFiles}"
+#: app/components/jobs-panel.tsx
+msgid "Looking at what the storage holds — {done} of {total}"
+msgstr "Examen de ce que le stockage contient — {done} sur {total}"
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Looking at what the storage holds…"
 msgstr "Vérification du contenu du stockage…"
 
@@ -2730,16 +2728,15 @@ msgstr "en faire un montage, nommé d’abord"
 msgid "Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder."
 msgstr "Fait les copies qui seront remises : chaque clip et photo coupé, recadré et pivoté, dans le dossier du montage."
 
-#: app/components/proxy-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Making"
 msgstr "Création"
 
-#: app/components/proxy-panel.tsx
-#: app/components/running-now.tsx
+#: app/components/jobs-panel.tsx
 msgid "Making small copies"
 msgstr "Création des petites copies"
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Making the zips…"
 msgstr "Création des zips…"
 
@@ -2824,11 +2821,23 @@ msgstr "{movedCount} fichiers déjà sur le tableau déplacés vers {where}"
 msgid "Moved {name} from {from} to {where}"
 msgstr "{name} déplacé de {from} vers {where}"
 
-#: app/components/delete-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "moved to the bin"
 msgstr "déplacé vers la corbeille"
 
-#: app/components/delete-panel.tsx
+#: app/components/jobs-panel.tsx
+msgid "Moving"
+msgstr "Déplacement"
+
+#: app/components/jobs-panel.tsx
+msgid "Moving the files back"
+msgstr "Déplacement des fichiers vers leur place"
+
+#: app/components/jobs-panel.tsx
+msgid "Moving the files into the bin"
+msgstr "Déplacement des fichiers dans la corbeille"
+
+#: app/components/jobs-panel.tsx
 msgid "moving to the bin"
 msgstr "déplacement vers la corbeille"
 
@@ -2983,7 +2992,7 @@ msgstr "Aucun pour l'instant"
 msgid "not added — {reasons}"
 msgstr "non ajouté — {reasons}"
 
-#: app/components/bring-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "not brought back"
 msgstr "pas récupéré"
 
@@ -2999,7 +3008,7 @@ msgstr "Pas encore copié ici — il ne peut pas être supprimé de la caméra"
 msgid "not copied yet"
 msgstr "pas encore copié"
 
-#: app/components/delete-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "not deleted"
 msgstr "pas supprimé"
 
@@ -3011,7 +3020,7 @@ msgstr "Pas encore préparé"
 msgid "not reached"
 msgstr "pas atteint"
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "not sent"
 msgstr "non envoyé"
 
@@ -3415,6 +3424,10 @@ msgstr "préparé"
 msgid "Prepared"
 msgstr "Préparé"
 
+#: app/components/jobs-panel.tsx
+msgid "Preparing the files"
+msgstr "Préparation des fichiers"
+
 #: app/components/montage-view.tsx
 msgid "press a zip to see inside"
 msgstr "cliquez sur un zip pour voir dedans"
@@ -3491,7 +3504,7 @@ msgstr "Projet créé"
 msgid "Proved first"
 msgstr "Vérifié d’abord"
 
-#: app/components/free-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Proving the storage holds every file that went up — nothing is deleted before that"
 msgstr "Vérification que le stockage contient chaque fichier envoyé — rien n'est supprimé avant"
 
@@ -3545,6 +3558,7 @@ msgstr "Insérer une variable"
 msgid "Put in a variable…"
 msgstr "Insérer une variable…"
 
+#: app/components/jobs-panel.tsx
 #: app/components/remove-files-dialog.tsx
 msgid "Put in the bin"
 msgstr "Mettre à la corbeille"
@@ -3564,6 +3578,10 @@ msgstr "Rétablir le modèle tel que SkyDock l’a écrit au départ"
 #: app/components/history-dialog.tsx
 msgid "Puts the board back as it was just before this change"
 msgstr "Remet le tableau tel qu’il était juste avant ce changement"
+
+#: app/components/jobs-panel.tsx
+msgid "Putting files in the bin"
+msgstr "Mise de fichiers à la corbeille"
 
 #: app/components/email-dialog.tsx
 msgid "QR code"
@@ -3585,7 +3603,15 @@ msgstr "Quart de tour"
 msgid "R"
 msgstr "R"
 
-#: app/components/import-panel.tsx
+#: app/components/jobs-panel.tsx
+msgid "Reading"
+msgstr "Lecture"
+
+#: app/components/jobs-panel.tsx
+msgid "Reading each file, so it is known by what it contains"
+msgstr "Lecture de chaque fichier, pour le connaître par son contenu"
+
+#: app/components/jobs-panel.tsx
 msgid "reading it…"
 msgstr "lecture…"
 
@@ -3797,9 +3823,17 @@ msgstr "Analyse : +{added} nouveaux, −{removed} disparus, {moved} déplacés �
 msgid "Scan: nothing new — {fileCount} files in {groupCount} jumps"
 msgstr "Analyse : rien de nouveau — {fileCount} fichiers dans {groupCount} sauts"
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
+msgid "Scanned of {label}"
+msgstr "Analysé de {label}"
+
+#: app/components/jobs-panel.tsx
 msgid "scanned when done"
 msgstr "analysé une fois fini"
+
+#: app/components/jobs-panel.tsx
+msgid "Scanning {label}"
+msgstr "Analyse de {label}"
 
 #: app/components/board-header.tsx
 #: app/components/first-scan.tsx
@@ -3838,8 +3872,8 @@ msgstr "Envoyer le lien à {who}"
 msgid "Send everything in {name} that is processed and not up there yet — {toUpload, plural, one {# file} other {# files}}, whatever the search or the filter is showing."
 msgstr "Envoyer tout ce qui, dans {name}, est préparé et pas encore en ligne — {toUpload, plural, one {# fichier} other {# fichiers}}, quoi qu’affichent la recherche ou le filtre."
 
+#: app/components/jobs-panel.tsx
 #: app/components/transfers-panel.tsx
-#: app/components/upload-panel.tsx
 msgid "Sending"
 msgstr "Envoi"
 
@@ -3995,7 +4029,7 @@ msgstr "SkyDock n’envoie rien : il copie l’e-mail et ouvre un nouveau messag
 msgid "SkyDock works in"
 msgstr "SkyDock travaille dans"
 
-#: app/components/proxy-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Small copies made"
 msgstr "Petites copies créées"
 
@@ -4036,10 +4070,6 @@ msgstr "Commencer le clip à la tête de lecture"
 msgid "Started"
 msgstr "Début"
 
-#: app/components/upload-panel.tsx
-msgid "Starting…"
-msgstr "Démarrage…"
-
 #: app/components/inspector.tsx
 #: app/components/montage-panel.tsx
 msgid "Starts"
@@ -4073,15 +4103,15 @@ msgstr "parcours de la caméra en cours — {count, plural, one {# fichier} othe
 msgid "Still processing — the board updates itself when it is done"
 msgstr "Préparation en cours — le tableau se met à jour de lui-même une fois terminé"
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Stop"
 msgstr "Arrêter"
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Stop after the file under way — what came across stays, the rest stays on the card"
 msgstr "Arrêter après le fichier en cours — ce qui a été copié reste, le reste reste sur la carte"
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Stop it now — nothing of it is recorded, and what already went up is found there next time"
 msgstr "L’arrêter maintenant — rien n’en est enregistré, et ce qui est déjà en ligne sera retrouvé la prochaine fois"
 
@@ -4089,7 +4119,7 @@ msgstr "L’arrêter maintenant — rien n’en est enregistré, et ce qui est d
 msgid "Stop using by default"
 msgstr "Ne plus utiliser par défaut"
 
-#: app/components/camera-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Stopping…"
 msgstr "Arrêt…"
 
@@ -4173,6 +4203,10 @@ msgstr "Retiré de la dropzone {dropzone}"
 #: app/components/bin-files.tsx
 msgid "Taken out of the montage {montage}"
 msgstr "Retiré du montage {montage}"
+
+#: app/components/jobs-panel.tsx
+msgid "Template added"
+msgstr "Modèle ajouté"
 
 #: app/components/templates-dialog.tsx
 msgid "Templates"
@@ -4471,10 +4505,6 @@ msgstr "les heures qui ont été corrigées — chaque fichier reprend l’heure
 #: app/components/preview-drawer.tsx
 msgid "The trim, frame or turn you set has not been saved yet."
 msgstr "La coupe, le cadrage ou la rotation que vous avez définis ne sont pas encore enregistrés."
-
-#: app/components/upload-panel.tsx
-msgid "The upload stopped"
-msgstr "L’envoi s’est arrêté"
 
 #: app/components/templates-dialog.tsx
 msgid "the usual one"
@@ -4809,17 +4839,11 @@ msgstr "{uploaded, plural, one {# fichier envoyé} other {# fichiers envoyés}}"
 msgid "Uploaded {uploadedOn}, but "
 msgstr "Envoyé le {uploadedOn}, mais "
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Uploaded of {label}"
 msgstr "Envoyé de {label}"
 
-#. placeholder {0}: uploading.label
-#: app/components/board-header.tsx
-msgid "Uploading {0}"
-msgstr "Envoi de {0}"
-
-#: app/components/running-now.tsx
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Uploading {label}"
 msgstr "Envoi de {label}"
 
@@ -5063,15 +5087,15 @@ msgstr "Vous pouvez libérer {0} sur cette machine. Elle demande d'abord."
 msgid "Zip the photos and the rushes, then send the film and the photos to the montage’s folder"
 msgstr "Zipper les photos et les rushes, puis envoyer le film et les photos dans le dossier du montage"
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "zipped"
 msgstr "zippé"
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "zipping"
 msgstr "compression"
 
-#: app/components/upload-panel.tsx
+#: app/components/jobs-panel.tsx
 msgid "Zipping"
 msgstr "Compression"
 

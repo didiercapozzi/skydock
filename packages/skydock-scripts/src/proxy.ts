@@ -1,9 +1,10 @@
 import * as fs from 'node:fs'
+import * as os from 'node:os'
 import * as path from 'node:path'
 import type { ProxyFact } from './boardAnswer'
 import { changeBoardSoon, flushBoardChanges, loadManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
-import { following } from './live'
+import { following, job } from './live'
 import { lastComplaint, run, runWatched } from './tools'
 import {
   ffmpegPath,
@@ -13,6 +14,7 @@ import {
   hasCommand,
   isVideoFile
 } from './utils'
+import { untilQuiet } from './lib/quiet'
 import { messageOf } from './lib/words'
 
 /* A proxy is a small, all-intra copy of a clip. It exists twice over: the editor opens on proxies
@@ -221,15 +223,14 @@ const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
    finished — the next pass would otherwise skip a half-written proxy forever. Why it failed comes
    back with the answer. */
 
-const buildProxy = async (
+const buildWith = async (
+  pick: ProxyEncoder,
+  cardScales: boolean,
   src: string,
   dest: string,
-  shape: Awaited<ReturnType<typeof videoShape>> = null,
-  /* how far through the clip it is, for whoever is watching */
+  shape: Awaited<ReturnType<typeof videoShape>>,
   onPercent?: (percent: number) => void
 ) => {
-  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
-  const { encoder: pick, cardScales } = await detection()
   /* A VAAPI card with no scaler decodes into ordinary memory instead, where ffmpeg turns the frame
      the right way up exactly as it does for the processor path, and hands the resized frame back
      to the card to encode. */
@@ -256,10 +257,28 @@ const buildProxy = async (
      write into one file, or what is renamed into place is the two interleaved */
   const partial = `${dest}.${process.pid}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
+  /* Making a small copy is the heaviest thing the app does and nobody is waiting on it, so it takes
+     what the machine has to spare: half the processor at most, and behind everything else — the window
+     and the pointer come first. */
+  const cap =
+    pick === 'cpu' ? ['-threads', String(Math.max(1, Math.floor(os.cpus().length / 2)))] : []
   const ran = await runWatched(
     ffmpegPath(),
-    ['-y', ...decode, '-i', src, '-vf', filter, ...ENCODER_ARGS[pick], ...CONTAINER_ARGS, partial],
-    onPercent
+    [
+      '-y',
+      ...decode,
+      '-i',
+      src,
+      '-vf',
+      filter,
+      ...ENCODER_ARGS[pick],
+      ...cap,
+      ...CONTAINER_ARGS,
+      partial
+    ],
+    onPercent,
+    undefined,
+    true
   )
   if (ran.ok) {
     try {
@@ -271,6 +290,24 @@ const buildProxy = async (
   }
   if (fs.existsSync(partial)) fs.unlinkSync(partial)
   return { ok: false as const, reason: lastComplaint(ran.stderr) }
+}
+
+/* A card that passed its trial can still refuse a particular clip — a 10-bit or 4:4:4 picture, a codec it
+   has no decoder for — and a clip without a small copy is the worst outcome, so what the card will not
+   make is made by the processor, which takes anything. */
+const buildProxy = async (
+  src: string,
+  dest: string,
+  shape: Awaited<ReturnType<typeof videoShape>> = null,
+  /* how far through the clip it is, for whoever is watching */
+  onPercent?: (percent: number) => void
+) => {
+  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
+  const { encoder, cardScales } = await detection()
+  const first = await buildWith(encoder, cardScales, src, dest, shape, onPercent)
+  if (first.ok || encoder === 'cpu') return first
+  const again = await buildWith('cpu', false, src, dest, shape, onPercent)
+  return again.ok ? again : first
 }
 
 /* The timeline carries the cut footage, so a proxy of the whole clip would not line up with it.
@@ -333,60 +370,90 @@ const ensureProxies = async (
     return report
   }
 
-  for (const [index, file] of candidates.entries()) {
-    onProgress?.(index, candidates.length, file.filename)
+  /* What is still to be made is the corner's to show, each clip with a bar of its own: a pass over what
+     is all made already is over before anyone could read it, and says nothing. */
+  const toMake = candidates.filter((file) => {
     const proxyPath = getProxyPath(file, outputDir)
-    if (!proxyPath) continue
-    if (fs.existsSync(proxyPath)) {
-      if (file.proxy !== proxyPath) {
-        file.proxy = proxyPath
-        onBuilt?.()
-      }
-      report.skipped++
-      continue
-    }
-    /* an original that is not here cannot be copied small: said, so the clip does not wait for ever */
-    if (!fs.existsSync(file.path)) {
-      proxyFailures().set(file.path, 'The original is not on this machine')
-      continue
-    }
-    const shape = await videoShape(file.path)
-    /* already smaller than the proxy would be — the clip is its own proxy */
-    if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
-      if (file.proxy !== file.path) {
-        file.proxy = file.path
-        onBuilt?.()
-      }
-      report.skipped++
-      continue
-    }
-    /* said as it goes, and what the clip plays from now on said with its landing, so the board
-       flags it without asking */
-    const live = following('proxy', file.id)
-    const built = await buildProxy(file.path, proxyPath, shape, live.at)
-    if (built.ok) {
-      proxyFailures().delete(file.path)
-      file.proxy = proxyPath
-      report.built++
-      onBuilt?.()
-      live.done(true, { proxy: { path: file.path, fact: { state: 'ready', play: proxyPath } } })
-    } else {
-      delete file.proxy
-      proxyFailures().set(file.path, built.reason)
-      report.failed.push(file.filename)
-      report.reason ??= built.reason
-      /* the failure said with its reason, so the board knows the clip is settled — it plays as it
-         is, and a montage no longer waits on it — without reading everything again */
-      live.done(false, {
-        proxy: {
-          path: file.path,
-          fact: { state: 'none', play: file.path, reason: built.reason }
+    return proxyPath !== null && !fs.existsSync(proxyPath)
+  })
+  const making = toMake.length > 0 ? job({ type: 'proxy', label: '', total: toMake.length }) : null
+  const rowOf = (file: ManifestFile) => file.id ?? file.path
+  making?.rows(toMake.map((file) => ({ key: rowOf(file), name: file.filename, size: 0 })))
+  try {
+    for (const [index, file] of candidates.entries()) {
+      onProgress?.(index, candidates.length, file.filename)
+      const proxyPath = getProxyPath(file, outputDir)
+      if (!proxyPath) continue
+      if (fs.existsSync(proxyPath)) {
+        if (file.proxy !== proxyPath) {
+          file.proxy = proxyPath
+          onBuilt?.()
         }
+        report.skipped++
+        continue
+      }
+      /* an original that is not here cannot be copied small: said, so the clip does not wait for ever */
+      if (!fs.existsSync(file.path)) {
+        proxyFailures().set(file.path, 'The original is not on this machine')
+        making?.row({ key: rowOf(file), at: 'failed', note: 'The original is not on this machine' })
+        making?.step()
+        continue
+      }
+      await untilQuiet()
+      const shape = await videoShape(file.path)
+      /* already smaller than the proxy would be — the clip is its own proxy */
+      if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
+        if (file.proxy !== file.path) {
+          file.proxy = file.path
+          onBuilt?.()
+        }
+        report.skipped++
+        making?.row({ key: rowOf(file), at: 'skipped' })
+        making?.step()
+        continue
+      }
+      /* said as it goes, and what the clip plays from now on said with its landing, so the board
+       flags it without asking */
+      const live = following('proxy', file.id)
+      making?.row({ key: rowOf(file), at: 'now', part: 0 })
+      const built = await buildProxy(file.path, proxyPath, shape, (percent) => {
+        live.at(percent)
+        making?.row({ key: rowOf(file), at: 'now', part: percent / 100 })
       })
+      making?.row(
+        built.ok
+          ? { key: rowOf(file), at: 'done' }
+          : { key: rowOf(file), at: 'failed', note: built.reason }
+      )
+      making?.step()
+      if (built.ok) {
+        proxyFailures().delete(file.path)
+        file.proxy = proxyPath
+        report.built++
+        onBuilt?.()
+        live.done(true, { proxy: { path: file.path, fact: { state: 'ready', play: proxyPath } } })
+      } else {
+        delete file.proxy
+        proxyFailures().set(file.path, built.reason)
+        report.failed.push(file.filename)
+        report.reason ??= built.reason
+        /* the failure said with its reason, so the board knows the clip is settled — it plays as it
+         is, and a montage no longer waits on it — without reading everything again */
+        live.done(false, {
+          proxy: {
+            path: file.path,
+            fact: { state: 'none', play: file.path, reason: built.reason }
+          }
+        })
+      }
     }
+    onProgress?.(candidates.length, candidates.length, '')
+    making?.finish()
+    return report
+  } catch (e) {
+    making?.fail(e instanceof Error ? e.message : String(e))
+    throw e
   }
-  onProgress?.(candidates.length, candidates.length, '')
-  return report
 }
 
 /* One run at a time in a process: the board's Scan can be pressed twice, and two ffmpeg passes over

@@ -130,7 +130,7 @@ describe('proxies', () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
     const heard: LiveEvent[] = []
-    const stop = subscribe((event) => heard.push(event))
+    const stop = subscribe((event) => event.kind !== 'job' && heard.push(event))
 
     await ensureProxies(manifest, outputDir)
     stop()
@@ -288,7 +288,7 @@ describe('proxies', () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
     const heard: LiveEvent[] = []
-    const stop = subscribe((event) => heard.push(event))
+    const stop = subscribe((event) => event.kind !== 'job' && heard.push(event))
 
     await ensureProxies(manifest, outputDir)
     stop()

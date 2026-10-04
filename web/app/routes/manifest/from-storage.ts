@@ -1,10 +1,4 @@
-import {
-  ensureNasSession,
-  publish,
-  recordTransfer,
-  saveManifest,
-  messageOf
-} from '@skydock/scripts'
+import { ensureNasSession, inJob, saveManifest, messageOf } from '@skydock/scripts'
 import { bringBack } from '../../../../packages/skydock-scripts/src/bringBack'
 import { boardAnswer } from '../../helpers/manifest'
 import { connectFirst } from './change'
@@ -26,68 +20,42 @@ const bringBackIntent: Intent = async ({
   if (!fileId) return refuse('Nothing was asked for.')
   const session = await ensureNasSession()
   if (!session) return refuse(connectFirst())
-  /* said as it goes, so the corner shows it live; and kept when it ends, so the transfers can be
-     opened to see it (RULES, Transfers) */
-  let name = ''
-  let size = 0
-  let lastPercent = -1
-  const say = (state: 'going' | 'done' | 'failed', part: number, reason?: string) =>
-    publish({
-      kind: 'bring',
-      fileId,
-      name,
-      state,
-      part,
-      size,
-      ...(reason ? { reason } : {})
-    })
-  const keep = (state: 'done' | 'failed', reason?: string, to?: string) => {
-    try {
-      recordTransfer(
-        {
-          kind: 'bring',
-          label: name || fileId,
-          state,
-          ...(reason ? { reason } : {}),
-          items: name
-            ? [{ name, size, ...(to ? { to } : {}), result: state === 'done' ? 'done' : 'failed' }]
-            : []
-        },
-        outputDir
-      )
-    } catch {
-      /* a history that cannot be written is no reason to fail what it is the history of */
-    }
-  }
+  /* said as it goes, so the corner shows it live; and kept when it ends, so the transfers can be opened to
+     see it (RULES, Transfers) */
   try {
-    const { board, ...back } = await bringBack({
-      manifest,
-      session,
-      fileId,
-      latest,
-      onStart: (filename, bytes) => {
-        name = filename
-        size = bytes
-        say('going', 0)
+    const { board, ...back } = await inJob(
+      {
+        type: 'bring',
+        label: '',
+        total: 1,
+        record: { kind: 'bring', outputDir, to: 'this machine' }
       },
-      onBytes: (landed, total) => {
-        const part = total > 0 ? Math.min(1, landed / total) : 0
-        /* whole percents only: a tick for every chunk would draw the corner for nothing */
-        const percent = Math.floor(part * 100)
-        if (percent === lastPercent) return
-        lastPercent = percent
-        say('going', part)
+      async (bringing) => {
+        const done = await bringBack({
+          manifest,
+          session,
+          fileId,
+          latest,
+          onStart: (name, size) => {
+            bringing.rows([{ key: fileId, name, size }])
+            bringing.row({ key: fileId, at: 'now', part: 0 })
+          },
+          onBytes: (landed, total) =>
+            bringing.row({
+              key: fileId,
+              at: 'now',
+              part: total > 0 ? Math.min(1, landed / total) : 0
+            })
+        })
+        bringing.row({ key: fileId, at: 'done', part: 1 })
+        bringing.step()
+        return done
       }
-    })
+    )
     saveManifest(manifestPath, board)
-    say('done', 1)
-    keep('done', undefined, 'this machine')
     return { ...boardAnswer(board), broughtBack: back }
   } catch (e) {
-    const reason = messageOf(e)
-    say('failed', 0, reason)
-    keep('failed', reason)
-    return refuse(reason)
+    return refuse(messageOf(e))
   }
 }
 

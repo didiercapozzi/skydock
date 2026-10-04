@@ -6,13 +6,10 @@ import { gatherArrivals, putOnBoard } from './arrivals'
 import { kioReader } from './kio'
 import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './kioCamera'
 import type { SeenClip } from './kioCamera'
-import { publish } from './live'
+import { job, publish } from './live'
 import { catchUp } from './catchUp'
 import { scanMedia } from './scan'
 import { messageOf } from './lib/words'
-import { recordTransfer } from './transfers'
-import type { TransferItem } from './transfers'
-import { sizeOf } from './utils'
 
 /* A camera plugged in is copied off on its own. The machine mounts its card like any drive; while the
    board's server runs, the mounted drives are looked at every couple of seconds, and one that has
@@ -211,47 +208,40 @@ const copyNext = async (outputDir: string) => {
   state.stop = stop
   const camera = cameraName(cameraDir)
   let last: CopyProgress = { done: 0, total: 0, copied: 0, skipped: 0 }
+  /* Said in the corner as one task, the card's files its rows: the list once, then each one as it is begun,
+     moves on, and how it went. Kept with the other transfers when it ends — unless nothing came and
+     nothing went wrong, which is a card plugged in again and would fill the history with nothing. */
+  const copying = job({
+    type: 'camera-copy',
+    label: camera,
+    total: 0,
+    record: { kind: 'camera', outputDir, quietIfIdle: true, passOver: true }
+  })
+  let listed = false
   const onProgress = (progress: CopyProgress) => {
     last = progress
-    publish({ kind: 'camera', camera, state: 'copying', ...progress })
+    copying.expect(progress.total)
+    copying.at(progress.done)
+    if (progress.files && !listed) {
+      listed = true
+      copying.rows(
+        progress.files.map((file, at) => ({ key: String(at), name: file.name, size: file.size }))
+      )
+    }
+    /* the file just finished, and the one now under way */
+    if (progress.last)
+      copying.row({
+        key: String(progress.done - 1),
+        at: progress.last === 'copied' ? 'done' : progress.last === 'skipped' ? 'skipped' : 'failed'
+      })
+    if (progress.done < progress.total)
+      copying.row({ key: String(progress.done), at: 'now', part: progress.part ?? 0 })
   }
   /* each file on the board as it lands; gathered into jumps once the card is done */
   const arrived: string[] = []
-  /* and each one by name, kept when the copy ends so what came off can be looked at after (RULES,
-     Transfers) */
-  const came: TransferItem[] = []
   const onCopied = (copied: Copied) => {
     putOnBoard(outputDir, copied)
     arrived.push(copied.id)
-    came.push({
-      name: path.basename(copied.dest),
-      size: sizeOf(copied.dest),
-      result: 'done'
-    })
-  }
-  /* The copy's end, kept — unless nothing came and nothing went wrong, which is a card plugged in
-     again and would fill the history with nothing. */
-  const keep = (state: 'done' | 'failed' | 'cancelled', reason?: string) => {
-    const unreadable = last.unreadable ?? []
-    if (state === 'done' && came.length === 0 && unreadable.length === 0) return
-    try {
-      recordTransfer(
-        {
-          kind: 'camera',
-          label: camera,
-          state,
-          ...(reason ? { reason } : {}),
-          items: [
-            ...came,
-            ...unreadable.map((name): TransferItem => ({ name, size: 0, result: 'failed' }))
-          ],
-          passedOver: last.skipped
-        },
-        outputDir
-      )
-    } catch {
-      /* a history that cannot be written is no reason to fail the copy it is the history of */
-    }
   }
   try {
     const result = isKioCamera(cameraDir)
@@ -270,8 +260,16 @@ const copyNext = async (outputDir: string) => {
     if (result.copied > onBoard) await scanMedia({ outputDir })
     if (result.copied > 0) void catchUp(outputDir)
     last = { ...last, ...result }
-    keep('done')
-    publish({ kind: 'camera', camera, state: 'done', ...result })
+    for (const name of last.unreadable ?? [])
+      copying.row({ key: `unreadable:${name}`, name, size: 0, at: 'failed' })
+    copying.finish({
+      outcome: {
+        state: 'done',
+        copied: result.copied,
+        skipped: result.skipped,
+        ...(last.unreadable?.length ? { unreadable: last.unreadable } : {})
+      }
+    })
   } catch (e) {
     const gone = e instanceof CameraGone
     const stopped = e instanceof CopyStopped
@@ -279,14 +277,16 @@ const copyNext = async (outputDir: string) => {
     /* what did make it across is whole, and is on the board — scanned for, if it could not be put
        there as it landed */
     if (last.copied > onBoard) await scanMedia({ outputDir }).catch(() => undefined)
-    keep(stopped ? 'cancelled' : 'failed', messageOf(e))
-    publish({
-      kind: 'camera',
-      camera,
-      state: gone ? 'gone' : stopped ? 'stopped' : 'failed',
-      ...last,
-      reason: messageOf(e)
-    })
+    const outcome = {
+      state: gone ? ('gone' as const) : stopped ? ('stopped' as const) : ('failed' as const),
+      copied: last.copied,
+      skipped: last.skipped,
+      ...(last.unreadable?.length ? { unreadable: last.unreadable } : {})
+    }
+    /* a card taken out or a copy stopped is the person's own doing, and leaves nothing to explain; a copy
+       that failed says why until it is put away */
+    if (outcome.state === 'failed') copying.fail(messageOf(e), outcome)
+    else copying.finish({ outcome, reason: messageOf(e) })
   } finally {
     state.copying = false
     state.current = undefined

@@ -1,26 +1,17 @@
 import { t } from '@lingui/core/macro'
-import { jsonText, liveEventSchema } from '@skydock/scripts'
-import type { JumpMoments, LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
+import { jsonText, liveEventSchema, mergeRow } from '@skydock/scripts'
+import type { JobRow, JumpMoments, LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
-import {
-  forgetLive,
-  liveBringing,
-  liveCamera,
-  liveDeleting,
-  liveFreeing,
-  liveFiles,
-  liveImporting,
-  liveKey
-} from './liveStore'
+import { forgetLive, liveJobs, liveFiles, liveKey } from './liveStore'
 
 /* what is being done to a file right now, and how far through it — in the words the events use */
 type LiveFile = Pick<Extract<LiveEvent, { kind: 'file' }>, 'work' | 'percent'>
 
-/* a camera being copied off, and how it ended — the ending numbered, so that two in a row are two */
-type CameraCopy = Extract<LiveEvent, { kind: 'camera' }>
-type CameraEnded = CameraCopy & { seq: number }
+/* a camera copied off, and how it ended — the ending numbered, so that two in a row are two */
+type JobOutcome = NonNullable<Extract<LiveEvent, { kind: 'job' }>['outcome']>
+type CameraEnded = JobOutcome & { camera: string; reason?: string; seq: number }
 
 /* the room left on the output folder's disk */
 type Disk = Omit<Extract<LiveEvent, { kind: 'disk' }>, 'kind'>
@@ -28,17 +19,8 @@ type Disk = Omit<Extract<LiveEvent, { kind: 'disk' }>, 'kind'>
 /* a camera plugged in right now: its name, and where it is mounted */
 type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
-/* one file being copied in from the computer, by the name the page gave that copy */
-type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
-
-/* a montage being freed from this machine */
-type Freeing = Omit<Extract<LiveEvent, { kind: 'free' }>, 'kind'>
-
-/* one file being deleted off a camera */
-type Deleting = Omit<Extract<LiveEvent, { kind: 'camera-delete' }>, 'kind' | 'path'>
-
-/* one file being fetched back from the storage */
-type Bringing = Omit<Extract<LiveEvent, { kind: 'bring' }>, 'kind'>
+/* a task with no file of its own, as it goes */
+type Job = Omit<Extract<LiveEvent, { kind: 'job' }>, 'kind' | 'row' | 'rows'> & { rows: JobRow[] }
 
 /* What is happening to the files as it happens, heard over one stream the server keeps open — so a
    file being processed, or a proxy being made, shows how far along it is with nobody asking. What
@@ -79,64 +61,32 @@ const useLiveProgress = (
           onNote({ text: t`${who}’s film is rendered — ready to upload`, problem: false })
         return
       }
-      if (event.kind === 'camera') {
-        /* the card's list comes once, at the start; after it, each file says how it went */
-        if (event.state === 'copying')
-          liveCamera.update((before) => {
-            const same = before?.camera === event.camera && !event.files ? before : null
-            return {
-              ...event,
-              files: event.files ?? same?.files,
-              outcomes: event.outcomes ?? [
-                ...(same?.outcomes ?? []),
-                ...(event.last ? [event.last] : [])
-              ]
-            }
-          })
-        else {
-          liveCamera.update(() => null)
-          setEnded((before) => ({ ...event, seq: (before?.seq ?? 0) + 1 }))
-        }
-        return
-      }
-      if (event.kind === 'import') {
-        /* Kept until the copy is over, not until its bytes are: a file whose last byte has landed
-           is still being read, and a bar that emptied itself at that moment was the board saying a
-           finished copy had not started. */
-        liveImporting.update(() => (event.phase === 'done' ? null : event))
-        return
-      }
-      if (event.kind === 'free') {
+      if (event.kind === 'job') {
         /* kept while it goes, and when it fails, so the corner says why until it is put away */
-        liveFreeing.update(() => (event.stage === 'done' ? null : event))
-        return
-      }
-      if (event.kind === 'camera-delete') {
-        liveDeleting.update((now) => ({
-          ...now,
-          [event.path]: {
-            stage: event.stage,
-            part: event.part,
-            size: event.size ?? now[event.path]?.size
+        const { kind: _, row, rows, outcome, ...fields } = event
+        /* a card copied off has ended: the board looks again at what came off it */
+        if (outcome && event.type === 'camera-copy')
+          setEnded((before) => ({
+            ...outcome,
+            camera: event.label,
+            ...(event.reason ? { reason: event.reason } : {}),
+            seq: (before?.seq ?? 0) + 1
+          }))
+        liveJobs.update((jobs) => {
+          if (event.stage === 'done') {
+            const { [event.id]: _ended, ...rest } = jobs
+            return rest
           }
-        }))
-        /* once none is still going, what ended is let go of a moment later: it is kept with the other
-           transfers, which is where to look at how it went */
-        setTimeout(() => {
-          const rest = Object.values(liveDeleting.get())
-          if (rest.length > 0 && rest.every((d) => d.stage === 'done' || d.stage === 'failed'))
-            liveDeleting.update(() => ({}))
-        }, 2500)
+          const known = jobs[event.id]?.rows ?? []
+          return {
+            ...jobs,
+            [event.id]: { ...fields, rows: rows ?? (row ? mergeRow(known, row) : known) }
+          }
+        })
         return
       }
       if (event.kind === 'board') {
         setChanged(event.stamp)
-        return
-      }
-      if (event.kind === 'bring') {
-        /* kept while it goes and a moment after, so the corner shows how it ended; the board's own
-           answer says the file is back */
-        liveBringing.update(() => (event.state === 'done' ? null : event))
         return
       }
       if (event.kind === 'disk') {
@@ -173,4 +123,4 @@ const useLiveProgress = (
 }
 
 export { useLiveProgress }
-export type { Bringing, CameraCopy, Deleting, Disk, Freeing, Importing, LiveFile, Mounted }
+export type { Disk, Job, LiveFile, Mounted }

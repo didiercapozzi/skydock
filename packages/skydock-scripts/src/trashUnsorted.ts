@@ -1,6 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { moveFile } from './lib/fs'
+import { inJob } from './live'
 import { getProxyPath } from './proxy'
 import { isMontage } from './filed'
 import { slugOf } from './sending'
@@ -75,15 +76,19 @@ const trashUnsorted = async (
   const from = places.size === 1 && only ? only : 'unsorted'
   const bin = path.join(trashDir, `${from}-${new Date().toISOString().replace(/[:.]/g, '-')}`)
 
-  for (const file of going) {
-    const within = path.relative(originals, file.path)
-    const to = path.join(bin, within.startsWith('..') ? path.basename(file.path) : within)
-    /* a file already gone from the disk simply leaves the board */
-    if (fs.existsSync(file.path)) await moveFile(file.path, to)
-    /* what was made from it has nothing left to be made from: the copy and the proxy go */
-    for (const made of [file.processed?.path, getProxyPath(file, outputDir)])
-      if (made) fs.rmSync(made, { force: true })
-  }
+  await inJob({ type: 'trash', label: '', total: going.length }, async (binning) => {
+    for (const file of going) {
+      binning.working(file.filename)
+      const within = path.relative(originals, file.path)
+      const to = path.join(bin, within.startsWith('..') ? path.basename(file.path) : within)
+      /* a file already gone from the disk simply leaves the board */
+      if (fs.existsSync(file.path)) await moveFile(file.path, to)
+      /* what was made from it has nothing left to be made from: the copy and the proxy go */
+      for (const made of [file.processed?.path, getProxyPath(file, outputDir)])
+        if (made) await fs.promises.rm(made, { force: true })
+      binning.step()
+    }
+  })
 
   /* what an uploaded jump held of it stays, as a file given back */
   for (const file of going)

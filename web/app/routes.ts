@@ -21,7 +21,6 @@ const routes = [
   route('api/dropped', 'routes/api.dropped.ts'),
   route('api/templates', 'routes/api.templates.ts'),
   route('api/transfers', 'routes/api.transfers.ts'),
-  route('api/upload-progress', 'routes/api.upload-progress.ts'),
   route('api/events', 'routes/api.events.ts'),
   route('api/remote-files', 'routes/api.remote-files.ts'),
   route('api/storage-folder', 'routes/api.storage-folder.ts'),

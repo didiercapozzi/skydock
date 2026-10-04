@@ -27,7 +27,7 @@ import type { Passenger } from '../components/montage-card'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
 import { setOutputRoot, shortDate } from '../components/utils'
 import { importFiles, whatIsComing } from '../helpers/import'
-import type { Coming, Dropped } from '../helpers/import'
+import type { Dropped } from '../helpers/import'
 import { folderOnStorage } from '../helpers/jumps'
 import {
   groupsIn,
@@ -51,7 +51,6 @@ import type { Move } from './useDragAndDrop'
 import { useFileView } from './useFileView'
 import { useNas } from './useNas'
 import { setSendPlan, useSendPlan } from './useSendPlan'
-import { useUploadProgress } from './useUploadProgress'
 
 type Loaded = Parameters<typeof useBoardState>[0] & Parameters<typeof useNas>[0]
 
@@ -73,7 +72,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const nas = useNas(loaded, board.remoteAfterUpload)
   const sendPlan = useSendPlan()
   const view = useFileView()
-  const progress = useUploadProgress(board.uploading)
   const place = placeFromParams(useParams())
   const goTo = useNavigate()
   const { searchParams: looking } = useSafeSearchParams(boardViewSchema)
@@ -472,14 +470,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       )
     )
 
-  /* What a drop is copying in, while it is: the whole list first, then one at a time. */
-  const [coming, setComing] = useState<{
-    where: string
-    files: Coming[]
-    done: number
-    failed: number
-  } | null>(null)
-  /* Files from the computer are copied one by one, the board showing the list and counting it down;
+  /* Files from the computer are copied one by one, the corner showing the list and counting it down;
      once all are in, it looks again and hears how the whole drop went. A folder is opened out
      first, so what is shown is what is coming and not what was let go of. */
   const importDropped = async (list: Dropped[], target: string, where: string) => {
@@ -493,11 +484,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       return
     }
     setNote(null)
-    setComing({ where, files, done: 0, failed: 0 })
-    const tally = await importFiles(files, target, where, (index, _total, _name, failed) =>
-      setComing((now) => (now ? { ...now, done: index, failed } : now))
-    )
-    setComing(null)
+    const tally = await importFiles(files, target, where)
     board.manifest({ intent: 'imported', imported: tally })
   }
 
@@ -722,7 +709,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     board,
     nas,
     view,
-    progress,
     sendPlan,
     setSendPlan,
     dialog,
@@ -758,7 +744,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     removeTo,
     addPlace,
     chooseFolder,
-    coming,
     importDropped,
     drag,
     flashPlace,

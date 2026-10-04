@@ -698,7 +698,7 @@ describe('changing the picture on an Intel or AMD card', () => {
 describe('processing, said as it happens', () => {
   const listening = () => {
     const heard: LiveEvent[] = []
-    const stop = subscribe((event) => heard.push(event))
+    const stop = subscribe((event) => event.kind !== 'job' && heard.push(event))
     return { heard, stop }
   }
 

@@ -29,10 +29,62 @@ const board = {
   nas: { connected: false, hostname: null, backupFolder: null }
 }
 
+/* the card's files, once said */
+let card: Array<{ name: string; size: number }> = []
 let stream: { onmessage: ((message: { data: string }) => void) | null } | null = null
 const silent = globalThis.EventSource
-const says = (event: Record<string, unknown>) =>
-  stream?.onmessage?.({ data: JSON.stringify({ kind: 'camera', ...event }) })
+/* What the machine says of a card being copied: one task, every file on it a row — the ones passed over
+   first, then the ones copied, then the one under way with how far its bytes have got. */
+const says = ({
+  camera,
+  state,
+  done,
+  total,
+  copied,
+  skipped,
+  files,
+  part,
+  reason
+}: {
+  camera: string
+  state: 'copying' | 'done' | 'gone'
+  done: number
+  total: number
+  copied: number
+  skipped: number
+  files?: Array<{ name: string; size: number }>
+  part?: number
+  reason?: string
+}) => {
+  if (files) card = files
+  const rows = Array.from({ length: total }, (_, at) => ({
+    key: String(at),
+    name: card[at]?.name ?? `GX${String(at).padStart(6, '0')}.MP4`,
+    size: card[at]?.size ?? 1_000_000,
+    ...(at < skipped
+      ? { at: 'skipped' as const }
+      : at < skipped + copied
+        ? { at: 'done' as const }
+        : at === done
+          ? { at: 'now' as const, part: part ?? 0 }
+          : { at: 'later' as const })
+  }))
+  stream?.onmessage?.({
+    data: JSON.stringify({
+      kind: 'job',
+      id: 'camera',
+      type: 'camera-copy',
+      label: camera,
+      stage: 'working',
+      done,
+      total,
+      rows,
+      ...(state === 'copying'
+        ? {}
+        : { outcome: { state, copied, skipped }, ...(reason ? { reason } : {}) })
+    })
+  })
+}
 
 const requests: unknown[] = []
 let onBoard: unknown[] = []
@@ -81,8 +133,8 @@ describe('a camera plugged in', () => {
     }))
 
     says({ camera: 'GOPRO', state: 'copying', done: 0, total: 4, copied: 0, skipped: 0, files: card })
-    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 4, copied: 0, skipped: 1, last: 'skipped' })
-    says({ camera: 'GOPRO', state: 'copying', done: 2, total: 4, copied: 1, skipped: 1, last: 'copied' })
+    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 4, copied: 0, skipped: 1 })
+    says({ camera: 'GOPRO', state: 'copying', done: 2, total: 4, copied: 1, skipped: 1 })
 
     const panel = page.getByRole('complementary', { name: 'Copying GOPRO' })
     await expect.element(panel.getByRole('progressbar', { name: 'Copied off GOPRO' })).toHaveAttribute('aria-valuenow', '50')
@@ -96,7 +148,7 @@ describe('a camera plugged in', () => {
     await renderBoard()
     const card = ['GX010001.MP4', 'GX010002.MP4'].map((name) => ({ name, size: 1_000_000 }))
     says({ camera: 'GOPRO', state: 'copying', done: 0, total: 2, copied: 0, skipped: 0, files: card })
-    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 2, copied: 1, skipped: 0, last: 'copied' })
+    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 2, copied: 1, skipped: 0 })
     const panel = page.getByRole('complementary', { name: 'Copying GOPRO' })
 
     await userEvent.click(panel.getByRole('button', { name: 'Hide the list' }))
@@ -132,7 +184,7 @@ describe('a camera plugged in', () => {
     const card = ['GX010001.MP4', 'GX010002.MP4'].map((name) => ({ name, size: 1_000_000 }))
     says({ camera: 'GOPRO', state: 'copying', done: 0, total: 2, copied: 0, skipped: 0, files: card })
 
-    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 2, copied: 1, skipped: 0, last: 'copied' })
+    says({ camera: 'GOPRO', state: 'copying', done: 1, total: 2, copied: 1, skipped: 0 })
 
     await vi.waitFor(() => expect(requests).toContainEqual({ intent: 'imported' }))
     await userEvent.click(page.getByRole('button', { name: /^Loose files/ }))

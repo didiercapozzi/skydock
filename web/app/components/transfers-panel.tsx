@@ -200,17 +200,9 @@ const Entry = ({
 const TransfersPanel = ({
   stamp,
   dsmHost,
-  uploading,
-  importing,
-  proxies,
   onClose
 }: {
   stamp: string
-  /* what is going out and coming in, which only the board knows; the rest is heard from the server */
-  uploading: { label: string; part: number } | null
-  importing: { where: string; done: number; total: number } | null
-  /* the small copies of the clips: how many are made out of how many want one */
-  proxies?: { ready: number; total: number; waiting: number }
   /* the storage's own address, to show a file that was in the way */
   dsmHost?: string | null
   onClose: () => void
@@ -264,11 +256,7 @@ const TransfersPanel = ({
           />
         </button>
       </div>
-      <RunningNow
-        uploading={uploading}
-        importing={importing}
-        proxies={proxies}
-      />
+      <RunningNow />
       {transfers === null ? (
         <p className='m-0 text-[12.5px] text-ink-3'>{t`Looking…`}</p>
       ) : transfers.length === 0 ? (

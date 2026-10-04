@@ -1,4 +1,3 @@
-import * as childProcess from 'node:child_process'
 import { z } from 'zod'
 import { PHOTO_EXTENSIONS_SET, VIDEO_EXTENSIONS_SET } from '../constants'
 import { run } from '../tools'
@@ -71,13 +70,6 @@ const exifCommands = (files: string[], options: BuildExifOptions, inUtc: Set<str
   )
 }
 
-const execSync = (args: string[]) =>
-  childProcess.execFileSync(exiftoolPath(), args, {
-    encoding: 'utf-8',
-    maxBuffer: 64 * 1024 * 1024,
-    stdio: ['pipe', 'pipe', 'ignore']
-  })
-
 const readInto = (map: Map<string, string>, csv: string, options: BuildExifOptions) => {
   for (const [file, raw] of parseExiftoolCsv(csv)) {
     const parsed = options.parse(raw)
@@ -85,24 +77,7 @@ const readInto = (map: Map<string, string>, csv: string, options: BuildExifOptio
   }
 }
 
-const buildExifMap = (files: string[], options: BuildExifOptions) => {
-  const map = new Map<string, string>()
-  if (!checkExiftool() || files.length === 0) return map
-  const inUtc = new Set<string>()
-  for (const args of makersCommands(files)) {
-    try {
-      readMakers(execSync(args), inUtc)
-    } catch {}
-  }
-  for (const args of exifCommands(files, options, inUtc)) {
-    try {
-      readInto(map, execSync(args), options)
-    } catch {}
-  }
-  return map
-}
-
-/* The same, without holding the thread: a card of hundreds of files is read while the board keeps
+/* A card of hundreds of files is read while the board keeps
    answering, which is what a copy started by plugging a camera in needs. */
 const readExifMap = async (files: string[], options: BuildExifOptions) => {
   const map = new Map<string, string>()
@@ -119,4 +94,4 @@ const readExifMap = async (files: string[], options: BuildExifOptions) => {
   return map
 }
 
-export { buildExifMap, checkExiftool, readExifMap }
+export { checkExiftool, readExifMap }

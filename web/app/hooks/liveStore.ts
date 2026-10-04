@@ -1,12 +1,6 @@
 import { useSyncExternalStore } from 'react'
-import type {
-  Bringing,
-  CameraCopy,
-  Deleting,
-  Freeing,
-  Importing,
-  LiveFile
-} from './useLiveProgress'
+import type { Job, LiveFile } from './useLiveProgress'
+import type { JobRow } from '@skydock/scripts'
 
 /* What moves many times a second — how far each file being processed or proxied has got, the bytes
    of a card being copied, the bytes of a file being copied in — kept here rather than in the board.
@@ -53,24 +47,14 @@ const slice = <T>(initial: T) => {
 const NO_FILES: Record<string, LiveFile> = {}
 
 const liveFiles = slice(NO_FILES)
-const liveCamera = slice<CameraCopy | null>(null)
-const liveImporting = slice<Importing | null>(null)
-const liveBringing = slice<Bringing | null>(null)
-/* the montage being freed from this machine, and how far through it is */
-const liveFreeing = slice<Freeing | null>(null)
-
-const NO_DELETING: Record<string, Deleting> = {}
-/* the files being deleted off a camera, by their path on the card, and how far each has got */
-const liveDeleting = slice(NO_DELETING)
+/* the tasks with no file of their own that are under way, or have failed and not been put away */
+const NO_JOBS: Record<string, Job> = {}
+const liveJobs = slice(NO_JOBS)
 
 /* everything heard so far let go of, for a line to the machine opened afresh */
 const forgetLive = () => {
   liveFiles.update(() => NO_FILES)
-  liveCamera.update(() => null)
-  liveImporting.update(() => null)
-  liveBringing.update(() => null)
-  liveFreeing.update(() => null)
-  liveDeleting.update(() => NO_DELETING)
+  liveJobs.update(() => NO_JOBS)
 }
 
 /* What is under way is kept by the work and the file, since the proxy and the jump are made side by
@@ -97,24 +81,24 @@ const useLiveFile = (id: string | undefined) =>
     () => undefined
   )
 
-/* the clips having their small copy made right now, each with how far through it is, in percent */
-const useLiveProxies = () => {
-  const all = useSyncExternalStore(liveFiles.subscribe, liveFiles.get, () => NO_FILES)
-  return Object.entries(all).flatMap(([key, live]) =>
-    live.work === 'proxy' ? [{ id: key.slice('proxy:'.length), percent: live.percent }] : []
+/* a job of one kind under way, when there is one — the same object until something in it changes */
+const useJobOf = (type: Job['type']) =>
+  useSyncExternalStore(
+    liveJobs.subscribe,
+    () => Object.values(liveJobs.get()).find((job) => job.type === type),
+    () => undefined
   )
-}
 
 /* the card being copied, every byte of it — for the panel that shows it */
-const useCameraCopy = () => useSyncExternalStore(liveCamera.subscribe, liveCamera.get, () => null)
+const useCameraCopy = () => useJobOf('camera-copy') ?? null
 
 /* only which card, and how many files have come off it so far — what the board itself needs */
 const useCameraLanded = () =>
   useSyncExternalStore(
-    liveCamera.subscribe,
+    liveJobs.subscribe,
     () => {
-      const copy = liveCamera.get()
-      return copy ? `${copy.camera}:${copy.copied}` : ''
+      const copy = Object.values(liveJobs.get()).find((job) => job.type === 'camera-copy')
+      return copy ? `${copy.label}:${copy.done}` : ''
     },
     () => ''
   )
@@ -122,54 +106,56 @@ const useCameraLanded = () =>
 /* only whether a card is being copied at all — changes twice a copy */
 const useCameraCopying = () =>
   useSyncExternalStore(
-    liveCamera.subscribe,
-    () => liveCamera.get() !== null,
+    liveJobs.subscribe,
+    () => Object.values(liveJobs.get()).some((job) => job.type === 'camera-copy'),
     () => false
   )
 
-/* one file being deleted off a camera, and how far through — a row is drawn again only for its own */
-const useDeleting = (path: string) =>
+/* every job under way, in the order they began */
+const useJobs = () =>
+  Object.values(useSyncExternalStore(liveJobs.subscribe, liveJobs.get, () => NO_JOBS))
+
+const NO_ROWS: JobRow[] = []
+
+/* what a job of one kind is doing to each of its files, in order — the first of them, since a person
+   deletes or fetches one batch at a time. The list is the one the store holds, so it is the same list
+   until something in it changes. */
+const useJobRows = (type: Job['type']) =>
   useSyncExternalStore(
-    liveDeleting.subscribe,
-    () => liveDeleting.get()[path],
+    liveJobs.subscribe,
+    () => Object.values(liveJobs.get()).find((job) => job.type === type)?.rows ?? NO_ROWS,
+    () => NO_ROWS
+  )
+
+/* one file of a job of that kind, and how far through — a row is drawn again only for its own */
+const useJobRow = (type: Job['type'], key: string) =>
+  useSyncExternalStore(
+    liveJobs.subscribe,
+    () =>
+      Object.values(liveJobs.get())
+        .find((job) => job.type === type)
+        ?.rows.find((row) => row.key === key),
     () => undefined
   )
 
-/* every file being deleted off a camera right now, by path */
-const useDeletingAll = () =>
-  useSyncExternalStore(liveDeleting.subscribe, liveDeleting.get, () => NO_DELETING)
-
-/* the file being copied in from the computer, and how far through */
-const useImporting = () =>
-  useSyncExternalStore(liveImporting.subscribe, liveImporting.get, () => null)
-
-/* the montage being freed, and how far through */
-const useFreeing = () => useSyncExternalStore(liveFreeing.subscribe, liveFreeing.get, () => null)
-
-/* the file being fetched back from the storage, and how far through */
-const useBringing = () => useSyncExternalStore(liveBringing.subscribe, liveBringing.get, () => null)
-
-/* what was heard of files deleted, let go of once the delete has answered */
-const forgetDeleting = () => liveDeleting.update(() => NO_DELETING)
+/* the jobs of one kind let go of, once the page that asked for them has its answer and says the rest */
+const forgetJobsOf = (type: Job['type']) =>
+  liveJobs.update((jobs) =>
+    Object.fromEntries(Object.entries(jobs).filter(([, job]) => job.type !== type))
+  )
 
 export {
-  forgetDeleting,
+  forgetJobsOf,
   forgetLive,
-  liveBringing,
-  liveCamera,
-  liveDeleting,
-  liveFreeing,
+  liveJobs,
   liveFiles,
-  liveImporting,
   liveKey,
-  useBringing,
   useCameraCopy,
   useCameraCopying,
   useCameraLanded,
-  useDeleting,
-  useDeletingAll,
-  useFreeing,
-  useImporting,
-  useLiveFile,
-  useLiveProxies
+  useJobOf,
+  useJobRow,
+  useJobRows,
+  useJobs,
+  useLiveFile
 }

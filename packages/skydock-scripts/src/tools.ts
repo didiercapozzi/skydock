@@ -1,5 +1,6 @@
 import * as childProcess from 'node:child_process'
 import * as asyncHooks from 'node:async_hooks'
+import * as os from 'node:os'
 
 /* Running ffmpeg, ffprobe and exiftool: the program and its arguments are handed over as they are,
    never as a line for a shell to take apart again — a name with a quote, a space or a backslash in it
@@ -38,7 +39,12 @@ const stopTools = () => {
 }
 
 /* what a command prints while it runs, for the one caller that wants to watch */
-type Listening = { stdout?: (text: string) => void; stderr?: (text: string) => void }
+type Listening = {
+  stdout?: (text: string) => void
+  stderr?: (text: string) => void
+  /* work nobody is waiting on: it runs behind everything else, so the window keeps its processor */
+  behind?: boolean
+}
 
 /* What a program said and whether it ended well. What it printed is kept either way: some say all
    they were asked and still end unhappily, and the caller is the one to judge what that is worth. */
@@ -57,6 +63,12 @@ const run = (program: string, args: string[], listening?: Listening) =>
           )
       )
       if (child) {
+        if (listening?.behind && child.pid)
+          try {
+            os.setPriority(child.pid, 10)
+          } catch {
+            /* a machine that will not say is a machine that runs it at the usual priority */
+          }
         runningTools().add(child)
         child.on('close', () => runningTools().delete(child))
       }
@@ -86,11 +98,13 @@ const runWatched = (
   program: string,
   args: string[],
   onPercent?: (percent: number) => void,
-  seconds?: number | null
+  seconds?: number | null,
+  behind = false
 ) => {
-  if (!onPercent) return run(program, args)
+  if (!onPercent) return run(program, args, behind ? { behind } : undefined)
   let total = seconds != null && seconds > 0 ? seconds : null
   return run(program, ['-progress', 'pipe:1', '-nostats', ...args], {
+    behind,
     stderr: (text) => {
       total ??= durationIn(text)
     },

@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { CameraFiles } from '../../app/components/camera-files'
-import { forgetDeleting, liveDeleting } from '../../app/hooks/liveStore'
+import { forgetJobsOf, liveJobs } from '../../app/hooks/liveStore'
 
 /* What is on a camera plugged in (RULES, Seeing what is on a camera): each file says whether it is
    on the storage, only copied here, put in the bin, or not copied yet; only one on the storage or in
@@ -11,6 +11,28 @@ import { forgetDeleting, liveDeleting } from '../../app/hooks/liveStore'
    a person clicks it. */
 
 const MOUNT = '/mnt/osmo/capo/OsmoNano'
+
+/* the camera delete as the corner hears it: one job, a row for each file */
+const deleting = (
+  rows: Array<{ file: string; at: 'now' | 'done'; part?: number; phase: string }>
+) =>
+  liveJobs.update(() => ({
+    delete: {
+      id: 'delete',
+      type: 'camera-delete' as const,
+      label: 'camera',
+      stage: 'working' as const,
+      done: 0,
+      total: rows.length,
+      rows: rows.map(({ file, ...row }) => ({
+        key: `${MOUNT}/DCIM/${file}`,
+        name: file,
+        size: 0,
+        ...row
+      }))
+    }
+  }))
+
 const onCard = (name: string, state: 'stored' | 'copied' | 'binned' | 'missing') => ({
   path: `${MOUNT}/DCIM/${name}`,
   name,
@@ -124,9 +146,7 @@ describe('a camera plugged in', () => {
     await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
     await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
 
-    liveDeleting.update(() => ({
-      [`${MOUNT}/DCIM/DJI_0004.MP4`]: { stage: 'moving' as const, part: 0.75 }
-    }))
+    deleting([{ file: 'DJI_0004.MP4', at: 'now', part: 0.75, phase: 'moving' }])
 
     const bar = page.getByRole('progressbar', { name: /DJI_0004\.MP4/ })
     await expect.element(bar).toHaveAttribute('aria-valuenow', '75')
@@ -136,7 +156,7 @@ describe('a camera plugged in', () => {
 
     answer(Response.json({ deleted: { count: 1, bytes: 1, bins: [] }, cameras: listing.cameras }))
     await expect.element(bar).not.toBeInTheDocument()
-    forgetDeleting()
+    forgetJobsOf('camera-delete')
   })
 
   /* a file leaves the list the moment it has gone, not when every file of the delete is over */
@@ -154,14 +174,14 @@ describe('a camera plugged in', () => {
     await userEvent.click(page.getByRole('button', { name: 'Delete 2 files from the camera…' }))
     await userEvent.click(page.getByRole('button', { name: /Check and delete 2 files/ }))
 
-    liveDeleting.update(() => ({
-      [`${MOUNT}/DCIM/DJI_0004.MP4`]: { stage: 'done' as const, part: 1 },
-      [`${MOUNT}/DCIM/DJI_0001.MP4`]: { stage: 'moving' as const, part: 0.7 }
-    }))
+    deleting([
+      { file: 'DJI_0004.MP4', at: 'done', phase: 'done' },
+      { file: 'DJI_0001.MP4', at: 'now', part: 0.7, phase: 'moving' }
+    ])
 
     await expect.element(page.getByText('DJI_0004.MP4')).not.toBeInTheDocument()
     await expect.element(page.getByText('DJI_0001.MP4')).toBeVisible()
-    forgetDeleting()
+    forgetJobsOf('camera-delete')
   })
 
   test('copies what is not here yet when asked, without unplugging the camera', async () => {

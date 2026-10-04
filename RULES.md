@@ -97,6 +97,16 @@ Everything below follows from these.
   notice. A link is not a file: taking a link away leaves what it pointed at exactly where it was.
 - **Not knowing is not evidence.** When the storage did not answer or a check failed, SkyDock keeps what
   it last proved rather than assuming the worst.
+- **Nothing in the background holds the board, and all of it is seen.** Whatever SkyDock does that takes
+  longer than a blink — scanning, copying in, processing, making small copies, finding a jump, uploading,
+  freeing, bringing back, deleting off a camera, checking the storage — runs beside the board, never
+  in front of it: the window answers a click, a drag or a change of page at once, whatever is under way,
+  and a task that is working on the disk gives way to a copy the person is watching. Every one of them
+  is shown live in the small window at the bottom right, whatever page is open: each file with its own
+  bar when the task is about files, and otherwise one bar saying what it is doing and how far it has
+  got. Each can be folded down, none has to be waited for, and the ones that end leave a line in the
+  transfers' history. A task that fails says why there until it is put away. This is the rule every new
+  background task answers to before it is built.
 - **Uncertainty costs time, never a delivery.** When SkyDock cannot tell whether two files are the same,
   it sends the file again. When it cannot prove a copy is on the storage, it will not delete the local one.
 
@@ -1441,18 +1451,19 @@ transfers, and of each at most 400 items — what was done comes before what was
 listed is counted and said, never dropped silently. A camera plugged in again with nothing new to copy
 records nothing. **Clear** forgets the list, and a small cross on a transfer forgets that one and keeps the others: in both, nothing that was sent or copied is touched.
 
-**The small copies, made in view.** While some clip is still without its small copy, a small window in the
-bottom-right corner says how many clips have theirs out of how many want one, with a bar for the whole
-and one of its own for the clip being made, named. It is there for as long as any clip is waiting and goes
+**The small copies, made in view.** While clips are being given their small copy, a small window in the
+bottom-right corner lists them, how many are made out of how many are to be, with a bar for the whole and
+one of its own for the clip being made, named. It is there for as long as any is being made and goes
 when every one has its copy. A board that connects makes the missing ones again, whatever took them — a
 folder emptied under a running server included — and joins a pass already under way instead of starting
-another.
+another. Finding where the jump is in each clip, and preparing the files of a jump, are shown the same way.
 
 **Everything with a bar is in Transfers too.** What is going right now — an upload, files being copied in,
 a camera being copied off, a file brought back from the storage, files being deleted off a camera, the small
-copies of the clips being made —
-is listed at the head of the Transfers window, each with how far it has got, and a camera's delete has its
-own small window in the bottom-right corner besides, so the page can be left while it runs: the work runs
+copies of the clips being made, a montage or a dropzone being freed, a scan, files put in or taken out of
+the bin, a template being added —
+is listed at the head of the Transfers window, each with how far it has got, and each has its own small window
+in the bottom-right corner besides, all of them alike, so the page can be left while it runs: the work runs
 on the server, and what is shown follows it from whatever page is open. When it ends it is kept in the
 list below. A delete off a camera is kept like the others: every file that went, or every file left alone
 and why.

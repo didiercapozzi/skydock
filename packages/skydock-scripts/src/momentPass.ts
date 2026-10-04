@@ -1,8 +1,9 @@
 import * as fs from 'node:fs'
 import { jumpMoments } from './jumpMoments'
-import { following } from './live'
+import { following, job } from './live'
 import { changeBoardSoon, flushBoardChanges, loadManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
+import { untilQuiet } from './lib/quiet'
 import { messageOf } from './lib/words'
 import { getManifestPath, getOutputDir, isVideoFile } from './utils'
 
@@ -26,18 +27,31 @@ const needsMoments = (file: ManifestFile) =>
    is already on the disk. */
 const ensureMoments = async (manifest: Manifest, onFound?: () => void) => {
   let found = 0
-  for (const file of manifest.files.filter(needsMoments)) {
+  const todo = manifest.files.filter(needsMoments)
+  const finding = todo.length > 0 ? job({ type: 'moments', label: '', total: todo.length }) : null
+  finding?.rows(todo.map((file) => ({ key: file.id ?? file.path, name: file.filename, size: 0 })))
+  for (const file of todo) {
+    await untilQuiet()
+    const key = file.id ?? file.path
     const reading = following('moments', file.id)
+    finding?.row({ key, at: 'now', part: 0 })
     try {
-      const moments = await jumpMoments(file.path, reading.at)
+      const moments = await jumpMoments(file.path, (percent) => {
+        reading.at(percent)
+        finding?.row({ key, at: 'now', part: percent / 100 })
+      })
       file.moments = moments
       found++
       onFound?.()
       reading.done(true, { moments })
-    } catch {
+      finding?.row({ key, at: 'done' })
+    } catch (e) {
       reading.done(false)
+      finding?.row({ key, at: 'failed', note: e instanceof Error ? e.message : String(e) })
     }
+    finding?.step()
   }
+  finding?.finish()
   return found
 }
 

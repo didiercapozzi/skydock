@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { copyCamera } from '../src/copy'
-import { cameraTimes } from '../src/scan'
+import { shotTimes } from '../src/scan'
 import { createTmpDir } from './fixtures'
 
 /* When a clip was shot, as its camera wrote it (RULES, The workflow): a DJI keeps a video's time in
@@ -48,12 +48,12 @@ afterAll(() => {
 })
 
 describe('when a clip was shot', () => {
-  test('a DJI video, kept in UTC, is on the local clock', () => {
-    expect(cameraTimes([dji]).get(dji)).toBe(at('2026-09-05T14:11:44'))
+  test('a DJI video, kept in UTC, is on the local clock', async () => {
+    expect((await shotTimes([dji])).get(dji)).toBe(at('2026-09-05T14:11:44'))
   })
 
-  test('a GoPro video, kept on its own clock, is read as it says', () => {
-    expect(cameraTimes([gopro]).get(gopro)).toBe(at('2026-09-05T14:11:44'))
+  test('a GoPro video, kept on its own clock, is read as it says', async () => {
+    expect((await shotTimes([gopro])).get(gopro)).toBe(at('2026-09-05T14:11:44'))
   })
 
   test('a DJI video shot after midnight is copied into the day it was shot on', async () => {

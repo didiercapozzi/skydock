@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import { groupFromFiles, shiftGroupTo } from './clustering'
-import { cameraTimes } from './scan'
+import { diskTimes, shotTimes } from './scan'
 import type { Manifest, ManifestFile, ManifestPassenger } from './types'
 import { idsOf } from './lib/words'
 
@@ -21,7 +21,19 @@ type MoveTo = {
   /* the new jump is a montage — named by `passenger` when it has a name yet */
   montage?: boolean
   passenger?: ManifestPassenger
+  /* the time each camera gave the files, read beforehand with `shotTimesFor` where it is needed */
+  shot?: Map<string, number>
 }
+
+/* whether a move sends files back to be sorted, which is where their cameras' times come back */
+const backToSort = (to: MoveTo) => !to.targetGroupId && !to.newGroup && !to.destination
+
+/* What a move will need to know about the files' cameras, asked before it — exiftool is waited for here,
+   beside the board, so the move itself is plain work on the record. */
+const shotTimesFor = (manifest: Manifest, ids: Set<string>, to: MoveTo) =>
+  backToSort(to)
+    ? shotTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path))
+    : Promise.resolve(undefined)
 
 /* A copy exists because a jump holds it. One that leaves for the sorting area with nowhere to be —
    not into a jump, not filed to a place — is not sent back but simply ends: the original is
@@ -49,8 +61,7 @@ const endCopies = (manifest: Manifest, ids: Set<string>) => {
 const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
   if (to.targetGroupId && !manifest.groups.some((g) => g.id === to.targetGroupId))
     throw new Error('Target jump not found.')
-  const ids =
-    !to.targetGroupId && !to.newGroup && !to.destination ? endCopies(manifest, asked) : asked
+  const ids = backToSort(to) ? endCopies(manifest, asked) : asked
   if (ids.size === 0) return
 
   /* A file leaving its jump to stand alone keeps what was set on it there — its trim, frame and
@@ -66,9 +77,9 @@ const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
      the jump it was in — a whole jump moved to where it really happened, a clip fitted among the
      others — and means nothing once the file is on its own; left on it, the file would be sorted
      under a day it was never shot on. A file whose original cannot be asked keeps the time it has. */
-  if (!to.targetGroupId && !to.newGroup && !to.destination) {
+  if (backToSort(to)) {
     const going = manifest.files.filter((f) => f.id && ids.has(f.id))
-    const times = cameraTimes(going.map((f) => f.path))
+    const times = to.shot ?? diskTimes(going.map((f) => f.path))
     for (const file of going) file.mtime = times.get(file.path) || file.mtime
   }
 
@@ -204,5 +215,5 @@ const deleteJump = (manifest: Manifest, groupId: string) => {
   return ids.size
 }
 
-export { copyFiles, copyIntoMontage, deleteJump, moveFiles }
+export { copyFiles, copyIntoMontage, deleteJump, moveFiles, shotTimesFor }
 export type { MoveTo }

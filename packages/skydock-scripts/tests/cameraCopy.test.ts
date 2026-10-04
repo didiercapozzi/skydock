@@ -528,9 +528,9 @@ describe('which drives are cameras', () => {
 describe('a camera plugged in', () => {
   const heard: LiveEvent[] = []
   const ending = () =>
-    new Promise<Extract<LiveEvent, { kind: 'camera' }>>((resolve) => {
+    new Promise<Extract<LiveEvent, { kind: 'job' }>>((resolve) => {
       const stop = subscribe((e) => {
-        if (e.kind === 'camera' && e.state !== 'copying') {
+        if (e.kind === 'job' && e.type === 'camera-copy' && e.outcome) {
           stop()
           resolve(e)
         }
@@ -560,9 +560,13 @@ describe('a camera plugged in', () => {
 
     lookForCameras(outputDir, plugged([camera]))
 
-    expect(await done).toMatchObject({ camera: 'GOPRO', state: 'done', copied: 2, total: 2 })
+    expect(await done).toMatchObject({
+      label: 'GOPRO',
+      total: 2,
+      outcome: { state: 'done', copied: 2 }
+    })
     expect(
-      heard.filter((e) => e.kind === 'camera' && e.state === 'copying').length
+      heard.filter((e) => e.kind === 'job' && e.type === 'camera-copy' && !e.outcome).length
     ).toBeGreaterThan(1)
     expect(loadManifest(path.join(outputDir, 'manifest.json'))?.files).toHaveLength(2)
   })
@@ -576,7 +580,7 @@ describe('a camera plugged in', () => {
     /* still there: nothing more is done */
     let more = 0
     const stop = subscribe((e) => {
-      if (e.kind === 'camera') more++
+      if (e.kind === 'job' && e.type === 'camera-copy') more++
     })
     lookForCameras(outputDir, plugged([camera]))
     await new Promise((r) => setTimeout(r, 50))
@@ -588,7 +592,7 @@ describe('a camera plugged in', () => {
     fs.writeFileSync(path.join(camera, 'DCIM', '100GOPRO', 'GX010002.MP4'), Buffer.alloc(8, 9))
     const again = ending()
     lookForCameras(outputDir, plugged([camera]))
-    expect(await again).toMatchObject({ copied: 1, skipped: 1 })
+    expect(await again).toMatchObject({ outcome: { copied: 1, skipped: 1 } })
   })
 
   it('is left alone when it is not a camera', async () => {
@@ -601,7 +605,7 @@ describe('a camera plugged in', () => {
     await new Promise((r) => setTimeout(r, 50))
 
     /* a proxy still being built behind an earlier test may speak meanwhile; no camera does */
-    expect(heard.filter((e) => e.kind === 'camera')).toEqual([])
+    expect(heard.filter((e) => e.kind === 'job' && e.type === 'camera-copy')).toEqual([])
     expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
   })
 })

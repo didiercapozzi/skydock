@@ -17,7 +17,7 @@ import type { Manifest, ManifestFile, SendPart } from './types'
 import { uploadedFiles } from './upload'
 import { getTrashDir, isVideoFile, sizeOf } from './utils'
 import { lastSegment } from './paths'
-import { publish } from './live'
+import { inJob } from './live'
 import { slugOf } from './sending'
 import { moveFile } from './lib/fs'
 import { passengerName } from './workspace'
@@ -45,28 +45,30 @@ const inside = (root: string, target: string) => {
   return resolved.startsWith(`${base}${path.sep}`)
 }
 
-const removeFile = (root: string, target: string | undefined) => {
-  if (!target || !inside(root, target) || !fs.existsSync(target)) return 0
-  const size = fs.statSync(target).size
-  fs.rmSync(target, { force: true })
+const removeFile = async (root: string, target: string | undefined) => {
+  if (!target || !inside(root, target)) return 0
+  const size = await fs.promises.stat(target).then(
+    (stat) => stat.size,
+    () => null
+  )
+  if (size === null) return 0
+  await fs.promises.rm(target, { force: true })
   return size
 }
 
-const removeTree = (root: string, target: string) => {
+/* the size of everything under a folder, read without holding the server */
+const sizeUnder = async (target: string): Promise<number> => {
+  const stat = await fs.promises.stat(target)
+  if (!stat.isDirectory()) return stat.size
+  const entries = await fs.promises.readdir(target)
+  const sizes = await Promise.all(entries.map((entry) => sizeUnder(path.join(target, entry))))
+  return sizes.reduce((sum, size) => sum + size, 0)
+}
+
+const removeTree = async (root: string, target: string) => {
   if (!inside(root, target) || !fs.existsSync(target)) return 0
-  const walk = (dir: string): number =>
-    fs
-      .readdirSync(dir, { withFileTypes: true })
-      .reduce(
-        (sum, entry) =>
-          sum +
-          (entry.isDirectory()
-            ? walk(path.join(dir, entry.name))
-            : sizeOf(path.join(dir, entry.name))),
-        0
-      )
-  const size = fs.statSync(target).isDirectory() ? walk(target) : sizeOf(target)
-  fs.rmSync(target, { recursive: true, force: true })
+  const size = await sizeUnder(target)
+  await fs.promises.rm(target, { recursive: true, force: true })
   return size
 }
 
@@ -294,83 +296,65 @@ const freeMontage = async ({
   const target = manifest.groups.find((g) => g.id === groupId)
   const label = target ? passengerName(target.passenger) : ''
   /* said as it goes, for the window in the corner: each thing proved, then each file deleted */
-  const total = (target ? uploadedFiles(target.uploaded).length + target.files.length : 0) + 1
-  let done = 0
-  const say = (
-    stage: 'checking' | 'deleting' | 'done' | 'failed',
-    name?: string,
-    reason?: string
-  ) =>
-    publish({
-      kind: 'free',
-      groupId,
+  return inJob(
+    {
+      type: 'free',
       label,
-      stage,
-      done: Math.min(done, total),
-      total,
-      ...(name ? { name } : {}),
-      ...(reason ? { reason } : {})
-    })
-  say('checking')
-  try {
-    const { group, dir } = await proveOnStorage(manifest, outputDir, groupId, session, (name) => {
-      say('checking', name)
-      done++
-    })
-    /* the proof is done, whatever count it came to: what is left is deleting */
-    done = Math.max(done, total - group.files.length - 1)
+      total: (target ? uploadedFiles(target.uploaded).length + target.files.length : 0) + 1
+    },
+    async (freeing) => {
+      const { group, dir } = await proveOnStorage(manifest, outputDir, groupId, session, (name) => {
+        freeing.checking(name)
+        freeing.step()
+      })
 
-    let bytes = 0
-    const originals = path.join(outputDir, 'original_files')
-    const proxies = path.join(outputDir, 'proxies')
-    /* An original another jump still holds — this one copied into it, or a copy of its own here — is
+      let bytes = 0
+      const originals = path.join(outputDir, 'original_files')
+      const proxies = path.join(outputDir, 'proxies')
+      /* An original another jump still holds — this one copied into it, or a copy of its own here — is
        not this montage's alone to delete: it stays, with its proxy, until the last jump holding it is
        freed. Everything made from it for this montage still goes. */
-    const heldElsewhere = (file: ManifestFile) =>
-      manifest.files.some(
-        (other) => other.path === file.path && other.id !== file.id && !other.freed
-      )
-    /* and it is not said to live on the storage only either, because it does not: it is on the disk,
+      const heldElsewhere = (file: ManifestFile) =>
+        manifest.files.some(
+          (other) => other.path === file.path && other.id !== file.id && !other.freed
+        )
+      /* and it is not said to live on the storage only either, because it does not: it is on the disk,
        and a file the board calls gone is a file nothing can be done with — not copied into another
        jump, not moved, not dropped in again */
-    const stayed = new Set<string>()
-    for (const file of group.files) {
-      say('deleting', file.filename)
-      if (heldElsewhere(file)) {
-        if (file.id) stayed.add(file.id)
-      } else {
-        bytes += removeFile(originals, file.path)
-        if (file.proxy && file.proxy !== file.path) bytes += removeFile(proxies, file.proxy)
+      const stayed = new Set<string>()
+      for (const file of group.files) {
+        freeing.working(file.filename)
+        if (heldElsewhere(file)) {
+          if (file.id) stayed.add(file.id)
+        } else {
+          bytes += await removeFile(originals, file.path)
+          if (file.proxy && file.proxy !== file.path) bytes += await removeFile(proxies, file.proxy)
+        }
+        freeing.step()
       }
-      done++
-    }
-    bytes += removeTree(proxies, getCutProxyDir(outputDir, group.id))
-    /* The passenger's folder, the whole of it: what the montage made goes, and the project — the edit,
+      bytes += await removeTree(proxies, getCutProxyDir(outputDir, group.id))
+      /* The passenger's folder, the whole of it: what the montage made goes, and the project — the edit,
        small and not to be made again — is put in the bin, so that nothing of it is erased. */
-    say('deleting', lastSegment(dir))
-    if (fs.existsSync(dir)) {
-      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-      const bin = path.join(trashDir, `montage-${slugOf(label) || 'montage'}-${stamp}`)
-      for (const entry of fs.readdirSync(dir))
-        if (entry.endsWith('.kdenlive'))
-          await moveFile(path.join(dir, entry), path.join(bin, entry))
-      bytes += removeTree(path.join(outputDir, 'processed'), dir)
-    }
-    done = total
+      freeing.working(lastSegment(dir))
+      if (fs.existsSync(dir)) {
+        const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+        const bin = path.join(trashDir, `montage-${slugOf(label) || 'montage'}-${stamp}`)
+        for (const entry of fs.readdirSync(dir))
+          if (entry.endsWith('.kdenlive'))
+            await moveFile(path.join(dir, entry), path.join(bin, entry))
+        bytes += await removeTree(path.join(outputDir, 'processed'), dir)
+      }
 
-    const result = {
-      groupId: group.id,
-      fileIds: group.files.flatMap((f) => (f.id && !stayed.has(f.id) ? [f.id] : [])),
-      bytes,
-      at: Math.floor(Date.now() / 1000)
+      const result = {
+        groupId: group.id,
+        fileIds: group.files.flatMap((f) => (f.id && !stayed.has(f.id) ? [f.id] : [])),
+        bytes,
+        at: Math.floor(Date.now() / 1000)
+      }
+      markFreed(manifest, result)
+      return result
     }
-    markFreed(manifest, result)
-    say('done')
-    return result
-  } catch (e) {
-    say('failed', undefined, e instanceof Error ? e.message : String(e))
-    throw e
-  }
+  )
 }
 
 /* Written into whichever manifest is current when it is done — checking gigabytes takes a while,

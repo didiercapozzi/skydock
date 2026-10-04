@@ -66,7 +66,6 @@ const openYverdon = async (data: ReturnType<typeof boardWith>) => {
       }
     },
     { path: '/api/nas', action: async () => ({ ok: true }) },
-    { path: '/api/upload-progress', loader: () => null },
     { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   await render(createElement(Stub, { initialEntries: ['/'] }))

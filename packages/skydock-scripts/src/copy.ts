@@ -3,7 +3,9 @@ import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { two } from './lib/clock'
 import { counted } from './lib/counted'
+import { gentleWriter } from './lib/gentle'
 import { findMediaFiles, sameBytes } from './lib/fs'
+import { inJob } from './live'
 import { loadManifest } from './manifest'
 import { shotTimes } from './scan'
 import type { Manifest, ManifestFile } from './types'
@@ -154,7 +156,11 @@ const copyOne = async (
   const partial = `${dest}.part`
   const bytes = counted((done) => onPart?.(srcStat.size > 0 ? Math.min(1, done / srcStat.size) : 0))
   try {
-    await streams.pipeline(fs.createReadStream(src), bytes.through, fs.createWriteStream(partial))
+    await streams.pipeline(
+      fs.createReadStream(src, { highWaterMark: 16 * 1024 ** 2 }),
+      bytes.through,
+      gentleWriter(partial)
+    )
     fs.utimesSync(partial, srcStat.atime, srcStat.mtime)
     fs.renameSync(partial, dest)
   } catch (e) {
@@ -248,26 +254,30 @@ const copyBack = async ({
   outputDir?: string
   onProgress?: (progress: CopyProgress) => void
 }) => {
-  const shots = await shotTimes(paths)
-  const progress: CopyProgress = { done: 0, total: paths.length, copied: 0, skipped: 0 }
-  onProgress?.({ ...progress })
-  for (const src of paths) {
-    let srcStat: fs.Stats
-    try {
-      srcStat = fs.statSync(src)
-    } catch {
-      throw new CameraGone('The camera was disconnected during the copy.')
-    }
-    const destDir = originalsDay(outputDir, shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000))
-    if (await alreadyThere(src, srcStat, destDir)) progress.skipped++
-    else {
-      await copyOne(src, srcStat, destDir)
-      progress.copied++
-    }
-    progress.done++
+  return inJob({ type: 'copy-back', label: '', total: paths.length }, async (copying) => {
+    const shots = await shotTimes(paths)
+    const progress: CopyProgress = { done: 0, total: paths.length, copied: 0, skipped: 0 }
     onProgress?.({ ...progress })
-  }
-  return progress
+    for (const src of paths) {
+      copying.working(path.basename(src))
+      let srcStat: fs.Stats
+      try {
+        srcStat = fs.statSync(src)
+      } catch {
+        throw new CameraGone('The camera was disconnected during the copy.')
+      }
+      const destDir = originalsDay(outputDir, shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000))
+      if (await alreadyThere(src, srcStat, destDir)) progress.skipped++
+      else {
+        await copyOne(src, srcStat, destDir)
+        progress.copied++
+      }
+      progress.done++
+      copying.step()
+      onProgress?.({ ...progress })
+    }
+    return progress
+  })
 }
 
 const copyFromCameras = async (options: CopyOptions) => {

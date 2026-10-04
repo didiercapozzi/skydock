@@ -2,6 +2,7 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Unzip, UnzipInflate } from 'fflate'
+import { inJob } from './live'
 import { openToHost, walkFiles } from './lib/fs'
 import { availableTemplates, defaultTemplate, DEFAULT_MARK, inspectTemplate } from './montage'
 import { relinkTemplate } from './templateLinks'
@@ -147,45 +148,57 @@ const importTemplate = async ({
   fs.mkdirSync(staging, { recursive: true })
   const replaced = path.join(root, `.replaced-${crypto.randomUUID()}`)
   const home = path.join(root, folder)
-  try {
-    if (project || !archive) {
-      for (const file of files) {
-        const way = wayDown(file.filename)
-        /* the folder that was chosen is the template, so what is laid out is what was inside it */
-        const inside = chosen !== null ? way.slice(1) : [path.basename(file.filename)]
-        if (inside.length === 0 || inside.some((part) => part === '..' || part.includes('\0')))
-          throw new Error(`${file.filename} is not a name.`)
-        const target = path.join(staging, ...inside)
-        fs.mkdirSync(path.dirname(target), { recursive: true })
-        fs.copyFileSync(file.at, target)
+  await inJob(
+    { type: 'template', label: folder, total: project || !archive ? files.length : 1 },
+    async (importing) => {
+      try {
+        if (project || !archive) {
+          for (const file of files) {
+            const way = wayDown(file.filename)
+            /* the folder that was chosen is the template, so what is laid out is what was inside it */
+            const inside = chosen !== null ? way.slice(1) : [path.basename(file.filename)]
+            if (inside.length === 0 || inside.some((part) => part === '..' || part.includes('\0')))
+              throw new Error(`${file.filename} is not a name.`)
+            const target = path.join(staging, ...inside)
+            importing.working(path.basename(file.filename))
+            await fs.promises.mkdir(path.dirname(target), { recursive: true })
+            await fs.promises.copyFile(file.at, target)
+            importing.step()
+          }
+        } else {
+          importing.working(path.basename(archive.filename))
+          if (/\.zip$/i.test(archive.filename)) await unzipInto(archive.at, staging)
+          else await untarInto(archive.at, staging)
+        }
+
+        /* the project nearest the top; an archive made by the editor holds exactly one */
+        const inside = walkFiles(staging)
+          .filter((f) => f.endsWith('.kdenlive'))
+          .sort(
+            (a, b) => a.split(path.sep).length - b.split(path.sep).length || a.localeCompare(b)
+          )[0]
+        if (!inside)
+          throw new Error(
+            'There is no kdenlive project in what was brought in — a template is a .kdenlive and the files it uses, or the archive kdenlive packs them into.'
+          )
+        const held = path.dirname(inside)
+        relinkTemplate(inside)
+        openToHost(held, root)
+
+        /* the place is taken in one move, and what was there is kept until the new one is in */
+        if (fs.existsSync(home)) fs.renameSync(home, replaced)
+        try {
+          fs.renameSync(held, home)
+        } catch (e) {
+          if (fs.existsSync(replaced) && !fs.existsSync(home)) fs.renameSync(replaced, home)
+          throw e
+        }
+      } finally {
+        await fs.promises.rm(staging, { recursive: true, force: true })
+        await fs.promises.rm(replaced, { recursive: true, force: true })
       }
-    } else if (/\.zip$/i.test(archive.filename)) await unzipInto(archive.at, staging)
-    else await untarInto(archive.at, staging)
-
-    /* the project nearest the top; an archive made by the editor holds exactly one */
-    const inside = walkFiles(staging)
-      .filter((f) => f.endsWith('.kdenlive'))
-      .sort((a, b) => a.split(path.sep).length - b.split(path.sep).length || a.localeCompare(b))[0]
-    if (!inside)
-      throw new Error(
-        'There is no kdenlive project in what was brought in — a template is a .kdenlive and the files it uses, or the archive kdenlive packs them into.'
-      )
-    const held = path.dirname(inside)
-    relinkTemplate(inside)
-    openToHost(held, root)
-
-    /* the place is taken in one move, and what was there is kept until the new one is in */
-    if (fs.existsSync(home)) fs.renameSync(home, replaced)
-    try {
-      fs.renameSync(held, home)
-    } catch (e) {
-      if (fs.existsSync(replaced) && !fs.existsSync(home)) fs.renameSync(replaced, home)
-      throw e
     }
-  } finally {
-    fs.rmSync(staging, { recursive: true, force: true })
-    fs.rmSync(replaced, { recursive: true, force: true })
-  }
+  )
   const made = listTemplates(outputDir).templates.find((t) => t.name === folder)
   if (!made) throw new Error('The template was brought in but cannot be read as one.')
   return made

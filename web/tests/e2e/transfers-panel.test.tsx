@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { TransfersPanel } from '../../app/components/transfers-panel'
-import { liveDeleting } from '../../app/hooks/liveStore'
+import { liveJobs } from '../../app/hooks/liveStore'
 import { Notice } from '../../app/components/notice'
 
 /* What was sent and copied, opened again after the panels that showed it going have gone (RULES,
@@ -44,17 +44,11 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-const panel = (
-  onClose = vi.fn(),
-  dsmHost?: string,
-  going: { uploading?: { label: string; part: number }; importing?: { where: string; done: number; total: number } } = {}
-) =>
+const panel = (onClose = vi.fn(), dsmHost?: string) =>
   render(
     createElement(TransfersPanel, {
       stamp: '',
       dsmHost,
-      uploading: going.uploading ?? null,
-      importing: going.importing ?? null,
       onClose
     })
   )
@@ -63,27 +57,41 @@ const panel = (
 describe('the transfers panel — what is going now', () => {
   test('shows what is going out, coming in and being deleted, each with how far it has got', async () => {
     answers([])
-    liveDeleting.update(() => ({
-      '/mnt/cam/DCIM/A.MP4': { stage: 'moving' as const, part: 0.6 },
-      '/mnt/cam/DCIM/B.MP4': { stage: 'checking' as const, part: 0.1 }
+    liveJobs.update(() => ({
+      upload: {
+        id: 'upload',
+        type: 'upload' as const,
+        label: 'Luc Favre',
+        stage: 'working' as const,
+        done: 0,
+        total: 4,
+        rows: [{ key: 'a', name: 'luc.mp4', size: 1000, at: 'now' as const, part: 0.25 }]
+      },
+      delete: {
+        id: 'delete',
+        type: 'camera-delete' as const,
+        label: 'camera',
+        stage: 'working' as const,
+        done: 0,
+        total: 2,
+        rows: [
+          { key: '/mnt/cam/DCIM/A.MP4', name: 'A.MP4', size: 0, at: 'now' as const, part: 0.6 },
+          { key: '/mnt/cam/DCIM/B.MP4', name: 'B.MP4', size: 0, at: 'now' as const, part: 0.1 }
+        ]
+      }
     }))
-    await panel(vi.fn(), undefined, {
-      uploading: { label: 'Luc Favre', part: 0.25 },
-      importing: { where: 'Yverdon', done: 2, total: 5 }
-    })
+    await panel()
 
     const going = page.getByRole('list', { name: 'Going now' })
     await expect.element(going.getByText('Uploading Luc Favre')).toBeVisible()
     await expect
       .element(going.getByRole('progressbar', { name: 'Uploading Luc Favre' }))
       .toHaveAttribute('aria-valuenow', '25')
-    await expect.element(going.getByText('Copying in Yverdon')).toBeVisible()
-    await expect.element(going.getByText('2 of 5 files')).toBeVisible()
     await expect.element(going.getByText('Deleting from the camera')).toBeVisible()
     await expect
       .element(going.getByRole('progressbar', { name: 'Deleting from the camera' }))
       .toHaveAttribute('aria-valuenow', '35')
-    liveDeleting.update(() => ({}))
+    liveJobs.update(() => ({}))
   })
 
   test('has no list when nothing is going', async () => {

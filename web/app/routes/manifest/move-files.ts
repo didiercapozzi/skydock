@@ -1,11 +1,11 @@
 import { saveManifest, UPLOADED_LOCKED, messageOf } from '@skydock/scripts'
-import { moveFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
+import { moveFiles, shotTimesFor } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
 /* Files go from wherever they are into a jump, a new jump or a place — the one move a drag on the
    board and a drop from the computer both make (RULES, Jumps). */
-const moveFilesIntent: Intent = ({
+const moveFilesIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -22,14 +22,16 @@ const moveFilesIntent: Intent = ({
   if (manifest.files.some((f) => f.id && ids.has(f.id) && (f.uploaded || f.freed)))
     return refuse(UPLOADED_LOCKED)
   try {
-    moveFiles(manifest, ids, {
+    const to = {
       targetGroupId: data.targetGroupId,
       newGroup: data.newGroup,
       montage: data.montage,
       destination: data.destination,
       name: data.name,
       startsAt: data.anchorEpoch
-    })
+    }
+    /* back to be sorted, a file goes on its camera's time, which exiftool is asked for beside the board */
+    moveFiles(manifest, ids, { ...to, shot: await shotTimesFor(manifest, ids, to) })
   } catch (e) {
     return refuse(messageOf(e))
   }
