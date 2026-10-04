@@ -26,6 +26,8 @@ import { lostOnStorage, readMontageIndex } from '../../../packages/skydock-scrip
 import { t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { Outlet } from 'react-router'
+import { useSafeSearchParams } from '../helpers/routing'
+import { boardViewSchema } from '../helpers/view'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader, StatusBar } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
@@ -189,6 +191,8 @@ const loader = async (_args: Route.LoaderArgs) => {
    and the folder the address names is drawn beside the rail by its own route, as is a file opened
    in it (RULES, The board). */
 const Board = ({ loaderData }: Route.ComponentProps) => {
+  const { searchParams: asked } = useSafeSearchParams(boardViewSchema)
+  const windowed = asked.window === 'preview'
   /* the storage's answer, once it comes: the board is drawn and used without waiting for it */
   const [looked, setLooked] = useState<StorageLook | null>(null)
   const asking = loaderData.storageLook
@@ -306,6 +310,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const copying = useCameraCopying()
   const bringing = useBringing()
   const deletingCount = Object.keys(useDeletingAll()).length
+
+  /* a file in a window of its own: the title bar and the file, and nothing else of the board — what it
+     holds is still read and kept here, so the file is saved and stepped through as in any window */
+  if (windowed)
+    return (
+      <main className='ground flex h-screen flex-col overflow-hidden'>
+        <WindowBar />
+        <Outlet context={model} />
+      </main>
+    )
 
   return (
     <main

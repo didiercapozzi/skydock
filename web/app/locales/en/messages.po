@@ -35,6 +35,10 @@ msgid "— done"
 msgstr "— done"
 
 #: app/components/jump-graph.tsx
+msgid "— force"
+msgstr "— force"
+
+#: app/components/jump-graph.tsx
 msgid "— height"
 msgstr "— height"
 
@@ -973,6 +977,10 @@ msgstr "Auto"
 msgid "Back into the originals, under the day each was shot, and into Fresh files"
 msgstr "Back into the originals, under the day each was shot, and into Fresh files"
 
+#: app/components/preview-drawer.tsx
+msgid "Back ten seconds"
+msgstr "Back ten seconds"
+
 #: app/components/board-header.tsx
 msgid "Back to as drawn"
 msgstr "Back to as drawn"
@@ -1100,6 +1108,7 @@ msgstr "cancel"
 #: app/components/jump-name.tsx
 #: app/components/montage-card.tsx
 #: app/components/nas-folder-browser.tsx
+#: app/components/preview-drawer.tsx
 #: app/components/remove-files-dialog.tsx
 #: app/components/remove-place-dialog.tsx
 #: app/components/take-back-dialog.tsx
@@ -1257,7 +1266,6 @@ msgstr "close"
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/history-dialog.tsx
-#: app/components/preview-drawer.tsx
 #: app/components/reset-fresh-dialog.tsx
 #: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
@@ -1513,6 +1521,10 @@ msgstr "Create link"
 #: app/components/comparison-dialog.tsx
 msgid "Custom"
 msgstr "Custom"
+
+#: app/components/preview-drawer.tsx
+msgid "Cut"
+msgstr "Cut"
 
 #: app/components/preview-drawer.tsx
 msgid "Cut a mount or a finger out of the corner. Same keeps the shape the clip already has."
@@ -1913,6 +1925,14 @@ msgstr "F"
 msgid "failed"
 msgstr "failed"
 
+#: app/components/preview-drawer.tsx
+msgid "Felt, least"
+msgstr "Felt, least"
+
+#: app/components/preview-drawer.tsx
+msgid "Felt, most"
+msgstr "Felt, most"
+
 #: app/components/storage-folder.tsx
 msgid "Fetch it back onto this machine"
 msgstr "Fetch it back onto this machine"
@@ -2036,6 +2056,10 @@ msgstr "Forget this one — nothing that was sent or copied is touched"
 msgid "Forget what is listed here — nothing that was sent or copied is touched"
 msgstr "Forget what is listed here — nothing that was sent or copied is touched"
 
+#: app/components/preview-drawer.tsx
+msgid "Forward ten seconds"
+msgstr "Forward ten seconds"
+
 #: app/components/find-anything.tsx
 msgid "Found"
 msgstr "Found"
@@ -2052,6 +2076,14 @@ msgstr "Frame"
 #: app/components/file-list.tsx
 msgid "Frame saved — about {kept}% of the picture, keeping its shape. Applied at the next Process."
 msgstr "Frame saved — about {kept}% of the picture, keeping its shape. Applied at the next Process."
+
+#: app/components/preview-drawer.tsx
+msgid "frame: {shown}"
+msgstr "frame: {shown}"
+
+#: app/components/preview-drawer.tsx
+msgid "frame: whole"
+msgstr "frame: whole"
 
 #: app/components/file-list.tsx
 #: app/components/inspector.tsx
@@ -2206,6 +2238,10 @@ msgid "Give to every photo in the jump"
 msgstr "Give to every photo in the jump"
 
 #: app/components/preview-drawer.tsx
+msgid "Go to"
+msgstr "Go to"
+
+#: app/components/preview-drawer.tsx
 msgid "Go to the {moment}"
 msgstr "Go to the {moment}"
 
@@ -2305,6 +2341,10 @@ msgstr "in the plane"
 #: app/components/upload-dialog.tsx
 msgid "In the project folder"
 msgstr "In the project folder"
+
+#: app/components/preview-drawer.tsx
+msgid "Info"
+msgstr "Info"
 
 #: app/components/montage-card.tsx
 msgid "Inside"
@@ -2498,10 +2538,6 @@ msgstr "Leave it empty to call it by its place among the jumps"
 #: app/components/templates-dialog.tsx
 msgid "Leave it empty to name it after the project"
 msgstr "Leave it empty to name it after the project"
-
-#: app/components/preview-drawer.tsx
-msgid "Leaving with changes asks first: keep editing, discard or save."
-msgstr "Leaving with changes asks first: keep editing, discard or save."
 
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
@@ -3470,6 +3506,10 @@ msgstr "QR code"
 msgid "QR code of the link"
 msgstr "QR code of the link"
 
+#: app/components/preview-drawer.tsx
+msgid "Quarter turn"
+msgstr "Quarter turn"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "R"
 msgstr "R"
@@ -3695,6 +3735,10 @@ msgstr "scanned when done"
 msgid "Scanning…"
 msgstr "Scanning…"
 
+#: app/components/preview-drawer.tsx
+msgid "Scroll on the timeline to zoom · the graph follows"
+msgstr "Scroll on the timeline to zoom · the graph follows"
+
 #: app/components/page-head.tsx
 msgid "Search"
 msgstr "Search"
@@ -3775,6 +3819,7 @@ msgstr "Shift + ↑ ↓"
 #: app/components/bin-files.tsx
 #: app/components/camera-files.tsx
 #: app/components/inspector.tsx
+#: app/components/preview-drawer.tsx
 msgid "Shot"
 msgstr "Shot"
 
@@ -3842,6 +3887,18 @@ msgstr "Shown as it will arrive — write in it; the signature stays for every e
 #: app/components/inspector.tsx
 msgid "Size"
 msgstr "Size"
+
+#: app/components/preview-drawer.tsx
+msgid "Size after"
+msgstr "Size after"
+
+#: app/components/preview-drawer.tsx
+msgid "Size after processing"
+msgstr "Size after processing"
+
+#: app/components/preview-drawer.tsx
+msgid "Size now"
+msgstr "Size now"
 
 #: app/components/board-header.tsx
 msgid "Size of the board"
@@ -3916,6 +3973,10 @@ msgstr "Starts"
 #: app/components/inspector.tsx
 msgid "starts {starts}"
 msgstr "starts {starts}"
+
+#: app/components/preview-drawer.tsx
+msgid "State"
+msgstr "State"
 
 #: app/components/disconnect-dialog.tsx
 msgid "Stay connected"
@@ -4113,6 +4174,10 @@ msgstr "the corrected times, the jumps made and named by hand, any copies, and e
 #: app/components/board-header.tsx
 msgid "The editing templates a montage is made from — look them over, or bring one in"
 msgstr "The editing templates a montage is made from — look them over, or bring one in"
+
+#: app/components/preview-drawer.tsx
+msgid "The file"
+msgstr "The file"
 
 #: app/helpers/parcels.ts
 msgid "the film"
@@ -4688,6 +4753,10 @@ msgstr "Uploading…"
 msgid "Upright, for a phone"
 msgstr "Upright, for a phone"
 
+#: app/components/preview-drawer.tsx
+msgid "Upside down"
+msgstr "Upside down"
+
 #: app/components/templates-dialog.tsx
 msgid "Use by default"
 msgstr "Use by default"
@@ -4786,6 +4855,14 @@ msgstr "what is up there stops being listed here, so nothing can be uploaded, fr
 #: app/components/email-dialog.tsx
 msgid "What is written here is kept on this machine and drafts every email; each"
 msgstr "What is written here is kept on this machine and drafts every email; each"
+
+#: app/components/jump-graph.tsx
+msgid "What the camera felt"
+msgstr "What the camera felt"
+
+#: app/components/preview-drawer.tsx
+msgid "What to change"
+msgstr "What to change"
 
 #: app/components/places-tree.tsx
 msgid "What was put aside — look through it, and bring files back to Fresh files"

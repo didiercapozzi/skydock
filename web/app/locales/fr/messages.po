@@ -35,6 +35,10 @@ msgid "— done"
 msgstr "— terminé"
 
 #: app/components/jump-graph.tsx
+msgid "— force"
+msgstr "— force"
+
+#: app/components/jump-graph.tsx
 msgid "— height"
 msgstr "— hauteur"
 
@@ -973,6 +977,10 @@ msgstr "Auto"
 msgid "Back into the originals, under the day each was shot, and into Fresh files"
 msgstr "Retour dans les originaux, sous le jour où chacun a été filmé, et dans Nouveaux fichiers"
 
+#: app/components/preview-drawer.tsx
+msgid "Back ten seconds"
+msgstr "Reculer de dix secondes"
+
 #: app/components/board-header.tsx
 msgid "Back to as drawn"
 msgstr "Revenir à la taille d'origine"
@@ -1100,6 +1108,7 @@ msgstr "annuler"
 #: app/components/jump-name.tsx
 #: app/components/montage-card.tsx
 #: app/components/nas-folder-browser.tsx
+#: app/components/preview-drawer.tsx
 #: app/components/remove-files-dialog.tsx
 #: app/components/remove-place-dialog.tsx
 #: app/components/take-back-dialog.tsx
@@ -1257,7 +1266,6 @@ msgstr "fermer"
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/history-dialog.tsx
-#: app/components/preview-drawer.tsx
 #: app/components/reset-fresh-dialog.tsx
 #: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
@@ -1513,6 +1521,10 @@ msgstr "Créer un lien"
 #: app/components/comparison-dialog.tsx
 msgid "Custom"
 msgstr "Personnalisée"
+
+#: app/components/preview-drawer.tsx
+msgid "Cut"
+msgstr "Coupe"
 
 #: app/components/preview-drawer.tsx
 msgid "Cut a mount or a finger out of the corner. Same keeps the shape the clip already has."
@@ -1913,6 +1925,14 @@ msgstr "F"
 msgid "failed"
 msgstr "échec"
 
+#: app/components/preview-drawer.tsx
+msgid "Felt, least"
+msgstr "Ressenti, au plus bas"
+
+#: app/components/preview-drawer.tsx
+msgid "Felt, most"
+msgstr "Ressenti, au plus haut"
+
 #: app/components/storage-folder.tsx
 msgid "Fetch it back onto this machine"
 msgstr "La récupérer sur cette machine"
@@ -2036,6 +2056,10 @@ msgstr "Oublier celui-ci — rien de ce qui a été envoyé ou copié n’est to
 msgid "Forget what is listed here — nothing that was sent or copied is touched"
 msgstr "Oublier ce qui est listé ici — rien de ce qui a été envoyé ou copié n’est touché"
 
+#: app/components/preview-drawer.tsx
+msgid "Forward ten seconds"
+msgstr "Avancer de dix secondes"
+
 #: app/components/find-anything.tsx
 msgid "Found"
 msgstr "Trouvé"
@@ -2052,6 +2076,14 @@ msgstr "Cadre"
 #: app/components/file-list.tsx
 msgid "Frame saved — about {kept}% of the picture, keeping its shape. Applied at the next Process."
 msgstr "Cadre enregistré — environ {kept} % de l’image, en gardant sa forme. Appliqué à la prochaine préparation."
+
+#: app/components/preview-drawer.tsx
+msgid "frame: {shown}"
+msgstr "cadre : {shown}"
+
+#: app/components/preview-drawer.tsx
+msgid "frame: whole"
+msgstr "cadre : entier"
 
 #: app/components/file-list.tsx
 #: app/components/inspector.tsx
@@ -2206,6 +2238,10 @@ msgid "Give to every photo in the jump"
 msgstr "Appliquer à chaque photo du saut"
 
 #: app/components/preview-drawer.tsx
+msgid "Go to"
+msgstr "Aller à"
+
+#: app/components/preview-drawer.tsx
 msgid "Go to the {moment}"
 msgstr "Aller à : {moment}"
 
@@ -2305,6 +2341,10 @@ msgstr "dans l’avion"
 #: app/components/upload-dialog.tsx
 msgid "In the project folder"
 msgstr "Dans le dossier du projet"
+
+#: app/components/preview-drawer.tsx
+msgid "Info"
+msgstr "Infos"
 
 #: app/components/montage-card.tsx
 msgid "Inside"
@@ -2498,10 +2538,6 @@ msgstr "Laissez vide pour le nommer d’après sa position parmi les sauts"
 #: app/components/templates-dialog.tsx
 msgid "Leave it empty to name it after the project"
 msgstr "Laissez vide pour le nommer d’après le projet"
-
-#: app/components/preview-drawer.tsx
-msgid "Leaving with changes asks first: keep editing, discard or save."
-msgstr "Quitter avec des modifications demande d’abord : continuer à modifier, abandonner ou enregistrer."
 
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
@@ -3470,6 +3506,10 @@ msgstr "QR code"
 msgid "QR code of the link"
 msgstr "QR code du lien"
 
+#: app/components/preview-drawer.tsx
+msgid "Quarter turn"
+msgstr "Quart de tour"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "R"
 msgstr "R"
@@ -3695,6 +3735,10 @@ msgstr "analysé une fois fini"
 msgid "Scanning…"
 msgstr "Analyse…"
 
+#: app/components/preview-drawer.tsx
+msgid "Scroll on the timeline to zoom · the graph follows"
+msgstr "Molette sur la ligne de temps pour zoomer · le graphique suit"
+
 #: app/components/page-head.tsx
 msgid "Search"
 msgstr "Rechercher"
@@ -3775,6 +3819,7 @@ msgstr "Maj + ↑ ↓"
 #: app/components/bin-files.tsx
 #: app/components/camera-files.tsx
 #: app/components/inspector.tsx
+#: app/components/preview-drawer.tsx
 msgid "Shot"
 msgstr "Pris le"
 
@@ -3842,6 +3887,18 @@ msgstr "Affiché tel qu’il arrivera — écrivez dedans ; la signature reste p
 #: app/components/inspector.tsx
 msgid "Size"
 msgstr "Taille"
+
+#: app/components/preview-drawer.tsx
+msgid "Size after"
+msgstr "Taille après"
+
+#: app/components/preview-drawer.tsx
+msgid "Size after processing"
+msgstr "Taille après traitement"
+
+#: app/components/preview-drawer.tsx
+msgid "Size now"
+msgstr "Taille actuelle"
 
 #: app/components/board-header.tsx
 msgid "Size of the board"
@@ -3916,6 +3973,10 @@ msgstr "Début"
 #: app/components/inspector.tsx
 msgid "starts {starts}"
 msgstr "début à {starts}"
+
+#: app/components/preview-drawer.tsx
+msgid "State"
+msgstr "État"
 
 #: app/components/disconnect-dialog.tsx
 msgid "Stay connected"
@@ -4113,6 +4174,10 @@ msgstr "les heures corrigées, les sauts créés et nommés à la main, toutes l
 #: app/components/board-header.tsx
 msgid "The editing templates a montage is made from — look them over, or bring one in"
 msgstr "Les modèles de montage dont un montage est fait — les parcourir, ou en importer un"
+
+#: app/components/preview-drawer.tsx
+msgid "The file"
+msgstr "Le fichier"
 
 #: app/helpers/parcels.ts
 msgid "the film"
@@ -4688,6 +4753,10 @@ msgstr "Envoi…"
 msgid "Upright, for a phone"
 msgstr "Vertical, pour un téléphone"
 
+#: app/components/preview-drawer.tsx
+msgid "Upside down"
+msgstr "À l’envers"
+
 #: app/components/templates-dialog.tsx
 msgid "Use by default"
 msgstr "Utiliser par défaut"
@@ -4786,6 +4855,14 @@ msgstr "ce qui est en ligne n’est plus listé ici : rien ne peut donc être en
 #: app/components/email-dialog.tsx
 msgid "What is written here is kept on this machine and drafts every email; each"
 msgstr "Ce qui est écrit ici est gardé sur cette machine et sert de base à chaque e-mail ; chaque"
+
+#: app/components/jump-graph.tsx
+msgid "What the camera felt"
+msgstr "Ce que la caméra a ressenti"
+
+#: app/components/preview-drawer.tsx
+msgid "What to change"
+msgstr "Quoi modifier"
 
 #: app/components/places-tree.tsx
 msgid "What was put aside — look through it, and bring files back to Fresh files"

@@ -25,6 +25,7 @@ const PreviewedFile = () => {
     place: placeFromParams(address),
     fileId: address.fileId,
     view: looking,
+    saving: board.saving,
     onGroupsChange: board.updateGroups,
     onFileCrop: model.cropLoneFile
   })

@@ -76,6 +76,16 @@ const reach = (values: (number | null)[]) => {
 
 const at = (values: (number | null)[] | undefined, point: number) => values?.[point] ?? null
 
+/* where in the jump a moment of the clip is, in its own words: the plane, freefall, the opening… */
+const phaseAt = (moments: JumpMoments | null | undefined, time: number) =>
+  PHASES.reduce(
+    (found, one) => {
+      const from = one.from === null ? 0 : moments?.[one.from]
+      return from !== undefined && time >= from ? one : found
+    },
+    PHASES[0] as (typeof PHASES)[number]
+  )
+
 const JumpGraph = ({
   track,
   waiting,
@@ -173,13 +183,7 @@ const JumpGraph = ({
   ]
 
   /* where the person is, in the jump's own words */
-  const phase = PHASES.reduce(
-    (found, one) => {
-      const from = one.from === null ? 0 : moments?.[one.from]
-      return from !== undefined && currentTime >= from ? one : found
-    },
-    PHASES[0] as (typeof PHASES)[number]
-  )
+  const phase = phaseAt(moments, currentTime)
 
   const shading = PHASES.flatMap((one, index) => {
     const from = one.from === null ? 0 : moments?.[one.from]
@@ -199,7 +203,31 @@ const JumpGraph = ({
   const fast = at(track.speed, point)
 
   return (
-    <div className='flex flex-col gap-1'>
+    <div className='flex flex-col gap-1.5'>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
+        <b className='font-display text-[12.5px] font-medium'>{t`What the camera felt`}</b>
+        {lowest !== null && highest !== null && (
+          <span
+            data-graph-extremes='true'
+            title={t`The least and the most the camera felt in this clip, in gravities`}
+            className='inline-flex h-[22px] items-center gap-1 rounded-full bg-tile-1 px-2.5 font-mono text-[11.5px] font-semibold text-accent-ink'>
+            {t`min`} <b className='font-semibold'>{lowest.toFixed(2)} g</b> · {t`max`}{' '}
+            <b className='font-semibold'>{highest.toFixed(2)} g</b>
+          </span>
+        )}
+        <span className='flex-1' />
+        <span className='inline-flex items-center gap-3 text-[11.5px]'>
+          <span className='text-sky-500'>{t`— force`}</span>
+          {track.altitude ? (
+            <>
+              <span className='text-amber-500'>{t`— height`}</span>
+              <span className='text-emerald-500'>{t`— speed`}</span>
+            </>
+          ) : (
+            <span className='text-ink-3'>{t`no height or speed — this camera wrote none`}</span>
+          )}
+        </span>
+      </div>
       <div
         ref={frame}
         data-jump-graph='true'
@@ -269,26 +297,9 @@ const JumpGraph = ({
           {shown === null ? '' : ` · ${Math.round(shown)} m`}
           {fast === null ? '' : ` · ${Math.round(fast)} km/h`} · {i18n._(phase.label)}
         </span>
-        {lowest !== null && highest !== null && (
-          <span
-            data-graph-extremes='true'
-            title={t`The least and the most the camera felt in this clip, in gravities`}
-            className='text-ink-2'>
-            {t`min`} <b className='font-semibold text-sky-500'>{lowest.toFixed(2)} g</b> {t`max`}{' '}
-            <b className='font-semibold text-sky-500'>{highest.toFixed(2)} g</b>
-          </span>
-        )}
-        {track.altitude ? (
-          <>
-            <span className='text-amber-500'>{t`— height`}</span>
-            <span className='text-emerald-500'>{t`— speed`}</span>
-          </>
-        ) : (
-          <span>{t`no height or speed — this camera wrote none`}</span>
-        )}
       </div>
     </div>
   )
 }
 
-export { JumpGraph }
+export { JumpGraph, phaseAt }

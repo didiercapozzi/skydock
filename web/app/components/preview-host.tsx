@@ -40,6 +40,7 @@ const PreviewHost = ({
   if (!open || !shown) return null
   return (
     <PreviewDrawer
+      windowed={preview.windowed}
       files={open.files}
       index={open.index}
       status={fileStatus(shown, statusContext(shown))}

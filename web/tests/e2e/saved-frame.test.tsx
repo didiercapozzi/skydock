@@ -60,6 +60,7 @@ const shape = (label: string) => page.getByRole('button', { name: label, exact: 
 describe('a frame saved on a clip', () => {
   test('is drawn when the clip is opened again, on the shape it was saved with', async () => {
     await render(createElement(Drawer))
+    await userEvent.click(page.getByRole('button', { name: 'Frame', exact: true }))
 
     await expect.element(page.getByLabelText('Part of the picture to keep')).toBeVisible()
     await expect.element(shape('9:16')).toHaveAttribute('aria-pressed', 'true')
@@ -68,6 +69,7 @@ describe('a frame saved on a clip', () => {
 
   test('the next clip opens on its own shape, not on the one before', async () => {
     await render(createElement(Drawer))
+    await userEvent.click(page.getByRole('button', { name: 'Frame', exact: true }))
     await userEvent.click(shape('1:1'))
 
     await userEvent.click(page.getByRole('button', { name: /Next/ }))
@@ -88,6 +90,7 @@ describe('the part of the picture kept', () => {
 
   test('is said in percent, and follows the rectangle as it changes', async () => {
     await render(createElement(Drawer))
+    await userEvent.click(page.getByRole('button', { name: 'Frame', exact: true }))
     await expect.poll(said).toContain('Keeps 32% across · 100% down · 32% of the picture')
     await expect.poll(said).toContain('32% × 100%')
 
@@ -102,6 +105,7 @@ describe('the part of the picture kept', () => {
      (RULES, Cropping and turning) */
   test('asks before a change not saved is left behind, and keeps editing when not answered', async () => {
     await render(createElement(Drawer))
+    await userEvent.click(page.getByRole('button', { name: 'Frame', exact: true }))
     await userEvent.click(shape('1:1'))
 
     await userEvent.keyboard('{Escape}')

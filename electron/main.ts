@@ -311,6 +311,21 @@ const askBeforeClosing = (window: BrowserWindow) => {
   })
 }
 
+/* whether an address is a file to be shown in a window of its own: the board's own address, with the
+   file in it and the mark that says so — nothing else is ever opened as a window of the app */
+const isPreviewAddress = (asked: string, board: string) => {
+  try {
+    const url = new URL(asked)
+    return (
+      url.origin === new URL(board).origin &&
+      /\/file\/[^/]+$/.test(url.pathname) &&
+      (JSON.parse(url.searchParams.get('q') ?? '{}') as { window?: string }).window === 'preview'
+    )
+  } catch {
+    return false
+  }
+}
+
 /* The window itself: a browser on the server behind it, and nothing else. A link out of the board —
    the passenger's email, a share link — belongs to the machine's own browser; opened in here it
    would be the board gone, with no way back to it. */
@@ -334,8 +349,40 @@ const openWindow = (address: string) => {
     }
   })
   window.webContents.setWindowOpenHandler(({ url: asked }) => {
+    /* a file looked at has a window of its own, apart from the board: the board asks for one by
+       opening its own address with the file in it, and it is given here, the same kind of window */
+    if (isPreviewAddress(asked, address))
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          title: 'SkyDock',
+          width: 1360,
+          height: 880,
+          minWidth: 900,
+          minHeight: 600,
+          autoHideMenuBar: true,
+          frame: false,
+          transparent: true,
+          backgroundColor: '#00000000',
+          webPreferences: {
+            preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
+            zoomFactor: zoom
+          }
+        }
+      }
     if (/^https?:/.test(asked)) void shell.openExternal(asked)
     return { action: 'deny' }
+  })
+  window.webContents.on('did-create-window', (preview) => {
+    zoomHotkeys(preview.webContents)
+    /* nothing opens from it but a link out, which is the machine's own browser's */
+    preview.webContents.setWindowOpenHandler(({ url: asked }) => {
+      if (/^https?:/.test(asked)) void shell.openExternal(asked)
+      return { action: 'deny' }
+    })
+    const tellMaximized = () => preview.webContents.send('window:maximized', preview.isMaximized())
+    preview.on('maximize', tellMaximized)
+    preview.on('unmaximize', tellMaximized)
   })
   zoomHotkeys(window.webContents)
   askBeforeClosing(window)

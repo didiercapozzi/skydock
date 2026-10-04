@@ -16,7 +16,9 @@ const boardViewSchema = z.object({
   /* by jump, by day, or one list — what the folder offers is the board's business */
   by: z.enum(['jump', 'day', 'none']).optional(),
   /* which jump card is open, by its own key */
-  card: z.string().optional()
+  card: z.string().optional(),
+  /* this address is a file open in a window of its own, with nothing of the board around it */
+  window: z.literal('preview').optional()
 })
 
 type BoardView = z.infer<typeof boardViewSchema>

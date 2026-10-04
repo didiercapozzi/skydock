@@ -117,6 +117,7 @@ const Drawer = ({ saved }: { saved?: FrameCrop | null }) => {
 describe('saving a crop that is only a rectangle', () => {
   test('nothing to save before anything is touched', async () => {
     await render(createElement(Drawer, {}))
+    await userEvent.click(page.getByRole('button', { name: 'Frame', exact: true }))
 
     await expect.element(page.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
@@ -125,6 +126,7 @@ describe('saving a crop that is only a rectangle', () => {
      been cut. Taking a corner in is what there is to save. */
   test('choosing a shape alone is not yet a crop', async () => {
     await render(createElement(Drawer, {}))
+    await userEvent.click(page.getByRole('button', { name: 'Frame', exact: true }))
 
     await userEvent.click(page.getByRole('button', { name: 'Same', exact: true }))
 
@@ -134,6 +136,7 @@ describe('saving a crop that is only a rectangle', () => {
 
   test('a rectangle dragged in is something to save, with no trim at all', async () => {
     await render(createElement(Drawer, {}))
+    await userEvent.click(page.getByRole('button', { name: 'Frame', exact: true }))
     await userEvent.click(page.getByRole('button', { name: 'Same', exact: true }))
 
     /* dragged onto the rectangle itself, which is the only box this harness has */
@@ -149,6 +152,7 @@ describe('saving a crop that is only a rectangle', () => {
 
   test('the file says a frame was cropped, not just that a crop was saved', async () => {
     await render(createElement(Drawer, { saved: { x: 0.1, y: 0.1, width: 0.8, height: 0.8 } }))
+    await userEvent.click(page.getByRole('button', { name: 'Info', exact: true }))
 
     await expect.element(page.getByText(/Framed/)).toBeVisible()
   })

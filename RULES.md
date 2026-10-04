@@ -840,8 +840,27 @@ and plays from the storage's own list. Escape comes back to the dialog, at the s
 of the clip. Nothing is decided there: the rectangle and the marks are for the dialog.
 
 The picture fills the left of the dialog
-with the timeline under it; the right side says what is being decided: the trim, the turn, the frame,
-and what is already on the file. The top names the file and lets you step to the next; the bottom holds
+with the timeline under it; the right side says what is being decided, in one panel with a tab for each: _Cut_ (the jump's marks
+and the trim, with what the file will weigh once trimmed), _Frame_, _Turn_ and _Info_ (what is known of
+the file and what is already on it). A photo has only _Turn_ and _Info_.
+The picture carries a corner tag saying where in the jump the playhead is and what frame it will come out
+in, the play button over its middle, and the time along its foot; under it, step back or forward ten
+seconds, _Start here_, _End here_ and _Trim to the jump_ sit beside the timeline they act on. Under the
+timeline the graph is headed _What the camera felt_, with the least and the most in g beside it. The
+panel's tabs share its width; _Cut_ shows the start and the end as two tiles, what is kept with the size
+it will weigh, and the jump's marks as rows, each with a _Go to_; _Turn_ offers as shot, a quarter turn
+and upside down as three large buttons. The foot shows what is on the file now, solid when saved and
+dashed when not, with _Reset_, _Cancel_ and _Save_.
+
+**A window of its own.** In SkyDock's own window a file is opened in a second window, apart from the board:
+double-clicking a file opens it there, filling that window with only the file and the window's title bar,
+and the board goes on being worked behind it, on this screen or another. One such window is kept: opening
+another file while it is open shows that file in it, and stepping to the next or previous file stays in it.
+Closing the file — Escape, Close, or Save once something was decided — closes that window, never the
+board's. What is decided there is saved as in any window — the window closes only once the save has landed,
+since closing it first would lose it — and the windows tell one another when one has saved, so the board
+shows it within a moment, without being reloaded.
+In a plain browser there is no second window to give, and the file opens over the board as before. The top names the file and lets you step to the next; the bottom holds
 Save, offered only once something changed, and Reset, which clears everything at once. A loose file is
 cropped the same way as one in a jump, with no jump to give its frame or turn to.
 

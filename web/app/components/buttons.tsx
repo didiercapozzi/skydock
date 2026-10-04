@@ -113,17 +113,20 @@ const Seg = <T extends string>({
   label,
   value,
   options,
+  wide = false,
   onPick
 }: {
   label: string
   value: T
   options: readonly (readonly [T, string] | readonly [T, string, string])[]
+  /* fills the width it is given, each choice taking its share */
+  wide?: boolean
   onPick: (value: T) => void
 }) => (
   <span
     role='group'
     aria-label={label}
-    className='inline-flex h-9 gap-0.5 rounded-[12px] bg-well p-[3px]'>
+    className={`h-9 gap-0.5 rounded-[12px] bg-well p-[3px] ${wide ? 'flex w-full' : 'inline-flex'}`}>
     {options.map(([option, name, mark]) => (
       <button
         key={option}
@@ -132,7 +135,7 @@ const Seg = <T extends string>({
         aria-label={mark ? name : undefined}
         title={mark ? name : undefined}
         onClick={() => onPick(option)}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-[9px] text-[13.5px] font-semibold whitespace-nowrap ${mark ? 'w-[30px]' : 'px-[13px]'} ${
+        className={`inline-flex items-center justify-center gap-1.5 rounded-[9px] text-[13.5px] font-semibold whitespace-nowrap ${wide ? 'flex-1' : mark ? 'w-[30px]' : 'px-[13px]'} ${
           value === option
             ? 'bg-pane text-accent-ink shadow-[0_0_0_1px_var(--color-line-strong),0_1px_2px_rgba(16,19,26,0.06)]'
             : 'text-ink-2 hover:text-ink'

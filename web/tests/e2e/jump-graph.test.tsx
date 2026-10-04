@@ -75,7 +75,7 @@ describe('the jump on a graph', () => {
     await render(createElement(Graph, { currentTime: 0 }))
 
     const extremes = document.querySelector('[data-graph-extremes]')
-    await expect.poll(() => extremes?.textContent ?? document.querySelector('[data-graph-extremes]')?.textContent).toMatch(/min 0\.35 g max 2\.20 g/)
+    await expect.poll(() => extremes?.textContent ?? document.querySelector('[data-graph-extremes]')?.textContent).toMatch(/min 0\.35 g · max 2\.20 g/)
   })
 
   test('says which part of the jump the opening is, once the frame reaches it', async () => {

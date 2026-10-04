@@ -14,6 +14,7 @@ import { plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
 import { setDetailsColumn } from '../hooks/useDetails'
 import { Outlet, useNavigate, useParams } from 'react-router'
+import { openFile as openAt } from '../helpers/previewWindow'
 import { Go, Mini, Seg } from '../components/buttons'
 import { BinFiles } from '../components/bin-files'
 import { CameraFiles } from '../components/camera-files'
@@ -52,7 +53,6 @@ import type { ManifestFile, ManifestGroup } from '../components/types'
 import { formatSize } from '../components/utils'
 import {
   familyOf,
-  fileHref,
   filesIn,
   groupsIn,
   holdsItsOwn,
@@ -186,7 +186,7 @@ const Place = () => {
   )
   /* a freed file has nothing here to show: it is played from the storage's list below instead */
   const openFile = (file: ManifestFile) =>
-    file.freed ? undefined : goTo(fileHref(place, file.id ?? file.path, looking))
+    file.freed ? undefined : openAt(goTo, place, file.id ?? file.path, looking)
 
   const selection = useSelection({
     order,
@@ -318,6 +318,9 @@ const Place = () => {
       : nothingHere
         ? 'storage'
         : 'local'
+
+  /* a file in a window of its own: the board is not drawn there, only the file */
+  if (looking.window === 'preview') return <Outlet context={model} />
 
   return (
     <StorageTwinsContext value={place.kind === 'dz' ? twins : null}>

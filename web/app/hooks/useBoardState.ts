@@ -280,13 +280,35 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     if (!same) adopt(looks.data, true)
   }
   const occupied = fetcher.state !== 'idle' || jobs.state !== 'idle' || saving
-  const lookedAfter = useRef<string | null>(null)
+  /* Another window of this app on the same machine — a file open in a window of its own — saves through
+     the same server, which does not tell a board about what it wrote itself, since it is answered with
+     it. So the windows tell each other: a window that has finished a request says so, and the others
+     look at the record again. */
+  const [peer, setPeer] = useState(0)
+  const channel = useRef<BroadcastChannel | null>(null)
   useEffect(() => {
-    if (!live.changed || lookedAfter.current === live.changed) return
+    if (typeof BroadcastChannel === 'undefined') return
+    const made = new BroadcastChannel('skydock-board')
+    made.onmessage = () => setPeer((n) => n + 1)
+    channel.current = made
+    return () => {
+      made.close()
+      channel.current = null
+    }
+  }, [])
+  const wasOccupied = useRef(false)
+  useEffect(() => {
+    if (wasOccupied.current && !occupied) channel.current?.postMessage('saved')
+    wasOccupied.current = occupied
+  }, [occupied])
+  const lookedAfter = useRef<string | null>(null)
+  const changedKey = peer > 0 ? `${live.changed ?? ''}|${peer}` : live.changed
+  useEffect(() => {
+    if (!changedKey || lookedAfter.current === changedKey) return
     if (occupied || looks.state !== 'idle') return
-    lookedAfter.current = live.changed
+    lookedAfter.current = changedKey
     looks.submit({ url: '/api/manifest', actionArgs: { intent: 'look-at-board' } })
-  }, [live.changed, occupied, looks])
+  }, [changedKey, occupied, looks])
 
   /* A camera's copy has ended — its files are copied and scanned on the machine — so the board asks
      for itself again, and hears what came off. A request to the machine is what an effect is for;
@@ -388,6 +410,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     groups,
     setGroups,
     updateGroups,
+    saving,
     loose,
     setLoose,
     places,

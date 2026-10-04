@@ -20,6 +20,7 @@ import {
 import type { FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router'
+import { openFile } from '../helpers/previewWindow'
 import type { BoardDialog } from '../components/dialog-host'
 import { lockReason } from '../components/file-list'
 import type { Passenger } from '../components/montage-card'
@@ -29,7 +30,6 @@ import { importFiles, whatIsComing } from '../helpers/import'
 import type { Coming, Dropped } from '../helpers/import'
 import { folderOnStorage } from '../helpers/jumps'
 import {
-  fileHref,
   groupsIn,
   looseIn,
   placeFromParams,
@@ -234,7 +234,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
         where: placeLabel(at),
         go: () => {
           clearSelection()
-          goTo(fileHref(at, f.id ?? '', { kind: looking.kind }))
+          openFile(goTo, at, f.id ?? '', { kind: looking.kind })
         }
       }))
     return [...montages, ...destinations, ...files].slice(0, 12)

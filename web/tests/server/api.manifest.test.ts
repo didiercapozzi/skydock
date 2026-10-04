@@ -358,13 +358,20 @@ describe('changes made on the board', () => {
     /* The editor opens on proxies, and a project made before them opens on the full clips: it
        waits until each clip has its proxy, or has failed to get one (RULES, The editing project). */
     it('waits while a clip is still getting its proxy, and says how many', async () => {
+      /* the originals are here, so a small copy can still be made of each: a clip whose original is gone
+         is settled, since nothing will ever make one */
+      const here = (id: string) => {
+        const at = path.join(tmpDir, `${id}.mp4`)
+        fs.writeFileSync(at, 'x')
+        return file({ id, path: at })
+      }
       writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
           passenger: { firstname: 'Luc', lastname: 'Favre' },
           processed: true,
-          files: [file({ id: 'a' }), file({ id: 'b' })]
+          files: [here('a'), here('b')]
         })
       ])
       fs.mkdirSync(path.join(tmpDir, 'processed', 'Montages', 'Luc Favre', 'videos'), {

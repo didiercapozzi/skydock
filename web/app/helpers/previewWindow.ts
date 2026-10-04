@@ -1,0 +1,30 @@
+import type { NavigateFunction } from 'react-router'
+import { fileHref } from './places'
+import type { Place } from './places'
+import type { BoardView } from './view'
+
+/* A file is looked at in a window of its own, which is SkyDock's own window's to give: the page asks
+   for an address to be opened in a new one and the window makes it, apart from the board, so a clip
+   can sit beside the board, on another screen, while the board goes on being worked. In a plain
+   browser there is no such window to give, and the file opens over the board as it always did
+   (RULES, The preview). */
+
+const PREVIEW_WINDOW = 'skydock-preview'
+
+/* whether the page is in SkyDock's own window, which is where a file can have one of its own */
+const hasOwnWindows = () => typeof window !== 'undefined' && 'skydock' in window
+
+/* Opens a file: in a window of its own where there is one to give — the same window again if one is
+   open, so the next file replaces the last rather than piling windows up — else over the board. A
+   window of its own is asked to step to another file, which it does in itself. */
+const openFile = (goTo: NavigateFunction, place: Place, fileId: string, view: BoardView = {}) => {
+  if (view.window === 'preview' || !hasOwnWindows()) {
+    goTo(fileHref(place, fileId, view))
+    return
+  }
+  const href = fileHref(place, fileId, { ...view, window: 'preview' })
+  const opened = window.open(new URL(href, window.location.href).toString(), PREVIEW_WINDOW)
+  opened?.focus()
+}
+
+export { hasOwnWindows, openFile }

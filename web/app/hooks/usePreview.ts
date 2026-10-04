@@ -1,11 +1,12 @@
 import { isVideoFile } from '@skydock/scripts'
 import type { FrameCrop, Rotation } from '@skydock/scripts'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
 import type { VideoRef } from '../components/preview-drawer'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { fileHref, placeHref } from '../helpers/places'
+import { placeHref } from '../helpers/places'
 import type { Place } from '../helpers/places'
+import { openFile } from '../helpers/previewWindow'
 import type { BoardView } from '../helpers/view'
 
 type CropRange = { cropStart: number | null; cropEnd: number | null }
@@ -70,6 +71,7 @@ const usePreview = ({
   place,
   fileId,
   view,
+  saving = false,
   onGroupsChange,
   onFileCrop
 }: {
@@ -80,6 +82,9 @@ const usePreview = ({
   /* how the folder behind is being looked at, which an address keeps hold of: opening a clip and
      closing it again leaves the folder exactly as it was */
   view: BoardView
+  /* a save is on its way: a window of its own is closed only once it has landed, since closing the page
+     first would take the request with it */
+  saving?: boolean
   onGroupsChange: (next: ManifestGroup[]) => void
   /* a lone file's crop has no group reference to live on, so it is saved on the registry entry —
      the frame goes the same way */
@@ -92,6 +97,7 @@ const usePreview = ({
 }) => {
   const goTo = useNavigate()
   const [drafted, setDrafted] = useState<Draft | null>(null)
+  const [closing, setClosing] = useState(false)
   const videoRefRef = useRef<VideoRef | null>(null)
 
   const preview = shownIn(groups, loose, fileId)
@@ -100,7 +106,9 @@ const usePreview = ({
   const draft = file && drafted?.id === idOf(file) ? drafted : file ? asItStands(file) : null
   const edit = (next: Partial<Draft>) => draft && setDrafted({ ...draft, ...next })
 
-  const openPreview = (file: ManifestFile) => goTo(fileHref(place, idOf(file), view))
+  /* the window of its own is the file's, and stepping in it stays in it */
+  const windowed = view.window === 'preview'
+  const openPreview = (file: ManifestFile) => openFile(goTo, place, idOf(file), view)
 
   const stepPreview = (by: number) => {
     if (!preview) return
@@ -122,7 +130,9 @@ const usePreview = ({
 
   const closePreview = () => {
     videoRefRef.current = null
-    goTo(placeHref(place, view))
+    /* a window of its own is closed, there being no board in it to go back to */
+    if (windowed) window.close()
+    else goTo(placeHref(place, view))
   }
 
   /* Applying a crop is the end of the job: it is saved and the drawer gets out of the way, so the
@@ -155,7 +165,9 @@ const usePreview = ({
         )
       )
     edit({ crop: range })
-    if (committed(range)) closePreview()
+    if (!committed(range)) return
+    if (windowed) setClosing(true)
+    else closePreview()
   }
 
   /* A mount is mounted badly for the whole jump, so one rectangle usually wants to be all of them.
@@ -188,12 +200,32 @@ const usePreview = ({
     )
   }
 
+  /* closed once the save has been seen to start and to end; and if none ever starts — nothing was
+     changed — after a moment, since waiting for ever on a save that is not coming is worse */
+  const sawSaving = useRef(false)
+  useEffect(() => {
+    if (!closing) return
+    if (saving) {
+      sawSaving.current = true
+      return
+    }
+    if (sawSaving.current) {
+      closePreview()
+      return
+    }
+    const later = setTimeout(closePreview, 1500)
+    return () => clearTimeout(later)
+    // closing it is the whole of what this does, once the save is over
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closing, saving])
+
   const handleVideoRef = (ref: VideoRef) => {
     videoRefRef.current = ref
   }
 
   return {
     preview,
+    windowed,
     videoState: {
       crop: draft?.crop ?? { cropStart: null, cropEnd: null },
       zoom: draft?.zoom ?? 1,

@@ -52,30 +52,39 @@ const box = () =>
 describe('turning a picture', () => {
   test('turns a quarter at a time, and a quarter turn makes it portrait', async () => {
     await render(createElement(Drawer, { file: CLIP }))
+    await userEvent.click(page.getByRole('button', { name: 'Turn', exact: true }))
     const across = box().getBoundingClientRect()
     expect(across.width).toBeGreaterThan(across.height)
 
     await userEvent.click(page.getByRole('button', { name: '↻ +90°' }))
 
-    await expect.element(page.getByText('90°', { exact: true })).toBeVisible()
+    await expect
+      .element(page.getByRole('button', { name: '↻ +90°' }))
+      .toHaveAttribute('aria-pressed', 'true')
     const upright = box().getBoundingClientRect()
     expect(upright.height).toBeGreaterThan(upright.width)
   })
 
   test('R turns it too, and 0° brings it back as shot', async () => {
     await render(createElement(Drawer, { file: CLIP }))
+    await userEvent.click(page.getByRole('button', { name: 'Turn', exact: true }))
     await userEvent.keyboard('r')
     await userEvent.keyboard('r')
-    await expect.element(page.getByText('180°', { exact: true })).toBeVisible()
+    await expect
+      .element(page.getByRole('button', { name: '↻ +180°' }))
+      .toHaveAttribute('aria-pressed', 'true')
 
     await userEvent.click(page.getByRole('button', { name: '0°', exact: true }))
-    await expect.element(page.getByText('0°', { exact: true })).toBeVisible()
+    await expect
+      .element(page.getByRole('button', { name: '0°', exact: true }))
+      .toHaveAttribute('aria-pressed', 'true')
     await expect.element(page.getByRole('button', { name: 'Save' })).toBeDisabled()
   })
 
   test('a turn is something to save', async () => {
     saved.rotation = null
     await render(createElement(Drawer, { file: CLIP }))
+    await userEvent.click(page.getByRole('button', { name: 'Turn', exact: true }))
     await userEvent.click(page.getByRole('button', { name: '↻ +180°' }))
 
     await expect.element(page.getByText('Unsaved changes')).toBeVisible()

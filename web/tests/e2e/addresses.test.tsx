@@ -104,7 +104,7 @@ describe('a file an address names', () => {
     await at('/dropzone/yverdon/file/in_yverdon')
     await expect.element(page.getByRole('dialog', { name: 'Preview' })).toBeInTheDocument()
 
-    await userEvent.click(page.getByRole('button', { name: 'Close' }))
+    await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
 
     await expect.element(page.getByRole('dialog', { name: 'Preview' })).not.toBeInTheDocument()
     await expect.element(page.getByText('in_yverdon.MP4').first()).toBeInTheDocument()

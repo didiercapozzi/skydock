@@ -92,7 +92,7 @@ const VideoCropper = ({
   const { offset, visibleDuration: vd } = computeVisibleRange(viewOffset)
   useEffect(() => {
     onView?.({ from: offset, span: vd })
-  }, [offset, vd])
+  }, [offset, vd, onView])
 
   const timeFromPosition = (clientX: number) => {
     const el = barRef.current
@@ -303,9 +303,11 @@ const VideoCropper = ({
                 style={{ left: `${positionFromTime(at)}%` }}>
                 <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-ink' />
                 <span
-                  className={`pointer-events-none absolute left-1.5 rounded-[3px] bg-ink px-1 font-mono text-[9.5px] leading-[14px] font-medium tracking-[0.06em] text-pane whitespace-nowrap uppercase ${
-                    low ? 'bottom-0.5' : 'top-0.5'
-                  }`}>
+                  className={`pointer-events-none absolute rounded-[3px] bg-ink px-1 font-mono text-[9.5px] leading-[14px] font-medium tracking-[0.06em] text-pane whitespace-nowrap uppercase ${
+                    /* a mark near the end of the bar is named on its left, where there is room, rather
+                       than cut off by the edge */
+                    positionFromTime(at) > 88 ? 'right-1.5' : 'left-1.5'
+                  } ${low ? 'bottom-0.5' : 'top-0.5'}`}>
                   {label}
                 </span>
               </div>
