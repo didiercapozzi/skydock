@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import { changedNothing, describeChange } from './boardChange'
 import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
-import { writeJsonAtomic } from './lib/fs'
+import { copyOverSync, writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
 import { groupsFileSchema, manifestSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
@@ -336,8 +336,8 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   manifestSchema.omit({ groups: true }).parse(raw)
   writeJsonAtomic(manifestPath, raw)
   /* the pair just written whole is the one to fall back on */
-  fs.copyFileSync(manifestPath, backupOf(manifestPath))
-  fs.copyFileSync(getGroupsPath(manifestPath), backupOf(getGroupsPath(manifestPath)))
+  copyOverSync(manifestPath, backupOf(manifestPath))
+  copyOverSync(getGroupsPath(manifestPath), backupOf(getGroupsPath(manifestPath)))
   writtenHere().set(manifestPath, pairStamp(manifestPath))
 }
 

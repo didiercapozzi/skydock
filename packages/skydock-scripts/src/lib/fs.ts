@@ -213,7 +213,17 @@ const moveFile = async (
   }
 }
 
+/* A file copied over another, whoever owns the other. Copying onto an existing file changes its mode, which
+   only its owner may do — and a work folder shared with a container that wrote as root is full of files that
+   belong to somebody else. A copy made beside it and moved into place needs only the folder. */
+const copyOverSync = (from: string, to: string) => {
+  const beside = `${to}.${process.pid}.tmp`
+  fs.copyFileSync(from, beside)
+  fs.renameSync(beside, to)
+}
+
 export {
+  copyOverSync,
   DEFAULT_MAX_FIND_DEPTH,
   findMediaFiles,
   hashFile,

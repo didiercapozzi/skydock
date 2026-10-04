@@ -251,5 +251,18 @@ const importFile = async ({
   }
 }
 
-export { importFile, originalEntry }
+/* What a stopped server left half written in the holding folder is cleared once, by the first board that
+   connects to a server just started: nothing can be writing it then, and a copy cut off at two gigabytes
+   would otherwise sit there for ever. */
+declare global {
+  var skydockIncomingCleared: boolean | undefined
+}
+
+const clearStaleIncoming = (outputDir: string) => {
+  if (globalThis.skydockIncomingCleared) return
+  globalThis.skydockIncomingCleared = true
+  void fs.promises.rm(path.join(outputDir, '.incoming'), { recursive: true, force: true })
+}
+
+export { clearStaleIncoming, importFile, originalEntry }
 export type { ImportDrop, ImportTarget }

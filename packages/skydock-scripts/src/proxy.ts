@@ -12,6 +12,7 @@ import {
   getManifestPath,
   getOutputDir,
   hasCommand,
+  systemTool,
   isVideoFile
 } from './utils'
 import { untilQuiet } from './lib/quiet'
@@ -88,8 +89,8 @@ const ENCODER_ARGS: Record<ProxyEncoder, string[]> = {
    The trial carries the same settings the real thing does, `-g 1` included. One that leaves them
    out proves only that the encoder exists: NVENC passed exactly such a trial and then refused
    every clip on the card, because what it objects to is the all-intra setting and nothing else. */
-const canEncode = async (args: string[], before: string[] = []) => {
-  const trial = run(ffmpegPath(), [
+const canEncode = async (program: string, args: string[], before: string[] = []) => {
+  const trial = run(program, [
     '-hide_banner',
     '-loglevel',
     'error',
@@ -117,42 +118,62 @@ const canEncode = async (args: string[], before: string[] = []) => {
    VAProfile is not supported". So the scaler gets a trial of its own, and a card without one still
    decodes and encodes while the processor does the resize in between: 5 seconds of 2.7K HEVC in 2
    seconds that way, against the 165s the processor takes doing all of it. */
-const vaapiCanScale = async () =>
+const vaapiCanScale = async (program: string) =>
   canEncode(
+    program,
     [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload,scale_vaapi=w=160:h=-2'],
     ['-vaapi_device', DRI_DEVICE()]
   )
 
-type Detected = { encoder: ProxyEncoder; cardScales: boolean }
+/* which ffmpeg does it, and with what: a card is only reachable by an ffmpeg built to reach it */
+type Detected = { encoder: ProxyEncoder; cardScales: boolean; program: string }
 
 /* Tried once, in the background, as soon as anything needs an encoder — never while a request
-   waits: each trial can take seconds, and a card that hangs, twenty. */
+   waits: each trial can take seconds, and a card that hangs, twenty.
+
+   The ffmpeg the app carries is tried first, and then the one the machine has installed: the carried one
+   is built to run anywhere and so has no graphics card in it, where the installed one usually has the
+   card the machine has. The first pair that works is used for every proxy; none, and it is the processor
+   with the one the app carries. */
 const detectEncoder = async (): Promise<Detected> => {
   const asked = process.env.SKYDOCK_PROXY_ENCODER?.trim().toLowerCase()
-  const vaapiReady = async () =>
+  const carried = ffmpegPath()
+  if (asked === 'cpu' || asked === 'nvenc')
+    return { encoder: asked, cardScales: true, program: carried }
+  if (asked === 'vaapi')
+    return { encoder: 'vaapi', cardScales: await vaapiCanScale(carried), program: carried }
+  if (!hasCommand('ffmpeg')) return { encoder: 'cpu', cardScales: false, program: carried }
+  const vaapiReady = async (program: string) =>
     fs.existsSync(DRI_DEVICE()) &&
     (await canEncode(
+      program,
       [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload'],
       ['-vaapi_device', DRI_DEVICE()]
     ))
-  if (asked === 'cpu' || asked === 'nvenc') return { encoder: asked, cardScales: true }
-  if (asked === 'vaapi') return { encoder: 'vaapi', cardScales: await vaapiCanScale() }
-  if (!hasCommand('ffmpeg')) return { encoder: 'cpu', cardScales: false }
-  if (await canEncode(ENCODER_ARGS.nvenc)) return { encoder: 'nvenc', cardScales: true }
-  if (await vaapiReady()) return { encoder: 'vaapi', cardScales: await vaapiCanScale() }
-  return { encoder: 'cpu', cardScales: false }
+  for (const program of [carried, systemTool('ffmpeg')].flatMap((one) => (one ? [one] : []))) {
+    if (await canEncode(program, ENCODER_ARGS.nvenc))
+      return { encoder: 'nvenc', cardScales: true, program }
+    if (await vaapiReady(program))
+      return { encoder: 'vaapi', cardScales: await vaapiCanScale(program), program }
+  }
+  return { encoder: 'cpu', cardScales: false, program: carried }
 }
 
 let detected: Promise<Detected> | null = null
 
-const detection = () => (detected ??= detectEncoder())
+const detection = () =>
+  (detected ??= detectEncoder().then((found) => {
+    console.log(`[Proxy] making small copies with ${found.encoder} through ${found.program}`)
+    return found
+  }))
 
 const proxyEncoder = async () => (await detection()).encoder
 
 /* only for tests and for saying which one was picked in a log line. A card is assumed to scale
    unless a test says otherwise, as most cards do. */
 const setProxyEncoder = (next: ProxyEncoder | null, cardScales = true) => {
-  detected = next === null ? null : Promise.resolve({ encoder: next, cardScales })
+  detected =
+    next === null ? null : Promise.resolve({ encoder: next, cardScales, program: ffmpegPath() })
 }
 
 /* everything the real command sets, minus the container, since a trial writes to nothing */
@@ -209,6 +230,8 @@ const videoShape = async (src: string) => {
 const shownWidth = (shape: { width: number; height: number; turned: boolean }) =>
   shape.turned ? shape.height : shape.width
 
+/* Every card scales to `nv12`, whatever the clip is: a 10-bit picture, which a camera now records, would
+   otherwise stay 10-bit on the card and the encoder, which only takes 8, would refuse it. */
 /* The processor's scaler is handed frames ffmpeg has already turned the right way up, so asking
    for a 640-wide frame is the whole of it. A graphics card is handed them as they sit on disk and
    the turn stays as a note on the side, so the edge to shrink is whichever one ends up across —
@@ -216,7 +239,9 @@ const shownWidth = (shape: { width: number; height: number; turned: boolean }) =
    was asked for. */
 const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
   if (!hardware) return `scale=${PROXY_WIDTH}:-2`
-  return shape?.turned ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}` : `scale_vaapi=w=${PROXY_WIDTH}:h=-2`
+  return shape?.turned
+    ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}:format=nv12`
+    : `scale_vaapi=w=${PROXY_WIDTH}:h=-2:format=nv12`
 }
 
 /* Written to a temporary name and moved into place, so an interrupted run leaves nothing that looks
@@ -224,6 +249,7 @@ const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
    back with the answer. */
 
 const buildWith = async (
+  program: string,
   pick: ProxyEncoder,
   cardScales: boolean,
   src: string,
@@ -248,8 +274,8 @@ const buildWith = async (
   const filter =
     pick === 'nvenc'
       ? shape?.turned
-        ? `scale_cuda=w=-2:h=${PROXY_WIDTH}`
-        : `scale_cuda=w=${PROXY_WIDTH}:h=-2`
+        ? `scale_cuda=w=-2:h=${PROXY_WIDTH}:format=nv12`
+        : `scale_cuda=w=${PROXY_WIDTH}:h=-2:format=nv12`
       : vaapiHybrid
         ? `${scaleFilter(shape, false)},format=nv12,hwupload`
         : scaleFilter(shape, pick === 'vaapi')
@@ -263,7 +289,7 @@ const buildWith = async (
   const cap =
     pick === 'cpu' ? ['-threads', String(Math.max(1, Math.floor(os.cpus().length / 2)))] : []
   const ran = await runWatched(
-    ffmpegPath(),
+    program,
     [
       '-y',
       ...decode,
@@ -303,10 +329,10 @@ const buildProxy = async (
   onPercent?: (percent: number) => void
 ) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
-  const { encoder, cardScales } = await detection()
-  const first = await buildWith(encoder, cardScales, src, dest, shape, onPercent)
+  const { encoder, cardScales, program } = await detection()
+  const first = await buildWith(program, encoder, cardScales, src, dest, shape, onPercent)
   if (first.ok || encoder === 'cpu') return first
-  const again = await buildWith('cpu', false, src, dest, shape, onPercent)
+  const again = await buildWith(ffmpegPath(), 'cpu', false, src, dest, shape, onPercent)
   return again.ok ? again : first
 }
 

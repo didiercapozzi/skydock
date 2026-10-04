@@ -47,6 +47,14 @@ const toolPath = (name: string) => {
 
 const hasCommand = (cmd: string) => toolPath(cmd) !== null
 
+/* The same tool as the machine itself keeps it, when that is not the one the app carries: the app's own
+   is built for every machine and so cannot reach a graphics card, while the one a machine has installed
+   was built for it. */
+const systemTool = (name: string) => {
+  const found = onPath(name)
+  return found !== null && found !== toolPath(name) ? found : null
+}
+
 /* The program to run for each tool: where it was found, or its plain name — a machine that keeps
    one somewhere this lookup misses still gets a try. */
 const ffmpegPath = () => toolPath('ffmpeg') ?? 'ffmpeg'
@@ -208,6 +216,7 @@ const sizeOf = (file: string) => {
 }
 
 export {
+  systemTool,
   toolPath,
   ffmpegPath,
   ffprobePath,

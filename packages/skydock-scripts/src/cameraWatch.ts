@@ -44,6 +44,17 @@ const gvfsRoot = () => {
   return base ? path.join(base, 'gvfs') : null
 }
 
+/* What gvfs mounts for a desktop is not only cameras: a share on the network, a phone's folders, an
+   archive. Asking one that cannot be reached whether it holds a DCIM folder is a request that waits for
+   the network to give up, seconds at a time, and this runs every couple of seconds on the server's own
+   thread — so only the entries that are a camera speaking MTP or PTP are ever looked into. */
+const CAMERA_ON_GVFS = /^(mtp|gphoto2):/i
+
+const isGvfsRoot = (root: string) => {
+  const gvfs = gvfsRoot()
+  return gvfs !== null && path.resolve(root) === path.resolve(gvfs)
+}
+
 /* every drive letter this Windows machine has, which is where its cameras are */
 const windowsDrives = () =>
   Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`).filter(
@@ -96,6 +107,13 @@ const mountsUnder = (roots: string[], mountinfo?: string) =>
 const foldersUnder = (roots: string[]) =>
   roots.flatMap((root) => {
     try {
+      /* what gvfs holds is read as names only, and only a camera's is then asked about: reading the
+         kind of every entry asks the entry, and a share that cannot be reached answers in seconds */
+      if (isGvfsRoot(root))
+        return fs
+          .readdirSync(root)
+          .filter((name) => CAMERA_ON_GVFS.test(name))
+          .map((name) => path.join(root, name))
       return fs
         .readdirSync(root, { withFileTypes: true })
         .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())

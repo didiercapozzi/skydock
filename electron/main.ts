@@ -556,7 +556,8 @@ const offerUpdate = () => {
         autoUpdater.quitAndInstall()
       })
   })
-  void autoUpdater.checkForUpdates()
+  /* a feed that cannot be read is already said by the error event above */
+  autoUpdater.checkForUpdates().catch(() => undefined)
 }
 
 /* Another folder to work in, asked for from the board. Nothing is copied or moved: the server is

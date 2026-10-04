@@ -492,6 +492,22 @@ describe('which drives are cameras', () => {
       expect(mountedCameras(mountinfo(['/proc']))).toEqual([])
     })
 
+    /* A share on the network is mounted by gvfs beside the cameras, and one that cannot be reached makes
+       any question put to it wait for the network to give up — on the thread the whole server runs on. So
+       only a camera is ever asked whether it holds a DCIM folder. */
+    it('is not asked of a network share that gvfs mounts beside it', () => {
+      const { gvfs } = handedOver('mtp:host=%5Busb%3A003%2C011%5D', 'GoPro MTP Client Disk Volume')
+      const share = path.join(gvfs, 'smb-share:server=nas.local,share=video')
+      fs.mkdirSync(path.join(share, 'DCIM'), { recursive: true })
+      vi.stubEnv('XDG_RUNTIME_DIR', media)
+      process.env.SKYDOCK_CAMERA_ROOTS = gvfs
+
+      expect(mountedCameras(mountinfo([gvfs])).some((camera) => camera.startsWith(share))).toBe(
+        false
+      )
+      expect(mountedCameras(mountinfo([gvfs]))).toHaveLength(1)
+    })
+
     it('says it hands its files over, which is why it is slower than a card', () => {
       const gvfs = path.join(media, 'gvfs')
       vi.stubEnv('XDG_RUNTIME_DIR', media)
