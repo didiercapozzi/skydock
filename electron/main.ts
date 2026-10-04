@@ -3,7 +3,7 @@ import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { BrowserWindow, Menu, app, dialog, ipcMain, shell } from 'electron'
+import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
 import type { WebContents } from 'electron'
 import updater from 'electron-updater'
 import { z } from 'zod'
@@ -206,7 +206,7 @@ const runningNow = async (window: BrowserWindow) => {
     const address = new URL('/api/busy', window.webContents.getURL())
     const said = z
       .object({ running: z.string().nullable() })
-      .safeParse(await (await fetch(address)).json())
+      .safeParse(await (await fetch(address, { signal: AbortSignal.timeout(2000) })).json())
     return said.success ? said.data.running : null
   } catch {
     return null
@@ -258,6 +258,8 @@ const isPreviewAddress = (asked: string, board: string) => {
 
 let previewWindow: BrowserWindow | null = null
 
+const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a0f14' : '#e3edf1')
+
 const raise = (window: BrowserWindow) => {
   if (window.isMinimized()) window.restore()
   window.show()
@@ -277,8 +279,7 @@ const openWindow = (address: string) => {
     minHeight: 600,
     autoHideMenuBar: true,
     frame: false,
-    transparent: true,
-    backgroundColor: '#00000000',
+    backgroundColor: groundColour(),
     webPreferences: {
       preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
       zoomFactor: zoom
@@ -302,8 +303,7 @@ const openWindow = (address: string) => {
           minHeight: 600,
           autoHideMenuBar: true,
           frame: false,
-          transparent: true,
-          backgroundColor: '#00000000',
+          backgroundColor: groundColour(),
           webPreferences: {
             preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
             zoomFactor: zoom

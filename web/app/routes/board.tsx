@@ -33,20 +33,14 @@ import { BoardHeader, StatusBar } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { FirstScan } from '../components/first-scan'
 import { DialogHost } from '../components/dialog-host'
-import { CameraPanel } from '../components/camera-panel'
-import { ImportPanel } from '../components/import-panel'
-import { BringPanel } from '../components/bring-panel'
-import { DeletePanel } from '../components/delete-panel'
-import { FreePanel } from '../components/free-panel'
-import { ProxyPanel } from '../components/proxy-panel'
+import { JobsPanel } from '../components/jobs-panel'
 import { TransfersPanel } from '../components/transfers-panel'
-import { UploadPanel } from '../components/upload-panel'
 import { PlacesTree } from '../components/places-tree'
 import { formatTime } from '../components/utils'
 import { fromComputer } from '../helpers/import'
 import { typingInField } from '../helpers/keys'
 import { routingEngine } from '../helpers/routing'
-import { useBringing, useCameraCopying, useDeletingAll, useFreeing } from '../hooks/liveStore'
+import { useCameraCopying, useJobs } from '../hooks/liveStore'
 import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoardModel } from '../hooks/useBoardModel'
 import { useDetailsColumn } from '../hooks/useDetails'
@@ -213,6 +207,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     }
   }, [upsetBy, setTrouble])
 
+  const copying = useCameraCopying()
+  const jobs = useJobs()
+
   if (!board.hasManifest) {
     return (
       <FirstScan
@@ -252,11 +249,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     setDialog(null)
     then()
   }
-
-  const copying = useCameraCopying()
-  const bringing = useBringing()
-  const freeing = useFreeing()
-  const deletingCount = Object.keys(useDeletingAll()).length
 
   if (windowed)
     return (
@@ -315,17 +307,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         jumps={board.jumpProgress}
         disk={board.disk ?? loaderData.disk}
         nas={{ connected: nas.connected, host: nas.host, user: nas.user, links: nasLinks }}
-        uploading={
-          board.uploading && model.progress
-            ? {
-                label: board.uploadLabel ?? '',
-                part:
-                  model.progress.totalBytes > 0
-                    ? model.progress.bytesUploaded / model.progress.totalBytes
-                    : 0
-              }
-            : null
-        }
       />
 
       <DialogHost
@@ -390,7 +371,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             ? t`An upload is running`
             : copying
               ? t`A camera is being copied`
-              : model.coming
+              : jobs.some((job) => job.type === 'import')
                 ? t`Files are being copied in`
                 : board.scanning
                   ? t`A scan is running`
@@ -400,79 +381,15 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         }}
       />
 
-      {(model.coming ||
-        board.uploading ||
-        copying ||
-        bringing ||
-        deletingCount > 0 ||
-        freeing !== null ||
-        board.proxyProgress.waiting > 0 ||
-        transfersOpen) && (
+      {(board.uploading || copying || jobs.length > 0 || transfersOpen) && (
         <div className='fixed right-4 bottom-[34px] z-40 flex flex-col items-end gap-2'>
-          {copying && (
-            <CameraPanel
-              onStop={() =>
-                void routingEngine
-                  .action({ url: '/api/camera', actionArgs: { stop: true } })
-                  .catch(() => null)
-              }
-            />
-          )}
-          {board.uploading && (
-            <UploadPanel
-              label={board.uploadLabel ?? ''}
-              progress={model.progress}
-              dsmHost={nas.host}
-              cancelling={board.cancelling}
-              onCancel={board.cancelUpload}
-            />
-          )}
-          {bringing && <BringPanel />}
-          <ProxyPanel
-            {...board.proxyProgress}
-            names={Object.fromEntries(
-              [...groups.flatMap((g) => g.files), ...board.loose].flatMap((f) =>
-                f.id ? [[f.id, f.filename]] : []
-              )
-            )}
-          />
-          {deletingCount > 0 && <DeletePanel />}
-          {freeing && <FreePanel />}
+          <JobsPanel dsmHost={nas.host} />
           {transfersOpen && (
             <TransfersPanel
               key={transfersPanel.shown}
               dsmHost={nas.host}
-              uploading={
-                board.uploading && model.progress
-                  ? {
-                      label: board.uploadLabel ?? '',
-                      part:
-                        model.progress.totalBytes > 0
-                          ? model.progress.bytesUploaded / model.progress.totalBytes
-                          : 0
-                    }
-                  : null
-              }
-              proxies={board.proxyProgress}
-              importing={
-                model.coming
-                  ? {
-                      where: model.coming.where,
-                      done: model.coming.done,
-                      total: model.coming.files.length
-                    }
-                  : null
-              }
-              stamp={`${board.uploading ?? ''}|${model.coming ? 1 : 0}|${copying ? 1 : 0}|${bringing?.state ?? ''}|${deletingCount > 0 ? 1 : 0}`}
+              stamp={`${board.uploading ?? ''}|${copying ? 1 : 0}|${jobs.length}`}
               onClose={transfersPanel.close}
-            />
-          )}
-          {model.coming && (
-            <ImportPanel
-              where={model.coming.where}
-              files={model.coming.files}
-              done={model.coming.done}
-              failed={model.coming.failed}
             />
           )}
         </div>

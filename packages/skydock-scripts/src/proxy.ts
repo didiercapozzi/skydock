@@ -1,9 +1,10 @@
 import * as fs from 'node:fs'
+import * as os from 'node:os'
 import * as path from 'node:path'
 import type { ProxyFact } from './boardAnswer'
 import { changeBoardSoon, flushBoardChanges, loadManifest } from './manifest'
 import type { Manifest, ManifestFile } from './types'
-import { following } from './live'
+import { following, job } from './live'
 import { lastComplaint, run, runWatched } from './tools'
 import {
   ffmpegPath,
@@ -13,6 +14,7 @@ import {
   hasCommand,
   isVideoFile
 } from './utils'
+import { untilQuiet } from './lib/quiet'
 import { messageOf } from './lib/words'
 
 const PROXY_WIDTH = 640
@@ -147,14 +149,14 @@ const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
   return shape?.turned ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}` : `scale_vaapi=w=${PROXY_WIDTH}:h=-2`
 }
 
-const buildProxy = async (
+const buildWith = async (
+  pick: ProxyEncoder,
+  cardScales: boolean,
   src: string,
   dest: string,
-  shape: Awaited<ReturnType<typeof videoShape>> = null,
+  shape: Awaited<ReturnType<typeof videoShape>>,
   onPercent?: (percent: number) => void
 ) => {
-  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
-  const { encoder: pick, cardScales } = await detection()
   const vaapiHybrid = pick === 'vaapi' && !cardScales
   const decode =
     pick === 'nvenc'
@@ -174,10 +176,25 @@ const buildProxy = async (
         : scaleFilter(shape, pick === 'vaapi')
   const partial = `${dest}.${process.pid}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
+  const cap =
+    pick === 'cpu' ? ['-threads', String(Math.max(1, Math.floor(os.cpus().length / 2)))] : []
   const ran = await runWatched(
     ffmpegPath(),
-    ['-y', ...decode, '-i', src, '-vf', filter, ...ENCODER_ARGS[pick], ...CONTAINER_ARGS, partial],
-    onPercent
+    [
+      '-y',
+      ...decode,
+      '-i',
+      src,
+      '-vf',
+      filter,
+      ...ENCODER_ARGS[pick],
+      ...cap,
+      ...CONTAINER_ARGS,
+      partial
+    ],
+    onPercent,
+    undefined,
+    true
   )
   if (ran.ok) {
     try {
@@ -189,6 +206,20 @@ const buildProxy = async (
   }
   if (fs.existsSync(partial)) fs.unlinkSync(partial)
   return { ok: false as const, reason: lastComplaint(ran.stderr) }
+}
+
+const buildProxy = async (
+  src: string,
+  dest: string,
+  shape: Awaited<ReturnType<typeof videoShape>> = null,
+  onPercent?: (percent: number) => void
+) => {
+  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
+  const { encoder, cardScales } = await detection()
+  const first = await buildWith(encoder, cardScales, src, dest, shape, onPercent)
+  if (first.ok || encoder === 'cpu') return first
+  const again = await buildWith('cpu', false, src, dest, shape, onPercent)
+  return again.ok ? again : first
 }
 
 const cropProxy = async (
@@ -234,54 +265,82 @@ const ensureProxies = async (
     return report
   }
 
-  for (const [index, file] of candidates.entries()) {
-    onProgress?.(index, candidates.length, file.filename)
+  const toMake = candidates.filter((file) => {
     const proxyPath = getProxyPath(file, outputDir)
-    if (!proxyPath) continue
-    if (fs.existsSync(proxyPath)) {
-      if (file.proxy !== proxyPath) {
-        file.proxy = proxyPath
-        onBuilt?.()
-      }
-      report.skipped++
-      continue
-    }
-    if (!fs.existsSync(file.path)) {
-      proxyFailures().set(file.path, 'The original is not on this machine')
-      continue
-    }
-    const shape = await videoShape(file.path)
-    if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
-      if (file.proxy !== file.path) {
-        file.proxy = file.path
-        onBuilt?.()
-      }
-      report.skipped++
-      continue
-    }
-    const live = following('proxy', file.id)
-    const built = await buildProxy(file.path, proxyPath, shape, live.at)
-    if (built.ok) {
-      proxyFailures().delete(file.path)
-      file.proxy = proxyPath
-      report.built++
-      onBuilt?.()
-      live.done(true, { proxy: { path: file.path, fact: { state: 'ready', play: proxyPath } } })
-    } else {
-      delete file.proxy
-      proxyFailures().set(file.path, built.reason)
-      report.failed.push(file.filename)
-      report.reason ??= built.reason
-      live.done(false, {
-        proxy: {
-          path: file.path,
-          fact: { state: 'none', play: file.path, reason: built.reason }
+    return proxyPath !== null && !fs.existsSync(proxyPath)
+  })
+  const making = toMake.length > 0 ? job({ type: 'proxy', label: '', total: toMake.length }) : null
+  const rowOf = (file: ManifestFile) => file.id ?? file.path
+  making?.rows(toMake.map((file) => ({ key: rowOf(file), name: file.filename, size: 0 })))
+  try {
+    for (const [index, file] of candidates.entries()) {
+      onProgress?.(index, candidates.length, file.filename)
+      const proxyPath = getProxyPath(file, outputDir)
+      if (!proxyPath) continue
+      if (fs.existsSync(proxyPath)) {
+        if (file.proxy !== proxyPath) {
+          file.proxy = proxyPath
+          onBuilt?.()
         }
+        report.skipped++
+        continue
+      }
+      if (!fs.existsSync(file.path)) {
+        proxyFailures().set(file.path, 'The original is not on this machine')
+        making?.row({ key: rowOf(file), at: 'failed', note: 'The original is not on this machine' })
+        making?.step()
+        continue
+      }
+      await untilQuiet()
+      const shape = await videoShape(file.path)
+      if (shape !== null && shownWidth(shape) <= PROXY_MIN_WIDTH) {
+        if (file.proxy !== file.path) {
+          file.proxy = file.path
+          onBuilt?.()
+        }
+        report.skipped++
+        making?.row({ key: rowOf(file), at: 'skipped' })
+        making?.step()
+        continue
+      }
+      const live = following('proxy', file.id)
+      making?.row({ key: rowOf(file), at: 'now', part: 0 })
+      const built = await buildProxy(file.path, proxyPath, shape, (percent) => {
+        live.at(percent)
+        making?.row({ key: rowOf(file), at: 'now', part: percent / 100 })
       })
+      making?.row(
+        built.ok
+          ? { key: rowOf(file), at: 'done' }
+          : { key: rowOf(file), at: 'failed', note: built.reason }
+      )
+      making?.step()
+      if (built.ok) {
+        proxyFailures().delete(file.path)
+        file.proxy = proxyPath
+        report.built++
+        onBuilt?.()
+        live.done(true, { proxy: { path: file.path, fact: { state: 'ready', play: proxyPath } } })
+      } else {
+        delete file.proxy
+        proxyFailures().set(file.path, built.reason)
+        report.failed.push(file.filename)
+        report.reason ??= built.reason
+        live.done(false, {
+          proxy: {
+            path: file.path,
+            fact: { state: 'none', play: file.path, reason: built.reason }
+          }
+        })
+      }
     }
+    onProgress?.(candidates.length, candidates.length, '')
+    making?.finish()
+    return report
+  } catch (e) {
+    making?.fail(e instanceof Error ? e.message : String(e))
+    throw e
   }
-  onProgress?.(candidates.length, candidates.length, '')
-  return report
 }
 
 let running: Promise<ProxyReport> | null = null

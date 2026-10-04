@@ -7,7 +7,8 @@ import {
   isCliModule,
   sortFilesByMtime
 } from './utils'
-import { buildExifMap, readExifMap } from './lib/exif'
+import { readExifMap } from './lib/exif'
+import { job } from './live'
 import { loadManifest, MANIFEST_VERSION, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { mtimeOf, writeJsonAtomic } from './lib/fs'
@@ -34,8 +35,6 @@ const TIME_TAGS = {
   parse: parseDateTime
 }
 
-const buildTimeMap = (files: string[]) => buildExifMap(files, TIME_TAGS)
-
 const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
   const tag = timeMap.get(filepath)
   if (tag) {
@@ -54,10 +53,8 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
   }
 }
 
-const cameraTimes = (paths: string[]) => {
-  const timeMap = buildTimeMap(paths)
-  return new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, timeMap)]))
-}
+const diskTimes = (paths: string[]) =>
+  new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, new Map())]))
 
 const shotTimes = async (paths: string[]) => {
   const timeMap = await readExifMap(paths, TIME_TAGS)
@@ -99,6 +96,11 @@ const scanFiles = async (originalDir: string) => {
     files.filter((_, i) => unchanged(i)?.shot === undefined),
     TIME_TAGS
   )
+  const toRead = files.filter((_, i) => !unchanged(i)).length
+  const reading =
+    toRead > 0
+      ? job({ type: 'scan', label: path.basename(path.dirname(originalDir)), total: toRead })
+      : null
   let next = 0
   const workers = Array.from(
     { length: Math.min(HASH_POOL_SIZE, Math.max(files.length, 1)) },
@@ -110,7 +112,9 @@ const scanFiles = async (originalDir: string) => {
         const stat = stats[i]
         if (!filepath || !stat) continue
         const before = unchanged(i)
+        if (!before) reading?.working(path.basename(filepath))
         const id = before ? before.id : await computeFileId(filepath)
+        if (!before) reading?.step()
         const shot = before?.shot ?? getCaptureEpoch(filepath, timeMap)
         seen[filepath] = { size: stat.size, at: stat.mtimeMs, id, shot }
         manifestFiles[i] = {
@@ -123,7 +127,13 @@ const scanFiles = async (originalDir: string) => {
       }
     }
   )
-  await Promise.all(workers)
+  try {
+    await Promise.all(workers)
+  } catch (e) {
+    reading?.fail(e instanceof Error ? e.message : String(e))
+    throw e
+  }
+  reading?.finish()
   try {
     writeJsonAtomic(knownIdsPath(originalDir), seen)
   } catch {}
@@ -328,5 +338,5 @@ if (isCliModule('scan')) {
     .catch(console.error)
 }
 
-export { cameraTimes, shotTimes, scanMedia }
+export { diskTimes, shotTimes, scanMedia }
 export type { ScanResult }

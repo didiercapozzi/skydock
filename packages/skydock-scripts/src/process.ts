@@ -7,7 +7,7 @@ import { loadManifest, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
-import { following } from './live'
+import { following, job } from './live'
 import { keepProject } from './projectHistory'
 import { lastComplaint, run, runWatched, stoppable } from './tools'
 import type { ManifestFile, ManifestGroup } from './types'
@@ -288,6 +288,8 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent
   fs.utimesSync(dest, time, time)
 }
 
+let writing: ReturnType<typeof job> | null = null
+
 const writeOne = async (
   file: ManifestFile,
   dest: string,
@@ -295,12 +297,20 @@ const writeOne = async (
   after?: () => Promise<unknown>
 ) => {
   const live = following('process', file.id)
+  const key = file.id ?? file.path
+  writing?.row({ key, at: 'now', part: 0 })
   try {
-    await copyMedia(file, dest, time, live.at)
+    await copyMedia(file, dest, time, (percent) => {
+      live.at(percent)
+      writing?.row({ key, at: 'now', part: percent / 100 })
+    })
     await after?.()
     live.done(true)
+    writing?.row({ key, at: 'done' })
+    writing?.step()
   } catch (e) {
     live.done(false)
+    writing?.row({ key, at: 'failed', note: e instanceof Error ? e.message : String(e) })
     if (stoppable().getStore()?.aborted) fs.rmSync(dest, { force: true })
     throw e
   }
@@ -515,57 +525,78 @@ const runProcess = async (options?: ProcessOptions) => {
 
   const asAsked = new Map(groups.map((g) => [g.id, copiedAs(g)]))
   let copied = 0
-  for (const group of groups)
-    copied += await writeGroup(
-      group,
-      outputDir,
-      poolFor(getGroupProcessedDir(outputDir, group).dir),
-      record,
-      takenOf(group)
+  const keyOf = (file: ManifestFile) => file.id ?? file.path
+  const toWrite = [
+    ...groups.flatMap((g) =>
+      g.files.filter((f) => (!takenOf(g) || takenOf(g)?.has(keyOf(f))) && fs.existsSync(f.path))
+    ),
+    ...destinations.flatMap((d) =>
+      (looseByDestination.get(d) ?? []).filter((f) => fs.existsSync(f.path))
     )
-  for (const destination of destinations) {
-    copied += await writeLooseFiles(
-      destination,
-      looseByDestination.get(destination) ?? [],
-      outputDir,
-      poolFor(getDestinationDir(outputDir, destination)),
-      record
-    )
-  }
-
-  const current = loadManifest(manifestPath) ?? manifest
-  for (const group of current.groups) {
-    const asked = asAsked.get(group.id)
-    if (asked === undefined || asked !== copiedAs(group)) continue
-    group.processed = true
-    delete group.publish
-  }
-  for (const file of current.files) {
-    const written = processedPaths.get(file.id ?? file.path)
-    if (!written) continue
-    const { dest, source } = written
-    file.processed = {
-      path: dest,
-      size: fs.statSync(dest).size,
-      at: Math.floor(Date.now() / 1000),
-      source: {
-        id: source.id,
-        size: source.size,
-        mtime: source.mtime,
-        cropStart: source.cropStart ?? null,
-        cropEnd: source.cropEnd ?? null,
-        frame: source.frame ?? null,
-        rotation: source.rotation ?? null
-      }
+  ]
+  const preparing = job({ type: 'process', label: '', total: toWrite.length })
+  preparing.rows(toWrite.map((f) => ({ key: keyOf(f), name: f.filename, size: f.size })))
+  writing = preparing
+  try {
+    for (const group of groups)
+      copied += await writeGroup(
+        group,
+        outputDir,
+        poolFor(getGroupProcessedDir(outputDir, group).dir),
+        record,
+        takenOf(group)
+      )
+    for (const destination of destinations) {
+      copied += await writeLooseFiles(
+        destination,
+        looseByDestination.get(destination) ?? [],
+        outputDir,
+        poolFor(getDestinationDir(outputDir, destination)),
+        record
+      )
     }
-    delete file.uploaded
+
+    const current = loadManifest(manifestPath) ?? manifest
+    for (const group of current.groups) {
+      const asked = asAsked.get(group.id)
+      if (asked === undefined || asked !== copiedAs(group)) continue
+      group.processed = true
+      delete group.publish
+    }
+    for (const file of current.files) {
+      const written = processedPaths.get(file.id ?? file.path)
+      if (!written) continue
+      const { dest, source } = written
+      file.processed = {
+        path: dest,
+        size: fs.statSync(dest).size,
+        at: Math.floor(Date.now() / 1000),
+        source: {
+          id: source.id,
+          size: source.size,
+          mtime: source.mtime,
+          cropStart: source.cropStart ?? null,
+          cropEnd: source.cropEnd ?? null,
+          frame: source.frame ?? null,
+          rotation: source.rotation ?? null
+        }
+      }
+      delete file.uploaded
+    }
+
+    if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, current)
+
+    console.log(`[Process] Done. Copied ${copied} file(s).`)
+
+    preparing.finish()
+    return { copied, processedGroups: groups.length }
+  } catch (e) {
+    if (e instanceof ProcessingCancelled) preparing.finish()
+    else preparing.fail(e instanceof Error ? e.message : String(e))
+    throw e
+  } finally {
+    writing = null
   }
-
-  if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, current)
-
-  console.log(`[Process] Done. Copied ${copied} file(s).`)
-
-  return { copied, processedGroups: groups.length }
 }
 
 export {

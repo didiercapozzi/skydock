@@ -46,7 +46,7 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
   const label = scope.destination ?? asked.map((g) => g.label).join(', ')
   try {
     return await runUpload({ key, label, groupIds: asked.map((g) => g.id) }, () =>
-      send({ scope, key, label, manifest, manifestPath, outputDir, session, latest })
+      send({ scope, label, manifest, manifestPath, outputDir, session, latest })
     )
   } catch (err) {
     if (err instanceof UploadCancelled) return { ...boardAnswer(latest()), uploadCancelled: true }
@@ -56,7 +56,6 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
 
 const send = async ({
   scope,
-  key,
   label,
   manifest,
   manifestPath,
@@ -65,7 +64,6 @@ const send = async ({
   latest
 }: {
   scope: Parameters<typeof uploadScope>[0]['scope']
-  key: string
   label: string
   manifest: Parameters<typeof uploadScope>[0]['manifest']
   manifestPath: string
@@ -73,7 +71,7 @@ const send = async ({
   session: NonNullable<Awaited<ReturnType<typeof ensureNasSession>>>
   latest: Change['latest']
 }) => {
-  const report = uploadReporter({ scope: key, label, outputDir })
+  const report = uploadReporter({ label, outputDir })
   try {
     const result = await uploadScope({
       outputDir,
@@ -111,7 +109,7 @@ const send = async ({
       }
     }
     saved.destinations = destinations
-    report.done(result.skipped)
+    report.done()
     saveManifest(manifestPath, saved)
     return {
       ...boardAnswer(saved),

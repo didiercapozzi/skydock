@@ -234,13 +234,15 @@ describe('deleting from a camera', () => {
     await remove(root, manifest)
     stop()
 
-    const mine = heard.filter((e) => e.kind === 'camera-delete')
-    expect(mine.map((e) => e.stage)).toContain('checking')
-    const stages = mine.map((e) => e.stage)
+    const mine = heard.flatMap((e) => (e.kind === 'job' && e.row ? [e.row] : []))
+    const stages = mine.map((row) => row.phase)
+    expect(stages).toContain('checking')
     expect(stages.indexOf('checked')).toBeGreaterThan(-1)
     expect(stages.indexOf('checked')).toBeLessThan(stages.indexOf('moving'))
-    expect(mine.at(-1)).toMatchObject({ stage: 'done', part: 1 })
-    expect(mine.every((e) => e.part >= 0 && e.part <= 1)).toBe(true)
+    expect(mine.at(-1)).toMatchObject({ at: 'done', phase: 'done' })
+    expect(mine.every((row) => row.part === undefined || (row.part >= 0 && row.part <= 1))).toBe(
+      true
+    )
   })
 
   it('keeps a transfer of what was deleted, and of what was refused', async () => {
@@ -259,7 +261,7 @@ describe('deleting from a camera', () => {
     ).rejects.toThrow()
     const refused = readTransfers(outputDir)[0]
     expect(refused).toMatchObject({ kind: 'delete', state: 'failed' })
-    expect(refused?.items[0]).toMatchObject({ name: 'GX01.MP4', result: 'left' })
+    expect(refused?.items[0]).toMatchObject({ name: 'GX01.MP4', result: 'failed' })
 
     const manifest = board([dropzone([sentAsCopy(file, storage)])])
     await deleteFromCameras({
@@ -359,10 +361,10 @@ describe('deleting from a camera', () => {
     ])
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
     expect(fs.existsSync(onCard(root, 'GX02.MP4'))).toBe(true)
-    const ended = heard.filter((e) => e.kind === 'camera-delete' && e.stage !== 'checking')
-    expect(ended.map((e) => e.kind === 'camera-delete' && e.stage)).toEqual(
-      expect.arrayContaining(['done', 'failed'])
+    const ended = heard.flatMap((e) =>
+      e.kind === 'job' && e.row?.phase !== 'checking' ? [e.row?.at] : []
     )
+    expect(ended).toEqual(expect.arrayContaining(['done', 'failed']))
     expect(readTransfers(outputDir)[0]?.items.map((i) => [i.name, i.result])).toEqual([
       ['GX01.MP4', 'done'],
       ['GX02.MP4', 'failed']

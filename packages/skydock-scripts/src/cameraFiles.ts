@@ -15,8 +15,7 @@ import { idFromHash } from './fileId'
 import { givenBack } from './kioCamera'
 import { listBin } from './bin'
 import { findMediaFiles, moveFile, mtimeOf } from './lib/fs'
-import { publish } from './live'
-import { recordTransfer } from './transfers'
+import { inJob, job } from './live'
 import { loadManifest } from './manifest'
 import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
@@ -234,12 +233,14 @@ const canWriteIn = (dir: string) => {
 const deleteNow = async ({
   paths,
   manifest,
+  deleting,
   trashDir = getTrashDir(),
   mounts = mountedCameras(),
   writable = canWriteIn
 }: {
   paths: string[]
   manifest: Manifest
+  deleting: ReturnType<typeof job>
   trashDir?: string
   mounts?: string[]
   writable?: (dir: string) => boolean
@@ -275,7 +276,8 @@ const deleteNow = async ({
   const said = (
     file: string,
     stage: 'checking' | 'checked' | 'moving' | 'done' | 'failed',
-    part: number
+    part: number,
+    note?: string
   ) => {
     const before = lastSaid.get(file)
     const now = Date.now()
@@ -287,7 +289,22 @@ const deleteNow = async ({
     )
       return
     lastSaid.set(file, { at: now, part, stage })
-    publish({ kind: 'camera-delete', path: file, stage, part, size: sizeOf(file) })
+    const ended = stage === 'done' || stage === 'failed'
+    deleting.row({
+      key: file,
+      at:
+        stage === 'done'
+          ? 'done'
+          : stage === 'failed'
+            ? 'failed'
+            : part > 0 || stage !== 'checking'
+              ? 'now'
+              : 'later',
+      part: ended ? undefined : part,
+      phase: stage,
+      ...(note ? { note } : {})
+    })
+    if (stage === 'done') deleting.step()
   }
   const binned = binnedBy(binnedCopies(trashDir), (file) => fingerprint(file).catch(() => null))
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
@@ -303,7 +320,7 @@ const deleteNow = async ({
     const size = sizeOf(file)
     const name = path.basename(file)
     const refused = (why: string): Outcome => {
-      said(file, 'failed', 0)
+      said(file, 'failed', 0, why)
       return { file, size, went: false, why }
     }
     try {
@@ -335,7 +352,7 @@ const deleteNow = async ({
       return refused(`${name}: ${e instanceof Error ? e.message : String(e)}`)
     }
   }
-  for (const file of paths) said(file, 'checking', 0)
+  deleting.rows(paths.map((file) => ({ key: file, name: path.basename(file), size: sizeOf(file) })))
   const outcomes = await inParallel(paths, 4, handle)
   const went = outcomes.filter((o) => o.went)
   const stayed = outcomes.filter((o) => !o.went)
@@ -351,56 +368,21 @@ const deleteNow = async ({
 }
 
 const deleteFromCameras = async (
-  options: Parameters<typeof deleteNow>[0] & { outputDir?: string }
+  options: Omit<Parameters<typeof deleteNow>[0], 'deleting'> & { outputDir?: string }
 ) => {
   const { outputDir, paths } = options
-  const sizes = paths.map((file) => sizeOf(file))
-  const keep = (
-    state: 'done' | 'failed',
-    items: { name: string; size: number; result: 'done' | 'failed' | 'left'; note?: string }[],
-    reason?: string
-  ) => {
-    if (!outputDir || paths.length === 0) return
-    try {
-      recordTransfer(
-        {
-          kind: 'delete',
-          label: cameraName(options.mounts?.[0] ?? paths[0]!.split('/DCIM/')[0]!),
-          state,
-          ...(reason ? { reason } : {}),
-          items
-        },
-        outputDir
-      )
-    } catch {}
-  }
-  try {
-    const { outcomes, ...result } = await deleteNow(options)
-    keep(
-      'done',
-      outcomes.map((o) => ({
-        name: path.basename(o.file),
-        size: o.size,
-        result: o.went ? ('done' as const) : ('failed' as const),
-        ...(o.why ? { note: o.why } : {})
-      }))
-    )
-    return result
-  } catch (e) {
-    const why = e instanceof Error ? e.message : String(e)
-    for (const file of paths)
-      publish({ kind: 'camera-delete', path: file, stage: 'failed', part: 0 })
-    keep(
-      'failed',
-      paths.map((file, at) => ({
-        name: path.basename(file),
-        size: sizes[at]!,
-        result: 'left' as const
-      })),
-      why
-    )
-    throw e
-  }
+  return inJob(
+    {
+      type: 'camera-delete',
+      label: cameraName(options.mounts?.[0] ?? paths[0]?.split('/DCIM/')[0] ?? ''),
+      total: paths.length,
+      ...(outputDir && paths.length > 0 ? { record: { kind: 'delete' as const, outputDir } } : {})
+    },
+    async (deleting) => {
+      const { outcomes: _outcomes, ...result } = await deleteNow({ ...options, deleting })
+      return result
+    }
+  )
 }
 
 export { deleteFromCameras, listCameras }

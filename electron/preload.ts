@@ -1,8 +1,4 @@
-import { contextBridge, ipcRenderer, webFrame, webUtils } from 'electron'
-
-webFrame.insertCSS(
-  'html, body { background: transparent !important } .ground { background: color-mix(in srgb, var(--color-pane) 50%, transparent) !important; border-radius: 18px }'
-)
+import { contextBridge, ipcRenderer, webUtils } from 'electron'
 
 contextBridge.exposeInMainWorld('skydock', {
   pathOf: (file: File) => {

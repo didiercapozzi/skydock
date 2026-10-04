@@ -1,12 +1,6 @@
 import { useSyncExternalStore } from 'react'
-import type {
-  Bringing,
-  CameraCopy,
-  Deleting,
-  Freeing,
-  Importing,
-  LiveFile
-} from './useLiveProgress'
+import type { Job, LiveFile } from './useLiveProgress'
+import type { JobRow } from '@skydock/scripts'
 
 type Slice<T> = {
   get: () => T
@@ -45,21 +39,12 @@ const slice = <T>(initial: T) => {
 const NO_FILES: Record<string, LiveFile> = {}
 
 const liveFiles = slice(NO_FILES)
-const liveCamera = slice<CameraCopy | null>(null)
-const liveImporting = slice<Importing | null>(null)
-const liveBringing = slice<Bringing | null>(null)
-const liveFreeing = slice<Freeing | null>(null)
-
-const NO_DELETING: Record<string, Deleting> = {}
-const liveDeleting = slice(NO_DELETING)
+const NO_JOBS: Record<string, Job> = {}
+const liveJobs = slice(NO_JOBS)
 
 const forgetLive = () => {
   liveFiles.update(() => NO_FILES)
-  liveCamera.update(() => null)
-  liveImporting.update(() => null)
-  liveBringing.update(() => null)
-  liveFreeing.update(() => null)
-  liveDeleting.update(() => NO_DELETING)
+  liveJobs.update(() => NO_JOBS)
 }
 
 const liveKey = (work: LiveFile['work'], fileId: string) => `${work}:${fileId}`
@@ -81,69 +66,71 @@ const useLiveFile = (id: string | undefined) =>
     () => undefined
   )
 
-const useLiveProxies = () => {
-  const all = useSyncExternalStore(liveFiles.subscribe, liveFiles.get, () => NO_FILES)
-  return Object.entries(all).flatMap(([key, live]) =>
-    live.work === 'proxy' ? [{ id: key.slice('proxy:'.length), percent: live.percent }] : []
+const useJobOf = (type: Job['type']) =>
+  useSyncExternalStore(
+    liveJobs.subscribe,
+    () => Object.values(liveJobs.get()).find((job) => job.type === type),
+    () => undefined
   )
-}
 
-const useCameraCopy = () => useSyncExternalStore(liveCamera.subscribe, liveCamera.get, () => null)
+const useCameraCopy = () => useJobOf('camera-copy') ?? null
 
 const useCameraLanded = () =>
   useSyncExternalStore(
-    liveCamera.subscribe,
+    liveJobs.subscribe,
     () => {
-      const copy = liveCamera.get()
-      return copy ? `${copy.camera}:${copy.copied}` : ''
+      const copy = Object.values(liveJobs.get()).find((job) => job.type === 'camera-copy')
+      return copy ? `${copy.label}:${copy.done}` : ''
     },
     () => ''
   )
 
 const useCameraCopying = () =>
   useSyncExternalStore(
-    liveCamera.subscribe,
-    () => liveCamera.get() !== null,
+    liveJobs.subscribe,
+    () => Object.values(liveJobs.get()).some((job) => job.type === 'camera-copy'),
     () => false
   )
 
-const useDeleting = (path: string) =>
+const useJobs = () =>
+  Object.values(useSyncExternalStore(liveJobs.subscribe, liveJobs.get, () => NO_JOBS))
+
+const NO_ROWS: JobRow[] = []
+
+const useJobRows = (type: Job['type']) =>
   useSyncExternalStore(
-    liveDeleting.subscribe,
-    () => liveDeleting.get()[path],
+    liveJobs.subscribe,
+    () => Object.values(liveJobs.get()).find((job) => job.type === type)?.rows ?? NO_ROWS,
+    () => NO_ROWS
+  )
+
+const useJobRow = (type: Job['type'], key: string) =>
+  useSyncExternalStore(
+    liveJobs.subscribe,
+    () =>
+      Object.values(liveJobs.get())
+        .find((job) => job.type === type)
+        ?.rows.find((row) => row.key === key),
     () => undefined
   )
 
-const useDeletingAll = () =>
-  useSyncExternalStore(liveDeleting.subscribe, liveDeleting.get, () => NO_DELETING)
-
-const useImporting = () =>
-  useSyncExternalStore(liveImporting.subscribe, liveImporting.get, () => null)
-
-const useFreeing = () => useSyncExternalStore(liveFreeing.subscribe, liveFreeing.get, () => null)
-
-const useBringing = () => useSyncExternalStore(liveBringing.subscribe, liveBringing.get, () => null)
-
-const forgetDeleting = () => liveDeleting.update(() => NO_DELETING)
+const forgetJobsOf = (type: Job['type']) =>
+  liveJobs.update((jobs) =>
+    Object.fromEntries(Object.entries(jobs).filter(([, job]) => job.type !== type))
+  )
 
 export {
-  forgetDeleting,
+  forgetJobsOf,
   forgetLive,
-  liveBringing,
-  liveCamera,
-  liveDeleting,
-  liveFreeing,
+  liveJobs,
   liveFiles,
-  liveImporting,
   liveKey,
-  useBringing,
   useCameraCopy,
   useCameraCopying,
   useCameraLanded,
-  useDeleting,
-  useDeletingAll,
-  useFreeing,
-  useImporting,
-  useLiveFile,
-  useLiveProxies
+  useJobOf,
+  useJobRow,
+  useJobRows,
+  useJobs,
+  useLiveFile
 }

@@ -188,15 +188,9 @@ const Entry = ({
 const TransfersPanel = ({
   stamp,
   dsmHost,
-  uploading,
-  importing,
-  proxies,
   onClose
 }: {
   stamp: string
-  uploading: { label: string; part: number } | null
-  importing: { where: string; done: number; total: number } | null
-  proxies?: { ready: number; total: number; waiting: number }
   dsmHost?: string | null
   onClose: () => void
 }) => {
@@ -248,11 +242,7 @@ const TransfersPanel = ({
           />
         </button>
       </div>
-      <RunningNow
-        uploading={uploading}
-        importing={importing}
-        proxies={proxies}
-      />
+      <RunningNow />
       {transfers === null ? (
         <p className='m-0 text-[12.5px] text-ink-3'>{t`Looking…`}</p>
       ) : transfers.length === 0 ? (

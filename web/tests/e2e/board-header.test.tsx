@@ -32,7 +32,6 @@ const header = (over: Partial<Frame> = {}) => {
       user: 'didier',
       links
     },
-    uploading: null,
     transfers: { open: false, onToggle: () => {} },
     ...over
   }

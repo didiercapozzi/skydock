@@ -39,12 +39,18 @@ const board = {
 }
 
 const asked: string[] = []
+const began: string[] = []
 const realFetch = globalThis.fetch
 
 const machineTakes = () =>
   vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
     const said = String(url)
     if (!said.includes('/api/import')) return await realFetch(url, init)
+    if (said.includes('begin=1')) began.push(String(init?.body))
+    if (said.includes('begin=1') || said.includes('end=1'))
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
     asked.push(said)
     return new Response(JSON.stringify({ ok: true, outcome: 'added', filename: 'from-phone.mp4' }), {
       headers: { 'Content-Type': 'application/json' }
@@ -57,6 +63,11 @@ const machineTakesItsTime = () => {
   vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
     const said = String(url)
     if (!said.includes('/api/import')) return await realFetch(url, init)
+    if (said.includes('begin=1')) began.push(String(init?.body))
+    if (said.includes('begin=1') || said.includes('end=1'))
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
     asked.push(said)
     await new Promise<void>((resolve) => {
       letGo = resolve
@@ -72,6 +83,7 @@ afterEach(() => {
   vi.stubGlobal('fetch', realFetch)
   vi.stubGlobal('skydock', undefined)
   asked.length = 0
+  began.length = 0
 })
 
 const windowSays = (where: string) => vi.stubGlobal('skydock', { pathOf: () => where })
@@ -261,19 +273,19 @@ describe('while a drop is being copied in', () => {
     return carried
   }
 
-  test('the board lists what is coming, and where it is going', async () => {
+  test('the server is told what is coming, and where it is going, before the first file is sent', async () => {
     const finish = machineTakesItsTime()
     await openYverdon()
 
     letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingTwoClips)
 
-    const panel = page.getByRole('complementary', { name: /Adding 2 to Yverdon/ })
-    await expect.element(panel).toBeInTheDocument()
-    await expect.element(panel.getByText('GX010001.MP4')).toBeInTheDocument()
-    await expect.element(panel.getByText('GX010002.MP4')).toBeInTheDocument()
-    await expect
-      .element(panel.getByRole('progressbar', { name: 'Copied into Yverdon' }))
-      .toBeInTheDocument()
+    await expect.poll(() => began.length).toBe(1)
+    const said = JSON.parse(began[0] ?? '{}')
+    expect(said.where).toBe('Yverdon')
+    expect(said.files.map((file: { name: string }) => file.name)).toEqual([
+      'GX010001.MP4',
+      'GX010002.MP4'
+    ])
     finish()
   })
 })
@@ -297,6 +309,29 @@ describe('while one large file is being copied in', () => {
 
   const serverSays = (event: unknown) => stream?.onmessage?.({ data: JSON.stringify(event) })
 
+  const dropBegins = (names: string[]) =>
+    serverSays({
+      kind: 'job',
+      id: 'drop',
+      type: 'import',
+      label: 'Yverdon',
+      stage: 'working',
+      done: 0,
+      total: names.length,
+      rows: names.map((name, at) => ({ key: `drop-${at}`, name, size: 2048, at: 'later' }))
+    })
+  const rowSays = (key: string, row: object) =>
+    serverSays({
+      kind: 'job',
+      id: 'drop',
+      type: 'import',
+      label: 'Yverdon',
+      stage: 'working',
+      done: 0,
+      total: 1,
+      row: { key, at: 'now', ...row }
+    })
+
   const carryingThreeClips = () => {
     const carried = new DataTransfer()
     for (const n of [1, 2, 3])
@@ -317,15 +352,16 @@ describe('while one large file is being copied in', () => {
 
     letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingOneLongClip)
 
-    const panel = page.getByRole('complementary', { name: /Adding 1 to Yverdon/ })
+    await expect.poll(() => asked[0]).toContain('key=drop-0')
+    dropBegins(['GX010001.MP4'])
+    const panel = page.getByRole('complementary', { name: /Adding Yverdon/ })
     await expect.element(panel).toBeInTheDocument()
-    await expect.poll(() => asked[0]).toContain('token=drop-0')
     await expect.poll(() => asked[0]).toContain('size=2048')
 
-    serverSays({ kind: 'import', token: 'drop-0', done: 1024, total: 2048, phase: 'copying' })
+    rowSays('drop-0', { part: 0.5 })
     await expect.poll(() => panel.element().textContent).toContain('50%')
 
-    serverSays({ kind: 'import', token: 'drop-0', done: 1843, total: 2048, phase: 'copying' })
+    rowSays('drop-0', { part: 0.9 })
     await expect.poll(() => panel.element().textContent).toContain('90%')
 
     finish()
@@ -338,13 +374,15 @@ describe('while one large file is being copied in', () => {
 
     letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingThreeClips)
 
-    const panel = page.getByRole('complementary', { name: /Adding 3 to Yverdon/ })
+    dropBegins(['GX010001.MP4', 'GX010002.MP4', 'GX010003.MP4'])
+    const panel = page.getByRole('complementary', { name: /Adding Yverdon/ })
     await expect.element(panel).toBeInTheDocument()
 
+    rowSays('drop-0', { part: 0 })
     const its = page.getByRole('progressbar', { name: 'Copying GX010001.MP4' })
     await expect.element(its).toHaveAttribute('aria-valuenow', '0')
 
-    serverSays({ kind: 'import', token: 'drop-0', done: 1536, total: 2048, phase: 'copying' })
+    rowSays('drop-0', { part: 0.75 })
 
     await expect.element(its).toHaveAttribute('aria-valuenow', '75')
     expect(page.getByRole('progressbar', { name: /^Copying/ }).elements()).toHaveLength(1)
@@ -359,12 +397,13 @@ describe('while one large file is being copied in', () => {
 
     letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingOneLongClip)
 
-    const panel = page.getByRole('complementary', { name: /Adding 1 to Yverdon/ })
+    dropBegins(['GX010001.MP4'])
+    const panel = page.getByRole('complementary', { name: /Adding Yverdon/ })
     await expect.element(panel).toBeInTheDocument()
-    serverSays({ kind: 'import', token: 'drop-0', done: 1024, total: 2048, phase: 'copying' })
+    rowSays('drop-0', { part: 0.5 })
     await expect.poll(() => panel.element().textContent).toContain('50%')
 
-    serverSays({ kind: 'import', token: 'drop-0', done: 2048, total: 2048, phase: 'reading' })
+    rowSays('drop-0', { part: 1, phase: 'reading' })
 
     await expect.poll(() => panel.element().textContent).toContain('reading it…')
     await expect.poll(() => panel.element().textContent).not.toContain('50%')
@@ -378,10 +417,11 @@ describe('while one large file is being copied in', () => {
 
     letGoOn(page.getByRole('region', { name: /Yverdon/ }).element(), carryingOneLongClip)
 
-    const panel = page.getByRole('complementary', { name: /Adding 1 to Yverdon/ })
+    dropBegins(['GX010001.MP4'])
+    const panel = page.getByRole('complementary', { name: /Adding Yverdon/ })
     await expect.element(panel).toBeInTheDocument()
 
-    serverSays({ kind: 'import', token: 'drop-7', done: 1024, total: 2048, phase: 'copying' })
+    rowSays('drop-7', { part: 0.5 })
     await expect.poll(() => panel.element().textContent).not.toContain('50%')
 
     finish()

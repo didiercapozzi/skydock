@@ -1,36 +1,21 @@
 import { t } from '@lingui/core/macro'
-import { jsonText, liveEventSchema } from '@skydock/scripts'
-import type { JumpMoments, LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
+import { jsonText, liveEventSchema, mergeRow } from '@skydock/scripts'
+import type { JobRow, JumpMoments, LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { routingEngine } from '../helpers/routing'
-import {
-  forgetLive,
-  liveBringing,
-  liveCamera,
-  liveDeleting,
-  liveFreeing,
-  liveFiles,
-  liveImporting,
-  liveKey
-} from './liveStore'
+import { forgetLive, liveJobs, liveFiles, liveKey } from './liveStore'
 
 type LiveFile = Pick<Extract<LiveEvent, { kind: 'file' }>, 'work' | 'percent'>
 
-type CameraCopy = Extract<LiveEvent, { kind: 'camera' }>
-type CameraEnded = CameraCopy & { seq: number }
+type JobOutcome = NonNullable<Extract<LiveEvent, { kind: 'job' }>['outcome']>
+type CameraEnded = JobOutcome & { camera: string; reason?: string; seq: number }
 
 type Disk = Omit<Extract<LiveEvent, { kind: 'disk' }>, 'kind'>
 
 type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
-type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
-
-type Freeing = Omit<Extract<LiveEvent, { kind: 'free' }>, 'kind'>
-
-type Deleting = Omit<Extract<LiveEvent, { kind: 'camera-delete' }>, 'kind' | 'path'>
-
-type Bringing = Omit<Extract<LiveEvent, { kind: 'bring' }>, 'kind'>
+type Job = Omit<Extract<LiveEvent, { kind: 'job' }>, 'kind' | 'row' | 'rows'> & { rows: JobRow[] }
 
 const useLiveProgress = (
   onProxies: Dispatch<SetStateAction<Record<string, ProxyFact>>>,
@@ -58,55 +43,30 @@ const useLiveProgress = (
           onNote({ text: t`${who}’s film is rendered — ready to upload`, problem: false })
         return
       }
-      if (event.kind === 'camera') {
-        if (event.state === 'copying')
-          liveCamera.update((before) => {
-            const same = before?.camera === event.camera && !event.files ? before : null
-            return {
-              ...event,
-              files: event.files ?? same?.files,
-              outcomes: event.outcomes ?? [
-                ...(same?.outcomes ?? []),
-                ...(event.last ? [event.last] : [])
-              ]
-            }
-          })
-        else {
-          liveCamera.update(() => null)
-          setEnded((before) => ({ ...event, seq: (before?.seq ?? 0) + 1 }))
-        }
-        return
-      }
-      if (event.kind === 'import') {
-        liveImporting.update(() => (event.phase === 'done' ? null : event))
-        return
-      }
-      if (event.kind === 'free') {
-        liveFreeing.update(() => (event.stage === 'done' ? null : event))
-        return
-      }
-      if (event.kind === 'camera-delete') {
-        liveDeleting.update((now) => ({
-          ...now,
-          [event.path]: {
-            stage: event.stage,
-            part: event.part,
-            size: event.size ?? now[event.path]?.size
+      if (event.kind === 'job') {
+        const { kind: _, row, rows, outcome, ...fields } = event
+        if (outcome && event.type === 'camera-copy')
+          setEnded((before) => ({
+            ...outcome,
+            camera: event.label,
+            ...(event.reason ? { reason: event.reason } : {}),
+            seq: (before?.seq ?? 0) + 1
+          }))
+        liveJobs.update((jobs) => {
+          if (event.stage === 'done') {
+            const { [event.id]: _ended, ...rest } = jobs
+            return rest
           }
-        }))
-        setTimeout(() => {
-          const rest = Object.values(liveDeleting.get())
-          if (rest.length > 0 && rest.every((d) => d.stage === 'done' || d.stage === 'failed'))
-            liveDeleting.update(() => ({}))
-        }, 2500)
+          const known = jobs[event.id]?.rows ?? []
+          return {
+            ...jobs,
+            [event.id]: { ...fields, rows: rows ?? (row ? mergeRow(known, row) : known) }
+          }
+        })
         return
       }
       if (event.kind === 'board') {
         setChanged(event.stamp)
-        return
-      }
-      if (event.kind === 'bring') {
-        liveBringing.update(() => (event.state === 'done' ? null : event))
         return
       }
       if (event.kind === 'disk') {
@@ -142,4 +102,4 @@ const useLiveProgress = (
 }
 
 export { useLiveProgress }
-export type { Bringing, CameraCopy, Deleting, Disk, Freeing, Importing, LiveFile, Mounted }
+export type { Disk, Job, LiveFile, Mounted }

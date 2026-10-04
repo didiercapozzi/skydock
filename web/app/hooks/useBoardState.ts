@@ -83,7 +83,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [loose, setLoose] = useState<ManifestFile[]>(loaded.looseFiles)
   const [places, setPlaces] = useState<Destination[]>(loaded.destinations)
   const [upload, setUpload] = useState(loaded.uploading)
-  const [cancelling, setCancelling] = useState(false)
   const [outputs, setOutputs] = useState<Record<string, OutputFact>>(loaded.outputs ?? {})
   const [proxies, setProxies] = useState<Record<string, ProxyFact>>(loaded.proxies ?? {})
   const [montageFacts, setMontageFacts] = useState<Record<string, MontageFact>>(loaded.montages)
@@ -205,7 +204,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   if (jobs.data && jobs.data !== seenJob) {
     setSeenJob(jobs.data)
     setUpload(null)
-    setCancelling(false)
     adopt(jobs.data)
   }
 
@@ -310,12 +308,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     setUpload(going)
     jobs.submit({ url: '/api/manifest', actionArgs })
   }
-  const cancelUpload = () => {
-    if (!upload || cancelling) return
-    setCancelling(true)
-    jobs.submit({ url: '/api/manifest', actionArgs: { intent: 'cancel-upload' } })
-  }
-
   const manifest = (actionArgs: ManifestArgs) =>
     fetcher.submit({ url: '/api/manifest', actionArgs })
   const send = (label: string, actionArgs: ManifestArgs) => {
@@ -370,9 +362,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     setProblem,
     uploading: upload?.key ?? null,
     uploadLabel: upload?.label ?? null,
-    cancelling,
     sendUpload,
-    cancelUpload,
     manifest,
     send,
     scan,

@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import { groupFromFiles, shiftGroupTo } from './clustering'
-import { cameraTimes } from './scan'
+import { diskTimes, shotTimes } from './scan'
 import type { Manifest, ManifestFile, ManifestPassenger } from './types'
 import { idsOf } from './lib/words'
 
@@ -12,7 +12,15 @@ type MoveTo = {
   startsAt?: number
   montage?: boolean
   passenger?: ManifestPassenger
+  shot?: Map<string, number>
 }
+
+const backToSort = (to: MoveTo) => !to.targetGroupId && !to.newGroup && !to.destination
+
+const shotTimesFor = (manifest: Manifest, ids: Set<string>, to: MoveTo) =>
+  backToSort(to)
+    ? shotTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path))
+    : Promise.resolve(undefined)
 
 const endCopies = (manifest: Manifest, ids: Set<string>) => {
   const ending = manifest.files.filter((f) => f.id && ids.has(f.id) && f.copyOf)
@@ -35,8 +43,7 @@ const endCopies = (manifest: Manifest, ids: Set<string>) => {
 const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
   if (to.targetGroupId && !manifest.groups.some((g) => g.id === to.targetGroupId))
     throw new Error('Target jump not found.')
-  const ids =
-    !to.targetGroupId && !to.newGroup && !to.destination ? endCopies(manifest, asked) : asked
+  const ids = backToSort(to) ? endCopies(manifest, asked) : asked
   if (ids.size === 0) return
 
   if (!to.targetGroupId && !to.newGroup)
@@ -45,9 +52,9 @@ const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
       if (entry) Object.assign(entry, copy)
     }
 
-  if (!to.targetGroupId && !to.newGroup && !to.destination) {
+  if (backToSort(to)) {
     const going = manifest.files.filter((f) => f.id && ids.has(f.id))
-    const times = cameraTimes(going.map((f) => f.path))
+    const times = to.shot ?? diskTimes(going.map((f) => f.path))
     for (const file of going) file.mtime = times.get(file.path) || file.mtime
   }
 
@@ -156,5 +163,5 @@ const deleteJump = (manifest: Manifest, groupId: string) => {
   return ids.size
 }
 
-export { copyFiles, copyIntoMontage, deleteJump, moveFiles }
+export { copyFiles, copyIntoMontage, deleteJump, moveFiles, shotTimesFor }
 export type { MoveTo }

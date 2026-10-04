@@ -77,8 +77,8 @@ import {
   renderPassengerEmail
 } from './passengerEmail'
 import type { EmailFacts, EmailLanguage, EmailTemplate } from './passengerEmail'
-import { liveEventSchema, publish, subscribe } from './live'
-import type { LiveEvent } from './live'
+import { inJob, job, liveEventSchema, mergeRow, publish, subscribe } from './live'
+import type { JobRow, LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
 import {
   cancelProcessing,
@@ -154,14 +154,8 @@ import {
   montagesRemoteDir,
   uploadScope
 } from './upload'
-import {
-  clearUploadProgress,
-  readUploadProgress,
-  montageUploadKey,
-  uploadProgressStateSchema,
-  writeUploadProgress
-} from './uploadProgress'
-import type { UploadItem, UploadProgressState } from './uploadProgress'
+import { montageUploadKey } from './uploadProgress'
+import type { UploadItem } from './uploadProgress'
 import {
   clearTransfers,
   removeTransfer,
@@ -227,7 +221,10 @@ export {
   outputKeyOf,
   watchMontages,
   watchBoard,
+  inJob,
+  job,
   liveEventSchema,
+  mergeRow,
   publish,
   subscribe,
   furthestBehind,
@@ -248,7 +245,6 @@ export {
   boardAnswerSchema,
   buildPassengerFolder,
   clearNasSession,
-  clearUploadProgress,
   containCrop,
   createShareLink,
   cropToPixels,
@@ -315,7 +311,6 @@ export {
   cancelProcessing,
   processingNow,
   processJumps,
-  readUploadProgress,
   regroupLooseFiles,
   removeShareLink,
   renderPassengerEmail,
@@ -339,11 +334,9 @@ export {
   turnedSize,
   uploadGate,
   UPLOADED_LOCKED,
-  uploadProgressStateSchema,
   uploadScope,
   whenProcessed,
-  withRatio,
-  writeUploadProgress
+  withRatio
 }
 export type {
   Transfer,
@@ -351,6 +344,7 @@ export type {
   EmailFacts,
   EmailLanguage,
   EmailTemplate,
+  JobRow,
   LiveEvent,
   MontageProgress,
   BoardChange,
@@ -380,6 +374,5 @@ export type {
   MontageEntry,
   MontageLost,
   MontageFact,
-  UploadItem,
-  UploadProgressState
+  UploadItem
 }

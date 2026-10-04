@@ -44,7 +44,7 @@ const pathOf = (file: File) => {
   }
 }
 
-type DroppedAt = { at: string; name: string; size: number }
+type DroppedAt = { at: string; name: string; size: number; file: File }
 
 type DroppedFolder = { folderAt: string } | { folder: FileSystemDirectoryEntry }
 
@@ -58,7 +58,12 @@ const isDirectoryEntry = (entry: FileSystemEntry): entry is FileSystemDirectoryE
 
 const isFileEntry = (entry: FileSystemEntry): entry is FileSystemFileEntry => entry.isFile
 
-type Coming = { what: File | string; name: string; size: number }
+type Coming = {
+  what: File | string
+  name: string
+  size: number
+  file?: File
+}
 
 const importAnswerSchema = z.object({
   ok: z.boolean(),
@@ -130,7 +135,7 @@ const whatIsComing = async (list: Dropped[]): Promise<Coming[]> => {
   return [
     ...list.flatMap((what) =>
       !(what instanceof File) && !isFolder(what)
-        ? [{ what: what.at, name: what.name, size: what.size }]
+        ? [{ what: what.at, name: what.name, size: what.size, file: what.file }]
         : []
     ),
     ...inside.map((file) => ({ what: file.path, name: file.name, size: file.size })),
@@ -140,29 +145,49 @@ const whatIsComing = async (list: Dropped[]): Promise<Coming[]> => {
   ]
 }
 
-const tokenFor = (index: number) => `drop-${index}`
+const keyFor = (index: number) => `drop-${index}`
 
-const importFiles = async (
-  list: Coming[],
-  target: string,
-  where: string,
-  onEach: (index: number, total: number, name: string, failed: number) => void
-) => {
+const tell = (batch: string, what: 'begin' | 'end', body?: object) =>
+  fetch(`/api/import?${what}=1&batch=${batch}`, {
+    method: 'POST',
+    ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {})
+  }).catch(() => undefined)
+
+const importFiles = async (list: Coming[], target: string, where: string) => {
   const tally: ImportOutcome = { added: [], moved: [], there: 0, kept: [], failed: [], where }
+  const batch = crypto.randomUUID()
+  await tell(batch, 'begin', {
+    batch,
+    where,
+    files: list.map(({ name, size }, index) => ({ key: keyFor(index), name, size }))
+  })
   for (const [index, coming] of list.entries()) {
-    const { what, name, size } = coming
-    onEach(index, list.length, name, tally.failed.length)
-    const watching = { token: tokenFor(index), size: String(size) }
-    const params = new URLSearchParams(
-      typeof what === 'string'
-        ? { target, path: what, ...watching }
-        : { target, filename: what.name, lastModified: String(what.lastModified), ...watching }
-    )
+    const { name, size } = coming
+    let { what } = coming
+    const watching = { batch, key: keyFor(index), size: String(size) }
+    const send = (sending: File | string) =>
+      fetch(
+        `/api/import?${new URLSearchParams(
+          typeof sending === 'string'
+            ? { target, path: sending, ...watching }
+            : {
+                target,
+                filename: sending.name,
+                lastModified: String(sending.lastModified),
+                ...watching
+              }
+        ).toString()}`,
+        { method: 'POST', ...(typeof sending === 'string' ? {} : { body: sending }) }
+      )
     try {
-      const res = await fetch(`/api/import?${params.toString()}`, {
-        method: 'POST',
-        ...(typeof what === 'string' ? {} : { body: what })
-      })
+      let res = await send(what)
+      if (res.status === 422 && typeof what === 'string' && coming.file) {
+        const refused = importAnswerSchema.safeParse(await res.clone().json())
+        if (refused.success && /not a file this machine can read/.test(refused.data.error ?? '')) {
+          what = coming.file
+          res = await send(what)
+        }
+      }
       const answer = importAnswerSchema.safeParse(await res.json())
       const said = answer.success ? answer.data : null
       if (!said?.ok) tally.failed.push(`${name}: ${said?.error ?? 'refused'}`)
@@ -176,6 +201,7 @@ const importFiles = async (
       tally.failed.push(`${name}: the copy was cut off`)
     }
   }
+  await tell(batch, 'end')
   return tally
 }
 
@@ -184,7 +210,7 @@ const droppedIn = (e: React.DragEvent): Dropped[] => {
   if (items.length === 0)
     return droppedFiles(e).map((file) => {
       const address = pathOf(file)
-      return address ? { at: address, name: file.name, size: file.size } : file
+      return address ? { at: address, name: file.name, size: file.size, file } : file
     })
   return items.flatMap((item) => {
     const file = item.getAsFile()
@@ -198,7 +224,7 @@ const droppedIn = (e: React.DragEvent): Dropped[] => {
         : null
     const carried: Dropped | null = file
       ? address
-        ? { at: address, name: file.name, size: file.size }
+        ? { at: address, name: file.name, size: file.size, file }
         : file
       : null
     const what = folder ?? carried
@@ -206,5 +232,5 @@ const droppedIn = (e: React.DragEvent): Dropped[] => {
   })
 }
 
-export { droppedFiles, droppedIn, fromComputer, importFiles, pathOf, tokenFor, whatIsComing }
+export { droppedFiles, droppedIn, fromComputer, importFiles, pathOf, whatIsComing }
 export type { Coming, Dropped }

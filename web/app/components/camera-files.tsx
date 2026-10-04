@@ -7,7 +7,7 @@ import {
 } from '../../../packages/skydock-scripts/src/cameraEntry'
 import type { CameraFile, CameraListing } from '../../../packages/skydock-scripts/src/cameraEntry'
 import { routingEngine } from '../helpers/routing'
-import { forgetDeleting, useDeleting, useDeletingAll } from '../hooks/liveStore'
+import { forgetJobsOf, useJobRow, useJobRows } from '../hooks/liveStore'
 import { usePicked } from '../hooks/usePicked'
 import { refusalSchema } from '../hooks/useBoardState'
 import { Go, Mini, ToBin } from './buttons'
@@ -53,13 +53,13 @@ const STATES = ['missing', 'copied', 'binned', 'stored'] as const
 const pickLabel = (name: string) => t`Pick ${name}`
 
 const DeleteBar = ({ path }: { path: string }) => {
-  const live = useDeleting(path)
+  const live = useJobRow('camera-delete', path)
   const part = live?.part ?? 0
   const percent = Math.round(part * 100)
   const word =
-    live?.stage === 'moving'
+    live?.phase === 'moving'
       ? t`Moving to the bin`
-      : live?.stage === 'checked'
+      : live?.phase === 'checked'
         ? t`Checked — waiting to move`
         : t`Checking`
   return (
@@ -176,8 +176,10 @@ const CameraFiles = ({
     const again = setTimeout(() => setReadAgain((n) => n + 1), 3000)
     return () => clearTimeout(again)
   }, [looking, answered])
-  const going = useDeletingAll()
-  const files = (listing?.files ?? []).filter((f) => going[f.path]?.stage !== 'done')
+  const gone = new Set(
+    useJobRows('camera-delete').flatMap((row) => (row.at === 'done' ? [row.key] : []))
+  )
+  const files = (listing?.files ?? []).filter((f) => !gone.has(f.path))
   const pickable = listing?.deletable
     ? files.filter((f) => f.state === 'stored' || f.state === 'binned')
     : []
@@ -216,7 +218,7 @@ const CameraFiles = ({
       .action({ url: '/api/camera', actionArgs: { paths: chosen.map((f) => f.path) } })
       .catch(() => null)
     setDeleting(false)
-    forgetDeleting()
+    forgetJobsOf('camera-delete')
     const done = cameraDeletedSchema.safeParse(raw)
     if (done.success) {
       setAnswered({ mount, listing: done.data.cameras.find((c) => c.mount === mount) ?? null })

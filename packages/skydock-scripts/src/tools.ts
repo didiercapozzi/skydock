@@ -1,5 +1,6 @@
 import * as childProcess from 'node:child_process'
 import * as asyncHooks from 'node:async_hooks'
+import * as os from 'node:os'
 
 declare global {
   var skydockStoppable: asyncHooks.AsyncLocalStorage<AbortSignal> | undefined
@@ -22,7 +23,11 @@ const stopTools = () => {
   return stopped
 }
 
-type Listening = { stdout?: (text: string) => void; stderr?: (text: string) => void }
+type Listening = {
+  stdout?: (text: string) => void
+  stderr?: (text: string) => void
+  behind?: boolean
+}
 
 const run = (program: string, args: string[], listening?: Listening) =>
   new Promise<{ ok: true; stdout: string } | { ok: false; stdout: string; stderr: string }>(
@@ -39,6 +44,10 @@ const run = (program: string, args: string[], listening?: Listening) =>
           )
       )
       if (child) {
+        if (listening?.behind && child.pid)
+          try {
+            os.setPriority(child.pid, 10)
+          } catch {}
         runningTools().add(child)
         child.on('close', () => runningTools().delete(child))
       }
@@ -61,11 +70,13 @@ const runWatched = (
   program: string,
   args: string[],
   onPercent?: (percent: number) => void,
-  seconds?: number | null
+  seconds?: number | null,
+  behind = false
 ) => {
-  if (!onPercent) return run(program, args)
+  if (!onPercent) return run(program, args, behind ? { behind } : undefined)
   let total = seconds != null && seconds > 0 ? seconds : null
   return run(program, ['-progress', 'pipe:1', '-nostats', ...args], {
+    behind,
     stderr: (text) => {
       total ??= durationIn(text)
     },

@@ -5,16 +5,20 @@ import { pipeline } from 'node:stream/promises'
 import type { Readable } from 'node:stream'
 import { MEDIA_EXTENSIONS_SET } from './constants'
 import { counted } from './lib/counted'
+import { gentleWriter } from './lib/gentle'
 import { landingFor } from './copy'
-import { publish } from './live'
+import { dropRow } from './dropJobs'
+import { copyBegins } from './lib/quiet'
 import { loadManifest, saveManifest } from './manifest'
-import { cameraTimes } from './scan'
-import { copyFiles, moveFiles } from './moveFiles'
+import { shotTimes } from './scan'
+import { copyFiles, moveFiles, shotTimesFor } from './moveFiles'
 import { frozenMontages, isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
 import { isMontage } from './filed'
 import { passengerOf } from './workspace'
+
+type ImportDrop = { batch: string; key: string }
 
 type ImportTarget =
   | { kind: 'group'; groupId: string }
@@ -45,12 +49,12 @@ const placeOf = (manifest: Manifest, id: string) => {
   return manifest.files.find((f) => f.id === id)?.destination ?? 'Fresh files'
 }
 
-const placeExisting = (
+const placeExisting = async (
   manifest: Manifest,
   outputDir: string,
   file: ManifestFile,
   target: ImportTarget
-): ImportResult => {
+): Promise<ImportResult> => {
   const id = file.id!
   const inGroup = manifest.groups.find((g) => g.files.some((f) => f.id === id))
   const holds = (group: { files: { path: string }[] }) =>
@@ -77,31 +81,33 @@ const placeExisting = (
       reason: `${placeOf(manifest, id)}’s montage has an edit, so nothing leaves it — drop it on a jump to put it in that jump as well`
     }
   const from = placeOf(manifest, id)
-  moveFiles(
-    manifest,
-    new Set([id]),
+  const to =
     target.kind === 'group'
       ? { targetGroupId: target.groupId }
       : { destination: target.kind === 'destination' ? target.name.trim() : null }
-  )
+  moveFiles(manifest, new Set([id]), {
+    ...to,
+    shot: await shotTimesFor(manifest, new Set([id]), to)
+  })
   return { filename: file.filename, outcome: 'moved', from }
 }
 
-const counting = (token: string | undefined, total: number) => {
-  let over = false
-  const tell = (done: number, phase: 'copying' | 'reading' | 'done') => {
-    if (token) publish({ kind: 'import', token, done, total, phase })
+const counting = (drop: ImportDrop | undefined, total: number) => {
+  const tell = (part: number, phase?: string) => {
+    if (drop && total > 0)
+      dropRow(drop.batch, {
+        key: drop.key,
+        at: 'now',
+        part: Math.min(1, part),
+        ...(phase ? { phase } : {})
+      })
   }
-  const bytes = counted((done) => tell(done, 'copying'))
+  const bytes = counted((done) => tell(done / total))
   return {
     through: bytes.through,
+    begun: () => tell(0),
     id: bytes.id,
-    reading: () => tell(total, 'reading'),
-    ended: () => {
-      if (over) return
-      over = true
-      tell(total, 'done')
-    }
+    reading: () => tell(1, 'reading')
   }
 }
 
@@ -111,7 +117,7 @@ const importFile = async ({
   lastModified,
   body,
   target,
-  token,
+  drop,
   size
 }: {
   outputDir: string
@@ -119,7 +125,7 @@ const importFile = async ({
   lastModified: number
   body: Readable
   target: ImportTarget
-  token?: string
+  drop?: ImportDrop
   size?: number
 }): Promise<ImportResult> => {
   const filename = path.basename(asked.replace(/\\/g, '/')).trim()
@@ -147,9 +153,11 @@ const importFile = async ({
   const incoming = path.join(outputDir, '.incoming')
   fs.mkdirSync(incoming, { recursive: true })
   const partial = path.join(incoming, `${crypto.randomBytes(8).toString('hex')}-${filename}`)
-  const counted = counting(size && size > 0 ? token : undefined, size ?? 0)
+  const counted = counting(drop, size ?? 0)
+  const copyEnds = copyBegins()
   try {
-    await pipeline(body, counted.through, fs.createWriteStream(partial))
+    counted.begun()
+    await pipeline(body, counted.through, gentleWriter(partial))
     counted.reading()
     const when = new Date(
       Number.isFinite(lastModified) && lastModified > 0 ? lastModified : Date.now()
@@ -161,13 +169,13 @@ const importFile = async ({
     const existing = manifest.files.find((f) => f.id === id)
     if (existing) {
       fs.rmSync(partial, { force: true })
-      const result = placeExisting(manifest, outputDir, existing, target)
+      const result = await placeExisting(manifest, outputDir, existing, target)
       if (result.outcome === 'moved' || result.outcome === 'copied')
         saveManifest(manifestPath, manifest)
       return result
     }
 
-    const mtime = cameraTimes([partial]).get(partial) ?? Math.floor(when.getTime() / 1000)
+    const mtime = (await shotTimes([partial])).get(partial) ?? Math.floor(when.getTime() / 1000)
     const dest = landingFor(outputDir, filename, mtime)
     fs.renameSync(partial, dest)
 
@@ -186,7 +194,7 @@ const importFile = async ({
     saveManifest(manifestPath, manifest)
     return { filename: file.filename, outcome: 'added' }
   } finally {
-    counted.ended()
+    copyEnds()
     fs.rmSync(partial, { force: true })
     try {
       if (fs.readdirSync(incoming).length === 0) fs.rmdirSync(incoming)
@@ -195,4 +203,4 @@ const importFile = async ({
 }
 
 export { importFile, originalEntry }
-export type { ImportTarget }
+export type { ImportDrop, ImportTarget }

@@ -6,13 +6,10 @@ import { gatherArrivals, putOnBoard } from './arrivals'
 import { kioReader } from './kio'
 import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './kioCamera'
 import type { SeenClip } from './kioCamera'
-import { publish } from './live'
+import { job, publish } from './live'
 import { catchUp } from './catchUp'
 import { scanMedia } from './scan'
 import { messageOf } from './lib/words'
-import { recordTransfer } from './transfers'
-import type { TransferItem } from './transfers'
-import { sizeOf } from './utils'
 
 const DEFAULT_ROOTS: Record<string, string[]> = {
   darwin: ['/Volumes'],
@@ -155,40 +152,35 @@ const copyNext = async (outputDir: string) => {
   state.stop = stop
   const camera = cameraName(cameraDir)
   let last: CopyProgress = { done: 0, total: 0, copied: 0, skipped: 0 }
+  const copying = job({
+    type: 'camera-copy',
+    label: camera,
+    total: 0,
+    record: { kind: 'camera', outputDir, quietIfIdle: true, passOver: true }
+  })
+  let listed = false
   const onProgress = (progress: CopyProgress) => {
     last = progress
-    publish({ kind: 'camera', camera, state: 'copying', ...progress })
+    copying.expect(progress.total)
+    copying.at(progress.done)
+    if (progress.files && !listed) {
+      listed = true
+      copying.rows(
+        progress.files.map((file, at) => ({ key: String(at), name: file.name, size: file.size }))
+      )
+    }
+    if (progress.last)
+      copying.row({
+        key: String(progress.done - 1),
+        at: progress.last === 'copied' ? 'done' : progress.last === 'skipped' ? 'skipped' : 'failed'
+      })
+    if (progress.done < progress.total)
+      copying.row({ key: String(progress.done), at: 'now', part: progress.part ?? 0 })
   }
   const arrived: string[] = []
-  const came: TransferItem[] = []
   const onCopied = (copied: Copied) => {
     putOnBoard(outputDir, copied)
     arrived.push(copied.id)
-    came.push({
-      name: path.basename(copied.dest),
-      size: sizeOf(copied.dest),
-      result: 'done'
-    })
-  }
-  const keep = (state: 'done' | 'failed' | 'cancelled', reason?: string) => {
-    const unreadable = last.unreadable ?? []
-    if (state === 'done' && came.length === 0 && unreadable.length === 0) return
-    try {
-      recordTransfer(
-        {
-          kind: 'camera',
-          label: camera,
-          state,
-          ...(reason ? { reason } : {}),
-          items: [
-            ...came,
-            ...unreadable.map((name): TransferItem => ({ name, size: 0, result: 'failed' }))
-          ],
-          passedOver: last.skipped
-        },
-        outputDir
-      )
-    } catch {}
   }
   try {
     const result = isKioCamera(cameraDir)
@@ -204,21 +196,29 @@ const copyNext = async (outputDir: string) => {
     if (result.copied > onBoard) await scanMedia({ outputDir })
     if (result.copied > 0) void catchUp(outputDir)
     last = { ...last, ...result }
-    keep('done')
-    publish({ kind: 'camera', camera, state: 'done', ...result })
+    for (const name of last.unreadable ?? [])
+      copying.row({ key: `unreadable:${name}`, name, size: 0, at: 'failed' })
+    copying.finish({
+      outcome: {
+        state: 'done',
+        copied: result.copied,
+        skipped: result.skipped,
+        ...(last.unreadable?.length ? { unreadable: last.unreadable } : {})
+      }
+    })
   } catch (e) {
     const gone = e instanceof CameraGone
     const stopped = e instanceof CopyStopped
     const onBoard = gatherArrivals(outputDir, arrived)
     if (last.copied > onBoard) await scanMedia({ outputDir }).catch(() => undefined)
-    keep(stopped ? 'cancelled' : 'failed', messageOf(e))
-    publish({
-      kind: 'camera',
-      camera,
-      state: gone ? 'gone' : stopped ? 'stopped' : 'failed',
-      ...last,
-      reason: messageOf(e)
-    })
+    const outcome = {
+      state: gone ? ('gone' as const) : stopped ? ('stopped' as const) : ('failed' as const),
+      copied: last.copied,
+      skipped: last.skipped,
+      ...(last.unreadable?.length ? { unreadable: last.unreadable } : {})
+    }
+    if (outcome.state === 'failed') copying.fail(messageOf(e), outcome)
+    else copying.finish({ outcome, reason: messageOf(e) })
   } finally {
     state.copying = false
     state.current = undefined

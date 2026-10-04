@@ -119,7 +119,8 @@ describe('a file being copied in from the computer', () => {
     stop = subscribe((event) => heard.push(event))
   })
 
-  afterEach(() => {
+  afterEach(async () => {
+    await drop('end')
     stop?.()
     stop = null
     fs.rmSync(tmpDir, { recursive: true, force: true })
@@ -137,28 +138,51 @@ describe('a file being copied in from the computer', () => {
     return (await response.json()) as Answer
   }
 
-  const importEvents = () => heard.flatMap((event) => (event.kind === 'import' ? [event] : []))
+  const drop = async (what: 'begin' | 'end', body?: object) => {
+    const url = `http://localhost/api/import?${what}=1&batch=b`
+    await action({
+      request: new Request(url, {
+        method: 'POST',
+        ...(body ? { body: JSON.stringify(body) } : {})
+      }),
+      params: {},
+      context: {} as never
+    } as never)
+  }
+  const begin = (size: number) =>
+    drop('begin', {
+      batch: 'b',
+      where: 'Yverdon',
+      files: [{ key: 'drop-0', name: 'long.mp4', size }]
+    })
+
+  const rowEvents = () =>
+    heard.flatMap((event) =>
+      event.kind === 'job' && event.type === 'import' && event.row ? [event.row] : []
+    )
 
   it('says how far through it is, by the name the page gave that copy', async () => {
     const clip = 'x'.repeat(4096)
+    await begin(clip.length)
 
     const said = await imports(
       {
         target: 'sort',
         filename: 'long.mp4',
         lastModified: String(SHOT.getTime()),
-        token: 'drop-0',
+        batch: 'b',
+        key: 'drop-0',
         size: String(clip.length)
       },
       clip
     )
 
     expect(said.ok).toBe(true)
-    const steps = importEvents()
+    const steps = rowEvents()
     expect(steps.length).toBeGreaterThan(0)
-    expect(steps.every((step) => step.token === 'drop-0')).toBe(true)
-    expect(steps.every((step) => step.total === clip.length)).toBe(true)
-    expect(steps.at(-1)?.done).toBe(clip.length)
+    expect(steps.every((step) => step.key === 'drop-0')).toBe(true)
+    expect(steps.some((step) => step.part === 1)).toBe(true)
+    expect(steps.at(-1)).toMatchObject({ at: 'done' })
   })
 
   it('says nothing at all when nobody asked to be told', async () => {
@@ -167,25 +191,31 @@ describe('a file being copied in from the computer', () => {
       'a clip'
     )
 
-    expect(importEvents()).toEqual([])
+    expect(rowEvents()).toEqual([])
   })
 
-  it('stops being under way once it has landed', async () => {
+  it('stops being under way once the drop is over', async () => {
+    await begin(6)
     await imports(
       {
         target: 'sort',
         filename: 'short.mp4',
         lastModified: String(SHOT.getTime()),
-        token: 'drop-0',
+        batch: 'b',
+        key: 'drop-0',
         size: '6'
       },
       'a clip'
     )
+    await drop('end')
 
     const later: LiveEvent[] = []
     const off = subscribe((event) => later.push(event))
     off()
-    expect(later.flatMap((e) => (e.kind === 'import' ? [e] : []))).toEqual([])
+    expect(later.flatMap((e) => (e.kind === 'job' && e.type === 'import' ? [e] : []))).toEqual([])
+    expect(heard.some((e) => e.kind === 'job' && e.type === 'import' && e.stage === 'done')).toBe(
+      true
+    )
   })
 
   it('is known by the same name as reading the whole file back would give', async () => {
@@ -196,7 +226,8 @@ describe('a file being copied in from the computer', () => {
         target: 'sort',
         filename: 'long.mp4',
         lastModified: String(SHOT.getTime()),
-        token: 'drop-0',
+        batch: 'b',
+        key: 'drop-0',
         size: String(clip.length)
       },
       clip
@@ -207,25 +238,28 @@ describe('a file being copied in from the computer', () => {
     expect(saved?.files[0]?.id).toBe(await computeFileId(landed))
   })
 
-  it('says the copy is over before it says there is nothing left to watch', async () => {
+  it('says the copy is over before it says it is done', async () => {
     const clip = 'x'.repeat(4096)
+    await begin(clip.length)
 
     await imports(
       {
         target: 'sort',
         filename: 'long.mp4',
         lastModified: String(SHOT.getTime()),
-        token: 'drop-0',
+        batch: 'b',
+        key: 'drop-0',
         size: String(clip.length)
       },
       clip
     )
 
-    const phases = importEvents().map((step) => step.phase)
-    expect(phases.at(-1)).toBe('done')
+    const phases = rowEvents().map((row) => row.phase)
     expect(phases).toContain('reading')
-    expect(phases.indexOf('reading')).toBeLessThan(phases.lastIndexOf('done'))
-    const fromReading = importEvents().slice(phases.indexOf('reading'))
-    expect(fromReading.every((step) => step.done === clip.length)).toBe(true)
+    expect(phases.indexOf('reading')).toBeLessThan(
+      rowEvents().findIndex((row) => row.at === 'done')
+    )
+    const fromReading = rowEvents().slice(phases.indexOf('reading'))
+    expect(fromReading.every((row) => row.part === undefined || row.part === 1)).toBe(true)
   })
 })
