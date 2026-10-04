@@ -69,6 +69,27 @@ describe('the top of the board', () => {
     await expect.element(page.getByText('didier')).not.toBeInTheDocument()
   })
 
+  /* SkyDock's own window has no frame of the desktop's: its three buttons are at the end of the header
+     itself, at the top of the app, not on a bar of their own */
+  test('has the window’s own buttons at its end, in the desktop app', async () => {
+    const asked = {
+      minimize: vi.fn(),
+      toggleMaximize: vi.fn(),
+      close: vi.fn(),
+      isMaximized: vi.fn(() => Promise.resolve(false)),
+      onMaximized: vi.fn(() => () => {})
+    }
+    window.skydock = { pathOf: () => null, frame: asked }
+    await header()
+
+    await userEvent.click(page.getByRole('button', { name: 'Maximise' }))
+
+    expect(asked.toggleMaximize).toHaveBeenCalledTimes(1)
+    const bar = document.querySelector('header')!
+    expect(bar.contains(page.getByRole('button', { name: 'Close' }).element())).toBe(true)
+    delete window.skydock
+  })
+
   /* what was sent and copied in is always there to be looked at, done or not */
   test('has the transfers to open whenever, and says when they are open', async () => {
     const onToggle = vi.fn()

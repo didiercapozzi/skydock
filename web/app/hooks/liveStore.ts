@@ -1,5 +1,12 @@
 import { useSyncExternalStore } from 'react'
-import type { Bringing, CameraCopy, Deleting, Importing, LiveFile } from './useLiveProgress'
+import type {
+  Bringing,
+  CameraCopy,
+  Deleting,
+  Freeing,
+  Importing,
+  LiveFile
+} from './useLiveProgress'
 
 /* What moves many times a second — how far each file being processed or proxied has got, the bytes
    of a card being copied, the bytes of a file being copied in — kept here rather than in the board.
@@ -49,6 +56,8 @@ const liveFiles = slice(NO_FILES)
 const liveCamera = slice<CameraCopy | null>(null)
 const liveImporting = slice<Importing | null>(null)
 const liveBringing = slice<Bringing | null>(null)
+/* the montage being freed from this machine, and how far through it is */
+const liveFreeing = slice<Freeing | null>(null)
 
 const NO_DELETING: Record<string, Deleting> = {}
 /* the files being deleted off a camera, by their path on the card, and how far each has got */
@@ -60,6 +69,7 @@ const forgetLive = () => {
   liveCamera.update(() => null)
   liveImporting.update(() => null)
   liveBringing.update(() => null)
+  liveFreeing.update(() => null)
   liveDeleting.update(() => NO_DELETING)
 }
 
@@ -86,6 +96,14 @@ const useLiveFile = (id: string | undefined) =>
     },
     () => undefined
   )
+
+/* the clips having their small copy made right now, each with how far through it is, in percent */
+const useLiveProxies = () => {
+  const all = useSyncExternalStore(liveFiles.subscribe, liveFiles.get, () => NO_FILES)
+  return Object.entries(all).flatMap(([key, live]) =>
+    live.work === 'proxy' ? [{ id: key.slice('proxy:'.length), percent: live.percent }] : []
+  )
+}
 
 /* the card being copied, every byte of it — for the panel that shows it */
 const useCameraCopy = () => useSyncExternalStore(liveCamera.subscribe, liveCamera.get, () => null)
@@ -125,6 +143,9 @@ const useDeletingAll = () =>
 const useImporting = () =>
   useSyncExternalStore(liveImporting.subscribe, liveImporting.get, () => null)
 
+/* the montage being freed, and how far through */
+const useFreeing = () => useSyncExternalStore(liveFreeing.subscribe, liveFreeing.get, () => null)
+
 /* the file being fetched back from the storage, and how far through */
 const useBringing = () => useSyncExternalStore(liveBringing.subscribe, liveBringing.get, () => null)
 
@@ -137,6 +158,7 @@ export {
   liveBringing,
   liveCamera,
   liveDeleting,
+  liveFreeing,
   liveFiles,
   liveImporting,
   liveKey,
@@ -146,6 +168,8 @@ export {
   useCameraLanded,
   useDeleting,
   useDeletingAll,
+  useFreeing,
   useImporting,
-  useLiveFile
+  useLiveFile,
+  useLiveProxies
 }

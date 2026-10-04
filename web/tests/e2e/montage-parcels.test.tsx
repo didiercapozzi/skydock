@@ -71,7 +71,7 @@ const freed = montage({
   files: [clip(1), clip(2)].map((f) => ({ ...f, freed: true }))
 })
 
-const open = async (data: Record<string, unknown>) => {
+const board = async (data: Record<string, unknown>) => {
   const Stub = createRoutesStub([
     boardRoute(() => data),
     { path: '/api/manifest', action: async () => ({ ok: true }) },
@@ -80,9 +80,18 @@ const open = async (data: Record<string, unknown>) => {
     { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   await render(createElement(Stub, { initialEntries: ['/'] }))
-  await userEvent.click(
-    page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Ana Roth/ })
-  )
+}
+
+/* a montage freed from this machine is done, so it is not among the montages: its page is reached from
+   Montages done */
+const open = async (data: Record<string, unknown>) => {
+  await board(data)
+  const nav = page.getByRole('navigation', { name: 'Folders' })
+  const done = (data.groups as { freed?: unknown }[]).some((g) => g.freed)
+  if (done) {
+    await userEvent.click(nav.getByRole('link', { name: /Montages done/ }))
+    await userEvent.click(page.getByRole('link', { name: 'Open' }))
+  } else await userEvent.click(nav.getByRole('link', { name: /Ana Roth/ }))
 }
 
 /* a zip, or a folder sent as it is, is closed until its row is pressed: open every one */
@@ -172,5 +181,33 @@ describe('a montage as it was handed over', () => {
       page.getByText('ana_roth_20260728.project.zip').element().closest('a')?.hasAttribute('href')
     ).toBe(false)
     await expect.element(page.getByRole('link', { name: /ana_roth_20260728\.mp4/ })).toBeVisible()
+  })
+})
+
+/* a montage is done once it is freed — emailed or not — and its row there opens onto what is on the
+   storage: each folder, what is in it and how big (RULES, Montages done) */
+describe('montages done', () => {
+  test('lists a freed montage, and opens its storage cards under the row', async () => {
+    await board(freed)
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Montages done/ })
+    )
+
+    await expect.element(page.getByText('Ana Roth')).toBeVisible()
+    await expect.element(page.getByText('ana_roth_20260728.mp4')).not.toBeInTheDocument()
+
+    await userEvent.click(page.getByRole('button', { name: 'Storage' }))
+
+    await expect.element(page.getByText('ana_roth_20260728.mp4')).toBeVisible()
+    await expect.element(page.getByText('/Backup/ana-roth')).toBeVisible()
+    await expect
+      .element(page.getByText('On this machine: nothing — everything is on the storage.'))
+      .toBeVisible()
+  })
+
+  test('leaves a montage that is not freed among the montages', async () => {
+    await board(montage())
+
+    await expect.element(page.getByRole('link', { name: /Montages done/ })).not.toBeInTheDocument()
   })
 })

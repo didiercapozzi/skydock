@@ -97,9 +97,12 @@ const open = async (data: unknown) => {
     { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   await render(createElement(Stub, { initialEntries: ['/'] }))
-  await userEvent.click(
-    page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Ana Roth/ })
-  )
+  const nav = page.getByRole('navigation', { name: 'Folders' })
+  /* a montage freed from this machine is done: its page is reached from Montages done */
+  if ((data as { groups: { freed?: unknown }[] }).groups.some((g) => g.freed)) {
+    await userEvent.click(nav.getByRole('link', { name: /Montages done/ }))
+    await userEvent.click(page.getByRole('link', { name: 'Open' }))
+  } else await userEvent.click(nav.getByRole('link', { name: /Ana Roth/ }))
 }
 
 const asked: Record<string, unknown>[] = []

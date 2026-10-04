@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { createElement, useState } from 'react'
 import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
@@ -183,5 +183,60 @@ describe('trimming — the filmstrip', () => {
     await renderCropper({ duration: 16, currentTime: 0 })
     expect(document.querySelectorAll('[data-thumb]')).toHaveLength(0)
     expect(document.querySelector('[data-thumbs]')).toBeNull()
+  })
+})
+
+/* declared at module scope: Fast Refresh only instruments components there */
+const Zoomable = () => {
+  const [zoom, setZoom] = useState(1)
+  return createElement(VideoCropper, {
+    duration: 100,
+    currentTime: 0,
+    cropStart: null,
+    cropEnd: null,
+    zoom,
+    moments: { exit: 80 },
+    onSeek: () => {},
+    onCropChange: () => {},
+    onApply: () => {},
+    onZoomChange: setZoom
+  })
+}
+
+/* a hair of zoom is still zoom: the clip is cut off at the ends, so the number says so */
+describe('the zoom said', () => {
+  test('to the hundredth while it is only a little, so a cut-off clip never reads as 1.0x', async () => {
+    await renderCropper({ zoom: 1.03 })
+
+    expect(part('[data-zoom-display]').textContent).toBe('1.03x')
+  })
+
+  test('to a tenth once it is plain', async () => {
+    await renderCropper({ zoom: 4 })
+
+    expect(part('[data-zoom-display]').textContent).toBe('4.0x')
+  })
+
+  /* zoomed by hand, the stretch stays where the pointer put it instead of running back to the playhead */
+  test('stays where the wheel put it, with the playhead out of view', async () => {
+    await render(createElement(Zoomable))
+    const rect = bar().getBoundingClientRect()
+
+    bar().dispatchEvent(
+      new WheelEvent('wheel', {
+        bubbles: true,
+        cancelable: true,
+        deltaY: -800,
+        clientX: rect.left + rect.width * 0.8
+      })
+    )
+
+    /* the mark at 80 s was under the pointer, and is still under it — not off the edge, with the
+       stretch pulled back to the playhead at 0 */
+    await vi.waitFor(() => {
+      const left = parseFloat(part('[data-moment=exit]').style.left)
+      expect(left).toBeGreaterThan(70)
+      expect(left).toBeLessThan(90)
+    })
   })
 })

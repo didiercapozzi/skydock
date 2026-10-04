@@ -1,7 +1,8 @@
 import { i18n } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
 import type { JumpMoments, JumpTrack } from '@skydock/scripts'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { slidView, zoomedView } from '../helpers/zoomView'
 import { clock } from './utils'
 
 /* The jump drawn against its own clip, and tied to the frame on screen: the force the camera felt
@@ -93,6 +94,9 @@ const JumpGraph = ({
   currentTime,
   duration,
   view,
+  onZoom,
+  onSlide,
+  joined = false,
   onSeek
 }: {
   track: JumpTrack | null
@@ -103,10 +107,20 @@ const JumpGraph = ({
   duration: number
   /* the stretch of the clip the timeline shows, when it is zoomed: the graph shows the same one */
   view?: { from: number; span: number } | null
+  /* the wheel zooms it, about the pointer: the zoom and where the stretch then starts — the bar's own
+     zoom, so the two always show the same stretch */
+  onZoom?: (zoom: number, offset: number) => void
+  /* ctrl and a drag slide the stretch along the clip: where it then starts */
+  onSlide?: (offset: number) => void
+  /* sits directly under the timeline bar, joined to it: the top corners are square and a light line runs between */
+  joined?: boolean
   onSeek: (seconds: number) => void
 }) => {
-  const frame = useRef<HTMLDivElement>(null)
+  const frame = useRef<HTMLDivElement | null>(null)
+  const [node, setNode] = useState<HTMLDivElement | null>(null)
   const [dragging, setDragging] = useState(false)
+  /* where a slide began: the pointer and the start of the stretch then */
+  const slidFrom = useRef<{ x: number; offset: number } | null>(null)
 
   const seconds = track?.seconds ?? duration
   /* the stretch drawn: the whole clip, or what the timeline is zoomed to */
@@ -120,22 +134,60 @@ const JumpGraph = ({
     return Math.min(seconds, Math.max(0, from + ratio * span))
   }
 
+  /* what is shown is zoomed to `view`: how far in, and where it starts */
+  const zoomNow = view && view.span > 0 ? Math.max(1, duration / view.span) : 1
+  const startNow = view?.from ?? 0
+
+  /* the wheel zooms about the pointer, as it does on the bar */
+  useEffect(() => {
+    if (!node || !onZoom || duration <= 0) return
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault()
+      const box = node.getBoundingClientRect()
+      const next = zoomedView({
+        duration,
+        zoom: zoomNow,
+        offset: startNow,
+        ratio: Math.min(1, Math.max(0, (e.clientX - box.left) / (box.width || 1))),
+        deltaY: e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY
+      })
+      onZoom(next.zoom, next.offset)
+    }
+    node.addEventListener('wheel', wheel, { passive: false })
+    return () => node.removeEventListener('wheel', wheel)
+  }, [node, onZoom, duration, zoomNow, startNow])
+
   const handleDown = (e: React.PointerEvent) => {
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {}
     setDragging(true)
+    /* ctrl held, a drag slides the stretch along the clip and the footage stays where it is */
+    if ((e.ctrlKey || e.metaKey) && onSlide) {
+      slidFrom.current = { x: e.clientX, offset: startNow }
+      return
+    }
     onSeek(timeAt(e.clientX))
   }
 
   const handleMove = (e: React.PointerEvent) => {
-    if (dragging) onSeek(timeAt(e.clientX))
+    if (!dragging) return
+    const from = slidFrom.current
+    const width = frame.current?.getBoundingClientRect().width
+    if (from && width && onSlide) {
+      onSlide(
+        slidView({ duration, zoom: zoomNow, offset: from.offset, dx: e.clientX - from.x, width })
+      )
+      return
+    }
+    onSeek(timeAt(e.clientX))
   }
 
   const handleUp = (e: React.PointerEvent) => {
     try {
       e.currentTarget.releasePointerCapture(e.pointerId)
     } catch {}
+    slidFrom.current = null
     setDragging(false)
   }
 
@@ -204,39 +256,18 @@ const JumpGraph = ({
 
   return (
     <div className='flex flex-col gap-1.5'>
-      <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
-        <b className='font-display text-[12.5px] font-medium'>{t`What the camera felt`}</b>
-        {lowest !== null && highest !== null && (
-          <span
-            data-graph-extremes='true'
-            title={t`The least and the most the camera felt in this clip, in gravities`}
-            className='inline-flex h-[22px] items-center gap-1 rounded-full bg-tile-1 px-2.5 font-mono text-[11.5px] font-semibold text-accent-ink'>
-            {t`min`} <b className='font-semibold'>{lowest.toFixed(2)} g</b> · {t`max`}{' '}
-            <b className='font-semibold'>{highest.toFixed(2)} g</b>
-          </span>
-        )}
-        <span className='flex-1' />
-        <span className='inline-flex items-center gap-3 text-[11.5px]'>
-          <span className='text-sky-500'>{t`— force`}</span>
-          {track.altitude ? (
-            <>
-              <span className='text-amber-500'>{t`— height`}</span>
-              <span className='text-emerald-500'>{t`— speed`}</span>
-            </>
-          ) : (
-            <span className='text-ink-3'>{t`no height or speed — this camera wrote none`}</span>
-          )}
-        </span>
-      </div>
       <div
-        ref={frame}
+        ref={(el) => {
+          frame.current = el
+          setNode(el)
+        }}
         data-jump-graph='true'
         aria-label={t`The jump against the clip`}
         onPointerDown={handleDown}
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerCancel={handleUp}
-        className='relative cursor-ew-resize touch-none overflow-hidden rounded-[12px] bg-well'
+        className={`relative cursor-ew-resize touch-none overflow-hidden bg-well ${joined ? 'rounded-b-[12px] border-t border-line' : 'rounded-[12px]'}`}
         style={{ height: HEIGHT }}>
         <svg
           width='100%'
@@ -277,16 +308,35 @@ const JumpGraph = ({
             />
           ))}
         </svg>
-        <span
-          className='pointer-events-none absolute left-1 font-mono text-[10px] text-ink-3'
-          style={{ top: HEIGHT - (1 / FORCE_TO) * HEIGHT - 12 }}>
-          1 g
-        </span>
         <div
           data-graph-playhead='true'
           className='pointer-events-none absolute top-0 bottom-0 w-0.5 -ml-px bg-white mix-blend-difference'
           style={{ left: along(currentTime) }}
         />
+      </div>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
+        <b className='font-display text-[12.5px] font-medium'>{t`What the camera felt`}</b>
+        {lowest !== null && highest !== null && (
+          <span
+            data-graph-extremes='true'
+            title={t`The least and the most the camera felt in this clip, in gravities`}
+            className='inline-flex h-[22px] items-center gap-1 rounded-full bg-tile-1 px-2.5 font-mono text-[11.5px] font-semibold text-accent-ink'>
+            {t`min`} <b className='font-semibold'>{lowest.toFixed(2)} g</b> · {t`max`}{' '}
+            <b className='font-semibold'>{highest.toFixed(2)} g</b>
+          </span>
+        )}
+        <span className='flex-1' />
+        <span className='inline-flex items-center gap-3 text-[11.5px]'>
+          <span className='text-sky-500'>{t`— force`}</span>
+          {track.altitude ? (
+            <>
+              <span className='text-amber-500'>{t`— height`}</span>
+              <span className='text-emerald-500'>{t`— speed`}</span>
+            </>
+          ) : (
+            <span className='text-ink-3'>{t`no height or speed — this camera wrote none`}</span>
+          )}
+        </span>
       </div>
       <div className='flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11px] text-ink-3'>
         <span

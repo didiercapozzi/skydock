@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { useBringing, useCameraCopy, useDeletingAll } from '../hooks/liveStore'
+import { useBringing, useCameraCopy, useDeletingAll, useLiveProxies } from '../hooks/liveStore'
 import { Icon } from './icons'
 import type { IconName } from './icons'
 
@@ -29,16 +29,20 @@ const Bar = ({ label, part }: { label: string; part: number }) => {
 
 const RunningNow = ({
   uploading,
-  importing
+  importing,
+  proxies
 }: {
   /* the upload going out, named as the board names it, and how far through its bytes */
   uploading: { label: string; part: number } | null
   /* files being copied in from the computer */
   importing: { where: string; done: number; total: number } | null
+  /* the small copies of the clips, how many are made out of how many want one */
+  proxies?: { ready: number; total: number; waiting: number }
 }) => {
   const camera = useCameraCopy()
   const bringing = useBringing()
   const deleting = Object.values(useDeletingAll())
+  const making = useLiveProxies()
   const going: Going[] = []
   if (uploading) {
     const label = uploading.label
@@ -91,6 +95,16 @@ const RunningNow = ({
       label: t`Deleting from the camera`,
       detail: plural(all, { one: '# file', other: '# files' }),
       part
+    })
+  }
+  if (proxies && (proxies.waiting > 0 || making.length > 0)) {
+    const { ready, total } = proxies
+    going.push({
+      key: 'proxies',
+      icon: 'play',
+      label: t`Making small copies`,
+      detail: t`${ready} of ${total}`,
+      part: total > 0 ? (ready + (making[0] ? making[0].percent / 100 : 0)) / total : 0
     })
   }
   if (going.length === 0) return null

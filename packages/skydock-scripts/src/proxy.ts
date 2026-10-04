@@ -252,7 +252,9 @@ const buildProxy = async (
       : vaapiHybrid
         ? `${scaleFilter(shape, false)},format=nv12,hwupload`
         : scaleFilter(shape, pick === 'vaapi')
-  const partial = `${dest}.part`
+  /* named for this process as well: two runs over the same clip — two windows, two servers — must never
+     write into one file, or what is renamed into place is the two interleaved */
+  const partial = `${dest}.${process.pid}.part`
   fs.mkdirSync(path.dirname(dest), { recursive: true })
   const ran = await runWatched(
     ffmpegPath(),
@@ -477,13 +479,32 @@ declare global {
   var skydockProxiesResumed: boolean | undefined
 }
 
+/* a half-written copy is named for the process writing it: another server still running is not cleared */
+const isBeingWritten = (name: string) => {
+  const pid = Number(/\.(\d+)\.part$/.exec(name)?.[1])
+  if (!pid || pid === process.pid) return false
+  try {
+    process.kill(pid, 0)
+    return true
+  } catch {
+    return false
+  }
+}
+
 const resumeProxies = (outputDir?: string) => {
-  if (globalThis.skydockProxiesResumed) return
-  globalThis.skydockProxiesResumed = true
-  const dir = getProxyDir(outputDir)
-  if (fs.existsSync(dir))
-    for (const name of fs.readdirSync(dir))
-      if (name.endsWith('.part')) fs.rmSync(path.join(dir, name), { force: true })
+  /* what a stopped server left half written is cleared once, by the first board: nothing else can be
+     writing it then, and a later board would be clearing what a pass is writing now */
+  if (!globalThis.skydockProxiesResumed) {
+    globalThis.skydockProxiesResumed = true
+    const dir = getProxyDir(outputDir)
+    if (fs.existsSync(dir))
+      for (const name of fs.readdirSync(dir))
+        if (name.endsWith('.part') && !isBeingWritten(name))
+          fs.rmSync(path.join(dir, name), { force: true })
+  }
+  /* but what is missing is looked for each time a board connects: proxies taken from under a running
+     server — a folder emptied, a disk changed — are made again, and a pass already under way is joined
+     rather than started twice */
   void buildMissingProxies(outputDir).catch((e: unknown) => {
     console.error('[Proxy] resuming failed:', messageOf(e))
   })

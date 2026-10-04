@@ -199,6 +199,9 @@ const manifestGroupSchema = z.object({
   emailed: z.object({ at: z.number(), to: z.string().optional() }).optional(),
   /* everything of it deleted from this machine, bar the project, once the storage held it all */
   freed: z.object({ at: z.number(), bytes: z.number() }).optional(),
+  /* it was freed once, and some of it has come back since: what freeing proved then still stands for what
+     is here again, so it can be freed a second time without being prepared and uploaded again */
+  freedBefore: z.object({ at: z.number(), bytes: z.number() }).optional(),
   day: z.string(),
   destination: z.string().optional(),
   /* A jump of a montage: a film made for someone, named once. It belongs to no destination — where

@@ -4,6 +4,7 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { writeArchive } from '../src/archive'
+import { computeFileId } from '../src/fileId'
 import { freeMontage } from '../src/freeMontage'
 import { loadManifest, saveManifest } from '../src/manifest'
 import type { NasSession } from '../src/nas'
@@ -120,7 +121,13 @@ const withStorage = (hashes: Record<string, string>) => {
   stubFetch((url) => stub(url) ?? new Response('{}'))
 }
 
-const free = (manifest: Manifest) => freeMontage({ manifest, outputDir, groupId: 'g1', session })
+const trashDir = () => path.join(outputDir, '.trash')
+
+const free = (manifest: Manifest) =>
+  freeMontage({ manifest, outputDir, groupId: 'g1', session, trashDir: trashDir() })
+
+const inTheBin = () =>
+  fs.readdirSync(trashDir()).flatMap((d) => fs.readdirSync(path.join(trashDir(), d)))
 
 beforeEach(() => {
   outputDir = createTmpDir('skydock-free-')
@@ -132,13 +139,14 @@ afterEach(() => {
 })
 
 describe('freeing an uploaded montage', () => {
-  it('deletes the originals and everything made from them, and keeps the project', async () => {
+  it('deletes the originals and the whole of its folder, putting the project in the bin', async () => {
     const { manifest, folder, originals, onStorage } = await setup()
     withStorage(onStorage)
 
     const result = await free(manifest)
 
-    expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
+    expect(fs.existsSync(folder)).toBe(false)
+    expect(inTheBin()).toEqual(['luc.kdenlive'])
     expect(fs.readdirSync(originals)).toEqual([])
     expect(result.bytes).toBeGreaterThan(1000)
   })
@@ -150,7 +158,7 @@ describe('freeing an uploaded montage', () => {
 
     await free(manifest)
 
-    expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
+    expect(fs.existsSync(folder)).toBe(false)
   })
 
   /* a clip copied into another jump is not this montage's alone to delete */
@@ -227,8 +235,8 @@ describe('freeing an uploaded montage', () => {
     expect(fs.existsSync(path.join(originals, 'GX01.MP4'))).toBe(true)
   })
 
-  /* The edit was saved again after the upload, so the backup holds an older one. Freeing keeps the
-     project here, so nothing is lost by it — what freeing has to prove is the originals. */
+  /* The edit was saved again after the upload, so the backup holds an older one. Freeing puts the
+     project in the bin, so nothing is lost by it — what freeing has to prove is the originals. */
   it('still frees when the project was saved again after it went into the backup', async () => {
     const { manifest, folder, onStorage } = await setup({ projectInBackup: true })
     withStorage(onStorage)
@@ -237,7 +245,96 @@ describe('freeing an uploaded montage', () => {
 
     await free(manifest)
 
-    expect(fs.readdirSync(folder)).toEqual(['luc.kdenlive'])
+    expect(fs.existsSync(folder)).toBe(false)
+    expect(inTheBin()).toEqual(['luc.kdenlive'])
+  })
+
+  /* freed once, and some of it came back (copied back off a camera, or fetched from the storage): what
+     freeing proved then still stands, so what is here again can be freed without preparing and uploading
+     the whole montage a second time */
+  describe('a montage freed before, with its originals back', () => {
+    const cameBack = async (bytes = 400, fill = 1) => {
+      const { manifest, originals, onStorage } = await setup()
+      manifest.groups[0]!.uploaded!.sent = [
+        {
+          name: 'luc.rushes.zip',
+          holds: ['videos'],
+          to: ['/Backup'],
+          zip: true,
+          contents: ['videos/GX01.MP4']
+        }
+      ]
+      withStorage(onStorage)
+      await free(manifest)
+      /* the original is back where it was, and the montage no longer reads as freed */
+      const group = manifest.groups[0]!
+      const back = path.join(originals, 'GX01.MP4')
+      fs.mkdirSync(originals, { recursive: true })
+      fs.writeFileSync(back, Buffer.alloc(bytes, fill))
+      const id = await computeFileId(back)
+      for (const f of [group.files[0]!, manifest.files[0]!]) {
+        f.id = id
+        f.freed = undefined
+        if (f.processed) f.processed.source.id = id
+      }
+      group.freedBefore = group.freed
+      group.freed = undefined
+      return { manifest, back, group }
+    }
+
+    it('is freed again, what is here deleted, without its prepared copies or archives', async () => {
+      const { manifest, back, group } = await cameBack()
+      /* the archives and prepared copies are long gone: that is what freeing did */
+      expect(fs.existsSync(group.uploaded!.rushes!.localPath)).toBe(false)
+
+      const result = await free(manifest)
+
+      expect(fs.existsSync(back)).toBe(false)
+      expect(result.bytes).toBeGreaterThan(0)
+      expect(manifest.groups[0]!.freed).toBeDefined()
+      expect(manifest.groups[0]!.freedBefore).toBeUndefined()
+    })
+
+    /* an upload from before zips were listed names no files: the copy made from it before the upload does */
+    it('is freed again when the upload names no files but a copy was made from it before', async () => {
+      const { manifest, back, group } = await cameBack()
+      group.uploaded!.sent = group.uploaded!.sent!.map((s) => ({ ...s, contents: undefined }))
+      group.files[0]!.processed = {
+        path: path.join(outputDir, 'gone.mp4'),
+        size: 1,
+        at: group.uploaded!.at - 10,
+        source: {
+          id: group.files[0]!.id,
+          size: 400,
+          mtime: 1,
+          cropStart: null,
+          cropEnd: null,
+          frame: null,
+          rotation: null
+        }
+      }
+
+      await free(manifest)
+
+      expect(fs.existsSync(back)).toBe(false)
+    })
+
+    it('is refused, deleting nothing, when what came back is not the file that was uploaded', async () => {
+      const { manifest, back } = await cameBack(400, 7)
+      /* its content is another's, though it has the name and the size */
+      manifest.groups[0]!.files[0]!.id = 'someone-elses'
+
+      await expect(free(manifest)).rejects.toThrow(/is not the file that was uploaded/)
+      expect(fs.existsSync(back)).toBe(true)
+    })
+
+    it('is refused when the storage no longer holds what was sent', async () => {
+      const { manifest, back, group } = await cameBack()
+      withStorage({ [group.uploaded!.film!.remotePath]: 'something-else' })
+
+      await expect(free(manifest)).rejects.toThrow(/Not freed, nothing was deleted/)
+      expect(fs.existsSync(back)).toBe(true)
+    })
   })
 
   it('refuses a montage that was never uploaded', async () => {

@@ -112,6 +112,19 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     /* how big the file is, so the row can say how much of it */
     size: z.number().optional()
   }),
+  /* A montage being freed from this machine: how far through proving the storage holds it and then
+     deleting what is here, and the thing being looked at. Named by the montage's group. */
+  z.object({
+    kind: z.literal('free'),
+    groupId: z.string(),
+    label: z.string(),
+    stage: z.enum(['checking', 'deleting', 'done', 'failed']),
+    done: z.number(),
+    total: z.number(),
+    /* the file being checked or deleted, when there is one */
+    name: z.string().optional(),
+    reason: z.string().optional()
+  }),
   /* The cameras plugged in right now, said each time one comes or goes. `over` is how each one
      hands its files over: a drive the machine mounted, or MTP — a camera with no drive to offer,
      which is read a request at a time and is therefore slower than a card in a reader. */

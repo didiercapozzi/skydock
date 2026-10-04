@@ -120,8 +120,8 @@ msgstr "{0, plural, one {# Sprung} other {# Sprünge}}"
 
 #. placeholder {0}: model.delivered
 #: app/routes/place.tsx
-msgid "{0, plural, one {# montage} other {# montages}} · finished, emailed and freed — everything is on the storage"
-msgstr "{0, plural, one {# Montage} other {# Montagen}} · fertig, per E-Mail gesendet und freigegeben — alles ist auf dem Speicher"
+msgid "{0, plural, one {# montage} other {# montages}} · freed from this machine — everything is on the storage"
+msgstr "{0, plural, one {# Montage} other {# Montagen}} · von diesem Rechner freigegeben — alles liegt auf dem Speicher"
 
 #. placeholder {0}: about.photos
 #. placeholder {0}: files.length
@@ -311,6 +311,10 @@ msgstr "{done} von {total} durchgesehen"
 #: app/components/camera-panel.tsx
 msgid "{done} of {total} gone over — {size} on the card"
 msgstr "{done} von {total} durchgesehen — {size} auf der Karte"
+
+#: app/components/free-panel.tsx
+msgid "{done} of {total} steps"
+msgstr "{done} von {total} Schritten"
 
 #: app/routes/place.tsx
 msgid "{editLocked} Open it in kdenlive, or reset the montage."
@@ -540,9 +544,21 @@ msgstr "{proxiesWaiting, plural, one {warte auf # Proxy} other {warte auf # Prox
 msgid "{read} of {clips} clips have been read for where the jump is in them. They are read in the background; each clip says how far it has got."
 msgstr "{read} von {clips} Clips wurden darauf gelesen, wo der Sprung liegt. Sie werden im Hintergrund gelesen; jeder Clip zeigt, wie weit er ist."
 
+#: app/components/proxy-panel.tsx
+msgid "{ready} of {total, plural, one {# clip} other {# clips}} have their small copy"
+msgstr "{ready} von {total, plural, one {# Clip hat} other {# Clips haben}} die kleine Kopie"
+
+#: app/components/running-now.tsx
+msgid "{ready} of {total}"
+msgstr "{ready} von {total}"
+
 #: app/components/board-header.tsx
 msgid "{ready} of {total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn."
 msgstr "{ready} von {total} Clips haben ihre kleine Kopie. Sie entstehen im Hintergrund; die Zahl holt auf, sobald die Übersicht neu gezeichnet wird."
+
+#: app/components/proxy-panel.tsx
+msgid "{ready} of {total} ready — they play and scrub at once with one"
+msgstr "{ready} von {total} fertig — mit ihnen läuft und scrubbt alles sofort"
 
 #: app/components/free-place-dialog.tsx
 msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
@@ -805,8 +821,8 @@ msgid "a montage"
 msgstr "eine Montage"
 
 #: app/components/delivered-list.tsx
-msgid "A montage comes here by itself once it is freed and its email has gone. Open one to see where its files are on the storage."
-msgstr "Ein Montage kommt von selbst hierher, sobald es freigegeben und seine E-Mail raus ist. Öffne eines, um zu sehen, wo seine Dateien auf dem Speicher liegen."
+msgid "A montage comes here by itself once it is freed from this machine. Press Storage to see where its files are on the storage, or Open for its page."
+msgstr "Ein Montage landet hier von selbst, sobald es von diesem Rechner freigegeben ist. Mit „Speicher“ siehst du, wo seine Dateien auf dem Speicher liegen, mit „Öffnen“ seine Seite."
 
 #: app/components/montage-card.tsx
 msgid "A name: a person, an event"
@@ -1179,6 +1195,10 @@ msgstr "Prüfung"
 #: app/components/camera-files.tsx
 msgid "Checking and deleting…"
 msgstr "Wird geprüft und gelöscht…"
+
+#: app/components/free-panel.tsx
+msgid "Checking the storage"
+msgstr "Speicher wird geprüft"
 
 #: app/components/montage-card.tsx
 #: app/routes/board.tsx
@@ -1612,6 +1632,10 @@ msgstr "Von diesem Rechner gelöscht"
 msgid "Deletes what is here once the storage is proved to hold it. Asks first."
 msgstr "Löscht, was hier ist, sobald der Speicher nachweislich alles hält. Fragt vorher."
 
+#: app/components/free-panel.tsx
+msgid "Deleting"
+msgstr "Löschen"
+
 #: app/components/camera-files.tsx
 msgid "Deleting {path}"
 msgstr "{path} wird gelöscht"
@@ -1625,9 +1649,9 @@ msgstr "Löschen von der Kamera"
 msgid "Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself."
 msgstr "Beim Löschen wird jede Datei Byte für Byte mit dem Speicher abgeglichen, dafür muss die Kamera als Dateien lesbar sein. Lösche sie auf der Kamera selbst."
 
-#: app/helpers/places.ts
-msgid "Delivered"
-msgstr "Geliefert"
+#: app/components/free-panel.tsx
+msgid "Deleting what is here, and the whole of its folder"
+msgstr "Löscht, was hier liegt, samt dem ganzen Ordner"
 
 #: app/components/preview-drawer.tsx
 msgid "Delivered as a landscape clip: the picture in the middle, the sides filled with it blurred — nothing cut away"
@@ -1669,6 +1693,7 @@ msgid "Disconnect the storage"
 msgstr "Speicher trennen"
 
 #: app/components/bring-panel.tsx
+#: app/components/free-panel.tsx
 #: app/components/notice.tsx
 msgid "Dismiss"
 msgstr "Ausblenden"
@@ -2151,9 +2176,17 @@ msgstr "Von diesem Rechner freigegeben — hier gibt es keine Datei zum Kopieren
 msgid "Freed from this machine {freed}"
 msgstr "Von diesem Rechner freigegeben am {freed}"
 
+#: app/components/free-panel.tsx
+msgid "Freed of {label}"
+msgstr "Freigabe von {label}"
+
 #: app/components/jump-graph.tsx
 msgid "freefall"
 msgstr "Freifall"
+
+#: app/components/free-panel.tsx
+msgid "Freeing {label}"
+msgstr "{label} wird freigegeben"
 
 #: app/components/dialog-host.tsx
 #: app/components/history-dialog.tsx
@@ -2399,6 +2432,10 @@ msgstr "sein Ordner"
 #: app/components/file-list.tsx
 msgid "Its jump was found — the exit is at {exit}"
 msgstr "Sein Sprung wurde gefunden — der Ausstieg ist bei {exit}"
+
+#: app/components/file-list.tsx
+msgid "Its proxy is ready — the small copy the preview plays at once"
+msgstr "Der Proxy ist fertig — die kleine Kopie, die die Vorschau sofort abspielt"
 
 #: app/components/montage-card.tsx
 msgid "Join montage"
@@ -2693,6 +2730,15 @@ msgstr "daraus eine Montage machen, zuerst benennen"
 msgid "Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder."
 msgstr "Erstellt die Kopien, die übergeben werden: jeder Clip und jedes Foto gekürzt, zugeschnitten und gedreht, im eigenen Ordner der Montage."
 
+#: app/components/proxy-panel.tsx
+msgid "Making"
+msgstr "Erstellen"
+
+#: app/components/proxy-panel.tsx
+#: app/components/running-now.tsx
+msgid "Making small copies"
+msgstr "Kleine Kopien werden erstellt"
+
 #: app/components/upload-panel.tsx
 msgid "Making the zips…"
 msgstr "ZIPs werden erstellt…"
@@ -2749,6 +2795,10 @@ msgstr "Montage fertig — {photos, plural, one {# Foto} other {# Fotos}} im Pap
 #: app/routes/place.tsx
 msgid "Montages"
 msgstr "Montagen"
+
+#: app/helpers/places.ts
+msgid "Montages done"
+msgstr "Fertige Montagen"
 
 #: app/components/places-tree.tsx
 msgid "Montages that are done: emailed, and freed from this machine — only the storage holds them"
@@ -2888,6 +2938,10 @@ msgstr "Kein Link"
 msgid "no longer on the storage"
 msgstr "nicht mehr auf dem Speicher"
 
+#: app/components/delivered-list.tsx
+msgid "No montage is done yet"
+msgstr "Noch keine Montage ist fertig"
+
 #: app/components/upload-dialog.tsx
 msgid "No montage rendered yet — render it in kdenlive first."
 msgstr "Noch keine Montage gerendert — zuerst in kdenlive rendern."
@@ -2988,10 +3042,6 @@ msgstr "Nichts mit diesem Namen"
 #: app/components/reset-fresh-dialog.tsx
 msgid "nothing decided about these files"
 msgstr "zu diesen Dateien ist nichts entschieden"
-
-#: app/components/delivered-list.tsx
-msgid "Nothing delivered yet"
-msgstr "Noch nichts geliefert"
 
 #: app/components/transfers-panel.tsx
 msgid "Nothing has been sent or copied yet — each upload, drop and camera copy is listed here once it is done."
@@ -3136,6 +3186,10 @@ msgstr "mit der Zeit ihrer Kamera, um neu abgelegt zu werden. Ihre Schnitte blei
 msgid "On this machine"
 msgstr "Auf diesem Rechner"
 
+#: app/components/delivered-list.tsx
+msgid "On this machine: nothing — everything is on the storage."
+msgstr "Auf diesem Rechner: nichts — alles liegt auf dem Speicher."
+
 #: app/components/place-pane.tsx
 msgid "One list"
 msgstr "Eine Liste"
@@ -3245,6 +3299,10 @@ msgstr "Oder einen Film daraus machen"
 
 #: app/helpers/parcels.ts
 msgid "original"
+msgstr "Original"
+
+#: app/components/preview-drawer.tsx
+msgid "Original"
 msgstr "Original"
 
 #: app/components/upload-dialog.tsx
@@ -3433,11 +3491,20 @@ msgstr "Projekt erstellt"
 msgid "Proved first"
 msgstr "Zuerst geprüft"
 
+#: app/components/free-panel.tsx
+msgid "Proving the storage holds every file that went up — nothing is deleted before that"
+msgstr "Prüft, ob der Speicher jede hochgeladene Datei enthält — vorher wird nichts gelöscht"
+
 #: app/components/board-header.tsx
 msgid "Proxies ready {ready}/{total}"
 msgstr "Proxys fertig {ready}/{total}"
 
 #: app/components/file-list.tsx
+msgid "proxy"
+msgstr "Proxy"
+
+#: app/components/file-list.tsx
+#: app/components/preview-drawer.tsx
 msgid "Proxy"
 msgstr "Proxy"
 
@@ -3505,6 +3572,10 @@ msgstr "QR-Code"
 #: app/components/share-qr.tsx
 msgid "QR code of the link"
 msgstr "QR-Code des Links"
+
+#: app/components/preview-drawer.tsx
+msgid "Quality"
+msgstr "Qualität"
 
 #: app/components/preview-drawer.tsx
 msgid "Quarter turn"
@@ -3924,6 +3995,10 @@ msgstr "SkyDock sendet nichts: Es kopiert die E-Mail und öffnet eine neue Nachr
 msgid "SkyDock works in"
 msgstr "SkyDock arbeitet in"
 
+#: app/components/proxy-panel.tsx
+msgid "Small copies made"
+msgstr "Kleine Kopien erstellt"
+
 #: app/components/board-header.tsx
 msgid "Smaller"
 msgstr "Kleiner"
@@ -4017,6 +4092,10 @@ msgstr "Nicht mehr standardmäßig verwenden"
 #: app/components/camera-panel.tsx
 msgid "Stopping…"
 msgstr "Wird gestoppt…"
+
+#: app/components/delivered-list.tsx
+msgid "Storage"
+msgstr "Speicher"
 
 #: app/components/connection-dialog.tsx
 msgid "Storage address"
@@ -4179,6 +4258,10 @@ msgstr "Die Schnittvorlagen, aus denen eine Montage entsteht — ansehen oder ei
 msgid "The file"
 msgstr "Die Datei"
 
+#: app/components/preview-drawer.tsx
+msgid "The file itself, at the quality it was shot in"
+msgstr "Die Datei selbst, in der Qualität, in der sie aufgenommen wurde"
+
 #: app/helpers/parcels.ts
 msgid "the film"
 msgstr "den Film"
@@ -4340,6 +4423,10 @@ msgstr "der gerenderte Film ({filmSize})"
 #: app/components/upload-dialog.tsx
 msgid "The same one can go into several zips."
 msgstr "Dasselbe kann in mehrere Zips."
+
+#: app/components/preview-drawer.tsx
+msgid "The small copy, which plays at once"
+msgstr "Die kleine Kopie, die sofort abgespielt wird"
 
 #: app/components/board-header.tsx
 msgid "the storage"
@@ -4888,6 +4975,10 @@ msgstr "Wohin es geht"
 #: app/components/camera-files.tsx
 msgid "Where it has got to"
 msgstr "Wie weit sie ist"
+
+#: app/components/delivered-list.tsx
+msgid "Where its files are on the storage: each folder, what is in it and how big"
+msgstr "Wo seine Dateien auf dem Speicher liegen: jeder Ordner, was darin ist und wie groß"
 
 #: app/routes/place.tsx
 msgid "Where its files go"

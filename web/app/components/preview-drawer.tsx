@@ -32,6 +32,7 @@ import {
   isVideoFile
 } from './utils'
 import { StatusChip } from './file-status'
+import { WindowControls } from './window-bar'
 import type { ShownStatus } from './file-status'
 import { Icon } from './icons'
 import { JumpGraph, phaseAt } from './jump-graph'
@@ -173,8 +174,8 @@ const Adj = ({
   </span>
 )
 
-/* how tall the dark stage the picture sits on is */
-const STAGE = 'min(48vh, 420px)'
+/* the least the dark stage the picture sits on is allowed to shrink to, when the window is short */
+const STAGE_LEAST = 240
 
 /* a share of the whole, as the preview says it: to the percent, and never 0% for something kept */
 const percent = (share: number) => `${Math.max(share > 0 ? 1 : 0, Math.round(share * 100))}%`
@@ -343,6 +344,10 @@ const PreviewDrawer = ({
   const [playing, setPlaying] = useState(false)
   /* the stretch of the clip the timeline shows, which the jump's graph shows too */
   const [view, setView] = useState<{ from: number; span: number } | null>(null)
+  /* where the shown stretch starts, held here because the bar and the graph both zoom and slide it */
+  const [viewOffset, setViewOffset] = useState(0)
+  /* the playhead's time when the stretch was last put somewhere by hand, shared by the bar and the graph */
+  const [freeAt, setFreeAt] = useState<number | null>(null)
   /* the clip's own pixel size, read off the video once it has loaded — a ratio is measured against
      the picture, and until it is known the rectangle cannot be shaped */
   const [shape, setShape] = useState({ width: 16, height: 9 })
@@ -363,6 +368,10 @@ const PreviewDrawer = ({
     setUnplayable((were) => (were.includes(url) ? were : [...were, url]))
   /* the picture on its own, filling the screen: for looking at it rather than deciding anything */
   const [big, setBig] = useState(false)
+  /* which copy full screen shows when there are two: the small one, which plays at once wherever the
+     browser can play H.264, or the file itself, at the quality it was shot in. It opens on the small
+     one and is switched from the screen. */
+  const [original, setOriginal] = useState(false)
   const stage = useRef<HTMLDivElement | null>(null)
   /* seeks while the timeline is dragged, sent one at a time so the picture keeps up */
   const [scrub] = useState(createScrub)
@@ -422,6 +431,7 @@ const PreviewDrawer = ({
      and the whole window where it is not, which is the same picture at the same size in a window
      that is already full. Either way one state says which, and leaving is Escape. */
   const showBig = () => {
+    setOriginal(false)
     setBig(true)
     void stage.current?.requestFullscreen?.().catch(() => undefined)
   }
@@ -539,15 +549,16 @@ const PreviewDrawer = ({
         ]
   ) as [typeof tab, string][]
   const shownTab = tabs.some(([id]) => id === tab) ? tab : tabs[0]![0]
-  /* Full screen shows the file itself rather than the small copy the crop bar scrubs: a proxy is
-     640 across, which is what makes dragging a timeline answer at once and quite the wrong thing to
-     judge a picture by. A photo is already itself here, so only a clip has anywhere to go — and a
-     clip this browser has no decoder for falls back to the small copy, which is better than a black
-     rectangle, and says so. */
+  /* Full screen opens on the small copy when there is one — it plays at once, and a 4K original may
+     not play here at all — and can be switched to the file itself, at the quality it was shot in,
+     which is the thing to judge a picture by. A photo is already itself, so only a clip has two. A
+     clip this browser has no decoder for stays on the small copy when asked for the original, which
+     is better than a black rectangle, and says so. */
   const fullUrl = video ? getFileUrl(file.path) : fileUrl
-  const fullSize = big && fullUrl !== fileUrl && !cannotPlay(fullUrl)
+  const twoCopies = video && fullUrl !== fileUrl
+  const fullSize = big && original && twoCopies && !cannotPlay(fullUrl)
   const playUrl = fullSize ? fullUrl : fileUrl
-  const shrunk = big && !fullSize && fullUrl !== fileUrl
+  const shrunk = big && original && twoCopies && !fullSize
   const cannotShow = cannotPlay(playUrl)
   /* what the camera measured across this clip, for the graph under the timeline */
   const track = useJumpTrack(video ? file.path : null)
@@ -589,7 +600,7 @@ const PreviewDrawer = ({
       onClick={(e) => e.target === e.currentTarget && leave(onClose)}
       className={
         windowed
-          ? 'flex min-h-0 flex-1 px-2.5 pb-2.5'
+          ? 'flex min-h-0 flex-1'
           : 'fixed inset-0 z-40 grid place-items-center bg-[rgba(16,19,26,0.42)] p-4'
       }>
       <div
@@ -598,10 +609,15 @@ const PreviewDrawer = ({
         aria-modal='true'
         aria-label={t`Preview`}
         className={`relative flex flex-col overflow-hidden rounded-[22px] bg-pane text-ink shadow-float ${
-          windowed ? 'h-full w-full' : 'h-[92vh] max-h-full w-[min(1360px,94vw)]'
+          /* in a window of its own the whole of it moves the window when dragged, wherever nothing is
+             there to be pressed or dragged */
+          windowed
+            ? 'drag-region h-full w-full rounded-none'
+            : 'h-[92vh] max-h-full w-[min(1360px,94vw)]'
         }`}>
         {/* head and foot stay put; only the body scrolls, so Save is never below the fold */}
-        <div className='flex flex-none flex-wrap items-center gap-2.5 border-b border-line-2 bg-pane px-5 py-3'>
+        <div
+          className={`flex flex-none flex-wrap items-center gap-2.5 border-b border-line-2 bg-pane px-5 py-3 ${windowed ? 'drag-region' : ''}`}>
           <button
             type='button'
             aria-label={t`Previous`}
@@ -681,27 +697,36 @@ const PreviewDrawer = ({
           {/* Escape and a click beside the dialog already close it; this is the same for the mouse,
               kept out of the keyboard's way and out of what is read out, so the Close button in the
               footer stays the only one by that name */}
-          <button
-            type='button'
-            tabIndex={-1}
-            aria-hidden='true'
-            title={t`Close (Esc)`}
-            onClick={onClose}
-            className='grid h-7 w-7 flex-none place-items-center rounded-[9px] text-ink-2 hover:bg-well hover:text-ink'>
-            <Icon name='close' />
-          </button>
+          {windowed ? (
+            <>
+              <span className='h-[22px] w-px flex-none bg-line' />
+              <WindowControls onClose={() => leave(onClose)} />
+            </>
+          ) : (
+            <button
+              type='button'
+              tabIndex={-1}
+              aria-hidden='true'
+              title={t`Close (Esc)`}
+              onClick={onClose}
+              className='grid h-7 w-7 flex-none place-items-center rounded-[9px] text-ink-2 hover:bg-well hover:text-ink'>
+              <Icon name='close' />
+            </button>
+          )}
         </div>
 
         <div className='grid min-h-0 flex-1 grid-cols-1 overflow-auto sm:grid-cols-[minmax(0,1fr)_372px] sm:overflow-hidden'>
-          <div className='flex min-w-0 flex-col gap-3 px-6 pt-[18px] pb-3 sm:overflow-y-auto'>
+          <div className='flex min-h-0 min-w-0 flex-col gap-3 px-6 pt-[18px] pb-3 sm:overflow-y-auto'>
             <div
               ref={stage}
               onDoubleClick={() => (big ? leaveBig() : showBig())}
-              style={big ? undefined : { height: STAGE }}
+              /* a size container, so the picture below can be measured against the stage's own height
+                  as well as its width — the stage takes all the height the rest of the panel leaves */
+              style={big ? undefined : { containerType: 'size', minHeight: STAGE_LEAST }}
               className={
                 big
                   ? 'fixed inset-0 z-50 grid place-items-center bg-black'
-                  : 'group relative grid flex-none place-items-center overflow-hidden rounded-[18px] bg-[#141311] p-3'
+                  : 'no-drag group relative grid flex-1 place-items-center overflow-hidden rounded-[18px] bg-[#141311] p-3'
               }>
               {/* A box the shape of the picture as it will come out — turned — with the picture
                   turned inside it, and the rectangle laid over the box: it is drawn on the
@@ -714,13 +739,24 @@ const PreviewDrawer = ({
                   aspectRatio: `${turned.width} / ${turned.height}`,
                   width: big
                     ? `min(100vw, calc(100vh * ${turned.width / turned.height}))`
-                    : `min(100%, calc((${STAGE} - 24px) * ${turned.width / turned.height}))`
+                    : `min(calc(100cqw - 24px), calc((100cqh - 24px) * ${turned.width / turned.height}))`
                 }}>
                 {video ? (
                   <video
                     /* the way to seek this element is handed up as soon as it exists */
                     ref={(el) => {
                       videoRef.current = el
+                      /* a page drawn on the server has its video before the page can listen: what it
+                         already knows of its length is read when it arrives, or the whole clip would
+                         be taken for one second long */
+                      if (
+                        el &&
+                        duration === 0 &&
+                        el.readyState >= 1 &&
+                        Number.isFinite(el.duration) &&
+                        el.duration > 0
+                      )
+                        onDurationChange(el.duration)
                       onVideoRef({
                         seek: (time: number) => {
                           if (el) scrub.seek(el, time)
@@ -890,6 +926,29 @@ const PreviewDrawer = ({
                       {t`This browser has no decoder for the clip itself — the small copy is playing`}
                     </span>
                   )}
+                  {twoCopies && (
+                    <span
+                      role='group'
+                      aria-label={t`Quality`}
+                      className='inline-flex h-8 gap-0.5 rounded-[10px] bg-black/70 p-[3px] text-[12px] font-semibold text-white/80'>
+                      {(
+                        [
+                          [false, t`Proxy`, t`The small copy, which plays at once`],
+                          [true, t`Original`, t`The file itself, at the quality it was shot in`]
+                        ] as const
+                      ).map(([which, name, hint]) => (
+                        <button
+                          key={name}
+                          type='button'
+                          aria-pressed={original === which}
+                          title={hint}
+                          onClick={() => setOriginal(which)}
+                          className={`rounded-[7px] px-2.5 ${original === which ? 'bg-white text-[#1c1b19]' : 'hover:text-white'}`}>
+                          {name}
+                        </button>
+                      ))}
+                    </span>
+                  )}
                   <Mini
                     title={t`Leave full screen (Esc)`}
                     onClick={leaveBig}>
@@ -976,45 +1035,64 @@ const PreviewDrawer = ({
                   </span>
                   <span className='font-mono text-[11.5px] text-ink-2'>{zoom.toFixed(1)}x</span>
                 </div>
-                <VideoCropper
-                  duration={duration}
-                  currentTime={currentTime}
-                  cropStart={cropStart}
-                  cropEnd={cropEnd}
-                  zoom={zoom}
-                  compact
-                  thumbSrc={(seek) => getThumbUrl(proxy?.play ?? file.proxy ?? file.path, seek)}
-                  moments={shownMoments}
-                  onMomentChange={
-                    locked
-                      ? undefined
-                      : onMomentChange &&
-                        ((which, seconds) =>
-                          onMomentChange(
-                            which,
-                            /* dragged where the cut should start, kept as the instant it stands
+                <div className='no-drag flex flex-col'>
+                  <VideoCropper
+                    duration={duration}
+                    currentTime={currentTime}
+                    cropStart={cropStart}
+                    cropEnd={cropEnd}
+                    zoom={zoom}
+                    compact
+                    thumbSrc={(seek) => getThumbUrl(proxy?.play ?? file.proxy ?? file.path, seek)}
+                    moments={shownMoments}
+                    onMomentChange={
+                      locked
+                        ? undefined
+                        : onMomentChange &&
+                          ((which, seconds) =>
+                            onMomentChange(
+                              which,
+                              /* dragged where the cut should start, kept as the instant it stands
                                for, so what is written down is still a measurement */
-                            which === 'exit' ? seconds + (file.moments?.exit ?? 0) - cutAt : seconds
-                          ))
-                  }
-                  onSeek={onSeek}
-                  onCropChange={locked ? () => {} : onCropChange}
-                  onApply={locked ? () => {} : onApply}
-                  onZoomChange={onZoomChange}
-                  onView={setView}
-                />
-                {/* The jump itself, drawn against the same clip and dragged the same way: the force
+                              which === 'exit'
+                                ? seconds + (file.moments?.exit ?? 0) - cutAt
+                                : seconds
+                            ))
+                    }
+                    onSeek={onSeek}
+                    onCropChange={locked ? () => {} : onCropChange}
+                    onApply={locked ? () => {} : onApply}
+                    onZoomChange={onZoomChange}
+                    freeAt={freeAt}
+                    onFree={setFreeAt}
+                    viewOffset={viewOffset}
+                    joined={Boolean(track.track)}
+                    onViewOffset={setViewOffset}
+                    onView={setView}
+                  />
+                  {/* The jump itself, drawn against the same clip and dragged the same way: the force
                     the camera felt, the phases behind it, and the height and speed when the camera
                     knew them. It sits under the timeline because the two are read together. */}
-                <JumpGraph
-                  track={track.track}
-                  waiting={track.waiting}
-                  moments={shownMoments}
-                  currentTime={currentTime}
-                  duration={duration}
-                  view={view}
-                  onSeek={onSeek}
-                />
+                  <JumpGraph
+                    track={track.track}
+                    waiting={track.waiting}
+                    moments={shownMoments}
+                    currentTime={currentTime}
+                    duration={duration}
+                    view={view}
+                    onZoom={(next, offset) => {
+                      setFreeAt(currentTime)
+                      onZoomChange(next)
+                      setViewOffset(offset)
+                    }}
+                    onSlide={(offset) => {
+                      setFreeAt(currentTime)
+                      setViewOffset(offset)
+                    }}
+                    joined={Boolean(track.track)}
+                    onSeek={onSeek}
+                  />
+                </div>
               </>
             )}
           </div>

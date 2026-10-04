@@ -189,7 +189,16 @@ const proxyFailedTitle = (reason: string) =>
   t`The proxy could not be made: ${reason}. It is tried again on the next pass; meanwhile the clip plays as it is.`
 
 const ProxyFlag = ({ fact }: { fact?: ProxyFact }) => {
-  if (fact?.state !== 'none') return null
+  if (!fact) return null
+  /* a small copy made: said in green, so a clip that plays at once is told from one still waiting */
+  if (fact.state !== 'none')
+    return (
+      <span
+        title={t`Its proxy is ready — the small copy the preview plays at once`}
+        className={`${NOTE} text-up`}>
+        ▶ {t`proxy`}
+      </span>
+    )
   return (
     <span
       title={fact.reason ? proxyFailedTitle(fact.reason) : i18n._(NO_PROXY_TITLE)}

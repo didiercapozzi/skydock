@@ -476,7 +476,7 @@ cameras that is not filed yet; _Destinations_, one entry per destination, and _A
 which opens the field to name one; and
 _Montages_, one entry per named montage and one for the montages still waiting for a name. Under
 _Elsewhere_ come what is not worked on here: each camera plugged in, for as long as it stays plugged
-in; _Delivered_, with how many montages are in it, once there is one; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
+in; _Montages done_, with how many montages are in it, once there is one; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
 montage shows its own folder up there, on its own _On the storage_ tab. The place you
 are on is drawn as a white card. Each place is one line, its name and, at the right, what is left there in
 a few words: the jumps still to file in Fresh files, the files still to do at a destination ("all up" when
@@ -487,11 +487,14 @@ is listed once, however many jumps it has.
 A montage is worked on one at a time, so the way in is its own entry. The _Montages_ heading says how many montages are not uploaded yet, and takes a jump or
 files dropped on it: the montage's name is asked for first, and nothing moves until it is saved —
 cancelled, what was dropped stays where it was. Clicking it goes nowhere. A montage that
-has been freed and has walked every step, its link emailed, has nothing left to do here: it leaves the
-Montages, its entry with it, and is found under _Delivered_ in the menu: a page listing each finished
-montage — its name, how many files it holds on the storage, when its link was sent — with a button to
-open its page, where what the storage holds of it can still be looked at. Whether it was emailed is read
-off the storage's list, so while the storage cannot be reached, nothing leaves.
+has been freed from this machine has nothing left here to work on: it leaves the Montages, its entry with
+it, and is found under _Montages done_ in the menu — whether or not its email has gone, since that can
+still be sent from its page. The page lists each such montage — its name, the day, when its link was sent,
+how much it holds on the storage, whether its link still works — with a _Storage_ button that opens, under
+its row, the cards of what is on the storage (each folder, what is in it, how big, with a way to watch the
+film) and says that nothing of it is on this machine, and a button to open its own page. A montage freed
+once and partly back — files copied back — is not freed, so it is among the montages again until it is freed
+a second time.
 
 **Where every montage has got to.** A montage walks the same six steps every time — _Named_,
 _Prepared_, _Project_, _Film_, _Uploaded_, _Sent_ — and the board shows every montage where it
@@ -507,7 +510,7 @@ montage with several jumps is where the one furthest behind is, since one name i
 
 **A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made. Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — open it in kdenlive, process it again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
 
-**Delivered** lists the finished montages as a table — who it was for, the day, when its link was emailed, how much is on the storage, whether its link still works — each with a button to its page. With no montage left to do the Montages heading says so.
+**Montages done** lists the freed montages as a table — who it was for, the day, when its link was emailed (a dash while it has not been), how much is on the storage, whether its link still works — each with buttons for its storage cards and its page. With no montage left to do the Montages heading says so.
 
 The menu lists no days: a date is only what a camera's clock said, and a clock that was wrong only adds
 a day that means nothing. Days are still there to be seen: each card carries its date, and a place can
@@ -750,11 +753,13 @@ when the montage is uploaded. A project saved or removed by hand is noticed the 
 montages are not looked at; nothing of them is here.
 
 **The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is. The installed app's window has no frame of the
-desktop's and nothing behind the page: its own title bar is a panel like the others, with the name and
-the minimise, maximise and close buttons, that moves the window when dragged and maximises it when
-pressed twice — and the space between the panels is the pane colour at half strength, white in the light theme, with the desktop faintly seen through it. Under it,
-three floating rounded panels side by side — the places, the work
-(its toolbar and its list as one panel) and what is open — and a status bar along the bottom. One
+desktop's, and the app fills it edge to edge, with no margin around the panels: there is no title bar of its own
+either. The minimise, maximise and close buttons sit at the end of the toolbar, at the top of the app, and
+the toolbar's empty space is what moves the window when dragged — pressed twice, it maximises. The panels
+join one another with a thin light line. The places, the work (its toolbar and its list as one panel)
+and what is open stand side by side, and a status bar runs along the bottom. The first look at a work folder, which has no
+toolbar, carries the same three buttons on a strip of its own. A file's window, below, carries them at the
+end of its own header. One
 petrol teal is for where you are, what is picked and the button that does the next thing. A file's
 state is a small tinted badge: amber for what is still to do, blue for what is processed, green
 for what is up. A colour marks each kind of place: blue for Fresh files, teal for destinations,
@@ -829,9 +834,12 @@ all, and says so. Space plays a clip and pauses it, whichever button was pressed
 
 **Full screen.** The picture takes the whole screen on its own — the button, F, or a double-click on
 it — with the window's own player under a clip so it can be watched rather than dragged, and the
-photo at its own size. There it shows the file itself rather than the small copy the timeline
-scrubs, since judging a picture by a copy 640 across is judging the copy; a clip this window has no
-decoder for falls back to that copy and says so.
+photo at its own size. There a clip with a small copy opens on that copy, which plays at once
+wherever the window can play H.264 and may be all a 4K original lets it show; _Proxy_ and _Original_,
+at the corner of the screen, switch between it and the file itself at the quality it was shot in —
+which is the one to judge a picture by — and it opens on the small copy again each time. A clip
+with no small copy is itself already and has no choice to make; a clip this window has no decoder
+for stays on the small copy when asked for the original, and says so.
 
 **In the machine's own player.** A clip can also be handed to whatever plays videos on this machine,
 which opens it as it was shot whatever the window can decode — one button, the file itself, nothing
@@ -839,14 +847,15 @@ copied or converted first. A file this machine no longer holds is not offered: i
 and plays from the storage's own list. Escape comes back to the dialog, at the same moment
 of the clip. Nothing is decided there: the rectangle and the marks are for the dialog.
 
-The picture fills the left of the dialog
-with the timeline under it; the right side says what is being decided, in one panel with a tab for each: _Cut_ (the jump's marks
+The picture fills the left of the dialog, taking all the height the timeline and the graph under it leave —
+the taller the window, the bigger the picture, down to a least height when it is short; the right side says what is being decided, in one panel with a tab for each: _Cut_ (the jump's marks
 and the trim, with what the file will weigh once trimmed), _Frame_, _Turn_ and _Info_ (what is known of
 the file and what is already on it). A photo has only _Turn_ and _Info_.
 The picture carries a corner tag saying where in the jump the playhead is and what frame it will come out
 in, the play button over its middle, and the time along its foot; under it, step back or forward ten
-seconds, _Start here_, _End here_ and _Trim to the jump_ sit beside the timeline they act on. Under the
-timeline the graph is headed _What the camera felt_, with the least and the most in g beside it. The
+seconds, _Start here_, _End here_ and _Trim to the jump_ sit beside the timeline they act on. The
+graph is joined to the timeline, directly under its bar with no gap, the phases drawn on the same scale
+as the marks above them; under it, headed _What the camera felt_, come the least and the most in g. The
 panel's tabs share its width; _Cut_ shows the start and the end as two tiles, what is kept with the size
 it will weigh, and the jump's marks as rows, each with a _Go to_; _Turn_ offers as shot, a quarter turn
 and upside down as three large buttons. The foot shows what is on the file now, solid when saved and
@@ -860,6 +869,9 @@ Closing the file — Escape, Close, or Save once something was decided — close
 board's. What is decided there is saved as in any window — the window closes only once the save has landed,
 since closing it first would lose it — and the windows tell one another when one has saved, so the board
 shows it within a moment, without being reloaded.
+One thing more: when that window is already open but under the board, asking for a file brings it back to the
+front. It moves when dragged from anywhere in it that is not something to press or drag — not a button,
+the picture, the timeline or the graph — and has the window's three buttons at the end of its header.
 In a plain browser there is no second window to give, and the file opens over the board as before. The top names the file and lets you step to the next; the bottom holds
 Save, offered only once something changed, and Reset, which clears everything at once. A loose file is
 cropped the same way as one in a jump, with no jump to give its frame or turn to.
@@ -1201,7 +1213,11 @@ the jump's shape over it, since freefall buffets a camera hard enough to hide th
 It is tied to the frame on screen and dragged like the timeline: a point dragged along the graph
 moves the footage to that instant, and the graph reads out what that instant weighed and which part
 of the jump it belongs to. Zooming the timeline zooms the graph to the same stretch of the clip, and
-the drag along it is read against that stretch. Under the graph it also says the least and the most the camera felt across
+the drag along it is read against that stretch. The graph zooms too — the wheel on it zooms about the
+pointer, as on the timeline, and the two always show the same stretch. With ctrl held, a drag on either
+slides that stretch along the clip, the footage staying where it is; the stretch stays where it was put,
+whether zoomed by the wheel or slid, until the playhead moves again. A zoom of only a little is said to the
+hundredth (1.03x), so a clip cut off at its ends never reads as the whole of it. Under the graph it also says the least and the most the camera felt across
 the whole clip, in g, whatever frame is on screen.
 
 How high and how fast are drawn beside it whenever a camera wrote them down, in metres and kilometres
@@ -1425,8 +1441,16 @@ transfers, and of each at most 400 items — what was done comes before what was
 listed is counted and said, never dropped silently. A camera plugged in again with nothing new to copy
 records nothing. **Clear** forgets the list, and a small cross on a transfer forgets that one and keeps the others: in both, nothing that was sent or copied is touched.
 
+**The small copies, made in view.** While some clip is still without its small copy, a small window in the
+bottom-right corner says how many clips have theirs out of how many want one, with a bar for the whole
+and one of its own for the clip being made, named. It is there for as long as any clip is waiting and goes
+when every one has its copy. A board that connects makes the missing ones again, whatever took them — a
+folder emptied under a running server included — and joins a pass already under way instead of starting
+another.
+
 **Everything with a bar is in Transfers too.** What is going right now — an upload, files being copied in,
-a camera being copied off, a file brought back from the storage, files being deleted off a camera —
+a camera being copied off, a file brought back from the storage, files being deleted off a camera, the small
+copies of the clips being made —
 is listed at the head of the Transfers window, each with how far it has got, and a camera's delete has its
 own small window in the bottom-right corner besides, so the page can be left while it runs: the work runs
 on the server, and what is shown follows it from whatever page is open. When it ends it is kept in the
@@ -1436,14 +1460,15 @@ and why.
 ## Freeing space
 
 Once a montage is uploaded, everything of it on this machine can be deleted — originals, copies, working
-copies, film and archives — leaving only the project and the record of what went where. It asks first,
-and deletes nothing until all of this is proved:
+copies, film and archives — and the montage's whole folder with them. The editing project is not erased: it
+goes into the bin, and the record of what went where stays. It asks first, and deletes nothing until all of
+this is proved:
 
 - every file that went up has the same checksum here and on the storage as when it was sent — where it
   went to several destinations, the first is the one proved;
 - the original videos went up, in a zip or as they are: a zip holds exactly what that zip is made of,
   laid out as it was, none of the originals changed since — a project in it may have been saved again
-  since, because freeing keeps the project here anyway. A montage whose originals were never sent
+  since, because freeing puts the project in the bin anyway. A montage whose originals were never sent
   cannot be freed, since nothing then keeps them;
 - the film went up, as it is or in a zip;
 - the photos are exactly what their zip holds, or each went up as it is;
@@ -1451,6 +1476,20 @@ and deletes nothing until all of this is proved:
 
 If any check fails, nothing is deleted and each failing file is named. The storage must be reachable.
 Only a montage of a single jump can be freed.
+
+While it goes, the small window at the bottom right shows it live: first the storage being proved to hold
+each file that went up, then what is here being deleted, file by file, with the file it is on and how far
+through it is. If it is refused, the window says why and stays until it is put away.
+
+**Freed once, partly back, freed again.** A montage stops reading as freed the moment one of its files is
+brought back to this machine — copied off a camera, or fetched from the storage — since something of it is
+here. What freeing proved then still stands, so it can be freed again without being prepared and uploaded a
+second time: what is proved is that the storage still holds each thing that went up, exactly as it was
+sent, and that each file that is here is, by what it contains, a file the upload held. The prepared copies
+and archives that freeing deleted are not asked for. Anything else — a file that is not the one that was
+uploaded, a storage that no longer holds what was sent — refuses it, and nothing is deleted. A montage freed
+before the board remembered this is recognised by having none of its prepared copies and none of what it
+uploaded left on this machine.
 
 A freed montage lives on the storage only. The board says so once, with how much room came back. It
 reads as uploaded, shows what the storage holds instead of its files, and cannot be processed, edited,

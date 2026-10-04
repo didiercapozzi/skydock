@@ -46,7 +46,7 @@ if [ -f "$sandbox" ] && [ ! -u "$sandbox" ]; then
     echo "Could not make $sandbox setuid root — the window may refuse to start." >&2
 fi
 
-answering() { curl -sfo /dev/null --max-time 1 "$url"; }
+answering() { curl -sfo /dev/null --max-time 5 "$url"; }
 
 # Only what this started: a server that was already up is somebody else's and stays. What was
 # started is a session of its own, named by itself, so the whole of it goes rather than the command

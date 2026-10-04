@@ -228,6 +228,35 @@
 }
 
 @layer components {
+  /* a part of the window the window can be moved by, in SkyDock's own window: everything that does
+     something in it stays a button, and a button inside a drag region would otherwise be swallowed by
+     the drag */
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+  .drag-region
+    :is(
+      button,
+      input,
+      a,
+      select,
+      textarea,
+      label,
+      video,
+      img,
+      [role='button'],
+      [role='group'],
+      [role='dialog'],
+      [role='slider'],
+      [role='progressbar'],
+      [draggable='true'],
+      .no-drag
+    ) {
+    -webkit-app-region: no-drag;
+  }
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
   .ground {
     background: var(--ground-bg);
   }

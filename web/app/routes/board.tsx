@@ -32,12 +32,13 @@ import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader, StatusBar } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { FirstScan } from '../components/first-scan'
-import { WindowBar } from '../components/window-bar'
 import { DialogHost } from '../components/dialog-host'
 import { CameraPanel } from '../components/camera-panel'
 import { ImportPanel } from '../components/import-panel'
 import { BringPanel } from '../components/bring-panel'
 import { DeletePanel } from '../components/delete-panel'
+import { FreePanel } from '../components/free-panel'
+import { ProxyPanel } from '../components/proxy-panel'
 import { TransfersPanel } from '../components/transfers-panel'
 import { UploadPanel } from '../components/upload-panel'
 import { PlacesTree } from '../components/places-tree'
@@ -45,7 +46,7 @@ import { formatTime } from '../components/utils'
 import { fromComputer } from '../helpers/import'
 import { typingInField } from '../helpers/keys'
 import { routingEngine } from '../helpers/routing'
-import { useBringing, useCameraCopying, useDeletingAll } from '../hooks/liveStore'
+import { useBringing, useCameraCopying, useDeletingAll, useFreeing } from '../hooks/liveStore'
 import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoardModel } from '../hooks/useBoardModel'
 import { useDetailsColumn } from '../hooks/useDetails'
@@ -309,6 +310,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   /* a card being copied: only whether, which changes twice a copy — its bytes are the panel's */
   const copying = useCameraCopying()
   const bringing = useBringing()
+  const freeing = useFreeing()
   const deletingCount = Object.keys(useDeletingAll()).length
 
   /* a file in a window of its own: the title bar and the file, and nothing else of the board — what it
@@ -316,7 +318,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   if (windowed)
     return (
       <main className='ground flex h-screen flex-col overflow-hidden'>
-        <WindowBar />
         <Outlet context={model} />
       </main>
     )
@@ -335,10 +336,9 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         setNote(t`Drop a clip on a destination, a montage or a jump to add it.`)
       }}
       className='ground flex h-screen flex-col overflow-hidden'>
-      <WindowBar />
       <div
         data-docked={details ? '' : undefined}
-        className={`group grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 min-[781px]:pt-0 min-[781px]:pb-0 min-[781px]:grid-cols-[264px_0px_minmax(0,1fr)] min-[781px]:grid-rows-[56px_minmax(0,1fr)] min-[781px]:gap-y-0 min-[1101px]:transition-[grid-template-columns] min-[1101px]:duration-300 min-[1101px]:ease-out motion-reduce:transition-none ${
+        className={`group grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 min-[781px]:px-0 min-[781px]:pt-0 min-[781px]:pb-0 min-[781px]:grid-cols-[264px_0px_minmax(0,1fr)] min-[781px]:grid-rows-[56px_minmax(0,1fr)] min-[781px]:gap-y-0 min-[1101px]:transition-[grid-template-columns] min-[1101px]:duration-300 min-[1101px]:ease-out motion-reduce:transition-none ${
           details
             ? 'min-[1101px]:grid-cols-[264px_0px_minmax(0,1fr)_0px_338px]'
             : 'min-[1101px]:grid-cols-[264px_10px_minmax(0,1fr)_0px_0px]'
@@ -472,6 +472,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         copying ||
         bringing ||
         deletingCount > 0 ||
+        freeing !== null ||
+        board.proxyProgress.waiting > 0 ||
         transfersOpen) && (
         <div className='fixed right-4 bottom-[34px] z-40 flex flex-col items-end gap-2'>
           {copying && (
@@ -493,7 +495,16 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             />
           )}
           {bringing && <BringPanel />}
+          <ProxyPanel
+            {...board.proxyProgress}
+            names={Object.fromEntries(
+              [...groups.flatMap((g) => g.files), ...board.loose].flatMap((f) =>
+                f.id ? [[f.id, f.filename]] : []
+              )
+            )}
+          />
           {deletingCount > 0 && <DeletePanel />}
+          {freeing && <FreePanel />}
           {transfersOpen && (
             <TransfersPanel
               key={transfersPanel.shown}
@@ -509,6 +520,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     }
                   : null
               }
+              proxies={board.proxyProgress}
               importing={
                 model.coming
                   ? {

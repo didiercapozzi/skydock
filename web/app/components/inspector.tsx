@@ -45,7 +45,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-l-none min-[1101px]:rounded-b-none min-[1101px]:border-l min-[1101px]:border-line-2 min-[1101px]:shadow-card transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-span-2 min-[1101px]:row-start-1 ${
+        className={`flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-none min-[1101px]:border-l min-[1101px]:border-line-2 min-[1101px]:shadow-card transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-start-2 ${
           drawer ? '' : 'max-[1100px]:invisible max-[1100px]:translate-x-full'
         } ${column ? '' : 'min-[1101px]:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than
@@ -101,17 +101,49 @@ const Hero = ({ children }: { children: React.ReactNode }) => (
   </div>
 )
 
-/* One part of the panel: what it is about in a quiet capital line over it. */
-const Part = ({ heading, children }: { heading?: string; children: React.ReactNode }) => (
-  <section className='flex flex-col gap-2.5 px-6 py-2.5'>
-    {heading && (
-      <h3 className='m-0 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
-        {heading}
-      </h3>
-    )}
-    {children}
-  </section>
-)
+/* One part of the panel: what it is about in a quiet capital line over it. A part that is seldom wanted
+   starts folded, its heading the way to open it. */
+const Part = ({
+  heading,
+  folded = false,
+  children
+}: {
+  heading?: string
+  folded?: boolean
+  children: React.ReactNode
+}) => {
+  const [open, setOpen] = useState(!folded)
+  const title = 'm-0 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'
+  return (
+    <section className='flex flex-col gap-2.5 px-6 py-2.5'>
+      {heading && folded ? (
+        <h3 className={title}>
+          <button
+            type='button'
+            aria-expanded={open}
+            onClick={() => setOpen(!open)}
+            className='flex w-full cursor-pointer items-center justify-between border-0 bg-transparent p-0 text-left font-[inherit] tracking-[inherit] text-inherit uppercase'>
+            {heading}
+            <svg
+              aria-hidden='true'
+              viewBox='0 0 16 16'
+              className={`h-3.5 w-3.5 transition-transform duration-150 ${open ? '' : '-rotate-90'}`}
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='1.8'
+              strokeLinecap='round'
+              strokeLinejoin='round'>
+              <path d='M4 6l4 4 4-4' />
+            </svg>
+          </button>
+        </h3>
+      ) : (
+        heading && <h3 className={title}>{heading}</h3>
+      )}
+      {open && children}
+    </section>
+  )
+}
 
 /* The buttons of a panel are drawn taller than the board's small ones, the size of a thumb's target:
    a menu's button is wrapped once, so it is reached by what it does, and the entries of its open
@@ -609,7 +641,9 @@ const JumpPanel = ({
         </Part>
       )}
       {!group.freed && group.files.length > 0 && (
-        <Part heading={montage ? t`Its files` : t`The jump`}>
+        <Part
+          heading={montage ? t`Its files` : t`The jump`}
+          folded={Boolean(montage)}>
           <Acts>
             <Pair>
               {move}

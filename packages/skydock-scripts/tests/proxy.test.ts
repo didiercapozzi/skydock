@@ -167,7 +167,20 @@ describe('proxies', () => {
     expect(fs.existsSync(stale)).toBe(false)
   })
 
-  it('are taken up once per server, not each time a board connects', async () => {
+  /* proxies taken from under a server that is running — the folder emptied — are made again by the next
+     board that connects, not left for the next scan or the next start */
+  it('are made again when they were taken from under a running server', async () => {
+    execSyncMock.mockImplementation(toolsPresent())
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    saveManifest(path.join(outputDir, 'manifest.json'), manifestOf([fileEntry(src, 'abc123')]))
+    globalThis.skydockProxiesResumed = true
+
+    resumeProxies(outputDir)
+
+    await expect.poll(() => fs.existsSync(path.join(outputDir, 'proxies', 'abc123.mp4'))).toBe(true)
+  })
+
+  it('clears what was left half written once per server, not each time a board connects', async () => {
     const stale = writeTempFile(outputDir, 'proxies/abc123.mp4.part')
     globalThis.skydockProxiesResumed = true
 

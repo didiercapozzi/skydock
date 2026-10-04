@@ -42,7 +42,7 @@ const placeLabel = (place: Place) =>
       : place.kind === 'unnamed'
         ? t`No name yet`
         : place.kind === 'delivered'
-          ? t`Delivered`
+          ? t`Montages done`
           : place.kind === 'bin'
             ? t`Bin`
             : place.kind === 'camera'

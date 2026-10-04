@@ -52,12 +52,15 @@ const extractFrame = (filePath: string, seek: number, width: number) =>
       'mjpeg',
       'pipe:1'
     ])
+    /* a file ffmpeg cannot get through must not hold one of the few places in the queue for ever */
+    const stuck = setTimeout(() => child.kill('SIGKILL'), 30_000)
     const chunks: Array<Buffer> = []
     child.stdout.on('data', (chunk: Buffer) => {
       chunks.push(chunk)
     })
     child.on('error', (err) => reject(err))
     child.on('close', (code) => {
+      clearTimeout(stuck)
       if (code === 0 && chunks.length > 0) resolve(Buffer.concat(chunks))
       else reject(new Error(`ffmpeg exited with code ${code}`))
     })

@@ -1,16 +1,18 @@
 import { plural, t } from '@lingui/core/macro'
 import { isVideoFile, passengerOf } from '@skydock/scripts'
+import { useState } from 'react'
 import { Link } from 'react-router'
 import { parcelsOfGroup } from '../helpers/parcels'
 import { placeHref } from '../helpers/places'
 import { useBoard } from '../hooks/useBoardModel'
 import { Mini } from './buttons'
+import { ParcelCards } from './montage-card'
 import { kindsSaid } from './kinds'
 import type { ManifestGroup } from './types'
 import { dayShort, formatSize, minFileMtime } from './utils'
 
-/* The montages that are done (RULES, Delivered): emailed, and freed from this machine, so that all
-   there is of each is on the storage. One row each — who it was for, which day, when it was emailed, how
+/* The montages that are done (RULES, Montages done): freed from this machine, so that all there is of
+   each is on the storage. One row each — who it was for, which day, when it was emailed, how
    much is up there, whether its link still works — and the way to its page, where what the storage holds
    of it can be looked at. */
 
@@ -24,16 +26,19 @@ const AVATARS = [
 const avatarOf = (name: string) =>
   AVATARS[[...name].reduce((n, c) => n + c.charCodeAt(0), 0) % AVATARS.length]
 
-const COLUMNS = 'grid grid-cols-[minmax(0,2.2fr)_1.5fr_1.5fr_1.4fr_1.6fr] items-center gap-x-4 px-5'
+const COLUMNS =
+  'grid grid-cols-[minmax(150px,2.2fr)_1.1fr_1fr_1.1fr_auto] items-center gap-x-4 px-5'
 
 const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?: string }) => {
   const model = useBoard()
+  /* the montages whose storage cards are open under their row */
+  const [shown, setShown] = useState<Set<string>>(new Set())
   const byName = new Map<string, ManifestGroup[]>()
   for (const g of groups) byName.set(passengerOf(g), [...(byName.get(passengerOf(g)) ?? []), g])
   const rows = [...byName]
     .filter(([name]) => name.toLowerCase().includes(query.trim().toLowerCase()))
     .sort(([a], [b]) => a.localeCompare(b))
-  if (rows.length === 0) return <p className='m-0 px-7 text-ink-3'>{t`Nothing delivered yet`}</p>
+  if (rows.length === 0) return <p className='m-0 px-7 text-ink-3'>{t`No montage is done yet`}</p>
   return (
     <div className='flex min-h-full flex-col gap-3'>
       <div>
@@ -90,19 +95,42 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                     }`}>
                     {linked ? t`active` : t`no link`}
                   </span>
+                  <Mini
+                    pressed={shown.has(name)}
+                    title={t`Where its files are on the storage: each folder, what is in it and how big`}
+                    onClick={() =>
+                      setShown((now) => {
+                        const next = new Set(now)
+                        if (!next.delete(name)) next.add(name)
+                        return next
+                      })
+                    }>
+                    {t`Storage`}
+                  </Mini>
                   <Link
                     to={placeHref({ kind: 'pax', name })}
                     className='no-underline [&>button]:h-[34px] [&>button]:px-4'>
                     <Mini>{t`Open`}</Mini>
                   </Link>
                 </span>
+                {shown.has(name) && (
+                  <div className='col-span-full pt-1 pb-2'>
+                    <p className='m-0 mb-1 text-[12.5px] text-ink-3'>
+                      {t`On this machine: nothing — everything is on the storage.`}
+                    </p>
+                    <ParcelCards
+                      parcels={parcels}
+                      dsmHost={model.nas.host}
+                    />
+                  </div>
+                )}
               </li>
             )
           })}
         </ul>
       </div>
       <p className='m-0 mt-auto pt-6 text-[12.5px] text-ink-3'>
-        {t`A montage comes here by itself once it is freed and its email has gone. Open one to see where its files are on the storage.`}
+        {t`A montage comes here by itself once it is freed from this machine. Press Storage to see where its files are on the storage, or Open for its page.`}
       </p>
     </div>
   )

@@ -9,6 +9,7 @@ import {
   liveBringing,
   liveCamera,
   liveDeleting,
+  liveFreeing,
   liveFiles,
   liveImporting,
   liveKey
@@ -29,6 +30,9 @@ type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
 /* one file being copied in from the computer, by the name the page gave that copy */
 type Importing = Omit<Extract<LiveEvent, { kind: 'import' }>, 'kind'>
+
+/* a montage being freed from this machine */
+type Freeing = Omit<Extract<LiveEvent, { kind: 'free' }>, 'kind'>
 
 /* one file being deleted off a camera */
 type Deleting = Omit<Extract<LiveEvent, { kind: 'camera-delete' }>, 'kind' | 'path'>
@@ -102,6 +106,11 @@ const useLiveProgress = (
         liveImporting.update(() => (event.phase === 'done' ? null : event))
         return
       }
+      if (event.kind === 'free') {
+        /* kept while it goes, and when it fails, so the corner says why until it is put away */
+        liveFreeing.update(() => (event.stage === 'done' ? null : event))
+        return
+      }
       if (event.kind === 'camera-delete') {
         liveDeleting.update((now) => ({
           ...now,
@@ -164,4 +173,4 @@ const useLiveProgress = (
 }
 
 export { useLiveProgress }
-export type { Bringing, CameraCopy, Deleting, Disk, Importing, LiveFile, Mounted }
+export type { Bringing, CameraCopy, Deleting, Disk, Freeing, Importing, LiveFile, Mounted }

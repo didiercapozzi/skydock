@@ -99,6 +99,11 @@ describe('a file in a window of its own', () => {
 
     await expect.element(page.getByRole('dialog', { name: 'Preview' })).toBeVisible()
     await expect.element(page.getByRole('navigation', { name: 'Folders' })).not.toBeInTheDocument()
+    /* the whole of it moves the window when dragged, but not the picture, the timeline or the graph,
+       which are dragged for their own ends */
+    const dialog = page.getByRole('dialog', { name: 'Preview' }).element()
+    expect(dialog.classList.contains('drag-region')).toBe(true)
+    expect(dialog.querySelectorAll('.no-drag').length).toBeGreaterThanOrEqual(2)
 
     await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
     expect(closed).toHaveBeenCalled()

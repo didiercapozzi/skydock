@@ -326,6 +326,21 @@ const isPreviewAddress = (asked: string, board: string) => {
   }
 }
 
+/* The window a file is looked at in: one at a time, so that asking for another file shows it there
+   instead of piling windows up, and asking for it brings it to the front when it is under the board. */
+let previewWindow: BrowserWindow | null = null
+
+const raise = (window: BrowserWindow) => {
+  if (window.isMinimized()) window.restore()
+  window.show()
+  /* a window manager may decline to take the focus from what has it; being on top for a moment is
+     what makes it come forward anyway */
+  window.setAlwaysOnTop(true)
+  window.moveTop()
+  window.focus()
+  window.setAlwaysOnTop(false)
+}
+
 /* The window itself: a browser on the server behind it, and nothing else. A link out of the board —
    the passenger's email, a share link — belongs to the machine's own browser; opened in here it
    would be the board gone, with no way back to it. */
@@ -351,7 +366,13 @@ const openWindow = (address: string) => {
   window.webContents.setWindowOpenHandler(({ url: asked }) => {
     /* a file looked at has a window of its own, apart from the board: the board asks for one by
        opening its own address with the file in it, and it is given here, the same kind of window */
-    if (isPreviewAddress(asked, address))
+    if (isPreviewAddress(asked, address)) {
+      const open = previewWindow
+      if (open && !open.isDestroyed()) {
+        void open.loadURL(asked)
+        raise(open)
+        return { action: 'deny' }
+      }
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
@@ -370,10 +391,15 @@ const openWindow = (address: string) => {
           }
         }
       }
+    }
     if (/^https?:/.test(asked)) void shell.openExternal(asked)
     return { action: 'deny' }
   })
   window.webContents.on('did-create-window', (preview) => {
+    previewWindow = preview
+    preview.on('closed', () => {
+      if (previewWindow === preview) previewWindow = null
+    })
     zoomHotkeys(preview.webContents)
     /* nothing opens from it but a link out, which is the machine's own browser's */
     preview.webContents.setWindowOpenHandler(({ url: asked }) => {

@@ -18,7 +18,7 @@ import {
   montageUploadKey
 } from '@skydock/scripts'
 import type { FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useOutletContext, useParams } from 'react-router'
 import { openFile } from '../helpers/previewWindow'
 import type { BoardDialog } from '../components/dialog-host'
@@ -64,7 +64,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   setOutputRoot(loaded.outputDir)
   const [dialog, setDialog] = useState<BoardDialog>(null)
   /* uploaded and freed: the one thing left is to tell whoever it is for, so that is offered */
-  const board = useBoardState(loaded, (groupId) => setDialog({ kind: 'email', groupId }))
+  const [justFreed, setJustFreed] = useState<{ groupId: string } | null>(null)
+  const board = useBoardState(loaded, (groupId) => {
+    setDialog({ kind: 'email', groupId })
+    setJustFreed({ groupId })
+  })
   const { groups, updateGroups, loose, places, setPlaces, busy, setNote, setProblem, send } = board
   const nas = useNas(loaded, board.remoteAfterUpload)
   const sendPlan = useSendPlan()
@@ -134,10 +138,9 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     group.emailed ??
     board.storage?.montages.find((m) => m.folder === folderOnStorage(group))?.emailed ??
     null
-  /* A montage is finished when it was emailed and freed: nothing is left to do, and all that is left
-     of it is on the storage. It leaves the Montages and is listed under Delivered. */
-  const finished = (group: ManifestGroup) =>
-    isMontage(group) && Boolean(group.freed) && progressOf(group)?.next === null
+  /* A montage is done once it is freed: all that is left of it is on the storage. It leaves the Montages
+     and is listed under Montages done — emailed or not, since its email can still be sent from its page. */
+  const finished = (group: ManifestGroup) => isMontage(group) && Boolean(group.freed)
   /* Where each montage has got to — one answer for its panel, its card and its entry in the menu,
      so the three can never disagree. */
   const progressOf = (group: ManifestGroup) =>
@@ -162,7 +165,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   /* A montage freed and walked to its last step has nothing left to do here, so it leaves the
      montages and lives on in the storage's own list. */
   const listed = groups.filter((g) => !finished(g))
-  /* how many montages are in Delivered: one per name, however many jumps it had */
+  /* how many montages are in Montages done: one per name, however many jumps it had */
   const delivered = new Set(
     groups
       .filter((g) => finished(g) && !listed.some((l) => passengerOf(l) === passengerOf(g)))
@@ -361,6 +364,20 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
 
   /* A montage whose every file has just gone — back to Fresh files, or into the bin — is no longer
      anywhere to be: the board goes to Fresh files (RULES, Filing). */
+  /* A montage that has just been freed has left the Montages and is listed under Montages done: the board
+     follows it there, as it does to Fresh files when a montage is emptied. Once for each freeing. */
+  const followedFreed = useRef<unknown>(null)
+  useEffect(() => {
+    if (!justFreed || followedFreed.current === justFreed) return
+    followedFreed.current = justFreed
+    const freed = groups.find((g) => g.id === justFreed.groupId)
+    if (!freed || place.kind !== 'pax' || place.name !== passengerOf(freed)) return
+    const stillHere = groups.some(
+      (g) => isMontage(g) && passengerOf(g) === place.name && !finished(g)
+    )
+    if (!stillHere) goTo(placeHref({ kind: 'delivered' }, { kind: looking.kind }))
+  })
+
   const leaveEmptied = (gone: string[]) => {
     if (place.kind !== 'pax') return
     const theirs = groups.filter((g) => isMontage(g) && passengerOf(g) === place.name)

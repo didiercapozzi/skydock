@@ -56,9 +56,9 @@ describe('adding a destination from the rail', () => {
   })
 })
 
-/* a montage that is done — emailed and freed — is counted under Delivered, not among the montages */
+/* a montage that is done — freed from this machine — is counted under Montages done, not among the montages */
 describe('finished montages in the rail', () => {
-  test('are listed under Delivered', async () => {
+  test('are listed under Montages done', async () => {
     const Tree = () =>
       createElement(PlacesTree, {
         destinations: [],
@@ -76,6 +76,6 @@ describe('finished montages in the rail', () => {
     const Stub = createRoutesStub([{ path: '*', Component: Tree }])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
-    await expect.element(page.getByRole('link', { name: /Delivered/ })).toBeVisible()
+    await expect.element(page.getByRole('link', { name: /Montages done/ })).toBeVisible()
   })
 })

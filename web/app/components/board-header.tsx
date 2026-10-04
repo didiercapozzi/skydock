@@ -6,6 +6,7 @@ import type { Language } from '../helpers/language'
 import { Seg } from './buttons'
 import { FindAnything } from './find-anything'
 import type { Found } from './find-anything'
+import { WindowControls } from './window-bar'
 import { Icon } from './icons'
 import { MenuItem, SettingsMenu, SettingsRow, TOOL } from './settings-menu'
 import { setFileView, useFileView } from '../hooks/useFileView'
@@ -100,7 +101,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 isle-head px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:rounded-tl-none min-[781px]:border-l min-[1101px]:group-data-[docked]:rounded-tr-none min-[781px]:col-start-3 min-[781px]:row-start-1'>
+    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 isle-head px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:rounded-tl-none min-[781px]:border-l min-[1101px]:group-data-[docked]:rounded-tr-none min-[781px]:col-start-3 min-[1101px]:col-end-6 min-[781px]:row-start-1'>
       <button
         type='button'
         disabled={scanning}
@@ -225,6 +226,11 @@ const BoardHeader = ({
       </SettingsMenu>
       <span className='mx-1.5 h-5 w-px bg-line' />
       <DetailsToggle />
+      {/* the window's own buttons, at the top of the app; the space before them is what moves the window */}
+      <span className='min-w-3 self-stretch' />
+      <span className='relative z-40 flex items-center gap-1'>
+        <WindowControls />
+      </span>
     </header>
   )
 }
@@ -307,7 +313,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-[7px] whitespace-nowrap'
   return (
-    <footer className='mx-2.5 mb-2 flex h-[30px] flex-none items-center gap-5 rounded-[12px] border-t border-line-2 bg-pane px-3.5 min-[781px]:rounded-t-none text-[11.5px] shadow-card font-semibold text-ink-2'>
+    <footer className='mx-2.5 mb-2 min-[781px]:mx-0 min-[781px]:mb-0 min-[781px]:rounded-none flex h-[30px] flex-none items-center gap-5 rounded-[12px] border-t border-line-2 bg-pane px-3.5 min-[781px]:rounded-t-none text-[11.5px] shadow-card font-semibold text-ink-2'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span

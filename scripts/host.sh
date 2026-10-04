@@ -151,7 +151,11 @@ as_them() {
 # having to leave one running. What it says goes to their journal, under the name given here.
 handed_over() {
   # shellcheck disable=SC2086 # each is one --setenv=NAME=VALUE, separated by spaces here
-  as_them systemd-run --user --quiet \
+  # KillMode=mixed: asked to stop, only the first process of the application is told to end, and it
+  # ends its helpers itself. Stopped the default way, with every process told at once, the GPU process
+  # of the engine dies a moment before the main one has heard anything, and the main one answers that
+  # with a fatal message about the GPU and a core dump, on every ordinary stop.
+  as_them systemd-run --user --quiet --property=KillMode=mixed \
     --setenv=DISPLAY="$display" ${xauth:+--setenv=XAUTHORITY="$xauth"} $setenvs \
     "$@"
 }

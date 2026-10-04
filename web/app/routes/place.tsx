@@ -444,7 +444,7 @@ const Place = () => {
                       <PageHead
                         tile={{ icon: 'check', up: true }}
                         title={placeLabel(place)}
-                        sub={t`${plural(model.delivered, { one: '# montage', other: '# montages' })} · finished, emailed and freed — everything is on the storage`}
+                        sub={t`${plural(model.delivered, { one: '# montage', other: '# montages' })} · freed from this machine — everything is on the storage`}
                         query={q}
                         onQuery={onQuery}
                         searchOpen

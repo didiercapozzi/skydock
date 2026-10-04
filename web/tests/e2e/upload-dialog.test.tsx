@@ -101,7 +101,11 @@ const renderBoard = async (data: typeof board | Record<string, unknown> = board,
     { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   const screen = await render(createElement(Stub, { initialEntries: ['/'] }))
-  await userEvent.click(page.getByRole('link', { name: /Luc Favre/ }).first())
+  /* a montage freed from this machine is done: its page is reached from Montages done */
+  if ((data.groups as { freed?: unknown }[]).some((g) => g.freed)) {
+    await userEvent.click(page.getByRole('link', { name: /Montages done/ }))
+    await userEvent.click(page.getByRole('link', { name: 'Open' }))
+  } else await userEvent.click(page.getByRole('link', { name: /Luc Favre/ }).first())
   if (open) await userEvent.click(page.getByRole('button', { name: 'Upload…', exact: true }))
   return screen
 }
@@ -668,21 +672,22 @@ describe('a montage with nothing left to do', () => {
   })
   const menu = () => page.getByRole('navigation', { name: 'Folders' })
 
-  test('leaves the montages once it is freed and the passenger was emailed', async () => {
+  test('leaves the montages once it is freed, and is listed under Montages done', async () => {
     const Stub = createRoutesStub([boardRoute(() => freed(true))])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
     await expect.element(menu().getByRole('heading', { name: /Montages/ })).toBeInTheDocument()
     await expect.element(menu().getByRole('link', { name: /Luc Favre/ })).not.toBeInTheDocument()
+    await expect.element(menu().getByRole('link', { name: /Montages done/ })).toBeVisible()
   })
 
-  /* freed alone is not done: the passenger still has to hear about it */
-  test('stays, saying what is left, while the passenger has not been emailed', async () => {
+  /* freed is done, emailed or not: its email can still be sent from its page */
+  test('is done once freed, whether or not the passenger has been emailed', async () => {
     const Stub = createRoutesStub([boardRoute(() => freed(false))])
     await render(createElement(Stub, { initialEntries: ['/'] }))
 
-    const luc = menu().getByRole('link', { name: /Luc Favre/ })
-    await expect.poll(() => luc.element().textContent).toContain('to email')
+    await expect.element(menu().getByRole('link', { name: /Luc Favre/ })).not.toBeInTheDocument()
+    await expect.element(menu().getByRole('link', { name: /Montages done/ })).toBeVisible()
   })
 })
 

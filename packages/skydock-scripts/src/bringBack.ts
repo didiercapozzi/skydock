@@ -128,7 +128,9 @@ const bringBack = async ({
   board.groups = board.groups.map((group) => ({ ...group, files: group.files.map(put) }))
   /* a jump lives on the storage only for as long as nothing of it is here */
   board.groups = board.groups.map((group) =>
-    group.freed && group.files.some((f) => f.id === id) ? { ...group, freed: undefined } : group
+    group.freed && group.files.some((f) => f.id === id)
+      ? { ...group, freedBefore: group.freed, freed: undefined }
+      : group
   )
   return { filename: entry.filename, original, size, board }
 }
