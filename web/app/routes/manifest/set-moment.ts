@@ -1,0 +1,79 @@
+import * as path from 'node:path'
+import { saveManifest } from '@skydock/scripts'
+import { buildMissingMoments } from '../../../../packages/skydock-scripts/src/momentPass'
+import { boardAnswer } from '../../helpers/manifest'
+import type { Intent } from './change'
+
+/* One of a jump's moments, moved by hand. What the camera measured is a starting point: the exit
+   decides where the music begins, and a second either way is the difference between a cut that
+   lands and one that does not (RULES, Where the jump is in a clip).
+
+   It belongs to the file rather than to the jump that holds it: the door was left at one instant,
+   whatever anybody later does with the footage. Unlike a trim, it is not undone by processing again
+   and does not make a copy stale — nothing is cut differently for it until somebody says so. */
+const setMomentIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+  const id = data.fileIds?.[0]
+  if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Move one mark at a time.')
+  const moment = data.moment
+  if (!moment) return refuse('Say which moment it is.')
+  const file = manifest.files.find((f) => f.id === id)
+  if (!file) return refuse('That file is no longer on the board.')
+
+  const held = file.moments ?? { exit: 0 }
+  const moved = { ...held, [moment.which]: moment.seconds }
+  const inOrder = [moved.exit, moved.opening, moved.canopy, moved.landing].filter(
+    (at) => at !== undefined
+  )
+  if (inOrder.some((at, index) => index > 0 && at <= inOrder[index - 1]))
+    return refuse('A jump goes door, opening, canopy, ground — the marks have to say the same.')
+
+  const found = file.foundMoments ?? file.moments ?? undefined
+  for (const one of [file, ...manifest.groups.flatMap((g) => g.files)])
+    if (one.id === id) {
+      one.moments = moved
+      one.foundMoments = found
+    }
+  saveManifest(manifestPath, manifest)
+  return boardAnswer(manifest)
+}
+
+/* The marks put back where the camera measured them, whatever was moved by hand since. Only a file
+   that was moved has anything to go back to. */
+const resetMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+  const id = data.fileIds?.[0]
+  if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Put back one clip at a time.')
+  const file = manifest.files.find((f) => f.id === id)
+  if (!file) return refuse('That file is no longer on the board.')
+  const found = file.foundMoments
+  if (!found) return refuse('Its marks are where the camera put them.')
+  for (const one of [file, ...manifest.groups.flatMap((g) => g.files)])
+    if (one.id === id) {
+      one.moments = found
+      delete one.foundMoments
+    }
+  saveManifest(manifestPath, manifest)
+  return boardAnswer(manifest)
+}
+
+/* For development only: a clip forgets where its jump is, marks moved by hand and all, and the pass
+   that finds it runs again at once, with its progress shown as ever — for trying the finding out on
+   real footage. Refused anywhere else, since it throws away what somebody may have corrected. */
+const redoMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+  if (!import.meta.env.DEV) return refuse('This is only for development.')
+  const id = data.fileIds?.[0]
+  if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Redo one clip at a time.')
+  const file = manifest.files.find((f) => f.id === id)
+  if (!file) return refuse('That file is no longer on the board.')
+  for (const one of [file, ...manifest.groups.flatMap((g) => g.files)])
+    if (one.id === id) {
+      delete one.moments
+      delete one.foundMoments
+    }
+  saveManifest(manifestPath, manifest)
+  void buildMissingMoments(path.dirname(manifestPath)).catch((e: unknown) => {
+    console.error('[Moments] pass failed:', e)
+  })
+  return boardAnswer(manifest)
+}
+
+export { redoMomentsIntent, resetMomentsIntent, setMomentIntent }

@@ -1,0 +1,133 @@
+import { t } from '@lingui/core/macro'
+import { containCrop, fitRatio, withRatio } from '@skydock/scripts'
+import type { FrameCrop } from '@skydock/scripts'
+import { useRef, useState } from 'react'
+
+type Handle = 'nw' | 'ne' | 'sw' | 'se' | 'move'
+
+const HANDLES: { corner: Exclude<Handle, 'move'>; style: string }[] = [
+  {
+    corner: 'nw',
+    style: 'top-0 left-0 cursor-nwse-resize -translate-x-1/2 -translate-y-1/2'
+  },
+  {
+    corner: 'ne',
+    style: 'top-0 right-0 cursor-nesw-resize translate-x-1/2 -translate-y-1/2'
+  },
+  {
+    corner: 'sw',
+    style: 'bottom-0 left-0 cursor-nesw-resize -translate-x-1/2 translate-y-1/2'
+  },
+  {
+    corner: 'se',
+    style: 'bottom-0 right-0 cursor-nwse-resize translate-x-1/2 translate-y-1/2'
+  }
+]
+
+const resized = (
+  crop: FrameCrop,
+  corner: Exclude<Handle, 'move'>,
+  at: { x: number; y: number },
+  ratio: number | null,
+  frame: { width: number; height: number }
+): FrameCrop => {
+  const anchor = {
+    x: corner === 'nw' || corner === 'sw' ? crop.x + crop.width : crop.x,
+    y: corner === 'nw' || corner === 'ne' ? crop.y + crop.height : crop.y
+  }
+  const width = Math.abs(at.x - anchor.x)
+  const height = Math.abs(at.y - anchor.y)
+  const shaped = ratio
+    ? withRatio({ ...crop, width, height }, ratio, frame.width, frame.height, 'width')
+    : { ...crop, width, height }
+  return containCrop({
+    ...shaped,
+    x: Math.min(anchor.x, at.x) === anchor.x ? anchor.x : anchor.x - shaped.width,
+    y: Math.min(anchor.y, at.y) === anchor.y ? anchor.y : anchor.y - shaped.height
+  })
+}
+
+const FrameCropper = ({
+  crop,
+  ratio,
+  frame,
+  onChange
+}: {
+  crop: FrameCrop
+  ratio: number | null
+  frame: { width: number; height: number }
+  onChange: (crop: FrameCrop) => void
+}) => {
+  const box = useRef<HTMLDivElement>(null)
+  const [dragging, setDragging] = useState<Handle | null>(null)
+
+  const at = (e: React.PointerEvent) => {
+    const rect = box.current?.getBoundingClientRect()
+    if (!rect || rect.width === 0) return null
+    return {
+      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    }
+  }
+
+  const start = (handle: Handle) => (e: React.PointerEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.currentTarget.setPointerCapture?.(e.pointerId)
+    setDragging(handle)
+  }
+
+  const move = (e: React.PointerEvent) => {
+    if (!dragging) return
+    const point = at(e)
+    if (!point) return
+    if (dragging === 'move') {
+      onChange(
+        containCrop({
+          ...crop,
+          x: point.x - crop.width / 2,
+          y: point.y - crop.height / 2
+        })
+      )
+      return
+    }
+    onChange(resized(crop, dragging, point, ratio, frame))
+  }
+
+  const end = () => setDragging(null)
+
+  return (
+    <div
+      ref={box}
+      onPointerMove={move}
+      onPointerUp={end}
+      onPointerCancel={end}
+      className='absolute inset-0 touch-none select-none'>
+      <div className='pointer-events-none absolute inset-0 bg-[rgba(20,19,17,0.55)]' />
+      <div
+        role='presentation'
+        aria-label={t`Part of the picture to keep`}
+        onPointerDown={start('move')}
+        style={{
+          left: `${crop.x * 100}%`,
+          top: `${crop.y * 100}%`,
+          width: `${crop.width * 100}%`,
+          height: `${crop.height * 100}%`
+        }}
+        className='absolute cursor-move rounded-[6px] border-2 border-white'>
+        <div className='absolute inset-0 rounded-[2px] bg-transparent backdrop-brightness-[1.8]' />
+        {HANDLES.map(({ corner, style }) => (
+          <span
+            key={corner}
+            role='presentation'
+            aria-label={t`Resize ${corner}`}
+            onPointerDown={start(corner)}
+            className={`absolute h-2.5 w-2.5 rounded-[2px] bg-white shadow-[0_0_0_1px_rgba(20,19,17,0.25)] ${style}`}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export { fitRatio, FrameCropper }

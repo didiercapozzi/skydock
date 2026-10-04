@@ -1,0 +1,580 @@
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import * as streams from 'node:stream/promises'
+import { startOfFiles } from './clustering'
+import { counted } from './lib/counted'
+import { loadManifest, saveManifest } from './manifest'
+import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
+import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
+import type { ProxyEncoder } from './proxy'
+import { following } from './live'
+import { keepProject } from './projectHistory'
+import { lastComplaint, run, runWatched, stoppable } from './tools'
+import type { ManifestFile, ManifestGroup } from './types'
+import {
+  exiftoolPath,
+  ffmpegPath,
+  getManifestPath,
+  getOutputDir,
+  hasCommand,
+  isVideoFile,
+  parseDayEpoch
+} from './utils'
+import {
+  buildFsTime,
+  buildGroupBaseName,
+  buildPassengerFolder,
+  formatGroupDay,
+  hasCompletePassenger,
+  isMontage,
+  makeFileName,
+  MONTAGES_FOLDER,
+  toFileStem
+} from './workspace'
+import { messageOf } from './lib/words'
+
+type ProcessOptions = {
+  manifestPath?: string
+  outputDir?: string
+  groupIds?: string[]
+  destination?: string
+  fileIds?: string[]
+}
+
+const exif = async (args: string[]) => {
+  const ran = await run(exiftoolPath(), args)
+  if (!ran.ok) throw new Error(lastComplaint(ran.stderr))
+  return ran.stdout
+}
+
+const shownShape = async (src: string) => {
+  const shape = await videoShape(src)
+  return shape && (shape.turned ? { width: shape.height, height: shape.width } : shape)
+}
+
+const ORIGIN_TAG = 'skydock:from='
+
+const tagOrigin = async (dest: string, from: string | undefined) => {
+  if (!from || !hasCommand('exiftool')) return
+  await exif(['-overwrite_original', '-q', `-Comment=${ORIGIN_TAG}${from}`, dest]).catch(
+    () => undefined
+  )
+}
+
+const turnPhoto = async (dest: string, rotation: 90 | 180 | 270) => {
+  const current = Number.parseInt((await exif(['-n', '-s3', '-Orientation', dest])).trim(), 10)
+  const next = orientationAfter(Number.isFinite(current) ? current : 1, rotation)
+  await exif(['-n', '-overwrite_original', '-q', `-Orientation=${next}`, dest])
+}
+
+const DELIVERY_ARGS: Record<ProxyEncoder, string[]> = {
+  nvenc: ['-c:v', 'h264_nvenc', '-preset', 'p6', '-rc', 'vbr', '-cq', '20', '-b:v', '0'],
+  vaapi: ['-c:v', 'h264_vaapi', '-qp', '20'],
+  cpu: ['-c:v', 'libx264', '-crf', '18', '-preset', 'medium', '-pix_fmt', 'yuv420p']
+}
+
+const isTrimmed = (file: { cropStart?: number | null; cropEnd?: number | null }) =>
+  file.cropStart != null || file.cropEnd != null
+
+const timeArgs = (cropStart?: number | null, cropEnd?: number | null) => [
+  ...(cropStart != null ? ['-ss', String(cropStart)] : []),
+  ...(cropEnd != null ? ['-t', (cropEnd - (cropStart ?? 0)).toFixed(6)] : [])
+]
+
+type OnPercent = (percent: number) => void
+
+const trimSeconds = (cropStart?: number | null, cropEnd?: number | null) =>
+  cropEnd != null ? cropEnd - (cropStart ?? 0) : null
+
+const trimVideo = async (
+  src: string,
+  dest: string,
+  cropStart: number | null | undefined,
+  cropEnd: number | null | undefined,
+  onPercent?: OnPercent
+) => {
+  if (!hasCommand('ffmpeg')) return false
+  const ran = await runWatched(
+    ffmpegPath(),
+    [
+      '-y',
+      ...timeArgs(cropStart, cropEnd),
+      '-i',
+      src,
+      '-c',
+      'copy',
+      '-avoid_negative_ts',
+      'make_zero',
+      dest
+    ],
+    onPercent,
+    trimSeconds(cropStart, cropEnd)
+  )
+  return ran.ok
+}
+
+const runFfmpeg = async (args: string[], onPercent?: OnPercent, seconds?: number | null) => {
+  const ran = await runWatched(ffmpegPath(), args, onPercent, seconds)
+  return ran.ok ? { ok: true as const } : { ok: false as const, reason: lastComplaint(ran.stderr) }
+}
+
+const copyWhole = async (src: string, dest: string, onPercent?: OnPercent) => {
+  const total = onPercent ? fs.statSync(src).size : 0
+  const bytes = counted(
+    total > 0 ? (done) => onPercent?.(Math.min(99, Math.floor((done / total) * 100))) : undefined,
+    false
+  )
+  await streams.pipeline(fs.createReadStream(src), bytes.through, fs.createWriteStream(dest), {
+    signal: stoppable().getStore()
+  })
+}
+
+const recodeVideo = async (
+  src: string,
+  dest: string,
+  filter: string,
+  cropStart?: number | null,
+  cropEnd?: number | null,
+  onPercent?: OnPercent
+) => {
+  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
+  const encode = (pick: ProxyEncoder) => {
+    const decode =
+      pick === 'nvenc'
+        ? ['-hwaccel', 'cuda']
+        : pick === 'vaapi'
+          ? ['-vaapi_device', DRI_DEVICE(), '-hwaccel', 'vaapi']
+          : []
+    const chain = pick === 'vaapi' ? `${filter},format=nv12,hwupload` : filter
+    return runFfmpeg(
+      [
+        '-y',
+        ...decode,
+        ...timeArgs(cropStart, cropEnd),
+        '-i',
+        src,
+        '-vf',
+        chain,
+        ...DELIVERY_ARGS[pick],
+        '-c:a',
+        'copy',
+        dest
+      ],
+      onPercent,
+      trimSeconds(cropStart, cropEnd)
+    )
+  }
+  const pick = await proxyEncoder()
+  const first = await encode(pick)
+  if (first.ok || pick === 'cpu') return first
+  const again = await encode('cpu')
+  if (again.ok) {
+    console.warn(
+      `[Process] ${path.basename(src)}: the graphics card could not (${first.reason}) — done on the processor`
+    )
+    return again
+  }
+  return { ok: false as const, reason: `${first.reason}; on the processor: ${again.reason}` }
+}
+
+const updateMetadata = async (files: string[]) => {
+  if (files.length === 0) return
+  try {
+    await exif([
+      '-P',
+      '-overwrite_original',
+      '-m',
+      '-q',
+      '-CreateDate<FileModifyDate',
+      '-MediaCreateDate<FileModifyDate',
+      '-TrackCreateDate<FileModifyDate',
+      '-MediaModifyDate<FileModifyDate',
+      '-TrackModifyDate<FileModifyDate',
+      '-ModifyDate<FileModifyDate',
+      '-DateTimeOriginal<FileModifyDate',
+      '-CreationDate<FileModifyDate',
+      ...files
+    ])
+  } catch (e) {
+    throw new Error(
+      `EXIF failed for ${path.basename(path.dirname(files[0]))}: ${messageOf(e)} — install exiftool`
+    )
+  }
+}
+
+const pruneTo = (folder: string, kept: Set<string>) => {
+  if (!fs.existsSync(folder)) return
+  for (const entry of fs.readdirSync(folder)) {
+    if (kept.has(entry)) continue
+    fs.rmSync(path.join(folder, entry), { recursive: true, force: true })
+  }
+}
+
+const pruneStaleMedia = (dir: string, kept: Set<string>) => {
+  for (const media of ['videos', 'photos']) pruneTo(path.join(dir, media), kept)
+}
+
+const getDestinationDir = (outputDir: string, destination: string) =>
+  path.join(outputDir, 'processed', destination.replace(/[/\\]+/g, '_').trim() || 'destination')
+
+const isFlatGroup = (group: ManifestGroup) => !isMontage(group) && !!group.destination
+
+const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
+  const dayEpoch = parseDayEpoch(group.day) ?? startOfFiles(group.files)
+  const baseName = buildGroupBaseName(group.passenger, group.label, dayEpoch)
+  if (isFlatGroup(group)) {
+    return { dir: getDestinationDir(outputDir, group.destination!), baseName, dayEpoch, flat: true }
+  }
+  const parent = isMontage(group)
+    ? getDestinationDir(outputDir, MONTAGES_FOLDER)
+    : group.destination
+      ? getDestinationDir(outputDir, group.destination)
+      : path.join(outputDir, 'processed')
+  const folder = hasCompletePassenger(group.passenger)
+    ? buildPassengerFolder(group.passenger, baseName)
+    : baseName
+  return { dir: path.join(parent, folder), baseName, dayEpoch, flat: false }
+}
+
+const writeCutProxy = async (
+  file: ManifestFile,
+  dest: string,
+  outputDir: string,
+  groupId: string
+) => {
+  if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
+  const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
+  const trimmed = isTrimmed(file)
+  if (!isWholeFrame(file.frame) || file.rotation) {
+    const shape = await shownShape(file.proxy)
+    if (!shape) return null
+    const filter = pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })
+    if (!filter) return null
+    return (await recodeVideo(file.proxy, target, filter, file.cropStart, file.cropEnd)).ok
+      ? target
+      : null
+  }
+  if (trimmed) {
+    if (!(await cropProxy(file.proxy, target, file.cropStart, file.cropEnd))) return null
+  } else {
+    fs.mkdirSync(path.dirname(target), { recursive: true })
+    await fs.promises.copyFile(file.proxy, target)
+  }
+  return target
+}
+
+const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent?: OnPercent) => {
+  const video = isVideoFile(file.path)
+  const trimmed = isTrimmed(file)
+  const reshaped = video && (!isWholeFrame(file.frame) || Boolean(file.rotation))
+  const shape = reshaped ? await shownShape(file.path) : null
+  if (reshaped && !shape)
+    throw new Error(`Cannot read the size of ${file.filename}: install ffprobe to crop or turn it`)
+  const filter = shape && pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })
+  if (filter) {
+    const made = await recodeVideo(file.path, dest, filter, file.cropStart, file.cropEnd, onPercent)
+    if (!made.ok) throw new Error(`ffmpeg could not crop or turn ${file.filename}: ${made.reason}`)
+  } else if (video && trimmed) {
+    if (!(await trimVideo(file.path, dest, file.cropStart, file.cropEnd, onPercent))) {
+      throw new Error(
+        `ffmpeg crop failed for ${file.filename} ${file.cropStart}→${file.cropEnd}: install ffmpeg or check range`
+      )
+    }
+  } else {
+    await copyWhole(file.path, dest, onPercent)
+    if (!video && file.rotation) await turnPhoto(dest, file.rotation)
+  }
+  await tagOrigin(dest, file.copyOf ?? file.id)
+  fs.utimesSync(dest, time, time)
+}
+
+const writeOne = async (
+  file: ManifestFile,
+  dest: string,
+  time: Date,
+  after?: () => Promise<unknown>
+) => {
+  const live = following('process', file.id)
+  try {
+    await copyMedia(file, dest, time, live.at)
+    await after?.()
+    live.done(true)
+  } catch (e) {
+    live.done(false)
+    if (stoppable().getStore()?.aborted) fs.rmSync(dest, { force: true })
+    throw e
+  }
+}
+
+class ProcessingCancelled extends Error {}
+
+const stopIfCancelled = () => {
+  if (stoppable().getStore()?.aborted)
+    throw new ProcessingCancelled(
+      'Processing was cancelled. What was not finished is left to process again.'
+    )
+}
+
+const writeGroup = async (
+  group: ManifestGroup,
+  outputDir: string,
+  usedNames: Set<string>,
+  record: (source: ManifestFile, destPath: string) => void,
+  only?: Set<string>
+) => {
+  const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
+  keepProject(outputDir, dir, baseName)
+  const written: string[] = []
+  for (const file of group.files) {
+    stopIfCancelled()
+    if (only && !only.has(file.id ?? file.path)) continue
+    if (!fs.existsSync(file.path)) continue
+    const targetDir = flat ? dir : path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
+    fs.mkdirSync(targetDir, { recursive: true })
+    const ext = path.extname(file.path).slice(1).toLowerCase()
+    const stem = flat
+      ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
+      : baseName
+    const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
+    await writeOne(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime), async () => {
+      if (!flat) await writeCutProxy(file, dest, outputDir, group.id)
+    })
+    record(file, dest)
+    written.push(dest)
+  }
+  await updateMetadata(written)
+  if (!flat) {
+    const names = written.map((entry) => path.basename(entry))
+    pruneStaleMedia(dir, usedNames)
+    pruneTo(
+      getCutProxyDir(outputDir, group.id),
+      new Set(names.map((n) => `${path.parse(n).name}.mp4`))
+    )
+  }
+  group.processed = true
+  delete group.publish
+  console.log(`[Process] ${group.id}: copied ${written.length} file(s) to ${dir}`)
+  return written.length
+}
+
+const writeLooseFiles = async (
+  destination: string,
+  files: ManifestFile[],
+  outputDir: string,
+  usedNames: Set<string>,
+  record: (source: ManifestFile, destPath: string) => void
+) => {
+  const dir = getDestinationDir(outputDir, destination)
+  const stem = toFileStem(destination, 'destination')
+  const written: string[] = []
+  for (const file of files) {
+    stopIfCancelled()
+    if (!fs.existsSync(file.path)) continue
+    fs.mkdirSync(dir, { recursive: true })
+    const ext = path.extname(file.path).slice(1).toLowerCase()
+    const name = makeFileName(`${stem}_${formatGroupDay(file.mtime)}`, file.mtime, ext, usedNames)
+    const dest = path.join(dir, name)
+    await writeOne(file, dest, buildFsTime(file.mtime, file.mtime))
+    record(file, dest)
+    written.push(dest)
+  }
+  await updateMetadata(written)
+  console.log(`[Process] ${destination}: copied ${written.length} loose file(s) to ${dir}`)
+  return written.length
+}
+
+type Running = {
+  groupIds: string[]
+  destinations: string[]
+  done: Promise<unknown>
+  stop: AbortController
+}
+let running: Running | null = null
+
+const processingNow = () =>
+  running ? { groupIds: running.groupIds, destinations: running.destinations } : null
+
+const whenProcessed = async () => {
+  await running?.done.catch(() => undefined)
+}
+
+const copiedAs = (group: ManifestGroup) =>
+  JSON.stringify(
+    group.files.map((f) => [
+      f.path,
+      f.mtime,
+      f.cropStart ?? null,
+      f.cropEnd ?? null,
+      f.frame ?? null,
+      f.rotation ?? 0
+    ])
+  )
+
+const processJumps = async (options?: ProcessOptions) => {
+  if (running) throw new Error('Already processing — wait for it to finish, then try again.')
+  const job: Running = {
+    groupIds: options?.groupIds ?? [],
+    destinations: options?.destination ? [options.destination] : [],
+    done: Promise.resolve(),
+    stop: new AbortController()
+  }
+  const done = stoppable().run(job.stop.signal, () => runProcess(options))
+  job.done = done
+  running = job
+  try {
+    return await done
+  } catch (e) {
+    if (job.stop.signal.aborted && !(e instanceof ProcessingCancelled))
+      throw new ProcessingCancelled(
+        'Processing was cancelled. What was not finished is left to process again.'
+      )
+    throw e
+  } finally {
+    if (running === job) running = null
+  }
+}
+
+const cancelProcessing = () => {
+  if (!running) return false
+  running.stop.abort()
+  return true
+}
+
+const runProcess = async (options?: ProcessOptions) => {
+  const outputDir = options?.outputDir || getOutputDir()
+  const manifestPath = options?.manifestPath || getManifestPath(outputDir)
+
+  const manifest = loadManifest(manifestPath)
+  if (!manifest) {
+    console.error('[Process] ERROR: Manifest not found')
+    return { copied: 0, processedGroups: 0 }
+  }
+
+  const filesInGroups = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.path)))
+  const only = options?.fileIds ? new Set(options.fileIds) : undefined
+  const looseByDestination = new Map<string, ManifestFile[]>()
+  for (const file of manifest.files) {
+    if (!file.destination || filesInGroups.has(file.path)) continue
+    if (only && !only.has(file.id ?? file.path)) continue
+    looseByDestination.set(file.destination, [
+      ...(looseByDestination.get(file.destination) ?? []),
+      file
+    ])
+  }
+
+  const groupIds = options?.groupIds ?? []
+  const destinations = options?.destination
+    ? [options.destination]
+    : groupIds.length > 0
+      ? []
+      : [
+          ...new Set([
+            ...manifest.groups.flatMap((g) => (g.destination ? [g.destination] : [])),
+            ...looseByDestination.keys()
+          ])
+        ]
+  const groups = manifest.groups.filter(
+    (g) =>
+      g.files.length > 0 &&
+      !g.freed &&
+      (groupIds.length > 0
+        ? groupIds.includes(g.id)
+        : !options?.destination || g.destination === options.destination) &&
+      (!only || g.files.some((f) => only.has(f.id ?? f.path)))
+  )
+  const takenOf = (g: ManifestGroup) => (only && isFlatGroup(g) ? only : undefined)
+
+  const namePools = new Map<string, Set<string>>()
+  const poolFor = (dir: string) => {
+    const pool = namePools.get(dir) ?? new Set<string>()
+    namePools.set(dir, pool)
+    return pool
+  }
+  const inRun = new Set([
+    ...groups.flatMap((g) =>
+      g.files.flatMap((f) => {
+        const taken = takenOf(g)
+        return !taken || taken.has(f.id ?? f.path) ? [f.id ?? f.path] : []
+      })
+    ),
+    ...destinations.flatMap((d) => (looseByDestination.get(d) ?? []).map((f) => f.id ?? f.path))
+  ])
+  const hold = (file: ManifestFile, dir: string) => {
+    if (file.processed && !inRun.has(file.id ?? file.path))
+      poolFor(dir).add(path.basename(file.processed.path))
+  }
+  for (const group of manifest.groups)
+    for (const file of group.files) hold(file, getGroupProcessedDir(outputDir, group).dir)
+  for (const file of manifest.files)
+    if (file.destination) hold(file, getDestinationDir(outputDir, file.destination))
+
+  const processedPaths = new Map<string, { dest: string; source: ManifestFile }>()
+  const record = (source: ManifestFile, destPath: string) => {
+    processedPaths.set(source.id ?? source.path, { dest: destPath, source })
+  }
+
+  const asAsked = new Map(groups.map((g) => [g.id, copiedAs(g)]))
+  let copied = 0
+  for (const group of groups)
+    copied += await writeGroup(
+      group,
+      outputDir,
+      poolFor(getGroupProcessedDir(outputDir, group).dir),
+      record,
+      takenOf(group)
+    )
+  for (const destination of destinations) {
+    copied += await writeLooseFiles(
+      destination,
+      looseByDestination.get(destination) ?? [],
+      outputDir,
+      poolFor(getDestinationDir(outputDir, destination)),
+      record
+    )
+  }
+
+  const current = loadManifest(manifestPath) ?? manifest
+  for (const group of current.groups) {
+    const asked = asAsked.get(group.id)
+    if (asked === undefined || asked !== copiedAs(group)) continue
+    group.processed = true
+    delete group.publish
+  }
+  for (const file of current.files) {
+    const written = processedPaths.get(file.id ?? file.path)
+    if (!written) continue
+    const { dest, source } = written
+    file.processed = {
+      path: dest,
+      size: fs.statSync(dest).size,
+      at: Math.floor(Date.now() / 1000),
+      source: {
+        id: source.id,
+        size: source.size,
+        mtime: source.mtime,
+        cropStart: source.cropStart ?? null,
+        cropEnd: source.cropEnd ?? null,
+        frame: source.frame ?? null,
+        rotation: source.rotation ?? null
+      }
+    }
+    delete file.uploaded
+  }
+
+  if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, current)
+
+  console.log(`[Process] Done. Copied ${copied} file(s).`)
+
+  return { copied, processedGroups: groups.length }
+}
+
+export {
+  cancelProcessing,
+  getDestinationDir,
+  getGroupProcessedDir,
+  isFlatGroup,
+  processingNow,
+  processJumps,
+  whenProcessed,
+  writeCutProxy
+}

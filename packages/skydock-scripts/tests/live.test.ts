@@ -1,0 +1,130 @@
+// @vitest-environment node
+import { describe, it, expect, afterAll, beforeEach } from 'vitest'
+import * as fs from 'node:fs'
+import * as os from 'node:os'
+import * as path from 'node:path'
+import { following, publish, subscribe } from '../src/live'
+import type { LiveEvent } from '../src/live'
+import { durationIn, positionIn, runWatched } from '../src/tools'
+
+const scripts: string[] = []
+
+const printing = (prints: string) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-progress-'))
+  scripts.push(dir)
+  const target = path.join(dir, 'ffmpeg')
+  fs.writeFileSync(target, `#!/bin/sh\n${prints}\n`, { mode: 0o755 })
+  return target
+}
+
+afterAll(() => {
+  for (const dir of scripts) fs.rmSync(dir, { recursive: true, force: true })
+})
+
+describe('how far a file being processed has got', () => {
+  it('reads its position out of what it prints, the latest one when several arrive at once', () => {
+    expect(positionIn('frame=10\nout_time_us=2500000\nprogress=continue\n')).toBe(2.5)
+    expect(positionIn('out_time_us=1000000\nout_time_us=4000000\n')).toBe(4)
+    expect(positionIn('frame=10\n')).toBeNull()
+  })
+
+  it('reads how long the clip runs from what ffmpeg says on opening it', () => {
+    expect(durationIn('  Duration: 00:02:28.50, start: 0.000000, bitrate: 60 kb/s')).toBe(148.5)
+    expect(durationIn('Stream #0:0: Video: hevc')).toBeNull()
+  })
+
+  it('says the percentage of a trimmed clip against the length of the trim', async () => {
+    const heard: number[] = []
+    const ran = await runWatched(
+      printing("printf 'out_time_us=2000000\\n'; sleep 0.2; printf 'out_time_us=5000000\\n'"),
+      [],
+      (percent) => heard.push(percent),
+      10
+    )
+    expect(ran.ok).toBe(true)
+    expect(heard).toEqual([20, 50])
+  })
+
+  it('takes the length from ffmpeg itself when the clip is not trimmed', async () => {
+    const heard: number[] = []
+    await runWatched(
+      printing(
+        "printf 'Duration: 00:00:20.00, start' >&2; sleep 0.2; printf 'out_time_us=5000000\\n'"
+      ),
+      [],
+      (percent) => heard.push(percent)
+    )
+    expect(heard).toEqual([25])
+  })
+
+  it('never says a hundred on its own', async () => {
+    const heard: number[] = []
+    await runWatched(
+      printing("printf 'out_time_us=99000000\\n'"),
+      [],
+      (percent) => heard.push(percent),
+      10
+    )
+    expect(heard).toEqual([99])
+  })
+})
+
+describe('what is happening to the files, said as it happens', () => {
+  let heard: LiveEvent[]
+  const listen = () => subscribe((event) => heard.push(event))
+
+  beforeEach(() => {
+    heard = []
+    globalThis.skydockLive = undefined
+  })
+
+  it('says a file began, each step forward, and how it ended', () => {
+    const stop = listen()
+    const live = following('process', 'a')
+    live.at(40)
+    live.at(40)
+    live.at(30)
+    live.at(75)
+    live.done(true)
+    stop()
+
+    expect(heard).toEqual([
+      { kind: 'file', work: 'process', fileId: 'a', percent: 0 },
+      { kind: 'file', work: 'process', fileId: 'a', percent: 40 },
+      { kind: 'file', work: 'process', fileId: 'a', percent: 75 },
+      { kind: 'file-done', work: 'process', fileId: 'a', ok: true }
+    ])
+  })
+
+  it('tells whoever starts listening what is already under way, and nothing that has ended', () => {
+    following('process', 'ended').done(true)
+    following('proxy', 'running').at(60)
+
+    listen()
+
+    expect(heard).toEqual([{ kind: 'file', work: 'proxy', fileId: 'running', percent: 60 }])
+  })
+
+  it('tells a late listener the card being copied, with how every file so far went', () => {
+    const files = [
+      { name: 'a.MP4', size: 1 },
+      { name: 'b.MP4', size: 2 }
+    ]
+    const copying = { kind: 'camera', camera: 'GOPRO', state: 'copying', total: 2 } as const
+    publish({ ...copying, done: 0, copied: 0, skipped: 0, files })
+    publish({ ...copying, done: 1, copied: 0, skipped: 1, last: 'skipped' })
+
+    listen()
+
+    expect(heard).toEqual([
+      { ...copying, done: 1, copied: 0, skipped: 1, last: 'skipped', files, outcomes: ['skipped'] }
+    ])
+  })
+
+  it('stops telling whoever stopped listening', () => {
+    const stop = listen()
+    stop()
+    publish({ kind: 'file', work: 'proxy', fileId: 'a', percent: 10 })
+    expect(heard).toEqual([])
+  })
+})

@@ -1,0 +1,99 @@
+name: Installers
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      version: ${{ steps.said.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: What the app says it is
+        id: said
+        shell: bash
+        run: |
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "SkyDock $version"
+
+      - name: The tag and the app agree
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          if [ "${{ github.ref_name }}" != "v${{ steps.said.outputs.version }}" ]; then
+            echo "::error::the tag is ${{ github.ref_name }} but the app says ${{ steps.said.outputs.version }}"
+            exit 1
+          fi
+
+  installers:
+    needs: version
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: ubuntu-22.04
+            target: ''
+            args: '--linux'
+          - platform: macos-latest
+            target: 'aarch64-apple-darwin'
+            args: '--mac --arm64'
+          - platform: macos-latest
+            target: 'x86_64-apple-darwin'
+            args: '--mac --x64'
+          - platform: windows-latest
+            target: ''
+            args: '--win'
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: The media tools the app carries
+        shell: bash
+        run: |
+          told=$(npx tsx scripts/fetch-tools.ts)
+          echo "SKYDOCK_TOOLS_DIR=$told" >> "$GITHUB_ENV"
+        env:
+          SKYDOCK_TARGET: ${{ matrix.target }}
+
+      - name: What the app carries
+        shell: bash
+        run: npm run pack
+        env:
+          SKYDOCK_TARGET: ${{ matrix.target }}
+
+      - name: The window itself
+        shell: bash
+        run: npm run shell
+
+      - name: The installers
+        shell: bash
+        run: npx electron-builder ${{ matrix.args }} ${{ startsWith(github.ref, 'refs/tags/') && '--publish always' || '--publish never' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: skydock-${{ matrix.platform }}${{ matrix.target && format('-{0}', matrix.target) || '' }}
+          path: |
+            build/installers/*.deb
+            build/installers/*.AppImage
+            build/installers/*.dmg
+            build/installers/*.exe
+            build/installers/*.msi
+          if-no-files-found: ignore

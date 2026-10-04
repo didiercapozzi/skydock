@@ -1,0 +1,51 @@
+import { useState } from 'react'
+import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
+import { useSafeFetcher } from '../helpers/routing'
+
+const useGroups = (initialGroups: ManifestGroup[]) => {
+  const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
+  const { submit, state } = useSafeFetcher()
+
+  const updateGroups = (
+    next: ManifestGroup[],
+    fileUpdates?: ManifestFile[],
+    destinations?: Destination[]
+  ) => {
+    const withDirty = next.map((g) => {
+      const prev = groups.find((p) => p.id === g.id)
+      if (!prev?.processed) return g
+      if (prev.label !== g.label) return { ...g, processed: false, publish: undefined }
+      if (prev.day !== g.day) return { ...g, processed: false, publish: undefined }
+      if (prev.files.length !== g.files.length)
+        return { ...g, processed: false, publish: undefined }
+      for (let i = 0; i < g.files.length; i++) {
+        const a = prev.files[i]
+        const b = g.files[i]
+        if (!a || !b) return { ...g, processed: false, publish: undefined }
+        if (
+          a.path !== b.path ||
+          a.id !== b.id ||
+          a.cropStart !== b.cropStart ||
+          a.cropEnd !== b.cropEnd ||
+          a.mtime !== b.mtime
+        )
+          return { ...g, processed: false, publish: undefined }
+      }
+      return g
+    })
+    setGroups(withDirty)
+    submit({
+      url: '/api/manifest',
+      actionArgs: {
+        intent: 'save-groups',
+        groups: withDirty,
+        ...(fileUpdates ? { fileUpdates } : {}),
+        ...(destinations ? { destinations } : {})
+      }
+    })
+  }
+
+  return { groups, setGroups, updateGroups, saving: state !== 'idle' }
+}
+
+export { useGroups }

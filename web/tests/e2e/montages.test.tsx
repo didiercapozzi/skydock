@@ -1,0 +1,531 @@
+import { createElement } from 'react'
+import { createRoutesStub } from 'react-router'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { render } from 'vitest-browser-react'
+import { page, userEvent } from 'vitest/browser'
+
+vi.mock(import('@skydock/scripts'), async (importOriginal) => {
+  const actual = (await importOriginal()) as Record<string, unknown>
+  return { ...actual, loadManifest: vi.fn(() => null) }
+})
+
+import { speak } from '../../app/i18n'
+import { boardRoute } from './board-route'
+
+
+const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
+
+const file = (id: string, mtime: number) => ({
+  id,
+  path: `/o/${id}.MP4`,
+  filename: `${id}.MP4`,
+  size: 1,
+  mtime
+})
+
+const FRESH_JUMP = {
+  id: 'g1',
+  label: 'g1',
+  day: '01.08.2026',
+  name: 'Sunset load',
+  files: [file('a', AT), file('b', AT + 60)]
+}
+const YVERDON_JUMP = {
+  id: 'y1',
+  label: 'y1',
+  day: '01.08.2026',
+  destination: 'Yverdon',
+  files: [file('y', AT + 7200), file('z', AT + 7260)]
+}
+
+const board = {
+  groups: [FRESH_JUMP, YVERDON_JUMP],
+  looseFiles: [file('solo', AT + 9000)],
+  destinations: [{ name: 'Yverdon' }, { name: 'Passengers' }],
+  outputs: {},
+  proxies: {},
+  montages: {},
+  remote: null,
+  storage: null,
+  hasManifest: true,
+  processing: null,
+  nas: { connected: false, hostname: null, backupFolder: null }
+}
+
+const montage = (name: [string, string], files: ReturnType<typeof file>[], over = {}) => ({
+  id: 'm1',
+  label: 'm1',
+  day: '01.08.2026',
+  montageJump: true,
+  passenger: { firstname: name[0], lastname: name[1] },
+  files,
+  ...over
+})
+
+const sent: Record<string, unknown>[] = []
+
+const renderBoard = async (answer: unknown, at = '/', shown: unknown = board) => {
+  sent.length = 0
+  const Stub = createRoutesStub([
+    boardRoute(() => shown),
+    {
+      path: '/api/manifest',
+      action: async ({ request }) => {
+        sent.push((await request.json()) as Record<string, unknown>)
+        return answer
+      }
+    },
+    { path: '/api/storage-folder', loader: () => ({ ok: true, dir: '/SkyDock/Yverdon', files: [] }) }
+  ])
+  await render(createElement(Stub, { initialEntries: [at] }))
+}
+
+const card = (name: RegExp) => page.getByRole('button', { name })
+const details = () => page.getByRole('complementary', { name: 'Details' })
+const pageHeading = (name: string) =>
+  details().getByRole('heading', { name: new RegExp(`^${name}`) })
+
+describe('a jump in Fresh files', () => {
+  test('is named only by making it a montage, which starts from the name it has', async () => {
+    await renderBoard({ groups: [] })
+    await userEvent.click(card(/^Sunset load, /))
+
+    await expect.element(details().getByTitle('Rename this jump')).not.toBeInTheDocument()
+    await userEvent.click(details().getByRole('button', { name: 'Make a montage…' }))
+
+    await expect.element(details().getByRole('textbox', { name: 'Name' })).toHaveValue('Sunset load')
+  })
+
+  test('named, is the montage, and the board goes to it', async () => {
+    await renderBoard({ groups: [] })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(details().getByRole('button', { name: 'Make a montage…' }))
+    await userEvent.fill(details().getByRole('textbox', { name: 'Name' }), 'Luc Favre')
+    await userEvent.click(details().getByRole('button', { name: 'Make montage' }))
+
+    await expect.element(pageHeading('Luc Favre')).toBeVisible()
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({
+        intent: 'save-groups',
+        groups: expect.arrayContaining([
+          expect.objectContaining({
+            id: 'g1',
+            montageJump: true,
+            passenger: { firstname: 'Luc', lastname: 'Favre' }
+          })
+        ])
+      })
+  })
+})
+
+describe('a group of picked files', () => {
+  test('shows several pictures at the top of the panel, and counts what does not fit', async () => {
+    const many = Array.from({ length: 12 }, (_, at) => file(`m${at}`, AT + at * 60))
+    await renderBoard({ groups: [] }, '/', { ...board, groups: [{ ...FRESH_JUMP, files: many }] })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(page.getByRole('button', { name: /m0\.MP4/ }).last())
+    for (let at = 1; at < 12; at++)
+      await userEvent.click(page.getByRole('button', { name: new RegExp(`m${at}\\.MP4`) }).last(), {
+        modifiers: ['ControlOrMeta']
+      })
+
+    await expect.element(details().getByText('11 files')).toBeVisible()
+    await expect.poll(() => details().element().querySelectorAll('img').length).toBe(9)
+    await expect.element(details().getByText('+2')).toBeVisible()
+  })
+})
+
+describe('picked files in Fresh files', () => {
+  test('named, are made a montage, and the board goes to it', async () => {
+    await renderBoard({
+      groups: [YVERDON_JUMP, montage(['Boogie', '2026'], FRESH_JUMP.files)],
+      looseFiles: [file('solo', AT + 9000)]
+    })
+    await userEvent.click(card(/^Sunset load, /))
+    for (const name of [/a\.MP4/, /b\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).last(), {
+        modifiers: ['ControlOrMeta']
+      })
+    await userEvent.click(details().getByRole('button', { name: 'Make a montage of these…' }))
+    await userEvent.fill(details().getByRole('textbox', { name: 'Name' }), 'Boogie 2026')
+    await userEvent.click(details().getByRole('button', { name: 'Make montage' }))
+
+    expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Boogie 2026' })
+    await expect.element(pageHeading('Boogie 2026')).toBeVisible()
+  })
+
+  test('opens Fresh files on its loose files, without a click', async () => {
+    await renderBoard({ groups: [FRESH_JUMP, montage(['Solo', ''], [file('solo', AT + 9000)])] })
+
+    await expect
+      .element(page.getByRole('button', { name: /^Loose files/ }).first())
+      .toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByRole('button', { name: /solo\.MP4/ }).last()).toBeVisible()
+  })
+
+  test('one file on its own can be made a montage', async () => {
+    await renderBoard({ groups: [FRESH_JUMP, YVERDON_JUMP, montage(['Solo', ''], [file('solo', AT + 9000)])] })
+    await userEvent.click(page.getByRole('button', { name: /^Loose files/ }))
+    await userEvent.click(page.getByRole('button', { name: /solo\.MP4/ }).last())
+    await userEvent.click(details().getByRole('button', { name: 'Make a montage of this…' }))
+    await userEvent.fill(details().getByRole('textbox', { name: 'Name' }), 'Solo')
+    await userEvent.click(details().getByRole('button', { name: 'Make montage' }))
+
+    expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['solo'], name: 'Solo' })
+    await expect.element(pageHeading('Solo')).toBeVisible()
+  })
+})
+
+describe('files a dropzone holds', () => {
+  test('are copied into a montage, and the dropzone keeps them', async () => {
+    const copies = YVERDON_JUMP.files.map((f) => ({ ...f, id: `${f.id}~1`, copyOf: f.id }))
+    await renderBoard({
+      groups: [FRESH_JUMP, YVERDON_JUMP, montage(['Boogie', '2026'], copies)],
+      looseFiles: [file('solo', AT + 9000)]
+    }, '/dropzone/Yverdon')
+    for (const name of [/y\.MP4/, /z\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).last(), {
+        modifiers: ['ControlOrMeta']
+      })
+    await userEvent.click(details().getByRole('button', { name: 'Copy into a montage…' }))
+    await userEvent.fill(details().getByRole('textbox', { name: 'Name' }), 'Boogie 2026')
+
+    await expect.element(details().getByText(/copied, Yverdon keeps its own/)).toBeVisible()
+    await userEvent.click(details().getByRole('button', { name: 'Copy into montage' }))
+
+    expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['y', 'z'], name: 'Boogie 2026' })
+    await expect.element(pageHeading('Boogie 2026')).toBeVisible()
+    await userEvent.click(page.getByRole('navigation', { name: 'Folders' }).getByText('Yverdon'))
+    await expect.element(page.getByRole('button', { name: /y\.MP4/ }).first()).toBeVisible()
+  })
+})
+
+describe('a montage', () => {
+  const withMontage = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], [file('m', AT)])] }
+
+  test('is listed among the montages, and Passengers among the destinations', async () => {
+    await renderBoard({ groups: withMontage.groups }, '/montage/Boogie 2026', withMontage)
+
+    const menu = page.getByRole('navigation', { name: 'Folders' })
+    await expect.element(menu.getByRole('link', { name: /Boogie 2026/ })).toBeVisible()
+    await expect.element(menu.getByRole('link', { name: /Passengers/ })).toBeVisible()
+    await expect.element(details().getByRole('combobox', { name: 'Delivered to' })).not.toBeInTheDocument()
+  })
+})
+
+describe('a montage emptied', () => {
+  const at = (files: ReturnType<typeof file>[]) => {
+    const shown = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], files)] }
+    return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
+  }
+  const fresh = () => page.getByRole('heading', { level: 1, name: /^Fresh files/ })
+  const takeOut = () => page.getByRole('dialog', { name: 'Remove files' })
+
+  test('goes back to Fresh files once its last file is sent back', async () => {
+    await at([file('m', AT)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Loose in Fresh files' }))
+
+    await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
+    await expect.element(fresh()).toBeVisible()
+  })
+
+  test('stays on the montage while it still has files', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Loose in Fresh files' }))
+
+    await vi.waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ intent: 'move-files', fileIds: ['m'] })))
+    await expect.element(pageHeading('Boogie 2026')).toBeVisible()
+  })
+})
+
+describe('files taken out of a montage', () => {
+  const at = (files: (ReturnType<typeof file> & { copyOf?: string })[]) => {
+    const shown = { ...board, groups: [...board.groups, montage(['Boogie', '2026'], files)] }
+    return renderBoard({ groups: shown.groups }, '/montage/Boogie 2026', shown)
+  }
+  const takeOut = () => page.getByRole('dialog', { name: 'Remove files' })
+
+  test('ask whether they go back to Fresh files or into the bin, and move nothing until then', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(takeOut().getByRole('button', { name: 'Loose in Fresh files' })).toBeVisible()
+    await expect.element(takeOut().getByRole('button', { name: 'Put in the bin' })).toBeVisible()
+    expect(sent).toEqual([])
+  })
+
+  test('offer the bin as the red button with the bin on it', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+
+    const toBin = takeOut().getByRole('button', { name: 'Put in the bin' }).element()
+    expect(getComputedStyle(toBin).backgroundColor).toBe('rgb(192, 38, 45)')
+    expect(toBin.querySelector('svg')).not.toBeNull()
+  })
+
+  test('go into the bin when that is chosen', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Put in the bin' }))
+
+    await vi.waitFor(() => expect(sent).toContainEqual({ intent: 'trash-unsorted', fileIds: ['m'] }))
+  })
+
+  test('stay where they are when it is cancelled', async () => {
+    await at([file('m', AT), file('n', AT + 60)])
+    await userEvent.click(page.getByRole('button', { name: /m\.MP4/ }).first())
+
+    await userEvent.keyboard('{Delete}')
+    await userEvent.click(takeOut().getByRole('button', { name: 'Cancel' }))
+
+    await expect.element(takeOut()).not.toBeInTheDocument()
+    expect(sent).toEqual([])
+  })
+
+  test('cannot put a copy in the bin', async () => {
+    await at([file('m', AT), { ...file('c', AT + 60), copyOf: 'plane' }])
+    for (const name of [/m\.MP4/, /c\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).first(), { modifiers: ['ControlOrMeta'] })
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(takeOut().getByRole('button', { name: 'Put in the bin' })).toBeDisabled()
+  })
+})
+
+describe('dropped on the Montages heading', () => {
+  const heading = () =>
+    page.getByRole('navigation', { name: 'Folders' }).getByRole('heading', { name: /Montages/ })
+  const naming = () => page.getByRole('dialog', { name: 'Name the montage' })
+
+  test('a jump asks for the montage’s name, and saved, is that montage', async () => {
+    const named = { ...FRESH_JUMP, montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' } }
+    await renderBoard({ groups: [named, YVERDON_JUMP] })
+
+    await userEvent.dragAndDrop(card(/^Sunset load, /), heading())
+    await userEvent.fill(naming().getByRole('textbox', { name: 'Name' }), 'Luc Favre')
+    await userEvent.click(naming().getByRole('button', { name: 'Make montage' }))
+
+    expect(sent[0]?.intent).toBe('save-groups')
+    expect((sent[0]?.groups as { id: string }[]).find((g) => g.id === 'g1')).toMatchObject({
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' }
+    })
+    await expect.element(pageHeading('Luc Favre')).toBeVisible()
+  })
+
+  test('cancelled, changes nothing', async () => {
+    await renderBoard({ groups: board.groups })
+
+    await userEvent.dragAndDrop(card(/^Sunset load, /), heading())
+    await userEvent.click(naming().getByRole('button', { name: 'Cancel' }))
+
+    await expect.element(naming()).not.toBeInTheDocument()
+    expect(sent).toEqual([])
+    await expect.element(card(/^Sunset load, /)).toBeInTheDocument()
+  })
+
+  test('picked files ask the same, and are made a montage of that name', async () => {
+    await renderBoard({ groups: [YVERDON_JUMP, montage(['Boogie', '2026'], FRESH_JUMP.files)] })
+    await userEvent.click(card(/^Sunset load, /))
+    for (const name of [/a\.MP4/, /b\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).last(), { modifiers: ['ControlOrMeta'] })
+
+    await userEvent.dragAndDrop(page.getByRole('button', { name: /a\.MP4/ }).last(), heading())
+    await expect.element(naming().getByText('These 2 files become a montage once it has a name.')).toBeInTheDocument()
+    await userEvent.fill(naming().getByRole('textbox', { name: 'Name' }), 'Boogie 2026')
+    await userEvent.click(naming().getByRole('button', { name: 'Make montage' }))
+
+    expect(sent[0]).toMatchObject({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Boogie 2026' })
+  })
+})
+
+describe('removing files', () => {
+  const removing = () => page.getByRole('dialog', { name: 'Remove files' })
+
+  test('out of a jump in Fresh files asks, and moves nothing until answered', async () => {
+    await renderBoard({ groups: board.groups })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(page.getByRole('button', { name: /a\.MP4/ }).last())
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(removing().getByRole('button', { name: 'Loose in Fresh files' })).toBeVisible()
+    await expect.element(removing().getByRole('button', { name: 'Put in the bin' })).toBeVisible()
+    expect(sent).toEqual([])
+  })
+
+  test('out of a dropzone asks too, and goes into the bin when that is chosen', async () => {
+    await renderBoard({ groups: board.groups }, '/dropzone/Yverdon')
+    await userEvent.click(page.getByRole('button', { name: /y\.MP4/ }).last())
+
+    await userEvent.keyboard('{Delete}')
+    await expect.element(removing().getByText(/from Yverdon/)).toBeVisible()
+    await userEvent.click(removing().getByRole('button', { name: 'Put in the bin' }))
+
+    await vi.waitFor(() => expect(sent).toContainEqual({ intent: 'trash-unsorted', fileIds: ['y'] }))
+  })
+
+  test('already loose in Fresh files offers only the bin', async () => {
+    await renderBoard({ groups: board.groups })
+    await userEvent.click(page.getByRole('button', { name: /^Loose files/ }))
+    await userEvent.click(page.getByRole('button', { name: /solo\.MP4/ }).last())
+
+    await userEvent.keyboard('{Delete}')
+
+    await expect.element(removing().getByRole('button', { name: 'Put in the bin' })).toBeVisible()
+    await expect.element(removing().getByRole('button', { name: 'Loose in Fresh files' })).not.toBeInTheDocument()
+  })
+})
+
+describe('files grouped by day', () => {
+  test('are headed by their day, written out', async () => {
+    await renderBoard({ groups: board.groups })
+
+    await expect.element(page.getByRole('button', { name: /1 August 2026/ }).first()).toBeVisible()
+    await expect.element(page.getByText(/object Object/)).not.toBeInTheDocument()
+  })
+
+  test('are written the way the language the board speaks writes them', async () => {
+    speak('fr')
+    try {
+      await renderBoard({ groups: board.groups })
+
+        await expect.element(page.getByRole('button', { name: /1 août 2026/ }).first()).toBeVisible()
+    } finally {
+      speak('en')
+    }
+  })
+})
+
+describe('Move to…', () => {
+  const moving = () => details().getByRole('group', { name: 'Move to…' })
+
+  test('files a jump under a destination, and leaves out where it already is', async () => {
+    await renderBoard({ groups: [] })
+    await userEvent.click(card(/^Sunset load, /))
+
+    await expect.element(details().getByRole('button', { name: 'Fresh files' })).not.toBeInTheDocument()
+    await userEvent.click(details().getByRole('button', { name: 'Yverdon' }))
+
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({
+        intent: 'save-groups',
+        groups: expect.arrayContaining([expect.objectContaining({ id: 'g1', destination: 'Yverdon' })])
+      })
+  })
+
+  test('sends picked files into a montage that has a name', async () => {
+    await renderBoard({ groups: [] }, '/', {
+      ...board,
+      groups: [FRESH_JUMP, YVERDON_JUMP, montage(['Luc', 'Favre'], [file('m', AT + 3600)])]
+    })
+    await userEvent.click(card(/^Sunset load, /))
+    for (const name of [/a\.MP4/, /b\.MP4/])
+      await userEvent.click(page.getByRole('button', { name }).last(), { modifiers: ['ControlOrMeta'] })
+    await userEvent.click(details().getByRole('button', { name: 'Move to…' }))
+    await userEvent.click(moving().getByRole('button', { name: 'Luc Favre’s montage' }))
+
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({ intent: 'move-files', fileIds: ['a', 'b'], targetGroupId: 'm1' })
+  })
+
+  test('to a new montage asks for its name first', async () => {
+    await renderBoard({ groups: [] })
+    await userEvent.click(card(/^Sunset load, /))
+    await userEvent.click(details().getByRole('button', { name: 'Make a montage…' }))
+
+    await expect.element(details().getByRole('textbox', { name: 'Name' })).toBeVisible()
+    expect(sent).toEqual([])
+  })
+})
+
+describe('a destination’s link', () => {
+  afterEach(() => vi.unstubAllGlobals())
+  const shown = (shareUrl?: string) => ({
+    ...board,
+    destinations: [{ name: 'Yverdon', path: '/SkyDock/Yverdon', ...(shareUrl ? { shareUrl } : {}) }],
+    nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' }
+  })
+  const open = async (data: unknown) => {
+    const realFetch = window.fetch.bind(window)
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) =>
+      String(url).includes('/api/storage-folder')
+        ? new Response(JSON.stringify({ ok: true, dir: '/SkyDock/Yverdon', files: [] }), {
+            headers: { 'Content-Type': 'application/json' }
+          })
+        : realFetch(url, init)
+    )
+    await renderBoard({ groups: [] }, '/', data)
+    await userEvent.click(
+      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Yverdon/ })
+    )
+  }
+
+  test('has the same Local and On the storage tabs as a montage', async () => {
+    await open(shown())
+
+    const tabs = page.getByRole('group', { name: 'Where to look' })
+    await expect.element(tabs.getByRole('button', { name: 'Local' })).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.click(tabs.getByRole('button', { name: 'On the storage' }))
+    await expect.element(tabs.getByRole('button', { name: 'On the storage' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByRole('button', { name: /^Process/ })).toBeVisible()
+  })
+
+  test('has none by default, and one is made from the panel', async () => {
+    await open(shown())
+
+    await expect.element(details().getByText('None yet')).toBeVisible()
+    await userEvent.click(details().getByRole('button', { name: 'Create link' }))
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({ intent: 'destination-link', link: { folder: '/SkyDock/Yverdon', make: true } })
+  })
+
+  test('is taken away from the panel', async () => {
+    await open(shown('https://nas.local/sharing/Yv'))
+
+    await expect.element(details().getByText('https://nas.local/sharing/Yv')).toBeVisible()
+    await userEvent.click(details().getByRole('button', { name: 'Remove link' }))
+    await expect
+      .poll(() => sent.at(-1))
+      .toMatchObject({ intent: 'destination-link', link: { folder: '/SkyDock/Yverdon', make: false } })
+  })
+})
+
+describe('finding anything', () => {
+  const shown = { ...board, groups: [FRESH_JUMP, YVERDON_JUMP, montage(['Luc', 'Favre'], [file('m', AT + 3600)])] }
+  const box = () => page.getByRole('searchbox', { name: 'Find anything' })
+
+  test('goes to a montage by a piece of its name', async () => {
+    await renderBoard({ groups: [] }, '/', shown)
+    await userEvent.fill(box(), 'favr')
+    await userEvent.click(page.getByRole('list', { name: 'Found' }).getByRole('button', { name: /Luc Favre/ }))
+
+    await expect.element(pageHeading('Luc Favre')).toBeVisible()
+  })
+
+  test('finds a file by its name, and says where it is', async () => {
+    await renderBoard({ groups: [] }, '/', shown)
+    await userEvent.fill(box(), 'z.MP4')
+
+    await expect
+      .element(page.getByRole('list', { name: 'Found' }).getByRole('button', { name: /z\.MP4\s*Yverdon/ }))
+      .toBeVisible()
+  })
+})

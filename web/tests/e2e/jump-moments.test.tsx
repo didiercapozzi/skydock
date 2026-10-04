@@ -1,0 +1,181 @@
+import { createElement } from 'react'
+import { describe, expect, test, vi } from 'vitest'
+import { render } from 'vitest-browser-react'
+import { page } from 'vitest/browser'
+import { PreviewDrawer } from '../../app/components/preview-drawer'
+
+
+type Moments = { exit: number; opening?: number; canopy?: number; landing?: number }
+
+const clip = (moments: Moments | null | undefined, foundMoments?: Moments) => ({
+  path: '/o/original_files/2026-09-13/GX018663.MP4',
+  size: 1,
+  mtime: 1,
+  filename: 'GX018663.MP4',
+  id: 'g1',
+  moments,
+  foundMoments
+})
+
+const Drawer = ({
+  moments,
+  found,
+  onMomentChange,
+  onMomentsReset,
+  onMomentsRedo,
+  montage = true
+}: {
+  moments: Moments | null | undefined
+  found?: Moments
+  onMomentsReset?: () => void
+  onMomentsRedo?: () => void
+  onMomentChange?: (which: 'exit' | 'opening' | 'canopy' | 'landing', seconds: number) => void
+  montage?: boolean
+}) =>
+  createElement(PreviewDrawer, {
+    files: [clip(moments, found)],
+    index: 0,
+    frame: null,
+    onFrameChange: () => {},
+    rotation: 0,
+    onRotate: () => {},
+    onClose: () => {},
+    onPrevious: () => {},
+    onNext: () => {},
+    cropStart: null,
+    cropEnd: null,
+    zoom: 1,
+    currentTime: 0,
+    duration: 191,
+    onSeek: () => {},
+    onCropChange: () => {},
+    onApply: () => {},
+    onZoomChange: () => {},
+    onDurationChange: () => {},
+    onVideoRef: () => {},
+    onMomentChange,
+    onMomentsReset,
+    onMomentsRedo,
+    montage
+  })
+
+describe('where the jump is in a clip', () => {
+  test('can be found again from the footage, in development', async () => {
+    const redo = vi.fn()
+    await render(
+      createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentsRedo: redo })
+    )
+    await page.getByRole('button', { name: 'Find the marks again' }).click()
+    expect(redo).toHaveBeenCalledOnce()
+  })
+
+  test('is put back where the camera measured it, once it was moved', async () => {
+    const back = vi.fn()
+    await render(
+      createElement(Drawer, {
+        moments: { exit: 40, canopy: 94 },
+        found: { exit: 38, canopy: 94 },
+        onMomentsReset: back
+      })
+    )
+    await page.getByRole('button', { name: 'Back to the measured marks' }).click()
+    expect(back).toHaveBeenCalledOnce()
+  })
+
+  test('offers no way back for marks that were never moved', async () => {
+    await render(
+      createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentsReset: () => {} })
+    )
+    await expect
+      .element(page.getByRole('button', { name: 'Back to the measured marks' }))
+      .not.toBeInTheDocument()
+  })
+
+  test('is marked on the timeline, each moment in its place', async () => {
+    await render(
+      createElement(Drawer, { moments: { exit: 38, opening: 91, canopy: 94, landing: 185 } })
+    )
+
+    for (const [which, at] of [
+      ['exit', 38],
+      ['opening', 91],
+      ['canopy', 94],
+      ['landing', 185]
+    ] as const) {
+      const mark = document.querySelector(`[data-moment=${which}]`)
+      expect(mark).toBeTruthy()
+      const along = Number(/left: ([\d.]+)%/.exec(mark?.getAttribute('style') ?? '')?.[1])
+      expect(along).toBeCloseTo((at / 191) * 100, 1)
+    }
+  })
+
+  test('is read out as well, so a moment can be gone to', async () => {
+    await render(createElement(Drawer, { moments: { exit: 38, opening: 91, canopy: 94 } }))
+    await expect.element(page.getByRole('button', { name: /exit 0:38/i })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /opening 1:31/i })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /canopy 1:34/i })).toBeVisible()
+  })
+
+  test('starts a fun jump a second before the camera left', async () => {
+    await render(createElement(Drawer, { moments: { exit: 38, canopy: 94 }, montage: false }))
+    await expect.element(page.getByRole('button', { name: /exit 0:37/i })).toBeVisible()
+    const mark = document.querySelector('[data-moment=exit]')
+    const along = Number(/left: ([\d.]+)%/.exec(mark?.getAttribute('style') ?? '')?.[1])
+    expect(along).toBeCloseTo((37 / 191) * 100, 1)
+    await expect.element(page.getByRole('button', { name: /canopy 1:34/i })).toBeVisible()
+  })
+
+  test('says plainly when a clip has no jump in it', async () => {
+    await render(createElement(Drawer, { moments: null }))
+    await expect.element(page.getByText(/no exit found/i)).toBeVisible()
+    expect(document.querySelector('[data-moment=exit]')).toBeNull()
+  })
+
+  test('shows no marks at all for a clip nobody has asked about', async () => {
+    await render(createElement(Drawer, { moments: undefined }))
+    expect(document.querySelector('[data-moment]')).toBeNull()
+    expect(document.body.textContent).not.toContain('No exit found')
+  })
+
+})
+
+const dragExit = async (montage: boolean) => {
+  const moved = vi.fn()
+  const drawer = await render(
+    createElement(Drawer, { moments: { exit: 38, canopy: 94 }, onMomentChange: moved, montage })
+  )
+  const mark = drawer.container.querySelector('[data-moment=exit]')
+  if (!mark) throw new Error('the exit was not marked')
+  const bar = drawer.container.querySelector('[data-crop-bar]')
+  if (!bar) throw new Error('there is no timeline')
+  const box = bar.getBoundingClientRect()
+
+  mark.dispatchEvent(
+    new PointerEvent('pointerdown', { bubbles: true, clientX: box.left + box.width * 0.2 })
+  )
+  bar.dispatchEvent(
+    new PointerEvent('pointermove', { bubbles: true, clientX: box.left + box.width * 0.25 })
+  )
+  expect(moved).toHaveBeenCalled()
+  const said = moved.mock.calls[moved.mock.calls.length - 1] as [
+    'exit' | 'opening' | 'canopy' | 'landing',
+    number
+  ]
+  drawer.unmount()
+  return said
+}
+
+describe('a mark put right by hand', () => {
+  test('is dragged to where it should have been', async () => {
+    const [which, seconds] = await dragExit(true)
+    expect(which).toBe('exit')
+    expect(seconds).toBeGreaterThan(40)
+    expect(seconds).toBeLessThan(56)
+  })
+
+  test('records the measurement, not the second of lead in front of it', async () => {
+    const [, asMontage] = await dragExit(true)
+    const [, asFunJump] = await dragExit(false)
+    expect(asFunJump).toBeCloseTo(asMontage + 1, 5)
+  })
+})

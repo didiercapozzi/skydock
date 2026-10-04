@@ -1,0 +1,21 @@
+{
+  "name": "SkyDock (Dev Environment)",
+  "dockerComposeFile": "docker-compose.dev.yml",
+  "service": "dev_container",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "timonwong.shellcheck",
+        "foxundermoon.shell-format",
+        "ms-azuretools.vscode-docker",
+        "eamodio.gitlens",
+        "rogalmic.bash-debug",
+        "oxc.oxc-vscode",
+        "vitest.explorer",
+        "ms-playwright.playwright"
+      ]
+    }
+  }
+}

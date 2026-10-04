@@ -1,0 +1,30 @@
+{
+  "name": "@skydock/scripts",
+  "private": true,
+  "bin": {
+    "skydock-copy": "./src/copy.ts",
+    "skydock-scan": "./src/scan.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "archiver": "^8.0.0",
+    "fast-xml-parser": "^5.0.0",
+    "fflate": "^0.8.3",
+    "zod": "^4.5.4"
+  },
+  "devDependencies": {
+    "@types/archiver": "^8.0.0",
+    "@types/node": "^22",
+    "typescript": "^7.0.2"
+  }
+}

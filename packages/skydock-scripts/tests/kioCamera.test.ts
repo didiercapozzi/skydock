@@ -1,0 +1,359 @@
+// @vitest-environment node
+import * as fs from 'node:fs'
+import * as path from 'node:path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { askKde, cameraName, lookForCameras, overMtp } from '../src/cameraWatch'
+import { CameraGone } from '../src/copy'
+import { fileIn, namesIn, readerFor } from '../src/kio'
+import type { KioReader } from '../src/kio'
+import { listCameras } from '../src/cameraFiles'
+import { copyOverKio, kioCameras } from '../src/kioCamera'
+import type { SeenClip } from '../src/kioCamera'
+import { createTmpDir } from './fixtures'
+
+let device: string
+let outputDir: string
+
+const CAMERA = 'mtp:/HERO5 Black/GoPro MTP Client Disk Volume'
+const SHOT = new Date(2026, 7, 1, 10, 0, 0)
+
+const onCamera = (where: string, bytes = 'clip') => {
+  const file = path.join(device, 'HERO5 Black', 'GoPro MTP Client Disk Volume', where)
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  fs.writeFileSync(file, bytes)
+  fs.utimesSync(file, SHOT, SHOT)
+  return file
+}
+
+const localOf = (url: string) => path.join(device, url.slice('mtp:/'.length))
+
+const reader = (over: Partial<KioReader> = {}): KioReader => ({
+  ls: async (url) => {
+    try {
+      return fs.readdirSync(localOf(url))
+    } catch {
+      return []
+    }
+  },
+  stat: async (url) => {
+    try {
+      const stat = fs.statSync(localOf(url))
+      return { size: stat.size, mtime: Math.floor(stat.mtimeMs / 1000) }
+    } catch {
+      return null
+    }
+  },
+  copy: async (url, to) => {
+    try {
+      fs.copyFileSync(localOf(url), to)
+      return true
+    } catch {
+      return false
+    }
+  },
+  ...over
+})
+
+const filed = () => {
+  const originals = path.join(outputDir, 'original_files')
+  return fs.existsSync(originals)
+    ? fs
+        .readdirSync(originals)
+        .flatMap((day) => fs.readdirSync(path.join(originals, day)).map((name) => `${day}/${name}`))
+    : []
+}
+
+beforeEach(() => {
+  device = createTmpDir('skydock-kde-')
+  outputDir = createTmpDir('skydock-kde-out-')
+  globalThis.skydockCameraWatch = undefined
+  globalThis.skydockLive = undefined
+})
+
+afterEach(() => {
+  fs.rmSync(device, { recursive: true, force: true })
+  fs.rmSync(outputDir, { recursive: true, force: true })
+  delete process.env.SKYDOCK_CAMERA_ROOTS
+  globalThis.skydockCameraWatch = undefined
+})
+
+describe('what kioclient says', () => {
+  it('names what is in a folder, and not the folder or its parent', () => {
+    expect(namesIn('190GOPRO\n\n191GOPRO\n.\n..\n')).toEqual(['190GOPRO', '191GOPRO'])
+  })
+
+  it('says how big a file is and when it was written, as seconds', () => {
+    expect(fileIn('NAME GOPR0001.MP4\nSIZE 4096\nMODIFICATION_TIME 1785000000\n')).toEqual({
+      size: 4096,
+      mtime: 1785000000
+    })
+  })
+
+  it('reads the time where it is written out as a date', () => {
+    const said = fileIn('UDS_SIZE: 12\nUDS_MODIFICATION_TIME: 2026-08-01T10:00:00Z\n')
+    expect(said).toEqual({ size: 12, mtime: Math.floor(Date.parse('2026-08-01T10:00:00Z') / 1000) })
+  })
+
+  it('does not take a longer field for the size', () => {
+    expect(fileIn('SIZE_LARGE 99\nSIZE 12\n')?.size).toBe(12)
+  })
+
+  it('knows no time rather than a wrong one', () => {
+    expect(fileIn('SIZE 12\nMODIFICATION_TIME soon\n')).toEqual({ size: 12, mtime: null })
+  })
+
+  it('reads what a GoPro says of a file, which has a size and no time', () => {
+    const gopro = [
+      'NAME                  G0062266.JPG',
+      'SIZE                  2118308',
+      'FILE_TYPE             0100000',
+      'INODE                 1269',
+      'MIME_TYPE             image/jpeg',
+      'ACCESS                0555',
+      'MODIFICATION_TIME     Thu Jan 1 01:00:00 1970',
+      'ACCESS_TIME           Thu Jan 1 01:00:00 1970',
+      'CREATION_TIME         Thu Jan 1 01:00:00 1970'
+    ].join('\n')
+
+    expect(fileIn(gopro)).toEqual({ size: 2118308, mtime: null })
+  })
+
+  it('is taken at its word even when it ends unhappily', async () => {
+    const program = path.join(device, 'kioclient')
+    fs.writeFileSync(
+      program,
+      [
+        '#!/bin/sh',
+        "printf 'NAME  G0062266.JPG\\nSIZE  2118308\\nMODIFICATION_TIME  Thu Jan 1 01:00:00 1970\\n'",
+        'exit 1'
+      ].join('\n')
+    )
+    fs.chmodSync(program, 0o755)
+
+    expect(await readerFor(program).stat('mtp:/HERO5 Black/x/G0062266.JPG')).toEqual({
+      size: 2118308,
+      mtime: null
+    })
+  })
+
+  it('knows nothing of a file it cannot find a size for', () => {
+    expect(fileIn('NAME GOPR0001.MP4\n')).toBeNull()
+  })
+})
+
+describe('a camera KDE reaches', () => {
+  it('is the store that holds DCIM, named after the camera itself', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+
+    expect(await kioCameras(reader())).toEqual([CAMERA])
+    expect(cameraName(CAMERA)).toBe('HERO5 Black')
+    expect(overMtp(CAMERA)).toBe(true)
+  })
+
+  it('is not a store with no DCIM in it', async () => {
+    onCamera('Get_started_with_GoPro.url')
+
+    expect(await kioCameras(reader())).toEqual([])
+  })
+
+  it('is nothing at all on a machine without KDE', async () => {
+    expect(await kioCameras(null)).toEqual([])
+  })
+})
+
+describe('a camera read through KDE, copied off', () => {
+  it('files each clip under the day it was shot, as a card is', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4', 'one')
+    onCamera('DCIM/191GOPRO/GOPR0002.MP4', 'two')
+
+    const said = await copyOverKio({ camera: CAMERA, reader: reader(), outputDir })
+
+    expect(said).toEqual({ done: 2, total: 2, copied: 2, skipped: 0 })
+    expect(filed().sort()).toEqual(['2026-08-01/GOPR0001.MP4', '2026-08-01/GOPR0002.MP4'])
+  })
+
+  it('passes over what a GoPro keeps beside each clip', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+    onCamera('DCIM/190GOPRO/GOPR0001.THM')
+    onCamera('DCIM/190GOPRO/GOPR0001.LRV')
+
+    const said = await copyOverKio({ camera: CAMERA, reader: reader(), outputDir })
+
+    expect(said.total).toBe(1)
+    expect(filed()).toEqual(['2026-08-01/GOPR0001.MP4'])
+  })
+
+  it('passes over what is here already, without fetching it again', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+    await copyOverKio({ camera: CAMERA, reader: reader(), outputDir })
+
+    const fetched: string[] = []
+    const said = await copyOverKio({
+      camera: CAMERA,
+      reader: reader({
+        copy: async (url) => {
+          fetched.push(url)
+          return false
+        }
+      }),
+      outputDir
+    })
+
+    expect(said).toEqual({ done: 1, total: 1, copied: 0, skipped: 1 })
+    expect(fetched).toEqual([])
+  })
+
+  it('passes over what is here already when the camera gives no time', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+    const timeless = reader({
+      stat: async (url) => ({ size: fs.statSync(localOf(url)).size, mtime: null })
+    })
+    await copyOverKio({ camera: CAMERA, reader: timeless, outputDir })
+
+    const fetched: string[] = []
+    const said = await copyOverKio({
+      camera: CAMERA,
+      reader: { ...timeless, copy: async (url) => (fetched.push(url), false) },
+      outputDir
+    })
+
+    expect(said.skipped).toBe(1)
+    expect(fetched).toEqual([])
+  })
+
+  it('lets go of a clip that turns out to be here after all', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+    await copyOverKio({ camera: CAMERA, reader: reader(), outputDir })
+
+    const said = await copyOverKio({
+      camera: CAMERA,
+      reader: reader({ stat: async () => null }),
+      outputDir
+    })
+
+    expect(said.skipped).toBe(1)
+    expect(filed()).toEqual(['2026-08-01/GOPR0001.MP4'])
+  })
+
+  it('gives a different clip of the same name the next number', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4', 'first camera')
+    await copyOverKio({ camera: CAMERA, reader: reader(), outputDir })
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4', 'another camera altogether')
+
+    await copyOverKio({ camera: CAMERA, reader: reader(), outputDir })
+
+    expect(filed().sort()).toEqual(['2026-08-01/GOPR0001.MP4', '2026-08-01/GOPR0001_2.MP4'])
+  })
+
+  it('stops, leaving nothing half written, when the camera stops answering', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+
+    await expect(
+      copyOverKio({ camera: CAMERA, reader: reader({ copy: async () => false }), outputDir })
+    ).rejects.toBeInstanceOf(CameraGone)
+
+    expect(filed()).toEqual([])
+    expect(fs.existsSync(path.join(outputDir, '.incoming'))).toBe(false)
+  })
+
+  it('stops when less came across than the camera said there was', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4', 'the whole clip')
+
+    await expect(
+      copyOverKio({
+        camera: CAMERA,
+        reader: reader({ stat: async () => ({ size: 999_999, mtime: null }) }),
+        outputDir
+      })
+    ).rejects.toBeInstanceOf(CameraGone)
+    expect(filed()).toEqual([])
+  })
+})
+
+describe('a camera KDE reaches, plugged in', () => {
+  it('is copied off by itself once KDE says it reaches it', async () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = device
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+
+    await askKde(async () => [CAMERA])
+    lookForCameras(outputDir, path.join(device, 'no-mounts'))
+
+    expect(globalThis.skydockCameraWatch?.seen.has(CAMERA)).toBe(true)
+  })
+
+  it('is not asked for at all where nowhere is set to look', async () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = ''
+    let asked = 0
+
+    await askKde(async () => {
+      asked++
+      return [CAMERA]
+    })
+
+    expect(asked).toBe(0)
+  })
+
+  it('is not asked again until something changes', async () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = device
+    let asked = 0
+    const ask = async () => {
+      asked++
+      return []
+    }
+
+    await askKde(ask)
+    globalThis.skydockCameraWatch!.askUntil = 0
+    await askKde(ask)
+
+    expect(asked).toBe(1)
+  })
+})
+
+describe('what the copy found on a camera read through KDE', () => {
+  const copied = async (over: Partial<KioReader> = {}) => {
+    const clips: SeenClip[] = []
+    await copyOverKio({
+      camera: CAMERA,
+      reader: reader(over),
+      outputDir,
+      onClip: (clip) => clips.push(clip)
+    })
+    return clips
+  }
+
+  it('is each clip, and the original here it now is', async () => {
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+
+    const first = await copied()
+    const again = await copied()
+
+    const here = path.join(outputDir, 'original_files', '2026-08-01', 'GOPR0001.MP4')
+    expect(first).toEqual([expect.objectContaining({ name: 'GOPR0001.MP4', original: here })])
+    expect(again).toEqual([expect.objectContaining({ name: 'GOPR0001.MP4', original: here })])
+  })
+
+  it('lists the camera without asking it anything', async () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = device
+    onCamera('DCIM/190GOPRO/GOPR0001.MP4')
+    const clips = await copied()
+    await askKde(async () => [CAMERA])
+    globalThis.skydockCameraWatch!.seenOn[CAMERA] = { done: true, clips }
+
+    const [listing] = await listCameras(outputDir, [], path.join(outputDir, 'bin'))
+
+    expect(listing).toMatchObject({ camera: 'HERO5 Black', looking: false, deletable: false })
+    expect(listing?.files).toEqual([
+      expect.objectContaining({ name: '190GOPRO/GOPR0001.MP4', state: 'copied' })
+    ])
+  })
+
+  it('says there is more to come while the copy is still going over it', async () => {
+    process.env.SKYDOCK_CAMERA_ROOTS = device
+    await askKde(async () => [CAMERA])
+    globalThis.skydockCameraWatch!.seenOn[CAMERA] = { done: false, clips: [] }
+
+    const [listing] = await listCameras(outputDir, [], path.join(outputDir, 'bin'))
+
+    expect(listing).toMatchObject({ looking: true, files: [] })
+  })
+})

@@ -1,0 +1,256 @@
+// @vitest-environment node
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { NasSession } from '../src/nas'
+import {
+  listStorageFolder,
+  openStorageFile,
+  shotFromName,
+  storageDirOf,
+  withinStorage
+} from '../src/storageFolder'
+import type { Manifest, ManifestGroup } from '../src/types'
+import { liveShareLinks } from '../src/nas'
+import { nasStubs, stubFetch } from './fixtures'
+
+const session: NasSession = {
+  hostname: 'https://nas.local:5001',
+  username: 'u',
+  sessionId: 'sid',
+  backupFolder: '/Backup'
+}
+
+const luc: ManifestGroup = {
+  id: 'g1',
+  label: 'g1',
+  day: '01.08.2026',
+  montageJump: true,
+  passenger: { firstname: 'Luc', lastname: 'Favre' },
+  files: []
+}
+
+const manifest = (groups: ManifestGroup[] = [luc]): Manifest => ({
+  version: 1,
+  createdAt: 'x',
+  files: [],
+  groups,
+  destinations: [
+    { name: 'Passengers', path: '/SkyDock/Passengers' },
+    { name: 'Yverdon', path: '/SkyDock/Yverdon' },
+    { name: 'Colombier', path: '/Club/Col' }
+  ]
+})
+
+afterEach(() => vi.unstubAllGlobals())
+
+describe('where a place’s folder is on the storage', () => {
+  it('is, for a dropzone, the folder its days are uploaded into', () => {
+    expect(storageDirOf(manifest(), { destination: 'Yverdon' })).toBe('/SkyDock/Yverdon')
+  })
+
+  it('is the folder that dropzone was given', () => {
+    expect(storageDirOf(manifest(), { destination: 'Colombier' })).toBe('/Club/Col')
+  })
+
+  it('is nowhere, for a montage not uploaded yet', () => {
+    expect(storageDirOf(manifest(), { groupId: 'g1' }, '/out')).toBeNull()
+  })
+
+  it('is, for a montage uploaded, the folder its film went to', () => {
+    const uploaded = manifest([
+      {
+        ...luc,
+        uploaded: {
+          at: 1,
+          sent: [
+            { name: 'luc.backup.videos.zip', holds: ['videos'], to: ['/Backup/Luc Favre'] },
+            {
+              name: 'luc.mp4',
+              holds: ['film'],
+              to: ['/SkyDock/Passengers/Luc Favre', '/SkyDock/Yverdon/Luc Favre']
+            }
+          ]
+        }
+      }
+    ])
+    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/SkyDock/Passengers/Luc Favre')
+  })
+
+  it('is, for a montage uploaded before, the folder it actually went to', () => {
+    const sent = {
+      remotePath: '/Old/Passengers/Luc Favre/luc.mp4',
+      md5: 'x',
+      size: 1,
+      localPath: '/l',
+      at: 1
+    }
+    const uploaded = manifest([{ ...luc, uploaded: { at: 1, film: sent } }])
+    expect(storageDirOf(uploaded, { groupId: 'g1' }, '/out')).toBe('/Old/Passengers/Luc Favre')
+  })
+
+  it('is nowhere while no folder has been chosen', () => {
+    const noFolder = { ...manifest(), destinations: [{ name: 'Yverdon' }] }
+    expect(storageDirOf(noFolder, { destination: 'Yverdon' })).toBeNull()
+  })
+})
+
+describe('what a folder on the storage holds', () => {
+  it('lists its files, the films and clips first, saying what each is', async () => {
+    const stub = nasStubs({
+      files: {
+        '/SkyDock/Passengers/Luc Favre': [
+          { name: 'luc_favre.photos.zip', size: 30 },
+          { name: 'b.jpg', size: 20 },
+          { name: 'luc_favre.mp4', size: 10 }
+        ]
+      }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+
+    const files = await listStorageFolder(session, '/SkyDock/Passengers/Luc Favre')
+
+    expect(files.map((f) => [f.kind, f.name])).toEqual([
+      ['video', 'luc_favre.mp4'],
+      ['photo', 'b.jpg'],
+      ['other', 'luc_favre.photos.zip']
+    ])
+  })
+
+  it('says which of its files the storage hands out by a link of their own', async () => {
+    const stub = nasStubs({
+      files: {
+        '/SkyDock/Yverdon': [
+          { name: 'shared.mp4', size: 1 },
+          { name: 'private.mp4', size: 1 }
+        ]
+      }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+    const links = liveShareLinks('https://nas.local:5001', [
+      { id: 'L1', url: '/sharing/abc', path: '/SkyDock/Yverdon/shared.mp4', status: 'valid' },
+      { id: 'L2', url: '/sharing/old', path: '/SkyDock/Yverdon/private.mp4', status: 'invalid' }
+    ])
+
+    const files = await listStorageFolder(session, '/SkyDock/Yverdon', links)
+
+    expect(files.map((f) => [f.name, f.shareUrl])).toEqual([
+      ['shared.mp4', 'https://nas.local:5001/sharing/abc'],
+      ['private.mp4', null]
+    ])
+  })
+
+  it('leaves out what SkyDock keeps there about the storage itself', async () => {
+    const stub = nasStubs({
+      files: {
+        '/SkyDock/Yverdon': [
+          { name: 'skydock-origins.json', size: 2 },
+          { name: 'skydock-montages.json', size: 2 },
+          { name: 'yverdon_20260801_100000.mp4', size: 1 }
+        ]
+      }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+
+    const files = await listStorageFolder(session, '/SkyDock/Yverdon')
+
+    expect(files.map((f) => f.name)).toEqual(['yverdon_20260801_100000.mp4'])
+  })
+
+  it('lists each kind newest first, by when it was shot', async () => {
+    const stub = nasStubs({
+      files: {
+        '/SkyDock/Yverdon': [
+          { name: 'yverdon_20260801_100000.mp4', size: 1 },
+          { name: 'yverdon_20260802_090000.mp4', size: 1 },
+          { name: 'yverdon_20260801_120000.jpg', size: 1 },
+          { name: 'yverdon_20260803_080000.jpg', size: 1 }
+        ]
+      }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+
+    const files = await listStorageFolder(session, '/SkyDock/Yverdon')
+
+    expect(files.map((f) => f.name)).toEqual([
+      'yverdon_20260802_090000.mp4',
+      'yverdon_20260801_100000.mp4',
+      'yverdon_20260803_080000.jpg',
+      'yverdon_20260801_120000.jpg'
+    ])
+  })
+
+  it('is empty, not an error, for a folder nothing was uploaded into yet', async () => {
+    const stub = nasStubs({ files: {} })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+    expect(await listStorageFolder(session, '/SkyDock/Yverdon')).toEqual([])
+  })
+})
+
+describe('a file played off the storage', () => {
+  it('is only ever one inside a folder SkyDock uploads into', () => {
+    const m = manifest()
+    expect(withinStorage(m, session, '/SkyDock/Passengers/Luc Favre/luc.mp4')).toBe(true)
+    expect(withinStorage(m, session, '/Club/Col/day.mp4')).toBe(true)
+    expect(withinStorage(m, session, '/Backup/luc.rushes.zip')).toBe(true)
+    expect(withinStorage(m, session, '/homes/someone/private.mp4')).toBe(false)
+    expect(withinStorage(m, session, '/SkyDock/../homes/someone/private.mp4')).toBe(false)
+    expect(withinStorage(m, session, '/SkyDockOther/x.mp4')).toBe(false)
+  })
+
+  it('asks the storage for the part the player asked for', async () => {
+    const asked: { url: string; range: string | null }[] = []
+    vi.stubGlobal('fetch', async (url: string, init?: RequestInit) => {
+      asked.push({ url, range: new Headers(init?.headers).get('range') })
+      return new Response('part', { status: 206 })
+    })
+
+    const answer = await openStorageFile(
+      session,
+      '/SkyDock/Passengers/Luc Favre/luc.mp4',
+      'bytes=100-199'
+    )
+
+    expect(answer.status).toBe(206)
+    expect(asked[0]?.range).toBe('bytes=100-199')
+    const params = new URL(asked[0]!.url).searchParams
+    expect(params.get('api')).toBe('SYNO.FileStation.Download')
+    expect(params.get('mode')).toBe('open')
+    expect(params.get('path')).toBe('["/SkyDock/Passengers/Luc Favre/luc.mp4"]')
+  })
+})
+
+describe('when a file on the storage was shot', () => {
+  const local = (y: number, mo: number, d: number, h = 0, mi = 0, se = 0) =>
+    Math.floor(new Date(y, mo - 1, d, h, mi, se).getTime() / 1000)
+
+  it('is read off a delivered clip or photo, to the second', () => {
+    expect(shotFromName('yverdon_20260913_013417.mp4')).toBe(local(2026, 9, 13, 1, 34, 17))
+    expect(shotFromName('luc_favre_20260802_090909.jpg')).toBe(local(2026, 8, 2, 9, 9, 9))
+  })
+
+  it('is read off one that shared its second with another, and got a number', () => {
+    expect(shotFromName('yverdon_20260913_013417_2.mp4')).toBe(local(2026, 9, 13, 1, 34, 17))
+  })
+
+  it('is the day, for a film and the archives, which are named for the day alone', () => {
+    expect(shotFromName('luc_favre_20260802.mp4')).toBe(local(2026, 8, 2))
+    expect(shotFromName('luc_favre_20260802.photos.zip')).toBe(local(2026, 8, 2))
+    expect(shotFromName('luc_favre_20260802.rushes.zip')).toBe(local(2026, 8, 2))
+  })
+
+  it('is not known for a file SkyDock did not name, nor for digits that are no date', () => {
+    expect(shotFromName('GX018664.MP4')).toBeNull()
+    expect(shotFromName('skydock-montages.json')).toBeNull()
+    expect(shotFromName('yverdon_20261399_013417.mp4')).toBeNull()
+  })
+
+  it('is given with every file listed', async () => {
+    const stub = nasStubs({
+      files: { '/SkyDock/Yverdon': [{ name: 'yverdon_20260913_013417.mp4', size: 1 }] }
+    })
+    stubFetch((url) => stub(url) ?? new Response('{}'))
+
+    const [listed] = await listStorageFolder(session, '/SkyDock/Yverdon')
+
+    expect(listed?.shot).toBe(local(2026, 9, 13, 1, 34, 17))
+  })
+})

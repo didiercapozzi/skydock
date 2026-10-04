@@ -1,0 +1,314 @@
+import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
+import type { StatusContext, MontageProgress } from '@skydock/scripts'
+import { t } from '@lingui/core/macro'
+import { useState } from 'react'
+import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
+import type { Place } from '../helpers/places'
+import type { Mounted } from '../hooks/useLiveProgress'
+import { Mini } from './buttons'
+import { Icon } from './icons'
+import { PlaceLink } from './place-link'
+import { StepMeter } from './montage-steps'
+import type { Destination, ManifestFile, ManifestGroup } from './types'
+
+type Props = {
+  destinations: Destination[]
+  groups: ManifestGroup[]
+  looseFiles: ManifestFile[]
+  cameras: Mounted[]
+  statusContext: (file: ManifestFile) => StatusContext
+  montageOpen: (group: ManifestGroup) => boolean
+  delivered: number
+  passengerProgress: (name: string) => MontageProgress | null
+  onAddPlace: (name: string) => void
+  dropTarget: (place: Place) => Record<string, unknown>
+  overTarget: string | null
+  flashPlace?: string | null
+}
+
+const Row = ({
+  place,
+  label = placeLabel(place),
+  count,
+  owed = null,
+  below = null,
+  title,
+  dropTarget = {},
+  over = false,
+  flash = false,
+  quiet = false
+}: {
+  place: Place
+  label?: string
+  count?: number
+  owed?: string | null
+  below?: ((current: boolean) => React.ReactNode) | null
+  title?: string
+  dropTarget?: Record<string, unknown>
+  over?: boolean
+  flash?: boolean
+  quiet?: boolean
+}) => (
+  <PlaceLink
+    place={place}
+    title={title}
+    {...dropTarget}
+    className={(current) =>
+      `block w-full rounded-[12px] px-2.5 py-[9px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border max-[780px]:border-line max-[780px]:px-[11px] ${
+        over
+          ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed'
+          : current
+            ? 'bg-pane shadow-[0_0_0_1px_var(--color-line),0_4px_12px_rgba(20,41,46,0.07)]'
+            : 'hover:bg-line-2 max-[780px]:bg-pane'
+      } ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`
+    }>
+    {(current) => {
+      const lit = current && !over
+      const second = below?.(lit)
+      return (
+        <>
+          <span className='flex items-center justify-between gap-2'>
+            <span
+              className={`min-w-0 truncate text-[14px] font-semibold ${quiet ? 'italic' : ''} ${
+                quiet && !lit ? 'text-ink-3' : ''
+              }`}
+              title={label}>
+              {label}
+            </span>
+            {(owed || count !== undefined) && !second && (
+              <span className='flex-none text-[12px] font-bold whitespace-nowrap text-ink-3 tabular-nums max-[780px]:hidden'>
+                {owed ?? count}
+              </span>
+            )}
+          </span>
+          {second && (
+            <span className='mt-1.5 flex flex-col gap-1.5 text-[11.5px] font-medium text-ink-3 max-[780px]:hidden'>
+              {second}
+            </span>
+          )}
+        </>
+      )
+    }}
+  </PlaceLink>
+)
+
+const Heading = ({ children, first }: { children: string; first?: boolean }) => (
+  <h2
+    className={`mx-2.5 mb-[5px] text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none ${
+      first ? 'mt-1' : 'mt-3.5'
+    }`}>
+    {children}
+  </h2>
+)
+
+const MontagesHeading = ({
+  todo,
+  over,
+  dropTarget
+}: {
+  todo: string | null
+  over: boolean
+  dropTarget: Record<string, unknown>
+}) => (
+  <h2
+    {...dropTarget}
+    title={t`Drop a jump or files here to make a montage — its name is asked for first`}
+    className={`mx-0 mt-3 mb-[3px] flex items-center gap-2 rounded-[11px] px-2.5 py-0.5 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
+      over ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed' : ''
+    }`}>
+    <span className='flex-1'>{t`Montages`}</span>
+    {todo && (
+      <span className='flex-none tracking-normal whitespace-nowrap text-accent-ink normal-case max-[780px]:hidden'>
+        {todo}
+      </span>
+    )}
+  </h2>
+)
+
+const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
+  const [open, setOpen] = useState(false)
+  const [adding, setAdding] = useState('')
+  const add = () => {
+    onAdd(adding)
+    setAdding('')
+    setOpen(false)
+  }
+  if (!open)
+    return (
+      <button
+        type='button'
+        onClick={() => setOpen(true)}
+        className='mt-1.5 flex w-full items-center gap-2.5 rounded-[11px] px-2.5 py-[7px] text-left text-[13.5px] font-semibold text-ink-3 hover:bg-well hover:text-ink-2 max-[780px]:hidden'>
+        <Icon
+          name='plus'
+          size={16}
+        />
+        {t`Add a destination…`}
+      </button>
+    )
+  return (
+    <span className='mx-2 my-1 flex gap-1 max-[780px]:hidden'>
+      <input
+        type='text'
+        autoFocus
+        value={adding}
+        placeholder={t`New destination`}
+        aria-label={t`New destination`}
+        onChange={(e) => setAdding(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') add()
+          if (e.key === 'Escape') setOpen(false)
+        }}
+        onBlur={() => {
+          if (!adding.trim()) setOpen(false)
+        }}
+        className='h-8 min-w-0 flex-1 rounded-[9px] border border-line-strong bg-well px-2.5 text-[12.5px] outline-none placeholder:text-ink-3 focus:border-accent'
+      />
+      <Mini onClick={add}>{t`Add`}</Mini>
+    </span>
+  )
+}
+
+const counted = (n: number, said: (n: number) => string) => (n > 0 ? said(n) : null)
+
+const PlacesTree = ({
+  destinations,
+  groups,
+  looseFiles,
+  cameras,
+  statusContext,
+  montageOpen,
+  delivered,
+  passengerProgress,
+  onAddPlace,
+  dropTarget,
+  overTarget,
+  flashPlace
+}: Props) => {
+  const files = (p: Place) => hereIn(p, groups, looseFiles)
+  const toFile = (p: Place) =>
+    counted(
+      groupsIn(p, groups).length + (looseIn(p, looseFiles).length > 0 ? 1 : 0),
+      (count) => t`${count} to file`
+    )
+  const toDo = (p: Place) =>
+    counted(
+      files(p).filter((f) => fileStatus(f, statusContext(f)) !== 'uploaded').length,
+      (count) => t`${count} to do`
+    )
+  const openMontages = (p: Place) =>
+    counted(
+      groupsIn(p, groups).filter((g) => !g.freed && montageOpen(g)).length,
+      (count) => t`${count} to do`
+    )
+  const passengers = [
+    ...new Set(
+      groups
+        .filter((g) => isMontage(g) && hasCompletePassenger(g.passenger))
+        .map((g) => passengerOf(g))
+    )
+  ].sort((a, b) => a.localeCompare(b))
+  const unnamed = groupsIn({ kind: 'unnamed' }, groups).length
+  const folder = (p: Place) => ({
+    place: p,
+    count: files(p).length,
+    dropTarget: dropTarget(p),
+    over: overTarget === placeKey(p),
+    flash: flashPlace === placeKey(p)
+  })
+  return (
+    <nav
+      aria-label={t`Folders`}
+      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail rounded-[18px] min-[781px]:rounded-r-none min-[781px]:rounded-b-none px-2.5 py-3.5 shadow-card max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:py-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
+      <Heading first>{t`Work`}</Heading>
+      <Row
+        {...folder({ kind: 'sort' })}
+        owed={toFile({ kind: 'sort' })}
+      />
+      <Heading>{t`Destinations`}</Heading>
+      {destinations.map((d) => {
+        const p: Place = { kind: 'dz', name: d.name }
+        const held = files(p)
+        return (
+          <Row
+            key={placeKey(p)}
+            {...folder(p)}
+            owed={toDo(p) ?? (held.length > 0 ? t`all up` : t`new`)}
+          />
+        )
+      })}
+      <AddPlace onAdd={onAddPlace} />
+      <MontagesHeading
+        todo={openMontages({ kind: 'montages' })}
+        over={overTarget === placeKey({ kind: 'montages' })}
+        dropTarget={dropTarget({ kind: 'montages' })}
+      />
+      {passengers.map((name) => {
+        const p: Place = { kind: 'pax', name }
+        const progress = passengerProgress(name)
+        const todo = progress?.next?.todo
+        return (
+          <Row
+            key={placeKey(p)}
+            {...folder(p)}
+            below={
+              progress
+                ? (lit) => (
+                    <>
+                      <StepMeter
+                        progress={progress}
+                        className={lit ? 'flex-1 [&>i.bg-line]:bg-accent/20' : 'flex-1'}
+                      />
+                      {todo && <span className='whitespace-nowrap'>{todo}</span>}
+                    </>
+                  )
+                : null
+            }
+          />
+        )
+      })}
+      {passengers.length === 0 && unnamed === 0 && delivered > 0 && (
+        <span className='px-2.5 py-1 text-[12.5px] text-ink-3 max-[780px]:hidden'>
+          {t`Nothing left to do`}
+        </span>
+      )}
+      {unnamed > 0 && (
+        <Row
+          {...folder({ kind: 'unnamed' })}
+          quiet
+          owed={counted(unnamed, (count) => t`${count} to name`)}
+        />
+      )}
+      <Heading>{t`Elsewhere`}</Heading>
+      {cameras.map((c) => {
+        const camera = c.camera
+        return (
+          <Row
+            key={c.mount}
+            place={{ kind: 'camera', name: c.mount }}
+            label={c.camera}
+            owed={c.over === 'mtp' ? 'MTP' : null}
+            title={
+              c.over === 'mtp'
+                ? t`${camera} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader.`
+                : camera
+            }
+          />
+        )
+      })}
+      {delivered > 0 && (
+        <Row
+          place={{ kind: 'delivered' }}
+          count={delivered}
+          title={t`Montages that are done: emailed, and freed from this machine — only the storage holds them`}
+        />
+      )}
+      <Row
+        place={{ kind: 'bin' }}
+        title={t`What was put aside — look through it, and bring files back to Fresh files`}
+      />
+    </nav>
+  )
+}
+
+export { PlacesTree }

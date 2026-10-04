@@ -1,0 +1,36 @@
+{
+  "[json]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true
+  },
+  "[jsonl]": {
+    "editor.defaultFormatter": "oxc.oxc-vscode",
+    "editor.formatOnSave": true
+  },
+  "editor.codeActionsOnSave": {
+    "source.fixAll.oxc": "always",
+    "source.sortImports": "always",
+    "source.removeUnusedImports": "always"
+  },
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "files.exclude": {
+    "**/.git": false
+  },
+  "search.exclude": {
+    "**/node_modules/*/**": true,
+    "**/bower_components": true,
+    "**/.react-router": true,
+    "**/*.code-search": true,
+    "**/__traces__": true,
+    "**/.vitest": true,
+    "**/playwright-screenshots": true,
+    "**/storybook-static": true,
+    "**/db_mount": true,
+    "**/.git/*/**": true,
+    "**/build": true
+  }
+}

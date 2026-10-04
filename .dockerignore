@@ -1,0 +1,10 @@
+node_modules
+build
+.sim
+output
+.git
+.github
+.vscode
+*.md
+start.bat
+start.sh

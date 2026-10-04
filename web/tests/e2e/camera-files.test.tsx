@@ -1,0 +1,276 @@
+import { createElement } from 'react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { render } from 'vitest-browser-react'
+import { page, userEvent } from 'vitest/browser'
+import { CameraFiles } from '../../app/components/camera-files'
+import { forgetDeleting, liveDeleting } from '../../app/hooks/liveStore'
+
+
+const MOUNT = '/mnt/osmo/capo/OsmoNano'
+const onCard = (name: string, state: 'stored' | 'copied' | 'binned' | 'missing') => ({
+  path: `${MOUNT}/DCIM/${name}`,
+  name,
+  size: 1_000_000,
+  mtime: 1_785_000_000,
+  state
+})
+
+const listing = {
+  cameras: [
+    {
+      camera: 'OsmoNano',
+      mount: MOUNT,
+      over: 'drive',
+      deletable: true,
+      looking: false,
+      files: [
+        onCard('DJI_0001.MP4', 'stored'),
+        onCard('DJI_0002.MP4', 'copied'),
+        onCard('DJI_0003.MP4', 'missing'),
+        onCard('DJI_0004.MP4', 'binned')
+      ]
+    }
+  ]
+}
+
+const sent: unknown[] = []
+
+const stubServer = () => {
+  sent.length = 0
+  vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      sent.push(JSON.parse(String(init.body)))
+      return Response.json({
+        deleted: { count: 1, bytes: 1_000_000, bins: ['/workspace/.trash/camera-OsmoNano-x'] },
+        cameras: [{ ...listing.cameras[0], files: [onCard('DJI_0002.MP4', 'copied'), onCard('DJI_0003.MP4', 'missing')] }]
+      })
+    }
+    return Response.json(listing)
+  })
+}
+
+const realFetch = globalThis.fetch
+
+afterEach(() => {
+  vi.stubGlobal('fetch', realFetch)
+})
+
+describe('a camera plugged in', () => {
+  test('says how far each file has got, and only those on the storage or in the bin can be picked', async () => {
+    stubServer()
+    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} }))
+
+    await expect.element(page.getByText('DJI_0001.MP4')).toBeVisible()
+    await expect.element(page.getByText('on the storage', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('copied, not uploaded', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('not copied yet', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('in the bin', { exact: true })).toBeVisible()
+    await expect.element(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' })).toBeVisible()
+    await expect.element(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' })).toBeVisible()
+    for (const name of ['DJI_0002.MP4', 'DJI_0003.MP4'])
+      await expect
+        .element(page.getByRole('checkbox', { name: `Pick ${name}` }))
+        .not.toBeInTheDocument()
+  })
+
+  test('copies a picked file back onto this machine when it is asked for', async () => {
+    stubServer()
+    const onCopyBack = vi.fn()
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack })
+    )
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Copy 1 file back here' }))
+
+    expect(onCopyBack).toHaveBeenCalledWith([`${MOUNT}/DCIM/DJI_0001.MP4`])
+    expect(sent).toEqual([])
+  })
+
+  test('deletes a file whose copy was put in the bin, with nothing to copy back', async () => {
+    stubServer()
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await expect.element(page.getByRole('button', { name: /back here/ })).not.toBeInTheDocument()
+    await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
+    await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
+
+    await expect.poll(() => sent).toEqual([{ paths: [`${MOUNT}/DCIM/DJI_0004.MP4`] }])
+  })
+
+  test('shows a bar on each file being deleted, until the answer comes', async () => {
+    let answer: (value: Response) => void = () => {}
+    vi.stubGlobal('fetch', (_url: string | URL, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? new Promise<Response>((resolve) => (answer = resolve))
+        : Promise.resolve(Response.json(listing))
+    )
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
+    await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
+
+    liveDeleting.update(() => ({
+      [`${MOUNT}/DCIM/DJI_0004.MP4`]: { stage: 'moving' as const, part: 0.75 }
+    }))
+
+    const bar = page.getByRole('progressbar', { name: /DJI_0004\.MP4/ })
+    await expect.element(bar).toHaveAttribute('aria-valuenow', '75')
+    await expect.element(page.getByText('Moving to the bin')).toBeVisible()
+    await expect.element(page.getByRole('progressbar', { name: /DJI_0001/ })).not.toBeInTheDocument()
+
+    answer(Response.json({ deleted: { count: 1, bytes: 1, bins: [] }, cameras: listing.cameras }))
+    await expect.element(bar).not.toBeInTheDocument()
+    forgetDeleting()
+  })
+
+  test('takes a file off the list as soon as it is deleted, while the others are still going', async () => {
+    vi.stubGlobal('fetch', (_url: string | URL, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? new Promise<Response>(() => {})
+        : Promise.resolve(Response.json(listing))
+    )
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Delete 2 files from the camera…' }))
+    await userEvent.click(page.getByRole('button', { name: /Check and delete 2 files/ }))
+
+    liveDeleting.update(() => ({
+      [`${MOUNT}/DCIM/DJI_0004.MP4`]: { stage: 'done' as const, part: 1 },
+      [`${MOUNT}/DCIM/DJI_0001.MP4`]: { stage: 'moving' as const, part: 0.7 }
+    }))
+
+    await expect.element(page.getByText('DJI_0004.MP4')).not.toBeInTheDocument()
+    await expect.element(page.getByText('DJI_0001.MP4')).toBeVisible()
+    forgetDeleting()
+  })
+
+  test('copies what is not here yet when asked, without unplugging the camera', async () => {
+    stubServer()
+    const onNote = vi.fn()
+    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote, onCopyBack: () => {} }))
+
+    await userEvent.click(page.getByRole('button', { name: 'Copy 1 file here' }))
+
+    await expect.poll(() => sent).toEqual([{ copy: MOUNT }])
+    await expect.poll(() => onNote.mock.calls.length).toBe(1)
+  })
+
+  test('deletes a picked file from the camera only once it is confirmed', async () => {
+    stubServer()
+    const onNote = vi.fn()
+    await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote, onCopyBack: () => {} }))
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
+    await expect.element(page.getByRole('dialog', { name: 'Delete from the camera' })).toBeVisible()
+    expect(sent).toEqual([])
+
+    await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
+
+    await expect.poll(() => sent).toEqual([{ paths: [`${MOUNT}/DCIM/DJI_0001.MP4`] }])
+    await expect.poll(() => onNote.mock.calls.length).toBe(1)
+    await expect.element(page.getByText('DJI_0001.MP4')).not.toBeInTheDocument()
+  })
+})
+
+describe('a camera that hands its files over', () => {
+  test('says so, and why it is slower', async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        cameras: [
+          {
+            camera: 'GoPro MTP Client Disk Volume',
+            mount: MOUNT,
+            over: 'mtp',
+            deletable: true,
+      looking: false,
+            files: [onCard('GX010001.MP4', 'missing')]
+          }
+        ]
+      })
+    )
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText(/slower than a card reader/)).toBeVisible()
+    await expect.element(page.getByText('GX010001.MP4')).toBeVisible()
+  })
+
+  test('says nothing of the sort for a card in a reader', async () => {
+    stubServer()
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText('DJI_0001.MP4')).toBeVisible()
+    await expect.element(page.getByText(/slower than a card reader/)).not.toBeInTheDocument()
+  })
+})
+
+describe('a camera read through KDE', () => {
+  const KDE = 'mtp:/HERO5 Black/GoPro MTP Client Disk Volume'
+
+  test('is listed, and says it is deleted from on the camera itself', async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        cameras: [
+          {
+            camera: 'HERO5 Black',
+            mount: KDE,
+            over: 'mtp',
+            deletable: false,
+            looking: false,
+            files: [onCard('GOPR0001.MP4', 'stored'), onCard('GOPR0002.MP4', 'missing')]
+          }
+        ]
+      })
+    )
+    await render(
+      createElement(CameraFiles, { mount: KDE, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText('GOPR0001.MP4')).toBeVisible()
+    await expect.element(page.getByText(/delete on the camera itself/)).toBeVisible()
+    await expect.element(page.getByRole('checkbox')).not.toBeInTheDocument()
+    await expect
+      .element(page.getByRole('button', { name: /Delete .*from the camera/ }))
+      .not.toBeInTheDocument()
+  })
+})
+
+describe('a camera still being gone over', () => {
+  const KDE = 'mtp:/HERO5 Black/GoPro MTP Client Disk Volume'
+
+  test('lists what has been reached so far, and says the rest are coming', async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        cameras: [
+          {
+            camera: 'HERO5 Black',
+            mount: KDE,
+            over: 'mtp',
+            deletable: false,
+            looking: true,
+            files: [onCard('GOPR0001.MP4', 'copied')]
+          }
+        ]
+      })
+    )
+    await render(
+      createElement(CameraFiles, { mount: KDE, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText('GOPR0001.MP4')).toBeVisible()
+    await expect.element(page.getByText(/still going over the camera — 1 file so far/)).toBeVisible()
+  })
+})
