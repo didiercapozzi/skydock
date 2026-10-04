@@ -2,6 +2,7 @@ import { getOutputDir, subscribe, watchBoard, watchMontages } from '@skydock/scr
 import { watchCameras } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { watchDisk } from '../../../packages/skydock-scripts/src/diskSpace'
 import { watchServerHolds } from '../../../packages/skydock-scripts/src/lib/lag'
+import { clearStaleIncoming } from '../../../packages/skydock-scripts/src/importFile'
 import { resumeMoments } from '../../../packages/skydock-scripts/src/momentPass'
 import { resumeProxies } from '../../../packages/skydock-scripts/src/proxy'
 import type { Route } from './+types/api.events'
@@ -20,6 +21,7 @@ const loader = ({ request }: Route.LoaderArgs) => {
       send(': listening\n\n')
       const unsubscribe = subscribe((event) => send(`data: ${JSON.stringify(event)}\n\n`))
       watchCameras(getOutputDir())
+      clearStaleIncoming(getOutputDir())
       resumeProxies(getOutputDir())
       resumeMoments(getOutputDir())
       watchDisk(getOutputDir())

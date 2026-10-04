@@ -39,6 +39,11 @@ const toolPath = (name: string) => {
 
 const hasCommand = (cmd: string) => toolPath(cmd) !== null
 
+const systemTool = (name: string) => {
+  const found = onPath(name)
+  return found !== null && found !== toolPath(name) ? found : null
+}
+
 const ffmpegPath = () => toolPath('ffmpeg') ?? 'ffmpeg'
 
 const ffprobePath = () => toolPath('ffprobe') ?? 'ffprobe'
@@ -182,6 +187,7 @@ const sizeOf = (file: string) => {
 }
 
 export {
+  systemTool,
   toolPath,
   ffmpegPath,
   ffprobePath,

@@ -12,6 +12,7 @@ import {
   getManifestPath,
   getOutputDir,
   hasCommand,
+  systemTool,
   isVideoFile
 } from './utils'
 import { untilQuiet } from './lib/quiet'
@@ -46,8 +47,8 @@ const ENCODER_ARGS: Record<ProxyEncoder, string[]> = {
   cpu: ['-c:v', 'libx264', '-crf', '20', '-preset', 'veryfast', '-pix_fmt', 'yuv420p']
 }
 
-const canEncode = async (args: string[], before: string[] = []) => {
-  const trial = run(ffmpegPath(), [
+const canEncode = async (program: string, args: string[], before: string[] = []) => {
+  const trial = run(program, [
     '-hide_banner',
     '-loglevel',
     'error',
@@ -68,38 +69,52 @@ const canEncode = async (args: string[], before: string[] = []) => {
   return (await Promise.race([trial, hung])).ok
 }
 
-const vaapiCanScale = async () =>
+const vaapiCanScale = async (program: string) =>
   canEncode(
+    program,
     [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload,scale_vaapi=w=160:h=-2'],
     ['-vaapi_device', DRI_DEVICE()]
   )
 
-type Detected = { encoder: ProxyEncoder; cardScales: boolean }
+type Detected = { encoder: ProxyEncoder; cardScales: boolean; program: string }
 
 const detectEncoder = async (): Promise<Detected> => {
   const asked = process.env.SKYDOCK_PROXY_ENCODER?.trim().toLowerCase()
-  const vaapiReady = async () =>
+  const carried = ffmpegPath()
+  if (asked === 'cpu' || asked === 'nvenc')
+    return { encoder: asked, cardScales: true, program: carried }
+  if (asked === 'vaapi')
+    return { encoder: 'vaapi', cardScales: await vaapiCanScale(carried), program: carried }
+  if (!hasCommand('ffmpeg')) return { encoder: 'cpu', cardScales: false, program: carried }
+  const vaapiReady = async (program: string) =>
     fs.existsSync(DRI_DEVICE()) &&
     (await canEncode(
+      program,
       [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload'],
       ['-vaapi_device', DRI_DEVICE()]
     ))
-  if (asked === 'cpu' || asked === 'nvenc') return { encoder: asked, cardScales: true }
-  if (asked === 'vaapi') return { encoder: 'vaapi', cardScales: await vaapiCanScale() }
-  if (!hasCommand('ffmpeg')) return { encoder: 'cpu', cardScales: false }
-  if (await canEncode(ENCODER_ARGS.nvenc)) return { encoder: 'nvenc', cardScales: true }
-  if (await vaapiReady()) return { encoder: 'vaapi', cardScales: await vaapiCanScale() }
-  return { encoder: 'cpu', cardScales: false }
+  for (const program of [carried, systemTool('ffmpeg')].flatMap((one) => (one ? [one] : []))) {
+    if (await canEncode(program, ENCODER_ARGS.nvenc))
+      return { encoder: 'nvenc', cardScales: true, program }
+    if (await vaapiReady(program))
+      return { encoder: 'vaapi', cardScales: await vaapiCanScale(program), program }
+  }
+  return { encoder: 'cpu', cardScales: false, program: carried }
 }
 
 let detected: Promise<Detected> | null = null
 
-const detection = () => (detected ??= detectEncoder())
+const detection = () =>
+  (detected ??= detectEncoder().then((found) => {
+    console.log(`[Proxy] making small copies with ${found.encoder} through ${found.program}`)
+    return found
+  }))
 
 const proxyEncoder = async () => (await detection()).encoder
 
 const setProxyEncoder = (next: ProxyEncoder | null, cardScales = true) => {
-  detected = next === null ? null : Promise.resolve({ encoder: next, cardScales })
+  detected =
+    next === null ? null : Promise.resolve({ encoder: next, cardScales, program: ffmpegPath() })
 }
 
 const TRIAL_ARGS = CONTAINER_ARGS.filter((a, i) => a !== '-f' && CONTAINER_ARGS[i - 1] !== '-f')
@@ -146,10 +161,13 @@ const shownWidth = (shape: { width: number; height: number; turned: boolean }) =
 
 const scaleFilter = (shape: { turned: boolean } | null, hardware: boolean) => {
   if (!hardware) return `scale=${PROXY_WIDTH}:-2`
-  return shape?.turned ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}` : `scale_vaapi=w=${PROXY_WIDTH}:h=-2`
+  return shape?.turned
+    ? `scale_vaapi=w=-2:h=${PROXY_WIDTH}:format=nv12`
+    : `scale_vaapi=w=${PROXY_WIDTH}:h=-2:format=nv12`
 }
 
 const buildWith = async (
+  program: string,
   pick: ProxyEncoder,
   cardScales: boolean,
   src: string,
@@ -169,8 +187,8 @@ const buildWith = async (
   const filter =
     pick === 'nvenc'
       ? shape?.turned
-        ? `scale_cuda=w=-2:h=${PROXY_WIDTH}`
-        : `scale_cuda=w=${PROXY_WIDTH}:h=-2`
+        ? `scale_cuda=w=-2:h=${PROXY_WIDTH}:format=nv12`
+        : `scale_cuda=w=${PROXY_WIDTH}:h=-2:format=nv12`
       : vaapiHybrid
         ? `${scaleFilter(shape, false)},format=nv12,hwupload`
         : scaleFilter(shape, pick === 'vaapi')
@@ -179,7 +197,7 @@ const buildWith = async (
   const cap =
     pick === 'cpu' ? ['-threads', String(Math.max(1, Math.floor(os.cpus().length / 2)))] : []
   const ran = await runWatched(
-    ffmpegPath(),
+    program,
     [
       '-y',
       ...decode,
@@ -215,10 +233,10 @@ const buildProxy = async (
   onPercent?: (percent: number) => void
 ) => {
   if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
-  const { encoder, cardScales } = await detection()
-  const first = await buildWith(encoder, cardScales, src, dest, shape, onPercent)
+  const { encoder, cardScales, program } = await detection()
+  const first = await buildWith(program, encoder, cardScales, src, dest, shape, onPercent)
   if (first.ok || encoder === 'cpu') return first
-  const again = await buildWith('cpu', false, src, dest, shape, onPercent)
+  const again = await buildWith(ffmpegPath(), 'cpu', false, src, dest, shape, onPercent)
   return again.ok ? again : first
 }
 

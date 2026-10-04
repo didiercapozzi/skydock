@@ -202,5 +202,15 @@ const importFile = async ({
   }
 }
 
-export { importFile, originalEntry }
+declare global {
+  var skydockIncomingCleared: boolean | undefined
+}
+
+const clearStaleIncoming = (outputDir: string) => {
+  if (globalThis.skydockIncomingCleared) return
+  globalThis.skydockIncomingCleared = true
+  void fs.promises.rm(path.join(outputDir, '.incoming'), { recursive: true, force: true })
+}
+
+export { clearStaleIncoming, importFile, originalEntry }
 export type { ImportDrop, ImportTarget }

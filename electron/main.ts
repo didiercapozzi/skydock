@@ -442,7 +442,7 @@ const offerUpdate = () => {
         autoUpdater.quitAndInstall()
       })
   })
-  void autoUpdater.checkForUpdates()
+  autoUpdater.checkForUpdates().catch(() => undefined)
 }
 
 ipcMain.handle('work-folder:choose', async (event) => {

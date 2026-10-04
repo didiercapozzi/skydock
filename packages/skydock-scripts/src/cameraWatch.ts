@@ -23,6 +23,13 @@ const gvfsRoot = () => {
   return base ? path.join(base, 'gvfs') : null
 }
 
+const CAMERA_ON_GVFS = /^(mtp|gphoto2):/i
+
+const isGvfsRoot = (root: string) => {
+  const gvfs = gvfsRoot()
+  return gvfs !== null && path.resolve(root) === path.resolve(gvfs)
+}
+
 const windowsDrives = () =>
   Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`).filter(
     (drive) => fs.existsSync(drive)
@@ -69,6 +76,11 @@ const mountsUnder = (roots: string[], mountinfo?: string) =>
 const foldersUnder = (roots: string[]) =>
   roots.flatMap((root) => {
     try {
+      if (isGvfsRoot(root))
+        return fs
+          .readdirSync(root)
+          .filter((name) => CAMERA_ON_GVFS.test(name))
+          .map((name) => path.join(root, name))
       return fs
         .readdirSync(root, { withFileTypes: true })
         .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
