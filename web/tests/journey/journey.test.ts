@@ -43,6 +43,7 @@ beforeAll(async () => {
     recordVideo: { dir: VIDEOS, size: { width: 1280, height: 800 } }
   })
   await context.addInitScript(pointerDot)
+  await context.tracing.start({ screenshots: true, snapshots: true })
   page = await context.newPage()
   seen = watch(page)
 })
@@ -58,13 +59,31 @@ afterEach(async (context) => {
   )
 })
 
-/* a run that fails keeps its folder, with the screens of what failed */
+/* a run that fails keeps its folder, with the screens of what failed and a trace to open with
+   `npx playwright show-trace` */
 let failed = false
 afterAll(async () => {
   const film = page?.video()
+  await context?.tracing.stop(failed ? { path: path.join(world.root, 'trace.zip') } : {})
   await context?.close()
-  await film?.saveAs(path.join(VIDEOS, 'journey.webm'))
+  /* kept as mp4, which a click in the editor plays; the browser's own film is webm */
+  const raw = path.join(VIDEOS, 'journey.webm')
+  await film?.saveAs(raw)
   await film?.delete()
+  if (film)
+    execFileSync(process.env.SKYDOCK_FFMPEG_PATH ?? 'ffmpeg', [
+      '-y',
+      '-v',
+      'error',
+      '-i',
+      raw,
+      '-pix_fmt',
+      'yuv420p',
+      '-movflags',
+      '+faststart',
+      path.join(VIDEOS, 'journey.mp4')
+    ])
+  fs.rmSync(raw, { force: true })
   await browser?.close()
   await app?.stop()
   if (!failed) fs.rmSync(world.root, { recursive: true, force: true })

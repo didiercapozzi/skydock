@@ -15,7 +15,7 @@ RULES.md stays the authority on what the app does; the chapters are named in its
 | `web/tests/journey/journey.test.ts`    | the story, in order, on one app, Playwright inside vitest; `npm run test:journey` (~15 s)                          | built |
 | `app.ts`, `media.ts`, `page.ts`        | a temp world (work, config, bin), the built server started with only its own folders, ffmpeg-made DJI-style clips | built |
 | silent-break check                     | after every chapter: no console error, no failed request (a failed picture is asked for again before it counts)    | built |
-| films and failure screens              | `videos/journey.webm` with a pointer dot, `JOURNEY_SLOW=250` for a human pace; a screen and text on failure        | built |
+| films and failure screens              | `videos/journey.mp4` (click it in the editor to watch) with a pointer dot, `JOURNEY_SLOW=250` for a human pace; a screen and text on failure        | built |
 | `real-input.test.ts`, `drag-source.py` | Tier B: SkyDock's own Electron window on its own Xvfb, a real pointer (`xdotool`), a real file drop (XDND); `npm run test:journey:window` | built, one chapter |
 | saved states                           | the work folder copied after key chapters, restored by feature tests so each starts where the story left off      | to build |
 | fake storage                           | a standalone DSM-like process: Auth (2-step), List, Download, MD5, CopyMove, Rename, CreateFolder, Sharing, upload; can misbehave on request | to build |
