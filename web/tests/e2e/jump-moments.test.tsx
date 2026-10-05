@@ -50,6 +50,7 @@ const Drawer = ({
     onSeek: () => {},
     onCropChange: () => {},
     onApply: () => {},
+    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {},

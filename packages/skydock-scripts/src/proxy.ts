@@ -263,6 +263,8 @@ const cropProxy = async (
   return ran.ok
 }
 
+const ORIGINAL_MISSING = 'The original is not on this machine'
+
 const needsProxy = (file: ManifestFile) => isVideoFile(file.path) && !!file.id && !file.freed
 
 type ProxyReport = { built: number; skipped: number; failed: string[]; reason?: string }
@@ -304,8 +306,8 @@ const ensureProxies = async (
         continue
       }
       if (!fs.existsSync(file.path)) {
-        proxyFailures().set(file.path, 'The original is not on this machine')
-        making?.row({ key: rowOf(file), at: 'failed', note: 'The original is not on this machine' })
+        proxyFailures().set(file.path, ORIGINAL_MISSING)
+        making?.row({ key: rowOf(file), at: 'failed', note: ORIGINAL_MISSING })
         making?.step()
         continue
       }
@@ -463,8 +465,7 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
       facts[file.path] = { state: 'ready', play: proxyPath }
     else {
       const reason =
-        proxyFailures().get(file.path) ??
-        (fs.existsSync(file.path) ? undefined : 'The original is not on this machine')
+        proxyFailures().get(file.path) ?? (fs.existsSync(file.path) ? undefined : ORIGINAL_MISSING)
       facts[file.path] = { state: 'none', play: file.path, ...(reason ? { reason } : {}) }
     }
   }
@@ -472,6 +473,7 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
 }
 
 export {
+  ORIGINAL_MISSING,
   buildMissingProxies,
   resumeProxies,
   cropProxy,

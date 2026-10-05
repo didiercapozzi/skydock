@@ -92,6 +92,7 @@ const Drawer = ({ saved }: { saved?: FrameCrop | null }) => {
     onSeek: () => {},
     onCropChange: () => {},
     onApply: () => {},
+    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {}

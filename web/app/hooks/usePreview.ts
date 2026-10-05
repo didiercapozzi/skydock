@@ -114,7 +114,7 @@ const usePreview = ({
     draft?.frame != null ||
     Boolean(draft?.rotation)
 
-  const handleVideoApply = (range: CropRange) => {
+  const handleVideoApply = (range: CropRange, { close = false } = {}) => {
     if (!preview || !file || !draft) return
     const { frame, rotation } = draft
     if (preview.groupId === LOOSE) onFileCrop(file, range, frame, rotation)
@@ -134,9 +134,14 @@ const usePreview = ({
         )
       )
     edit({ crop: range })
-    if (!committed(range)) return
+    if (!close && !committed(range)) return
     if (windowed) setClosing(true)
     else closePreview()
+  }
+
+  const handleReset = () => {
+    if (!draft) return
+    edit({ crop: { cropStart: null, cropEnd: null }, frame: null, rotation: 0 })
   }
 
   const handleFrameApplyToJump = () => {
@@ -198,6 +203,7 @@ const usePreview = ({
     handleVideoSeek,
     handleVideoTime,
     handleVideoApply,
+    handleReset,
     frame: draft?.frame ?? null,
     rotation: draft?.rotation ?? 0,
     handleRotate: (rotation: Rotation) => edit({ rotation }),

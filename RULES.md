@@ -91,8 +91,9 @@ Everything below follows from these.
 - **A file's state is a fact that can be checked, not a flag to remember.** Every claim SkyDock makes
   about a file — processed, on the storage — is backed by evidence it can look at again.
 - **Nothing on the network storage is ever deleted by SkyDock.** It uploads and creates folders; a file
-  asked to be sent again over one already there is never written over, nor moved: the upload does not
-  start, and says which files are in the way. Taking
+  asked to be sent over one already there that holds other bytes is never written over, nor moved: the
+  upload does not start, and says which files are in the way. One that holds the very same bytes is
+  simply there, and is passed over. Taking
   something off the storage is done by a person, in the storage's own interface. SkyDock's part is to
   notice. A link is not a file: taking a link away leaves what it pointed at exactly where it was.
 - **Not knowing is not evidence.** When the storage did not answer or a check failed, SkyDock keeps what
@@ -904,7 +905,7 @@ One thing more: when that window is already open but under the board, asking for
 front. It moves when dragged from anywhere in it that is not something to press or drag — not a button,
 the picture, the timeline or the graph — and has the window's three buttons at the end of its header.
 In a plain browser there is no second window to give, and the file opens over the board as before. The top names the file and lets you step to the next; the bottom holds
-Save, offered only once something changed, and Reset, which clears everything at once. A loose file is
+Save, offered only once something changed, and Reset, which clears the trim, the frame and the turn at once on screen — it is a change like any other, saved with Save, put back by Cancel, and asked about when leaving. A loose file is
 cropped the same way as one in a jump, with no jump to give its frame or turn to.
 
 **Trimming.** A clip already trimmed opens where its trim starts, which is the moment the copy made
@@ -1092,15 +1093,16 @@ which is when it was shot — so the storage lists and sorts it by that, not by 
 files — sending the folder whole. A montage cannot be uploaded this way, because its files go to two
 places; asking is refused and says why.
 
-**Sending what changed.** A file whose name is already taken up there — by different bytes, such as a
-clip prepared again after its trim was put right or a film rendered again, or by the very same ones —
-is not written over, and is not moved or renamed by SkyDock either. Before anything is sent, every
+**Sending what changed.** A file whose name is already taken up there by different bytes — such as a
+clip prepared again after its trim was put right or a film rendered again — is not written over, and is not moved or renamed by SkyDock either. Before anything is sent, every
 folder of the upload is looked at, and if any file is in the way the whole upload does not start:
 nothing is sent, the board says so, and each file in the way is listed with a button that opens its
 folder in the storage's own web interface, in a new tab, where a person renames or deletes it. The warning line
 leads to the list of transfers, which is not opened by itself.
-The upload is then started again. Footage the storage already holds under another name is the one thing
-passed over: it is not sent again, and the list says it was already uploaded, with the same button to
+The upload is then started again. What the storage already holds is passed over — footage it holds under
+another name, or a file of the very same name and bytes, which an upload carries on past: only what is not
+up there is sent. What the board's record says went up already, with the bytes this copy still holds, is
+not even looked at again. It is not sent again, and the list says it was already uploaded, with the same button to
 find it. The board reports what is happening throughout: how many files are being checked, which one is
 being sent and how far it is, and how many were already there.
 

@@ -53,6 +53,7 @@ const PreviewHost = ({
       onTime={preview.handleVideoTime}
       onCropChange={(crop) => preview.setVideoState({ crop })}
       onApply={preview.handleVideoApply}
+      onReset={preview.handleReset}
       onZoomChange={(zoom) => preview.setVideoState({ zoom })}
       onDurationChange={(duration) => preview.setVideoState({ duration })}
       onVideoRef={preview.handleVideoRef}

@@ -25,6 +25,7 @@ const Drawer = ({ onRotate = () => {} }: { onRotate?: () => void }) =>
     onSeek: () => {},
     onCropChange: () => {},
     onApply: () => {},
+    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {}

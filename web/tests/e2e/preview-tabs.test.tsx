@@ -31,6 +31,7 @@ const Drawer = ({ file, cropEnd = null }: { file: typeof CLIP; cropEnd?: number 
     onSeek: () => {},
     onCropChange: () => {},
     onApply: () => {},
+    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {}

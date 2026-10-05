@@ -267,15 +267,17 @@ describe('uploading a folder', () => {
       expect(plans[0]?.taken).toMatchObject([{ name: 'a.mp4', to: '/SkyDock/jump/videos' }])
     })
 
-    it('stops the upload too when it holds the same bytes: the name is what is taken', async () => {
+    it('passes over a file that holds the same bytes, and sends the one that is not there', async () => {
       const touched = storageHolding(5)
+      const other = path.join(dir, 'videos', 'b.mp4')
+      fs.writeFileSync(other, Buffer.from('other'))
 
-      await expect(publish({ files: [video()] })).rejects.toThrow(
-        /a\.mp4 is already on the storage, so nothing was sent/
-      )
+      const result = await publish({ files: [video(), other] })
 
+      expect(result.skipped).toBe(1)
+      expect(result.uploaded).toBe(1)
+      expect(sentNames(server.uploads)).toEqual(['b.mp4'])
       expect(touched).toEqual([])
-      expect(server.uploads).toEqual([])
     })
 
     it('keeps the bin one step above the delivered folder, unless that is a share', () => {

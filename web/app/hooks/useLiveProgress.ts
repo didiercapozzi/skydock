@@ -32,6 +32,7 @@ const useLiveProgress = (
   const [prompts, setPrompts] = useState<string[]>([])
   const [disk, setDisk] = useState<Disk | null>(null)
   const [changed, setChanged] = useState<string | null>(null)
+  const [unreadable, setUnreadable] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     forgetLive()
@@ -100,11 +101,13 @@ const useLiveProgress = (
       const landed = event.proxy
       if (landed) onProxies((now) => ({ ...now, [landed.path]: landed.fact }))
       if (event.moments !== undefined) found(event.fileId, event.moments)
+      if (event.work === 'moments' && !event.ok)
+        setUnreadable((now) => new Set([...now, event.fileId]))
     }
     return () => source.close()
   }, [onProxies, onMontages, onNote])
 
-  return { ended, cameras, known, prompts, disk, changed }
+  return { ended, cameras, known, prompts, disk, changed, unreadable }
 }
 
 export { useLiveProgress }

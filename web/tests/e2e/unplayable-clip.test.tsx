@@ -26,6 +26,7 @@ const Drawer = ({ proxy }: { proxy?: { state: 'ready' | 'own' | 'none'; play: st
     onSeek: () => {},
     onCropChange: () => {},
     onApply: () => {},
+    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {}

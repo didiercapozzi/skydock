@@ -74,12 +74,30 @@ const backupOf = (file: string) => `${file}.bak`
 const HISTORY_KEPT = 30
 const historyDir = (manifestPath: string) => path.join(path.dirname(manifestPath), '.history')
 
+const FOLDERS = /^(.*?)\/(original_files|processed|proxies|\.send|\.trash)\/(.+)$/
+const PATH_KEYS = new Set(['path', 'localPath', 'proxy'])
+
+const rebaseOnto = (value: unknown, root: string, seen = new Set<unknown>()) => {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return
+  seen.add(value)
+  const holder = value as Record<string, unknown>
+  for (const [key, inside] of Object.entries(holder)) {
+    if (typeof inside === 'string' && PATH_KEYS.has(key) && !inside.startsWith(`${root}/`)) {
+      const found = FOLDERS.exec(inside)
+      if (!found || fs.existsSync(inside)) continue
+      const here = `${root}/${found[2]}/${found[3]}`
+      if (fs.existsSync(here)) holder[key] = here
+    } else rebaseOnto(inside, root, seen)
+  }
+}
+
 const readPair = (manifestPath: string, groupsPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
   const stored = storedManifestSchema.safeParse(fs.readFileSync(manifestPath, 'utf-8'))
   if (!stored.success) return null
   const groups = resolveGroups(stored.data.files, readGroupsFile(groupsPath))
   const manifest: Manifest = { ...stored.data, groups }
+  rebaseOnto(manifest, path.dirname(manifestPath))
   return manifest
 }
 

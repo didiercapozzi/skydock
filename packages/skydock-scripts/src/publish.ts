@@ -373,7 +373,7 @@ const checkJump = async (
   })
   const held = new Set(planned.held)
   const taken: PlannedFile[] = [
-    ...[...planned.upload, ...planned.skip.map((verdict) => verdict.localPath)].map((file) => ({
+    ...planned.upload.map((file) => ({
       name: path.basename(file),
       size: fs.statSync(file).size,
       to: remoteDirOf(args.localDir, args.remoteDir, file)
