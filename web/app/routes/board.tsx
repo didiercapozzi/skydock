@@ -337,7 +337,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         className={`group grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 min-[781px]:px-0 min-[781px]:pt-0 min-[781px]:pb-0 min-[781px]:grid-cols-[264px_0px_minmax(0,1fr)] min-[781px]:grid-rows-[56px_minmax(0,1fr)] min-[781px]:gap-y-0 min-[1101px]:transition-[grid-template-columns] min-[1101px]:duration-300 min-[1101px]:ease-out motion-reduce:transition-none ${
           details
             ? 'min-[1101px]:grid-cols-[264px_0px_minmax(0,1fr)_0px_338px]'
-            : 'min-[1101px]:grid-cols-[264px_10px_minmax(0,1fr)_0px_0px]'
+            : 'min-[1101px]:grid-cols-[264px_0px_minmax(0,1fr)_0px_0px]'
         }`}>
         <BoardHeader
           scanning={board.scanning}
