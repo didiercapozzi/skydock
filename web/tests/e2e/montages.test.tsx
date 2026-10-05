@@ -120,7 +120,7 @@ describe('a jump in Fresh files', () => {
 })
 
 describe('a group of picked files', () => {
-  test('shows several pictures at the top of the panel, and counts what does not fit', async () => {
+  test('shows a strip of pictures at the top of the panel, and counts what does not fit', async () => {
     const many = Array.from({ length: 12 }, (_, at) => file(`m${at}`, AT + at * 60))
     await renderBoard({ groups: [] }, '/', { ...board, groups: [{ ...FRESH_JUMP, files: many }] })
     await userEvent.click(card(/^Sunset load, /))
@@ -131,8 +131,8 @@ describe('a group of picked files', () => {
       })
 
     await expect.element(details().getByText('11 files')).toBeVisible()
-    await expect.poll(() => details().element().querySelectorAll('img').length).toBe(9)
-    await expect.element(details().getByText('+2')).toBeVisible()
+    await expect.poll(() => details().element().querySelectorAll('img').length).toBe(6)
+    await expect.element(details().getByText('+6')).toBeVisible()
   })
 })
 

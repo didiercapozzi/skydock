@@ -146,7 +146,7 @@ const PlacePane = ({
         e.preventDefault()
         onImport(carried, incoming.target, incoming.where)
       }}
-      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] isle-pane shadow-card max-[780px]:rounded-[18px] min-[781px]:rounded-b-none min-[781px]:border-l min-[781px]:border-line-2 min-[781px]:col-start-3 min-[781px]:row-start-2'>
+      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] isle-pane max-[780px]:rounded-[18px] min-[781px]:rounded-b-none min-[781px]:border-t min-[781px]:border-edge min-[781px]:col-start-3 min-[781px]:row-start-2'>
       {head ? (
         head({ query, onQuery })
       ) : (

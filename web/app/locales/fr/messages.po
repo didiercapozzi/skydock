@@ -794,10 +794,6 @@ msgstr "Une copie ne peut pas aller à la corbeille — son original reste où i
 msgid "a copy of the film"
 msgstr "une copie du film"
 
-#: app/components/inspector.tsx
-msgid "A frame from this montage, to tell who it is"
-msgstr "Une image de ce montage, pour savoir de qui il s’agit"
-
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
 msgstr "un saut"
@@ -2974,10 +2970,6 @@ msgstr "Nommé {stem}.….zip — vous choisissez la fin, ou aucune."
 #: app/components/place-pane.tsx
 msgid "Narrow by name"
 msgstr "Filtrer par nom"
-
-#: app/components/places-tree.tsx
-msgid "new"
-msgstr "nouveau"
 
 #: app/components/places-tree.tsx
 msgid "New destination"

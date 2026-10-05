@@ -9,12 +9,14 @@ const TOOL =
 const Menu = ({
   label,
   icon,
+  round = false,
   lead,
   side = 'right',
   children
 }: {
   label: string
   icon?: IconName
+  round?: boolean
   lead?: IconName
   side?: 'left' | 'right'
   children: (close: () => void) => React.ReactNode
@@ -49,10 +51,14 @@ const Menu = ({
           aria-label={label}
           title={label}
           onClick={() => setOpen(!open)}
-          className={`${TOOL} w-[34px] justify-center px-0 ${open ? 'bg-well' : ''}`}>
+          className={
+            round
+              ? `inline-flex size-[42px] items-center justify-center rounded-full border-0 shadow-card hover:bg-accent-soft ${open ? 'bg-accent-soft' : 'bg-pane'}`
+              : `${TOOL} w-[34px] justify-center px-0 ${open ? 'bg-well' : ''}`
+          }>
           <Icon
             name={icon}
-            className='text-ink-2'
+            className={round ? 'text-accent' : 'text-ink-2'}
           />
         </button>
       ) : (
@@ -60,7 +66,7 @@ const Menu = ({
           type='button'
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className='inline-flex h-[30px] w-full items-center justify-center gap-1.5 rounded-[10px] bg-well px-3 text-[12.5px] font-bold hover:bg-line'>
+          className='inline-flex h-[30px] w-full items-center justify-center gap-1.5 rounded-full bg-pane px-3 text-[12.5px] font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
           {lead && (
             <Icon
               name={lead}

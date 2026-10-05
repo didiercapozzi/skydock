@@ -79,7 +79,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-[18px] border-b border-line-2 isle-head px-3.5 shadow-card max-[780px]:rounded-[18px] max-[780px]:border-b-0 min-[781px]:rounded-tl-none min-[781px]:border-l min-[1101px]:group-data-[docked]:rounded-tr-none min-[781px]:col-start-3 min-[1101px]:col-end-6 min-[781px]:row-start-1'>
+    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-[18px] isle-head px-3.5 max-[780px]:rounded-[18px] min-[781px]:rounded-tl-none min-[1101px]:group-data-[docked]:rounded-tr-none min-[781px]:col-start-3 min-[1101px]:col-end-6 min-[781px]:row-start-1'>
       <button
         type='button'
         disabled={scanning}
@@ -258,7 +258,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-[7px] whitespace-nowrap'
   return (
-    <footer className='mx-2.5 mb-2 min-[781px]:mx-0 min-[781px]:mb-0 min-[781px]:rounded-none flex h-[30px] flex-none items-center gap-5 rounded-[12px] border-t border-line-2 bg-pane px-3.5 min-[781px]:rounded-t-none text-[11.5px] shadow-card font-semibold text-ink-2'>
+    <footer className='mx-2.5 mb-2 min-[781px]:mx-0 min-[781px]:mb-0 min-[781px]:rounded-none flex h-[30px] flex-none items-center gap-5 rounded-[12px] relative z-30 border-t border-edge bg-pane/60 px-3.5 min-[781px]:rounded-t-none text-[11.5px] font-semibold text-ink-2'>
       <span
         title={
           nas.connected

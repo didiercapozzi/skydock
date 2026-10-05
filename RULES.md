@@ -486,7 +486,7 @@ are waiting for a home — with a slim bar of how many are on the storage and th
 A destination with no files yet says so, and asks where it should go. The list has no column headings and no
 choice of kind: each file is a row with its picture, name, time and size, and a day whose files are all on
 the storage is folded into one line, opened by a click; each row is a box of its own. Fresh files shows
-its jumps as white tiles, three pictures side by side over the jump's name, its day and time, what it holds
+its jumps as white cards, a strip of pictures of the jump's own files across the top — up to five, in the order they were shot, each slice leaning to the left and wider than the one before it, with what does not fit counted on the last — over the jump's name, its day and time, what it holds
 and a "to file" tag, and the files in no jump as one more card among them, without pictures, with one
 button to group the loose files into jumps. Opening Fresh files from the rail chooses the loose files' card, when there are any, since they are the first thing there is to file; with none, no card is chosen to begin with. Choosing one lights it and
 lists under the cards only that card's files — a jump's own, or the loose ones — so each can be looked at.
@@ -500,7 +500,7 @@ its picture across the top, its name, its state, then its facts a line each — 
 how the picture was changed — then what can be done with it, one wide row each (_Trim, frame or turn…_,
 _Move to…_), with putting it in the bin small at the foot; a file that is also on the storage shows where, in
 a green box with a way to open it there. A montage's panel does not repeat the steps its page shows.
-A group of picked files puts several of their pictures across the top, up to nine in the order they were shot — larger when few, smaller when many — with what does not fit counted on the last tile, then how many files, their total size and the times they span.
+A group of picked files puts the same strip of their pictures across the top of the panel, edge to edge with no margin, border or rounded corner, meeting the toolbar above it and the work beside it with no line between, then how many files, their total size and the times they span. A jump, chosen, opens its panel the same way, with the strip of its own files at the top, whether it waits in Fresh files or is filed; only a montage that is already named leaves it out, since its name says what it is.
 
 **The places.** Three places of work: _Fresh files_, a single entry holding everything off the
 cameras that is not filed yet; _Destinations_, one entry per destination, and _Add a destination…_,
@@ -511,7 +511,7 @@ _Montages done_, with how many montages are in it, once there is one; and the _B
 montage shows its own folder up there, on its own _On the storage_ tab. The place you
 are on is drawn as a white card. Each place is one line, its name and, at the right, what is left there in
 a few words: the jumps still to file in Fresh files, the files still to do at a destination ("all up" when
-none is, "new" when it holds nothing); a montage shows a segment per step with the next one named under it. Every place of work takes files dropped on it,
+none is, and nothing at all when it holds nothing); a montage shows a segment per step with the next one named under it. Every place of work takes files dropped on it,
 and every one but Fresh files a whole jump; the cameras take nothing. A montage
 is listed once, however many jumps it has.
 
@@ -560,7 +560,7 @@ Arranged by jump, every jump is a card, in a grid of equal cells — so many jum
 and rows, the loose files' card among them — newest first, so the numbers count down to Jump 1,
 the first of all. A card carries its name and how big it is, its day and the span of times its files cover to the
 minute — never one file's time, since a jump is a gathering of files — how many
-videos and photos it holds, how far it has got, and a few frames off it, so jumps are told apart at a
+videos and photos it holds, how far it has got, and a strip of pictures of its files, so jumps are told apart at a
 glance. The loose files get one card of their own, always first: drawn dashed and flat so it never
 passes for a jump, and carrying no date, since loose files share no one moment.
 
@@ -791,7 +791,7 @@ join one another with a thin light line. The places, the work (its toolbar and i
 and what is open stand side by side, and a status bar runs along the bottom. The first look at a work folder, which has no
 toolbar, carries the same three buttons on a strip of its own. A file's window, below, carries them at the
 end of its own header. One
-petrol teal is for where you are, what is picked and the button that does the next thing. A file's
+sky blue is for where you are, what is picked and the button that does the next thing. A file's
 state is a small tinted badge: amber for what is still to do, blue for what is processed, green
 for what is up. A colour marks each kind of place: blue for Fresh files, teal for destinations,
 violet for montages, green for the storage, amber for cameras, red for the bin. Pictures lead: a
