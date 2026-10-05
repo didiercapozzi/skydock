@@ -6,9 +6,9 @@
 
 ## 1. The idea in five lines
 
-1. **Light, sky blue, easy to see.** A pale sky-blue ground that is lightest in the middle, with white panels on it. Nothing is dark except text and photographs.
+1. **Light, soft grey-teal, easy to see.** The app's original pale grey-teal ground, with white panels on it. Nothing is dark except text and photographs.
 2. **Photographs come first.** A jump is told by pictures of its own files, never by an icon. They run edge to edge where they can.
-3. **No grey.** There is no grey line, grey shadow or grey fill. Every line, shadow and fill is a tint of the same blue, or white.
+3. **No grey fills.** The quiet fills — a tab's track, an icon's tile, a note — are a light blue, never grey; lines and shadows are tints of the accent blue. The ground is the app's soft grey-teal wash.
 4. **One accent.** A single clear blue for the thing selected and the next thing to do. The only other colour is the amber of a file that is still local, and red for letting go of something.
 5. **Soft layers.** Panels sit one above another. The left panel is above the main area, the main area is above the right panel, and the footer is above all three. The order is shown with a line or a very light shadow, never a heavy one.
 
@@ -18,16 +18,16 @@
 
 | Role                  | Value                                                                                                               |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Window ground         | `linear-gradient(160deg, #d9eefc 0%, #f0f9ff 50%, #def1fd 100%)` — a little deeper at the corners, palest in the middle      |
-| Header strip          | `linear-gradient(90deg, #e0f2fd, #f0f9ff 60%, #e3f4fe)`, fully opaque so nothing shows through it                   |
-| Left panel            | transparent, with a 22 % white film over the ground                                                                 |
-| Main area             | `linear-gradient(180deg, rgba(238,248,255,.93) 0%, rgba(246,252,255,.93) 45%, rgba(255,255,255,.95) 100%)`         |
-| Right panel           | `linear-gradient(180deg, rgba(222,241,253,.92) 0%, rgba(240,249,255,.96) 55%, #ffffff 100%)`                        |
+| Window ground         | the app's original soft grey-teal wash: `#e3edf1` under three radial glows (`#d3e9f0` top left, `#dcebf3` top right, `#d8ede8` bottom right) |
+| Header strip          | `linear-gradient(90deg, #f2f9fb, #edf5f8)`, fully opaque so nothing shows through it |
+| Left panel            | the same wash as the right panel, `linear-gradient(180deg, #f0f8fa, #f6fbfc 45%, #ffffff)`, with the waves and a white haze at its foot over it |
+| Main area             | `linear-gradient(180deg, #eff8fa 0, #ffffff 240px)` — pale at its head, white from 240 px down |
+| Right panel           | `linear-gradient(180deg, #f0f8fa 0%, #f6fbfc 45%, #ffffff 100%)` |
 | Footer                | white at 60 %                                                                                                       |
 | Cards, rows, buttons  | white                                                                                                               |
-| Well (a quiet fill)   | `#e0f2fe`                                                                                                           |
+| Well (a quiet fill: a tab's track, a search field, a note) | `#e8f2fa` — a very light tint of the accent blue |
 
-The main area and the right panel both run from a pale blue at the top to white at the bottom, the main one more gently. They are slightly see-through, so the ground and its faint shapes (section 3) show through a little.
+The main area and the right panel both run from a pale grey-teal at the top to white at the bottom. The panels are opaque, so the ground's shapes (section 3) show only on the left panel and the window's edges.
 
 ### 2.2 Ink
 
@@ -45,7 +45,7 @@ Ink is a dark blue, never black and never grey.
 | -------------------------------------------- | --------- |
 | Accent                                       | `#0b7fd6` |
 | Accent, darker (pressed, section headings)   | `#0762ab` |
-| Accent soft (an icon's tile, a chevron's disc, an active toolbar button) | `#d3ecff` |
+| Accent soft (an icon's tile, a chevron's disc, an active toolbar button) | `#e4f1fc` |
 | Accent gradient (the logo tile)              | `linear-gradient(135deg, #43b0f5, #0b7fd6)` |
 | The main button's fill (white text on it)    | `linear-gradient(135deg, #1a8be0, #0b72c8)` — darker than the logo's so the white text reads |
 
@@ -62,7 +62,7 @@ Amber is the one warm colour on the screen. It is kept for what is still local s
 
 ### 2.5 Lines and shadows
 
-All lines are white or a tint of the accent; all shadows are the accent's blue at low strength.
+All lines are white or a tint of the accent blue; all shadows are that blue at low strength.
 
 | Role                                                                         | Value                                               |
 | ---------------------------------------------------------------------------- | --------------------------------------------------- |
@@ -136,7 +136,7 @@ Stacking from front to back: footer, left panel, main area, right panel, header.
 ### 5.3 Main area
 
 1. **Page head.** A 48 px rounded tile (radius 14, accent-soft, accent icon), the title and its one-line description, and at the right a _Search_ pill and a round _more_ button.
-2. **Status card.** 64 px high, radius 18, a pale-blue-to-white gradient (`#e0f4ff` to `#f1faff`) with the white raised shadow. A white round chevron, a 17 px sentence on where things stand, and a quiet line under it.
+2. **Status card.** 64 px high, radius 18, a pale-blue-to-white gradient (`#e8f3fb` to `#f5faff`) with the white raised shadow. A white round chevron, a 17 px sentence on where things stand, and a quiet line under it.
 3. **Jump cards** (section 6), three across with a 15 px gap.
 4. **The open jump's heading:** its name in bold and a quiet pill saying what it holds.
 5. **File rows** (section 7).
@@ -201,6 +201,7 @@ All buttons are fully round (radius 99 px) unless stated, white, without an outl
 | Letting go (_Delete jump_)              | the ordinary pill with red text; never filled red                                                 |
 | Pill (state)                            | 24 px high, radius 99, 12 px / 600; amber for local                                               |
 | Hover                                   | a white button takes the accent-soft fill                                                         |
+| Tabs (_Local_ / _On the storage_, _All_ / _Videos_ / _Photos_) | a fully round track in the well colour with a faint inset shadow, 40 px high with 4 px inside; the chosen tab is a white pill with the raised shadow and accent-dark text, the others quiet with a white 60 % wash on hover |
 
 There is one main button on a screen at most. Everything that is not the next step is white.
 
@@ -214,7 +215,7 @@ The base unit is 4 px. Panel padding is 24–28 px; the gap between cards is 15 
 
 ## 11. What not to do
 
-- No grey — not a border, not a shadow, not a fill. If something needs to recede, use a lighter blue or lower the white's opacity.
+- No grey fill on a tab, an icon tile or a note: use the light blue well or the accent-soft tile.
 - No border or white outline round a picture.
 - No gap between the panels, and no outline round a panel.
 - No heavy shadow. The strongest in the whole design is the selected card's glow.
@@ -226,7 +227,7 @@ The base unit is 4 px. Panel padding is 24–28 px; the gap between cards is 15 
 ## 12. Known gaps to settle before it is built
 
 - **Contrast.** The quiet ink was darkened to `#4a7090` and the main button's fill to `#1a8be0 → #0b72c8` for it. White text on the lighter end of that gradient is still about 4 : 1, a little under the 4.5 : 1 for small text. A darker fill would pass without changing the look much.
-- **Dark theme.** Not redrawn. The same structure — layers, one accent, tinted lines, no grey — would apply, with a deep blue ground in place of the sky.
+- **Dark theme.** Not redrawn. The same structure — layers, one accent, cool neutral lines — would apply, with a deep cool-grey ground.
 - **Other pages.** A montage, a dropzone, a camera and the dialogs are not drawn in this look.
 - **Narrow windows and the drawer** are described but not drawn.
 - **Motion.** Not designed; the app's current transitions are kept.

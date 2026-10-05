@@ -378,6 +378,10 @@ msgstr "{finished} of {count, plural, one {# item} other {# items}} on the stora
 msgid "{firstname} can take the link with a phone, before the email has even gone."
 msgstr "{firstname} can take the link with a phone, before the email has even gone."
 
+#: app/routes/place.tsx
+msgid "{groupable, plural, one {Group # loose file} other {Group # loose files}}"
+msgstr "{groupable, plural, one {Group # loose file} other {Group # loose files}}"
+
 #: app/components/take-back-dialog.tsx
 msgid "{jumpCount, plural, one {# jump} other {# jumps}}, {fileCount, plural, one {# file} other {# files}}, still under Montages"
 msgstr "{jumpCount, plural, one {# jump} other {# jumps}}, {fileCount, plural, one {# file} other {# files}}, still under Montages"
@@ -455,10 +459,6 @@ msgstr "{loose, plural, one {# loose file is waiting for a home} other {# loose 
 #: app/components/remove-place-dialog.tsx
 msgid "{loose, plural, one {# loose file} other {# loose files}}"
 msgstr "{loose, plural, one {# loose file} other {# loose files}}"
-
-#: app/routes/place.tsx
-msgid "{loose, plural, one {Group # loose file} other {Group # loose files}}"
-msgstr "{loose, plural, one {Group # loose file} other {Group # loose files}}"
 
 #: app/components/folder-owed.tsx
 msgid "{looseCount, plural, one {# loose file} other {# loose files}}"

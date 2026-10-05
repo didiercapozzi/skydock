@@ -488,7 +488,7 @@ choice of kind: each file is a row with its picture, name, time and size, and a 
 the storage is folded into one line, opened by a click; each row is a box of its own. Fresh files shows
 its jumps as white cards, a strip of pictures of the jump's own files across the top — up to five, in the order they were shot, each slice leaning to the left and wider than the one before it, with what does not fit counted on the last — over the jump's name, its day and time, what it holds
 and a "to file" tag, and the files in no jump as one more card among them, without pictures, with one
-button to group the loose files into jumps. Opening Fresh files from the rail chooses the loose files' card, when there are any, since they are the first thing there is to file; with none, no card is chosen to begin with. Choosing one lights it and
+button to group the loose files into jumps, which is offered only when it would do something — at least two of them within the gap of one another — and says how many it would group. Opening Fresh files from the rail chooses the loose files' card, when there are any, since they are the first thing there is to file; with none, no card is chosen to begin with. Choosing one lights it and
 lists under the cards only that card's files — a jump's own, or the loose ones — so each can be looked at.
 
 **The panel on the right says nothing that the page already says.** With nothing selected, a destination's

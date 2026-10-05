@@ -154,6 +154,11 @@ const regroupLooseFiles = (manifest: Manifest) => {
   return batches.length
 }
 
+const groupableCount = (files: ManifestFile[]) =>
+  splitByGap(files)
+    .filter((run) => run.length > 1)
+    .reduce((n, run) => n + run.length, 0)
+
 const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number) => {
   const shifted = new Set<ManifestFile>()
   const shiftOne = (file: ManifestFile) => {
@@ -190,6 +195,7 @@ export {
   dayOfFiles,
   freshIds,
   groupFromFiles,
+  groupableCount,
   groupNewFiles,
   looseFiles,
   offGap,

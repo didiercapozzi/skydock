@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { regroupLooseFiles, splitByGap } from '../src/clustering'
+import { groupableCount, regroupLooseFiles, splitByGap } from '../src/clustering'
 import type { Manifest, ManifestFile } from '../src/types'
 
 const AT = 1_785_000_000
@@ -56,5 +56,13 @@ describe('regrouping loose files', () => {
 
     expect(regroupLooseFiles(manifest)).toBe(0)
     expect(manifest.groups).toEqual([])
+  })
+
+  it('counts the loose files that could go into a jump, and none when every one is alone', () => {
+    const near = [clip('a', AT), clip('b', AT + 60), clip('lone', AT + 3 * 60 * MINUTE)]
+    const alone = [clip('x', AT), clip('y', AT + 3 * 60 * MINUTE), clip('z', AT + 6 * 60 * MINUTE)]
+
+    expect(groupableCount(near)).toBe(2)
+    expect(groupableCount(alone)).toBe(0)
   })
 })

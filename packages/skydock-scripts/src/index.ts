@@ -9,6 +9,7 @@ import type {
   MontageFact
 } from './boardAnswer'
 import {
+  groupableCount,
   offGap,
   regroupLooseFiles,
   retimeFile,
@@ -311,6 +312,7 @@ export {
   cancelProcessing,
   processingNow,
   processJumps,
+  groupableCount,
   regroupLooseFiles,
   removeShareLink,
   renderPassengerEmail,
