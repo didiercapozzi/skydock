@@ -51,6 +51,9 @@ const useLiveProgress = (
   const [disk, setDisk] = useState<Disk | null>(null)
   /* which state of the board's record was last said to have changed outside this page */
   const [changed, setChanged] = useState<string | null>(null)
+  /* the clips whose jump could not be looked for — settled for as long as this page is open, since asking
+     again changes nothing, though the clip is asked about again the next time the server starts */
+  const [unreadable, setUnreadable] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     /* what an earlier line said is not taken for now: the server says again what is under way */
@@ -123,11 +126,13 @@ const useLiveProgress = (
       const landed = event.proxy
       if (landed) onProxies((now) => ({ ...now, [landed.path]: landed.fact }))
       if (event.moments !== undefined) found(event.fileId, event.moments)
+      if (event.work === 'moments' && !event.ok)
+        setUnreadable((now) => new Set([...now, event.fileId]))
     }
     return () => source.close()
   }, [onProxies, onMontages, onNote])
 
-  return { ended, cameras, known, prompts, disk, changed }
+  return { ended, cameras, known, prompts, disk, changed, unreadable }
 }
 
 export { useLiveProgress }

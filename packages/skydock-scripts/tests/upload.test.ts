@@ -184,6 +184,66 @@ describe('where an upload goes', () => {
     expect(targets.every((target) => target.share === false)).toBe(true)
   })
 
+  /* A destination uploaded again carries on from where it was: what the record says is up there, with the
+     bytes this copy holds, is not looked at again, so what its folder still holds of what it sent before
+     does not stand in the way of the one file that has not been sent. */
+  it('leaves out of a destination’s upload what the record says is up there already', () => {
+    const out = createTmpDir('skydock-out-')
+    const dir = path.join(out, 'processed', 'sion')
+    fs.mkdirSync(dir, { recursive: true })
+    fs.writeFileSync(path.join(dir, 'sent.mp4'), 'sent')
+    fs.writeFileSync(path.join(dir, 'new.mp4'), 'new!')
+    const lone = (name: string, size: number, sent: boolean) => ({
+      path: `/src/${name}`,
+      size,
+      mtime: 1,
+      filename: name,
+      id: name,
+      destination: 'sion',
+      processed: {
+        path: path.join(dir, name),
+        size,
+        at: 1,
+        source: {
+          id: name,
+          size,
+          mtime: 1,
+          cropStart: null,
+          cropEnd: null,
+          frame: null,
+          rotation: null
+        }
+      },
+      ...(sent
+        ? {
+            uploaded: {
+              remotePath: `/nas/Sion/${name}`,
+              md5: 'x',
+              size,
+              localPath: path.join(dir, name),
+              at: 1
+            }
+          }
+        : {})
+    })
+    const manifest: Manifest = {
+      version: 1,
+      createdAt: 'x',
+      destinations: [{ name: 'sion', path: '/nas/Sion' }],
+      groups: [],
+      files: [lone('sent.mp4', 4, true), lone('new.mp4', 4, false)]
+    }
+
+    const [target] = resolveUploadTargets({
+      outputDir: out,
+      manifest,
+      scope: { destination: 'sion' }
+    })
+
+    expect(target?.files?.map((f) => path.basename(f))).toEqual(['new.mp4'])
+    fs.rmSync(out, { recursive: true, force: true })
+  })
+
   /* a montage belongs to no destination: its upload says where each thing goes */
   it('gives a montage no folder of its own to be uploaded into as a place', () => {
     const manifest = manifestOf([

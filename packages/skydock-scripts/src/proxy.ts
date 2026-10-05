@@ -364,6 +364,9 @@ const cropProxy = async (
   return ran.ok
 }
 
+/* what is said of a clip whose original is nowhere on this machine, which nothing can be made from */
+const ORIGINAL_MISSING = 'The original is not on this machine'
+
 /* a freed clip is on the storage only — there is nothing here to make a small copy of */
 const needsProxy = (file: ManifestFile) => isVideoFile(file.path) && !!file.id && !file.freed
 
@@ -420,8 +423,8 @@ const ensureProxies = async (
       }
       /* an original that is not here cannot be copied small: said, so the clip does not wait for ever */
       if (!fs.existsSync(file.path)) {
-        proxyFailures().set(file.path, 'The original is not on this machine')
-        making?.row({ key: rowOf(file), at: 'failed', note: 'The original is not on this machine' })
+        proxyFailures().set(file.path, ORIGINAL_MISSING)
+        making?.row({ key: rowOf(file), at: 'failed', note: ORIGINAL_MISSING })
         making?.step()
         continue
       }
@@ -633,8 +636,7 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
       facts[file.path] = { state: 'ready', play: proxyPath }
     else {
       const reason =
-        proxyFailures().get(file.path) ??
-        (fs.existsSync(file.path) ? undefined : 'The original is not on this machine')
+        proxyFailures().get(file.path) ?? (fs.existsSync(file.path) ? undefined : ORIGINAL_MISSING)
       facts[file.path] = { state: 'none', play: file.path, ...(reason ? { reason } : {}) }
     }
   }
@@ -642,6 +644,7 @@ const statProxies = (manifest: Manifest, outputDir?: string) => {
 }
 
 export {
+  ORIGINAL_MISSING,
   buildMissingProxies,
   resumeProxies,
   cropProxy,

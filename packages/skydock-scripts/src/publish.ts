@@ -426,8 +426,8 @@ type JumpArgs = PublishArgs & {
 }
 
 /* What the storage holds, looked at before a byte moves: what to send, what is there already, and
-   what cannot be sent because its name is taken up there — by other bytes, such as a clip prepared
-   again after its trim was put right or a film rendered again, or by the very same ones. Such a file
+   what cannot be sent because its name is taken up there by other bytes, such as a clip prepared
+   again after its trim was put right or a film rendered again. Such a file
    is not written over, and SkyDock does not move it either: a person renames or deletes it in the
    storage's own interface, so an upload never leaves it unclear which of two is the one up there. */
 const checkJump = async (
@@ -450,8 +450,10 @@ const checkJump = async (
     origins: args.origins
   })
   const held = new Set(planned.held)
+  /* only what is to be sent can be in the way: a file already up there, with the very same bytes, is
+     what the upload is for — it is there, and is passed over */
   const taken: PlannedFile[] = [
-    ...[...planned.upload, ...planned.skip.map((verdict) => verdict.localPath)].map((file) => ({
+    ...planned.upload.map((file) => ({
       name: path.basename(file),
       size: fs.statSync(file).size,
       to: remoteDirOf(args.localDir, args.remoteDir, file)

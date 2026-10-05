@@ -137,15 +137,16 @@ const usePreview = ({
 
   /* Applying a crop is the end of the job: it is saved and the drawer gets out of the way, so the
      card behind it — where the ✂ and the status have just changed — is what you see next.
-     `Reset crop` comes through here too, with an empty range; that is a clearing rather than a
-     commit, so it leaves the drawer open to set a new one. */
+     The timeline's `Reset trim` comes through here too, with an empty range; that is a clearing
+     rather than a commit, so it leaves the drawer open to set a new one — unlike Save, which always
+     closes, whatever it saved (a Reset, then Save, is a commit). */
   const committed = (range: CropRange) =>
     range.cropStart !== null ||
     range.cropEnd !== null ||
     draft?.frame != null ||
     Boolean(draft?.rotation)
 
-  const handleVideoApply = (range: CropRange) => {
+  const handleVideoApply = (range: CropRange, { close = false } = {}) => {
     if (!preview || !file || !draft) return
     const { frame, rotation } = draft
     if (preview.groupId === LOOSE) onFileCrop(file, range, frame, rotation)
@@ -165,9 +166,17 @@ const usePreview = ({
         )
       )
     edit({ crop: range })
-    if (!committed(range)) return
+    if (!close && !committed(range)) return
     if (windowed) setClosing(true)
     else closePreview()
+  }
+
+  /* Reset clears the trim, the frame and the turn on screen, all at once, and leaves them to be
+     saved like any other change: Save is then offered, Cancel puts them back, and leaving asks first.
+     Done as four separate edits each starts from the draft it saw, so the last overwrote the rest. */
+  const handleReset = () => {
+    if (!draft) return
+    edit({ crop: { cropStart: null, cropEnd: null }, frame: null, rotation: 0 })
   }
 
   /* A mount is mounted badly for the whole jump, so one rectangle usually wants to be all of them.
@@ -237,6 +246,7 @@ const usePreview = ({
     handleVideoSeek,
     handleVideoTime,
     handleVideoApply,
+    handleReset,
     frame: draft?.frame ?? null,
     rotation: draft?.rotation ?? 0,
     handleRotate: (rotation: Rotation) => edit({ rotation }),

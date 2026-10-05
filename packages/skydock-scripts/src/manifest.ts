@@ -91,6 +91,28 @@ const backupOf = (file: string) => `${file}.bak`
 const HISTORY_KEPT = 30
 const historyDir = (manifestPath: string) => path.join(path.dirname(manifestPath), '.history')
 
+/* The same work folder is reached by two names when the board is used from two places at once — a
+   container and the machine it runs on, the folder being one — and every path the record keeps is
+   written whole, so a clip found by one name is lost to the other: it is listed, and nothing can be done
+   to it. A path that is not there under the name it was written with, but is under the same folder as
+   this board knows it, is read as that. */
+const FOLDERS = /^(.*?)\/(original_files|processed|proxies|\.send|\.trash)\/(.+)$/
+const PATH_KEYS = new Set(['path', 'localPath', 'proxy'])
+
+const rebaseOnto = (value: unknown, root: string, seen = new Set<unknown>()) => {
+  if (value === null || typeof value !== 'object' || seen.has(value)) return
+  seen.add(value)
+  const holder = value as Record<string, unknown>
+  for (const [key, inside] of Object.entries(holder)) {
+    if (typeof inside === 'string' && PATH_KEYS.has(key) && !inside.startsWith(`${root}/`)) {
+      const found = FOLDERS.exec(inside)
+      if (!found || fs.existsSync(inside)) continue
+      const here = `${root}/${found[2]}/${found[3]}`
+      if (fs.existsSync(here)) holder[key] = here
+    } else rebaseOnto(inside, root, seen)
+  }
+}
+
 const readPair = (manifestPath: string, groupsPath: string) => {
   if (!fs.existsSync(manifestPath)) return null
   const stored = storedManifestSchema.safeParse(fs.readFileSync(manifestPath, 'utf-8'))
@@ -99,6 +121,7 @@ const readPair = (manifestPath: string, groupsPath: string) => {
      being flattened into the same answer */
   const groups = resolveGroups(stored.data.files, readGroupsFile(groupsPath))
   const manifest: Manifest = { ...stored.data, groups }
+  rebaseOnto(manifest, path.dirname(manifestPath))
   return manifest
 }
 

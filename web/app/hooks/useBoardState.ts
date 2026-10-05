@@ -1,3 +1,4 @@
+import { ORIGINAL_MISSING } from '@skydock/scripts'
 import { t } from '@lingui/core/macro'
 import { boardAnswerSchema, isVideoFile } from '@skydock/scripts'
 import type {
@@ -390,10 +391,13 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const proxyFacts = Object.values(proxies)
   /* how many clips have been asked where their jump is, out of the ones that will be */
   const clips = [...groups.flatMap((g) => g.files), ...loose].filter(
-    (f) => isVideoFile(f.path) && f.id && !f.freed
+    /* a clip whose original is not here cannot be read, and is not waited for */
+    (f) => isVideoFile(f.path) && f.id && !f.freed && proxies[f.path]?.reason !== ORIGINAL_MISSING
   )
   const jumpProgress = {
-    read: clips.filter((f) => f.moments !== undefined).length,
+    /* a clip that could not be read is not one still being waited on */
+    read: clips.filter((f) => f.moments !== undefined || (f.id && live.unreadable.has(f.id)))
+      .length,
     total: clips.length
   }
   const proxyProgress = {

@@ -1,3 +1,4 @@
+import { walkFiles } from './lib/fs'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
@@ -245,7 +246,27 @@ const resolveUploadTargets = ({
       })
     }
   }
-  return dedupeTargets(targets)
+  /* What went up already is not looked at again: the record says it is there, with the very bytes this
+     copy holds, so only what is not up there is checked and sent — a destination uploaded again carries
+     on from where it was, whatever its folder still holds of what it sent before. */
+  const sent = new Set(
+    [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].flatMap((file) =>
+      file.uploaded &&
+      file.processed &&
+      file.uploaded.localPath === file.processed.path &&
+      file.uploaded.size === file.processed.size
+        ? [file.processed.path]
+        : []
+    )
+  )
+  const pending = targets.map((target) => {
+    if (!target.destination || target.files || !fs.existsSync(target.localDir)) return target
+    const left = walkFiles(target.localDir).filter((file) => !sent.has(file))
+    return left.length === 0 ? { ...target, files: [] } : { ...target, files: left }
+  })
+  return dedupeTargets(
+    pending.filter((target) => target.files === undefined || target.files.length > 0)
+  )
 }
 
 /* Uploads a set of targets as one job: the file counter runs across all of them, so a destination

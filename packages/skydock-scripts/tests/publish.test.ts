@@ -249,9 +249,9 @@ describe('uploading a folder', () => {
   })
 
   /* Nothing on the storage is written over, or moved (RULES, Principles). A file already there under
-     the name about to be sent, holding other bytes or the same — a clip prepared again after its trim
-     was put right, a film rendered again, a montage sent twice — stops the upload before a byte is sent: a person renames or
-     deletes it on the storage, and the files in the way are named. */
+     the name about to be sent, holding other bytes — a clip prepared again after its trim was put right,
+     a film rendered again — stops the upload before a byte is sent: a person renames or deletes it on the
+     storage, and the files in the way are named. */
   describe('a file already there under the same name', () => {
     const video = () => path.join(dir, 'videos', 'a.mp4')
     const REMOTE = '/SkyDock/jump/videos/a.mp4'
@@ -285,15 +285,19 @@ describe('uploading a folder', () => {
       expect(plans[0]?.taken).toMatchObject([{ name: 'a.mp4', to: '/SkyDock/jump/videos' }])
     })
 
-    it('stops the upload too when it holds the same bytes: the name is what is taken', async () => {
+    /* what is up there already, with the very same bytes, is what an upload is for: it is passed over, and
+       only what is not up there goes — a destination uploaded again does not stop at what it sent before */
+    it('passes over a file that holds the same bytes, and sends the one that is not there', async () => {
       const touched = storageHolding(5)
+      const other = path.join(dir, 'videos', 'b.mp4')
+      fs.writeFileSync(other, Buffer.from('other'))
 
-      await expect(publish({ files: [video()] })).rejects.toThrow(
-        /a\.mp4 is already on the storage, so nothing was sent/
-      )
+      const result = await publish({ files: [video(), other] })
 
+      expect(result.skipped).toBe(1)
+      expect(result.uploaded).toBe(1)
+      expect(sentNames(server.uploads)).toEqual(['b.mp4'])
       expect(touched).toEqual([])
-      expect(server.uploads).toEqual([])
     })
 
     /* beside the folder the file was delivered into, never inside it, one folder per moment */
