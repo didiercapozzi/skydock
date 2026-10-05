@@ -18,6 +18,7 @@ import { FileRow, Mark, State } from './file-row'
 import { Icon } from './icons'
 import { ParcelCards } from './montage-card'
 import { Modal } from './modal'
+import { Menu, MenuItem } from './settings-menu'
 import { dateLabel, formatSize, hhmm } from './utils'
 
 const linkAnswerSchema = z.object({ path: z.string(), shareUrl: z.string().nullable() })
@@ -53,24 +54,7 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
   </Modal>
 )
 
-const Short = ({ shown, said }: { shown: string; said: string }) => (
-  <>
-    <span aria-hidden='true'>{shown}</span>
-    <span className='sr-only'>{said}</span>
-  </>
-)
-
-const LinkButtons = ({
-  file,
-  shareUrl,
-  busy,
-  onLink
-}: {
-  file: StorageFile
-  shareUrl: string | null
-  busy: boolean
-  onLink: (file: StorageFile, intent: 'create' | 'remove') => void
-}) => {
+const LinkMark = ({ shareUrl }: { shareUrl: string | null }) => {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     if (!shareUrl) return
@@ -80,51 +64,59 @@ const LinkButtons = ({
       setTimeout(() => setCopied(false), 1500)
     } catch {}
   }
-  if (!shareUrl)
-    return (
-      <Mini
-        disabled={busy}
-        title={t`Give this one file a link — anybody holding it can fetch it, and nothing else in the folder`}
-        onClick={() => onLink(file, 'create')}>
-        <Icon
-          name='link'
-          size={14}
-          className='text-ink-2'
-        />
-        {busy ? (
-          t`Asking…`
-        ) : (
-          <Short
-            shown={t`Link`}
-            said={t`Create a link`}
-          />
-        )}
-      </Mini>
-    )
   return (
-    <>
-      <Mini
-        title={shareUrl}
-        onClick={() => void copy()}>
-        {copied ? (
-          `✓ ${t`copied`}`
-        ) : (
-          <Short
-            shown={t`Copy link`}
-            said={t`Copy the link`}
+    <span className='flex w-control-sm flex-none justify-center'>
+      {shareUrl && (
+        <button
+          type='button'
+          aria-label={t`Copy the link`}
+          title={shareUrl}
+          onClick={() => void copy()}
+          className='inline-flex size-control-sm cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 hover:bg-well'>
+          <Icon
+            name={copied ? 'check' : 'link'}
+            size={14}
+            className={copied ? 'text-up' : 'text-accent'}
           />
-        )}
-      </Mini>
-      <Mini
-        disabled={busy}
-        title={t`Take the link away — the file stays where it is`}
-        onClick={() => onLink(file, 'remove')}>
-        <Short
-          shown={t`Take link away`}
-          said={t`Remove the link`}
-        />
-      </Mini>
-    </>
+        </button>
+      )}
+    </span>
+  )
+}
+
+const LinkItems = ({
+  file,
+  shareUrl,
+  busy,
+  onLink,
+  close
+}: {
+  file: StorageFile
+  shareUrl: string | null
+  busy: boolean
+  onLink: (file: StorageFile, intent: 'create' | 'remove') => void
+  close: () => void
+}) => {
+  const link = (intent: 'create' | 'remove') => {
+    onLink(file, intent)
+    close()
+  }
+  return shareUrl ? (
+    <MenuItem
+      icon='link'
+      disabled={busy}
+      title={t`Take the link away — the file stays where it is`}
+      onClick={() => link('remove')}>
+      {t`Remove the link`}
+    </MenuItem>
+  ) : (
+    <MenuItem
+      icon='link'
+      disabled={busy}
+      title={t`Give this one file a link — anybody holding it can fetch it, and nothing else in the folder`}
+      onClick={() => link('create')}>
+      {busy ? t`Asking…` : t`Create a link`}
+    </MenuItem>
   )
 }
 
@@ -168,42 +160,60 @@ const FileButtons = ({
   watch: boolean
   here?: boolean
   onBringBack?: (file: StorageFile) => void
-}) => (
-  <>
-    {watch && file.kind === 'video' && (
-      <Mini
-        title={t`Watch it from the storage`}
-        onClick={() => actions.setPlaying(file)}>
-        <Icon
-          name='play'
-          size={12}
-          className='text-ink-2'
-        />
-        {t`Watch`}
-      </Mini>
-    )}
-    {onBringBack && here === false && (
-      <Mini
-        title={t`Fetch it back onto this machine`}
-        onClick={() => onBringBack(file)}>
-        <Icon
-          name='back'
-          size={14}
-          className='text-ink-2'
-        />
-        {t`Bring back`}
-      </Mini>
-    )}
-    {links && (
-      <LinkButtons
-        file={file}
-        shareUrl={file.path in actions.linked ? (actions.linked[file.path] ?? null) : file.shareUrl}
-        busy={actions.asking === file.path}
-        onLink={(one, intent) => void actions.setLink(one, intent)}
-      />
-    )}
-  </>
-)
+}) => {
+  const bringBack = onBringBack && here === false
+  const shareUrl = file.path in actions.linked ? (actions.linked[file.path] ?? null) : file.shareUrl
+  return (
+    <>
+      {links && <LinkMark shareUrl={shareUrl} />}
+      {watch &&
+        (file.kind === 'video' ? (
+          <Mini
+            title={t`Watch it from the storage`}
+            onClick={() => actions.setPlaying(file)}>
+            <Icon
+              name='play'
+              size={12}
+              className='text-ink-2'
+            />
+            <span className='sr-only'>{t`Watch`}</span>
+          </Mini>
+        ) : (
+          <span className='w-10 flex-none' />
+        ))}
+      {(bringBack || links) && (
+        <Menu
+          label={t`More`}
+          icon='more'>
+          {(close) => (
+            <>
+              {bringBack && (
+                <MenuItem
+                  icon='back'
+                  title={t`Fetch it back onto this machine`}
+                  onClick={() => {
+                    onBringBack(file)
+                    close()
+                  }}>
+                  {t`Bring back`}
+                </MenuItem>
+              )}
+              {links && (
+                <LinkItems
+                  file={file}
+                  shareUrl={shareUrl}
+                  busy={actions.asking === file.path}
+                  onLink={(one, intent) => void actions.setLink(one, intent)}
+                  close={close}
+                />
+              )}
+            </>
+          )}
+        </Menu>
+      )}
+    </>
+  )
+}
 
 const StorageFolder = ({
   where,
@@ -286,9 +296,12 @@ const StorageFolder = ({
                   ? {
                       role: 'button',
                       tabIndex: 0,
-                      onClick: open,
+                      onClick: (e: React.MouseEvent<HTMLElement>) => {
+                        if (!(e.target instanceof Element && e.target.closest('button'))) open()
+                      },
                       onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
-                        if (e.key === 'Enter') e.currentTarget.click()
+                        if (e.key === 'Enter' && e.target === e.currentTarget)
+                          e.currentTarget.click()
                       }
                     }
                   : {})}
@@ -299,6 +312,7 @@ const StorageFolder = ({
                       ? t`Play it from the storage`
                       : t`Kept on the storage`
                 }
+                menu
                 picture={<Mark icon='storage' />}
                 name={file.name}
                 meta={

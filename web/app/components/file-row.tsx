@@ -6,8 +6,14 @@ import type { IconName } from './icons'
 
 const COLUMNS = 'grid grid-cols-[22px_64px_minmax(0,1fr)_auto] items-center gap-x-3.5 px-3'
 
-const frameOf = (picked: boolean, previewed: boolean, joined: boolean, clickable: boolean) =>
-  `${COLUMNS} w-full text-left [content-visibility:auto] ${
+const frameOf = (
+  picked: boolean,
+  previewed: boolean,
+  joined: boolean,
+  clickable: boolean,
+  menu: boolean
+) =>
+  `${COLUMNS} w-full text-left ${menu ? '' : '[content-visibility:auto]'} ${
     joined
       ? `h-13 rounded-control [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
           previewed || picked ? 'bg-accent-soft' : clickable ? 'hover:bg-well' : ''
@@ -126,6 +132,7 @@ const FileRow = ({
   meta,
   trailing,
   href,
+  menu = false,
   ...frame
 }: Frame & {
   picked?: boolean
@@ -138,6 +145,7 @@ const FileRow = ({
   nameTitle?: string
   meta?: ReactNode
   trailing?: ReactNode
+  menu?: boolean
 }) => {
   const Root: ElementType = href ? 'a' : 'div'
   return createElement(
@@ -145,7 +153,7 @@ const FileRow = ({
     {
       ...frame,
       ...(href ? { href, target: '_blank', rel: 'noreferrer' } : {}),
-      className: frameOf(picked, previewed, joined, Boolean(frame.onClick || href))
+      className: frameOf(picked, previewed, joined, Boolean(frame.onClick || href), menu)
     },
     locked ? (
       <Lock why={locked} />

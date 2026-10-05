@@ -40,17 +40,39 @@ describe('a file’s own link', () => {
     await renderFolder()
 
     const list = page.getByRole('region', { name: 'On the storage' })
-    await expect.element(list.getByRole('button', { name: 'Copy the link' })).toBeVisible()
+    await userEvent.click(list.getByRole('button', { name: 'More' }).first())
+    await expect.element(list.getByRole('button', { name: 'Create a link' })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(list.getByRole('button', { name: 'More' }).nth(1))
     await expect.element(list.getByRole('button', { name: 'Remove the link' })).toBeVisible()
-    await expect.poll(() => list.getByRole('button', { name: 'Create a link' }).elements().length)
-      .toBe(2)
+  })
+
+  test('is marked on its row by a link icon that copies it, on the files that have one only', async () => {
+    storageAnswers(folder)
+    await renderFolder()
+
+    const list = page.getByRole('region', { name: 'On the storage' })
+    await expect.element(list.getByRole('button', { name: 'Copy the link' })).toBeVisible()
+    expect(list.getByRole('button', { name: 'Copy the link' }).elements()).toHaveLength(1)
+  })
+
+  test('is put on the clipboard by pressing the link icon', async () => {
+    storageAnswers(folder)
+    const copied: string[] = []
+    vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText: async (text: string) => void copied.push(text) } })
+    await renderFolder()
+
+    await userEvent.click(page.getByRole('button', { name: 'Copy the link' }))
+
+    expect(copied).toEqual(['https://nas.local/sharing/abc'])
   })
 
   test('is asked of the storage for that one file, and shows on the row at once', async () => {
     storageAnswers(folder)
     await renderFolder()
     const list = page.getByRole('region', { name: 'On the storage' })
-    await expect.element(list.getByRole('button', { name: 'Create a link' }).first()).toBeVisible()
+    await userEvent.click(list.getByRole('button', { name: 'More' }).first())
+    await expect.element(list.getByRole('button', { name: 'Create a link' })).toBeVisible()
     vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
       asked.push(`${String(url)} ${String(init?.body ?? '')}`)
       return new Response(
@@ -59,11 +81,9 @@ describe('a file’s own link', () => {
       )
     })
 
-    await userEvent.click(list.getByRole('button', { name: 'Create a link' }).first())
+    await userEvent.click(list.getByRole('button', { name: 'Create a link' }))
 
-    await expect
-      .poll(() => list.getByRole('button', { name: 'Copy the link' }).elements().length)
-      .toBe(2)
+    await expect.poll(() => list.getByRole('button', { name: 'Copy the link' }).elements().length).toBe(2)
     expect(asked.some((a) => a.includes('/api/share-link') && a.includes('"intent":"create"'))).toBe(
       true
     )
@@ -98,6 +118,20 @@ describe('a file shown in the storage’s own web interface', () => {
     await userEvent.click(page.getByRole('button', { name: 'Watch' }))
 
     await expect.element(page.getByRole('dialog')).toBeVisible()
+  })
+
+  test('is not also opened in File Station when a button on its row is pressed', async () => {
+    storageAnswers(folder)
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
+    await renderFolder(undefined, 'https://nas.local:5001/')
+
+    await userEvent.click(page.getByRole('button', { name: 'More' }).first())
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(page.getByRole('button', { name: 'Watch' }))
+
+    await expect.element(page.getByRole('dialog')).toBeVisible()
+    expect(opened).not.toHaveBeenCalled()
+    opened.mockRestore()
   })
 
   test('is a button that plays where the storage’s address is not known', async () => {
