@@ -215,6 +215,28 @@ describe('proxies', () => {
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'small1.mp4'))).toBe(false)
   })
 
+  /* the footer counts clips still waiting for a small copy and nothing redraws it when the last lands:
+     a clip that is its own proxy is settled the moment that is known, so the landing is said */
+  it('says the moment a clip is found to be its own proxy, so the board stops waiting for it', async () => {
+    execSyncMock.mockImplementation(toolsPresent(640))
+    const src = writeTempFile(outputDir, 'original_files/small.mp4')
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => event.kind === 'file-done' && heard.push(event))
+
+    await ensureProxies(manifestOf([fileEntry(src, 'small1')]), outputDir)
+    stop()
+
+    expect(heard).toEqual([
+      {
+        kind: 'file-done',
+        work: 'proxy',
+        fileId: 'small1',
+        ok: true,
+        proxy: { path: src, fact: { state: 'own', play: src } }
+      }
+    ])
+  })
+
   /* No encoder is not a broken card: everything else still works, and the crop bar falls back to
      the clip itself. */
   it('does nothing and complains about nothing when the machine cannot encode video', async () => {

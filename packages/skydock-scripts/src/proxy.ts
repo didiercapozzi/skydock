@@ -439,6 +439,9 @@ const ensureProxies = async (
         report.skipped++
         making?.row({ key: rowOf(file), at: 'skipped' })
         making?.step()
+        following('proxy', file.id).done(true, {
+          proxy: { path: file.path, fact: { state: 'own', play: file.path } }
+        })
         continue
       }
       /* said as it goes, and what the clip plays from now on said with its landing, so the board

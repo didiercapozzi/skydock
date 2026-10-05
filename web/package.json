@@ -11,6 +11,8 @@
     "test": "npm run test:node && npm run test:browser",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "test:e2e": "npm run test:browser",
+    "test:journey": "react-router build && tsx ../scripts/build-server.ts && vitest run --config=vitest.journey.config.ts tests/journey/journey.test.ts",
+    "test:journey:window": "vitest run --config=vitest.journey.config.ts tests/journey/real-input.test.ts",
     "test:node": "vitest --config=vitest.node.config.ts",
     "test:server": "npm run test:node",
     "typecheck": "tsc --noEmit"
