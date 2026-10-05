@@ -38,7 +38,6 @@ const Drawer = ({ file }: { file: typeof CLIP }) => {
     onApply: () => {
       saved.rotation = rotation
     },
-    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {}

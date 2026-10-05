@@ -262,7 +262,7 @@ const resolveUploadTargets = ({
   const pending = targets.map((target) => {
     if (!target.destination || target.files || !fs.existsSync(target.localDir)) return target
     const left = walkFiles(target.localDir).filter((file) => !sent.has(file))
-    return left.length === 0 ? { ...target, files: [] } : { ...target, files: left }
+    return { ...target, files: left }
   })
   return dedupeTargets(
     pending.filter((target) => target.files === undefined || target.files.length > 0)

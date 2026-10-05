@@ -430,6 +430,9 @@ The board's own record of the work sits at the top of the output folder, with th
 read whole kept beside it, and what each original was found to be last time (so a Rescan reads
 through only what is new).
 
+The output folder may be reached under two names — inside the container and on the host — and the record
+is the same for both: a file it names is found wherever the folder is opened from.
+
 Of a montage's folder, only the film and the photos archive are handed over. The project and the
 working copies stay on the machine; the originals go to the backup.
 
@@ -483,7 +486,7 @@ come back to, and a trim nobody saved is not.
 holding what is set once — choosing its storage folder, taking it off the board, resetting Fresh files.
 Under that sits one card saying in a sentence where things stand — how many files need processing, are
 ready to upload, are all on the storage (then offering to free space, which asks first), or how many jumps
-are waiting for a home — with a slim bar of how many are on the storage and the one button that goes next.
+are waiting for a home — with a slim bar of how many of the files this machine holds are on the storage (a file freed from here is only on the storage and not counted) and the one button that goes next.
 A destination with no files yet says so, and asks where it should go. The list has no column headings and no
 choice of kind: each file is a row with its picture, name, time and size, and a day whose files are all on
 the storage is folded into one line, opened by a click; each row is a box of its own. Fresh files shows

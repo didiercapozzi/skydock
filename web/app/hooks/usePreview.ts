@@ -104,7 +104,9 @@ const usePreview = ({
   const file = preview?.files[preview.index]
   /* the file's own state until somebody changes something, and what they changed after that */
   const draft = file && drafted?.id === idOf(file) ? drafted : file ? asItStands(file) : null
-  const edit = (next: Partial<Draft>) => draft && setDrafted({ ...draft, ...next })
+  /* each edit starts from the latest draft, so several in one click all land */
+  const edit = (next: Partial<Draft>) =>
+    file && setDrafted((now) => ({ ...(now?.id === idOf(file) ? now : asItStands(file)), ...next }))
 
   /* the window of its own is the file's, and stepping in it stays in it */
   const windowed = view.window === 'preview'
@@ -137,9 +139,8 @@ const usePreview = ({
 
   /* Applying a crop is the end of the job: it is saved and the drawer gets out of the way, so the
      card behind it — where the ✂ and the status have just changed — is what you see next.
-     The timeline's `Reset trim` comes through here too, with an empty range; that is a clearing
-     rather than a commit, so it leaves the drawer open to set a new one — unlike Save, which always
-     closes, whatever it saved (a Reset, then Save, is a commit). */
+     The timeline's `Reset trim` comes through here with an empty range and leaves the drawer open
+     to set a new one; Save closes it whatever it saved. */
   const committed = (range: CropRange) =>
     range.cropStart !== null ||
     range.cropEnd !== null ||
@@ -169,14 +170,6 @@ const usePreview = ({
     if (!close && !committed(range)) return
     if (windowed) setClosing(true)
     else closePreview()
-  }
-
-  /* Reset clears the trim, the frame and the turn on screen, all at once, and leaves them to be
-     saved like any other change: Save is then offered, Cancel puts them back, and leaving asks first.
-     Done as four separate edits each starts from the draft it saw, so the last overwrote the rest. */
-  const handleReset = () => {
-    if (!draft) return
-    edit({ crop: { cropStart: null, cropEnd: null }, frame: null, rotation: 0 })
   }
 
   /* A mount is mounted badly for the whole jump, so one rectangle usually wants to be all of them.
@@ -246,7 +239,6 @@ const usePreview = ({
     handleVideoSeek,
     handleVideoTime,
     handleVideoApply,
-    handleReset,
     frame: draft?.frame ?? null,
     rotation: draft?.rotation ?? 0,
     handleRotate: (rotation: Rotation) => edit({ rotation }),

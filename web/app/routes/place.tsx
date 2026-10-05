@@ -57,6 +57,7 @@ import {
   familyOf,
   filesIn,
   groupsIn,
+  hereIn,
   holdsItsOwn,
   looseIn,
   placeFromParams,
@@ -752,7 +753,7 @@ const Place = () => {
 const DropzoneCard = ({ name }: { name: string }) => {
   const model = useBoard()
   const { board, statusOf } = model
-  const files = filesIn({ kind: 'dz', name }, board.groups, board.loose)
+  const files = hereIn({ kind: 'dz', name }, board.groups, board.loose)
   const total = files.length
   const count = (state: FileStatus) => files.filter((f) => statusOf(f) === state).length
   const local = count('local')

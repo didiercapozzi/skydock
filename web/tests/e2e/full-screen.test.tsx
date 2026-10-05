@@ -34,7 +34,6 @@ const Drawer = ({ file = CLIP, proxy }: { file?: typeof CLIP; proxy?: typeof PRO
     onSeek: () => {},
     onCropChange: () => {},
     onApply: () => {},
-    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {}

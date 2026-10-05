@@ -98,4 +98,10 @@ describe('a dropzone shows what this machine holds', () => {
 
     await expect.element(page.getByText('1 file', { exact: true }).first()).toBeInTheDocument()
   })
+
+  test('says how many of what is here are on the storage, not counting what is only there', async () => {
+    await openYverdon()
+
+    await expect.element(page.getByText('0 of 1 on the storage')).toBeInTheDocument()
+  })
 })
