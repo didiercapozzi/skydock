@@ -34,7 +34,6 @@ const Watching = () => {
     onTime: setCurrentTime,
     onCropChange: () => {},
     onApply: () => {},
-    onReset: () => {},
     onZoomChange: () => {},
     onDurationChange: () => {},
     onVideoRef: () => {}

@@ -248,7 +248,6 @@ const PreviewDrawer = ({
   onTime,
   onCropChange,
   onApply,
-  onReset,
   onZoomChange,
   onDurationChange,
   onVideoRef,
@@ -285,7 +284,6 @@ const PreviewDrawer = ({
     range: { cropStart: number | null; cropEnd: number | null },
     options?: { close: boolean }
   ) => void
-  onReset: () => void
   onZoomChange: (zoom: number) => void
   onDurationChange: (duration: number) => void
   onVideoRef: (ref: VideoRef) => void
@@ -1343,7 +1341,11 @@ const PreviewDrawer = ({
               type='button'
               aria-label={t`Reset trim, frame and turn`}
               disabled={!saved && !dirty}
-              onClick={onReset}
+              onClick={() => {
+                onCropChange({ cropStart: null, cropEnd: null })
+                onFrameChange(null)
+                onRotate(0)
+              }}
               className='h-8 rounded-control px-3 text-body font-medium text-ink-2 hover:bg-well hover:text-ink disabled:text-ink-3 disabled:hover:bg-transparent'>
               {t`Reset`}
             </button>

@@ -1,6 +1,5 @@
-import { ORIGINAL_MISSING } from '@skydock/scripts'
 import { t } from '@lingui/core/macro'
-import { boardAnswerSchema, isVideoFile } from '@skydock/scripts'
+import { boardAnswerSchema, isVideoFile, ORIGINAL_MISSING } from '@skydock/scripts'
 import type {
   JumpMoments,
   OutputFact,

@@ -82,7 +82,8 @@ const usePreview = ({
   const preview = shownIn(groups, loose, fileId)
   const file = preview?.files[preview.index]
   const draft = file && drafted?.id === idOf(file) ? drafted : file ? asItStands(file) : null
-  const edit = (next: Partial<Draft>) => draft && setDrafted({ ...draft, ...next })
+  const edit = (next: Partial<Draft>) =>
+    file && setDrafted((now) => ({ ...(now?.id === idOf(file) ? now : asItStands(file)), ...next }))
 
   const windowed = view.window === 'preview'
   const openPreview = (file: ManifestFile) => openFile(goTo, place, idOf(file), view)
@@ -137,11 +138,6 @@ const usePreview = ({
     if (!close && !committed(range)) return
     if (windowed) setClosing(true)
     else closePreview()
-  }
-
-  const handleReset = () => {
-    if (!draft) return
-    edit({ crop: { cropStart: null, cropEnd: null }, frame: null, rotation: 0 })
   }
 
   const handleFrameApplyToJump = () => {
@@ -203,7 +199,6 @@ const usePreview = ({
     handleVideoSeek,
     handleVideoTime,
     handleVideoApply,
-    handleReset,
     frame: draft?.frame ?? null,
     rotation: draft?.rotation ?? 0,
     handleRotate: (rotation: Rotation) => edit({ rotation }),
