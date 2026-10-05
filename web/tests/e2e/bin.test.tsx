@@ -66,8 +66,8 @@ describe('the bin', () => {
   test('brings the files picked back to Fresh files', async () => {
     const { onBringBack } = await shown()
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick GX010001.MP4' }))
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick GX010001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0001.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Bring 2 files back to Fresh files' }))
 
     expect(onBringBack).toHaveBeenCalledWith([
@@ -132,8 +132,8 @@ describe('the bin, on the board', () => {
     ])
     await render(createElement(Stub, { initialEntries: ['/bin'] }))
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick GX010001.MP4' }))
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick GOPR0002.JPG' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick GX010001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick GOPR0002.JPG' }))
     await userEvent.click(page.getByRole('button', { name: 'Bring 2 files back to Fresh files' }))
 
     /* at once, while the board is still at it */

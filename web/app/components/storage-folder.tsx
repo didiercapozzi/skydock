@@ -14,6 +14,7 @@ import type { StorageWhere } from '../hooks/useStorageFolder'
 import { parcelOfFolder } from '../helpers/parcels'
 import { Mini } from './buttons'
 import { Empty, Problem } from './blurbs'
+import { FileRow, Mark, State } from './file-row'
 import { Icon } from './icons'
 import { ParcelCards } from './montage-card'
 import { Modal } from './modal'
@@ -231,10 +232,6 @@ const FileButtons = ({
    passenger's — listed and played from here whether or not any of it is still on this machine. Each
    file says whether it is here too, because "only on the storage" is the one that cannot be made
    again from this board. */
-/* the row's own control, whether it plays or opens the storage's interface */
-const ROW =
-  'flex h-full min-w-0 flex-1 items-center gap-3.5 rounded-card border-0 bg-transparent px-3 text-left no-underline enabled:hover:bg-pane disabled:cursor-default'
-
 const StorageFolder = ({
   where,
   stamp,
@@ -301,7 +298,7 @@ const StorageFolder = ({
           {t`Nothing up there yet — what is uploaded from here is listed once it is.`}
         </Empty>
       ) : (
-        <ul className='m-0 flex list-none flex-col p-0'>
+        <div className='flex flex-col gap-2'>
           {files.map((file) => {
             const playable = file.kind !== 'other'
             const dsm = dsmHost ? dsmFolderUrl(dsmHost, file.path) : null
@@ -313,110 +310,72 @@ const StorageFolder = ({
               : file.mtime
                 ? dateLabel(file.mtime)
                 : null
+            /* opened where it can be: in the storage's own interface, or played from here */
+            const open = dsm
+              ? () => window.open(dsm, '_blank', 'noreferrer')
+              : playable
+                ? () => setPlaying(file)
+                : undefined
             return (
-              <li
+              <FileRow
                 key={file.path}
-                className='flex h-15 items-center gap-2'>
-                {dsm ? (
-                  <a
-                    href={dsm}
-                    target='_blank'
-                    rel='noreferrer'
-                    title={t`Show it in the storage’s own web interface, in a new tab`}
-                    className={`${ROW} hover:bg-pane`}>
-                    <Icon
-                      name='storage'
-                      size={15}
-                      className='text-ink-3'
-                    />
-                    <span className='flex min-w-0 flex-1 flex-col'>
-                      <span className='truncate font-mono text-body tracking-title text-ink'>
-                        {file.name}
-                      </span>
-                      <span
-                        title={
-                          file.shot
-                            ? t`Shot then, as its name says`
-                            : file.mtime
-                              ? t`Put on the storage then — its name does not say when it was shot`
-                              : undefined
-                        }
-                        className='truncate text-small font-medium text-ink-3'>
-                        {[
-                          i18n._(KIND[file.kind]),
-                          file.size === null ? null : formatSize(file.size),
-                          when
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    </span>
+                {...(open
+                  ? {
+                      role: 'button',
+                      tabIndex: 0,
+                      onClick: open,
+                      onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
+                        if (e.key === 'Enter') e.currentTarget.click()
+                      }
+                    }
+                  : {})}
+                title={
+                  dsm
+                    ? t`Show it in the storage’s own web interface, in a new tab`
+                    : playable
+                      ? t`Play it from the storage`
+                      : t`Kept on the storage`
+                }
+                picture={<Mark icon='storage' />}
+                name={file.name}
+                meta={
+                  <span
+                    title={
+                      file.shot
+                        ? t`Shot then, as its name says`
+                        : file.mtime
+                          ? t`Put on the storage then — its name does not say when it was shot`
+                          : undefined
+                    }>
+                    {[
+                      i18n._(KIND[file.kind]),
+                      file.size === null ? null : formatSize(file.size),
+                      when
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </span>
+                }
+                trailing={
+                  <>
                     {hereToo && (
-                      <span
-                        className={`inline-flex h-chip flex-none items-center gap-1.5 rounded-full px-2.25 text-micro font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
-                          here
-                            ? 'bg-up-soft text-up before:bg-current'
-                            : 'bg-well text-up before:shadow-ring-current'
-                        }`}>
+                      <State
+                        tone={here ? 'bg-up-soft text-up' : 'bg-well text-up'}
+                        ring={!here}>
                         {here ? t`Here too` : t`Only there`}
-                      </span>
+                      </State>
                     )}
-                  </a>
-                ) : (
-                  <button
-                    type='button'
-                    disabled={!playable}
-                    onClick={() => setPlaying(file)}
-                    title={playable ? t`Play it from the storage` : t`Kept on the storage`}
-                    className={ROW}>
-                    <Icon
-                      name='storage'
-                      size={15}
-                      className='text-ink-3'
+                    <FileButtons
+                      file={file}
+                      actions={actions}
+                      watch={dsm !== null}
                     />
-                    <span className='flex min-w-0 flex-1 flex-col'>
-                      <span className='truncate font-mono text-body tracking-title text-ink'>
-                        {file.name}
-                      </span>
-                      <span
-                        title={
-                          file.shot
-                            ? t`Shot then, as its name says`
-                            : file.mtime
-                              ? t`Put on the storage then — its name does not say when it was shot`
-                              : undefined
-                        }
-                        className='truncate text-small font-medium text-ink-3'>
-                        {[
-                          i18n._(KIND[file.kind]),
-                          file.size === null ? null : formatSize(file.size),
-                          when
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}
-                      </span>
-                    </span>
-                    {hereToo && (
-                      <span
-                        className={`inline-flex h-chip flex-none items-center gap-1.5 rounded-full px-2.25 text-micro font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:content-[''] ${
-                          here
-                            ? 'bg-up-soft text-up before:bg-current'
-                            : 'bg-well text-up before:shadow-ring-current'
-                        }`}>
-                        {here ? t`Here too` : t`Only there`}
-                      </span>
-                    )}
-                  </button>
-                )}
-                <FileButtons
-                  file={file}
-                  actions={actions}
-                  watch={dsm !== null}
-                />
-              </li>
+                  </>
+                }
+              />
             )
           })}
-        </ul>
+        </div>
       )}
       {playing && (
         <StoragePlayer

@@ -18,6 +18,7 @@ import { useLiveFile } from '../hooks/liveStore'
 import type { LiveFile } from '../hooks/useLiveProgress'
 import type { ManifestFile } from './types'
 import { Mini } from './buttons'
+import { FileRow, Thumb } from './file-row'
 import { Icon } from './icons'
 import { clock, formatSize, formatTime, getPictureUrl, hhmm, isVideoFile } from './utils'
 
@@ -359,11 +360,6 @@ const WhileLive = ({
   )
 }
 
-/* The columns of a list of rows: tick, picture, the name with what it is under it — when it was shot,
-   how big, what was done to the picture — and where it has got to. Few things, so a row reads at a
-   glance; the rest is in the panel when the file is picked. */
-const COLUMNS = 'grid grid-cols-[22px_64px_minmax(0,1fr)_112px] items-center gap-x-3.5 px-3'
-
 const Row = ({
   file,
   lane,
@@ -398,7 +394,7 @@ const Row = ({
   const filename = file.filename
   const applied = status === 'processed' || status === 'uploaded'
   return (
-    <div
+    <FileRow
       role='button'
       tabIndex={0}
       aria-selected={picked}
@@ -419,75 +415,26 @@ const Row = ({
         e.preventDefault()
         onPick(file)
       }}
-      /* the one looked at is marked apart from the picked ones by a ring round it */
-      className={`${COLUMNS} w-full text-left [content-visibility:auto] ${
-        joined
-          ? `h-13 rounded-control [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
-              previewed ? 'bg-accent-soft' : picked ? 'bg-accent-soft' : 'hover:bg-well'
-            }`
-          : `h-16.5 rounded-card pr-5 [contain-intrinsic-size:auto_66px] ${
-              previewed
-                ? 'bg-accent-soft shadow-ring-2'
-                : picked
-                  ? 'bg-accent-soft shadow-card'
-                  : 'bg-pane shadow-card hover:bg-accent-soft'
-            }`
-      }`}>
-      {/* a file that cannot move has nothing to be picked for, so it has no tick — a lock in its
-        place says why, and keeps the rows in line */}
-      {locked ? (
-        <span
-          className='grid cursor-help place-items-center text-ink-3'
-          title={locked}>
-          <Icon
-            name='lock'
-            size={13}
-          />
-        </span>
-      ) : (
-        <button
-          type='button'
-          aria-label={picked ? t`Unpick` : t`Pick`}
-          aria-pressed={picked}
-          onClick={(e) => {
-            e.stopPropagation()
-            onPick(file)
-          }}
-          className={`grid size-5 place-items-center rounded-chip border-2 p-0 ${
-            picked
-              ? 'border-accent bg-accent text-white'
-              : 'border-check bg-transparent text-transparent hover:border-accent'
-          }`}>
-          <Icon
-            name='check'
-            size={11}
-            weight={3.5}
-          />
-        </button>
-      )}
-      <span
-        className={`relative overflow-hidden bg-well ${joined ? 'h-control w-11.5 rounded-control' : 'h-11 w-16 rounded-control'}`}>
-        {/* a freed file is on the storage only: nothing here to draw it from */}
-        {!file.freed && (
-          <img
+      picked={picked}
+      previewed={previewed}
+      joined={joined}
+      locked={locked}
+      pick={{ onPick: () => onPick(file) }}
+      /* a freed file is on the storage only: nothing here to draw it from */
+      picture={
+        file.freed ? undefined : (
+          <Thumb
             src={getPictureUrl(file, proxy, 160)}
-            alt=''
-            loading='lazy'
-            decoding='async'
             style={turnedThumb(file.rotation)}
-            className='h-full w-full object-cover'
           />
-        )}
-      </span>
-      <span className='min-w-0'>
-        <span
-          className='block truncate font-mono text-small font-medium tracking-title text-ink'
-          title={name ? t`${name}  ·  from ${filename}` : file.filename}>
-          {name ?? file.filename}
-        </span>
-        {/* the camera's name once a copy is named for handing over, or else what kind of file it
-            is — then whatever is worth a second look about it */}
-        <span className='flex min-w-0 items-center gap-1 truncate text-small font-medium text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
+        )
+      }
+      name={name ?? file.filename}
+      nameTitle={name ? t`${name}  ·  from ${filename}` : file.filename}
+      /* the camera's name once a copy is named for handing over, or else what kind of file it is — then
+         whatever is worth a second look about it */
+      meta={
+        <>
           <span className='tabular-nums'>
             {formatTime(file.mtime)} · {formatSize(file.size)}
             {afterNote(file)}
@@ -515,9 +462,9 @@ const Row = ({
             file={file}
             applied={applied}
           />
-        </span>
-      </span>
-      <span className='flex justify-end'>
+        </>
+      }
+      trailing={
         <WhileLive
           id={file.id}
           filename={file.filename}
@@ -528,8 +475,8 @@ const Row = ({
             />
           }
         />
-      </span>
-    </div>
+      }
+    />
   )
 }
 

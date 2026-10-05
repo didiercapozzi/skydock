@@ -7,7 +7,7 @@ import { usePicked } from '../hooks/usePicked'
 import { useLoaded } from '../hooks/useLoaded'
 import { Go } from './buttons'
 import { Empty, Looking, Problem } from './blurbs'
-import { TD, TH, Tick } from './file-table'
+import { FileGroup, FileRow, Thumb } from './file-row'
 import { Icon } from './icons'
 import { Spacer } from './modal'
 import { dateLabel, formatSize, getThumbUrl, hhmm } from './utils'
@@ -123,72 +123,30 @@ const BinFiles = ({
       ) : answered && batches.length === 0 ? (
         <Empty>{t`The bin is empty.`}</Empty>
       ) : (
-        <table className='w-full table-fixed border-collapse text-body'>
-          <thead>
-            <tr>
-              <th className={`${TH} w-9`} />
-              <th className={`${TH} w-28`} />
-              <th className={TH}>{t`File`}</th>
-              <th className={`${TH} w-40`}>{t`Shot`}</th>
-              <th className={`${TH} w-21 text-right`}>{t`Size`}</th>
-            </tr>
-          </thead>
-          {/* each time files were put aside is a run of its own, headed by where they came from */}
-          {batches.map((batch) => (
-            <tbody key={batch.folder}>
-              <tr>
-                <th
-                  colSpan={5}
-                  scope='colgroup'
-                  className='px-3 pt-5 pb-1.5 text-left font-normal'>
-                  <h3 className='m-0 truncate font-display text-title font-bold tracking-title text-ink'>
-                    {fromWhere(batch)}
-                    <span className='font-sans text-body font-medium tracking-normal text-ink-3'>
-                      {' '}
-                      · {dateLabel(batch.at)} {hhmm(batch.at)}
-                    </span>
-                  </h3>
-                </th>
-              </tr>
-              {batch.files.map((file) => (
-                <tr
-                  key={file.path}
-                  /* the whole line picks, as a box's label would; the box itself answers its own
-                     click */
-                  onClick={(e) => {
-                    if (!(e.target instanceof HTMLInputElement)) toggle(file.path)
-                  }}
-                  className={`cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-well'}`}>
-                  <td className={TD}>
-                    <Tick
-                      label={pickLabel(file.name)}
-                      checked={picked.has(file.path)}
-                      onChange={() => toggle(file.path)}
-                    />
-                  </td>
-                  <td className={TD}>
-                    <img
-                      src={getThumbUrl(file.path, isVideoFile(file.path) ? 1 : 0, 64)}
-                      alt=''
-                      loading='lazy'
-                      decoding='async'
-                      className='block h-11 w-19.5 rounded-control bg-well object-cover'
-                    />
-                  </td>
-                  <td className={`${TD} truncate font-mono text-body font-normal text-ink`}>
-                    {file.name}
-                  </td>
-                  <td className={`${TD} text-small text-ink-2 tabular-nums`}>
-                    {dateLabel(file.mtime)} {hhmm(file.mtime)}
-                  </td>
-                  <td className={`${TD} text-right text-small text-ink-2 tabular-nums`}>
-                    {formatSize(file.size)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          ))}
-        </table>
+        batches.map((batch) => (
+          /* each time files were put aside is a run of its own, headed by where they came from */
+          <FileGroup
+            key={batch.folder}
+            title={fromWhere(batch)}
+            count={`${dateLabel(batch.at)} ${hhmm(batch.at)} · ${plural(batch.files.length, { one: '# file', other: '# files' })}`}>
+            {batch.files.map((file) => (
+              <FileRow
+                key={file.path}
+                /* the whole line picks, as a box's label would; the box itself answers its own click */
+                onClick={() => toggle(file.path)}
+                picked={picked.has(file.path)}
+                pick={{ label: pickLabel(file.name), onPick: () => toggle(file.path) }}
+                picture={<Thumb src={getThumbUrl(file.path, isVideoFile(file.path) ? 1 : 0, 64)} />}
+                name={file.name}
+                meta={
+                  <span className='tabular-nums'>
+                    {dateLabel(file.mtime)} {hhmm(file.mtime)} · {formatSize(file.size)}
+                  </span>
+                }
+              />
+            ))}
+          </FileGroup>
+        ))
       )}
     </section>
   )

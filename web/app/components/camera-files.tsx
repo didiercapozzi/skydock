@@ -6,6 +6,7 @@ import {
   camerasAnswerSchema
 } from '../../../packages/skydock-scripts/src/cameraEntry'
 import type { CameraFile, CameraListing } from '../../../packages/skydock-scripts/src/cameraEntry'
+import { isVideoFile } from '@skydock/scripts'
 import { routingEngine } from '../helpers/routing'
 import { forgetJobsOf, useJobRow, useJobRows } from '../hooks/liveStore'
 import { usePicked } from '../hooks/usePicked'
@@ -13,10 +14,10 @@ import { refusalSchema } from '../hooks/useBoardState'
 import { CameraPreview, previewable } from './camera-preview'
 import { Go, Mini, ToBin } from './buttons'
 import { Empty, Looking, Problem } from './blurbs'
-import { TD, TH, Tick } from './file-table'
+import { FileRow, State, Thumb } from './file-row'
 import { Icon } from './icons'
 import { Modal, Spacer } from './modal'
-import { dateLabel, formatFilmSize, formatSize, hhmm } from './utils'
+import { dateLabel, formatFilmSize, formatSize, getThumbUrl, hhmm } from './utils'
 
 /* What is on a camera plugged in (RULES, Seeing what is on a camera): every file on its card, and
    how far it has got — not copied yet, copied here, put in the bin once copied, or on the storage
@@ -30,28 +31,29 @@ const STANDING = {
   missing: {
     label: msg`not copied yet`,
     many: msg`not copied yet`,
-    tone: 'bg-changed-soft text-changed before:shadow-ring-current',
+    tone: 'bg-changed-soft text-changed',
+    ring: true,
     ink: 'text-accent',
     title: msg`Not copied here yet — it cannot be deleted from the camera`
   },
   copied: {
     label: msg`copied, not uploaded`,
     many: msg`here, not uploaded`,
-    tone: 'bg-local-soft text-local before:bg-current',
+    tone: 'bg-local-soft text-local',
     ink: 'text-local',
     title: msg`Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera`
   },
   binned: {
     label: msg`in the bin`,
     many: msg`here, put in the bin`,
-    tone: 'bg-bin-soft text-bin before:bg-current',
+    tone: 'bg-bin-soft text-bin',
     ink: 'text-bin',
     title: msg`Copied here and then put in the bin — can be deleted from the camera`
   },
   stored: {
     label: msg`on the storage`,
     many: msg`on the storage`,
-    tone: 'bg-up-soft text-up before:bg-current',
+    tone: 'bg-up-soft text-up',
     ink: 'text-up',
     title: msg`Copied here and on the storage — can be deleted from the camera`
   }
@@ -473,63 +475,42 @@ const CameraFiles = ({
             : t`Nothing on the camera’s card.`}
         </Empty>
       ) : (
-        <table className='w-full table-fixed border-collapse text-body'>
-          <thead>
-            <tr>
-              <th className={`${TH} w-9`} />
-              <th className={TH}>{t`On the card`}</th>
-              <th className={`${TH} w-40`}>{t`Shot`}</th>
-              <th className={`${TH} w-21 text-right`}>{t`Size`}</th>
-              <th className={`${TH} w-47.5`}>{t`Where it has got to`}</th>
-              <th className={`${TH} w-14`} />
-            </tr>
-          </thead>
-          <tbody>
-            {files.map((file) => (
-              <tr
-                key={file.path}
-                title={i18n._(STANDING[file.state].title)}
-                /* the whole line picks, as a box's label would; the box itself answers its own click */
-                onClick={(e) => {
-                  if (canPick.has(file) && !(e.target instanceof HTMLInputElement))
-                    toggle(file.path)
-                }}
-                className={
-                  canPick.has(file)
-                    ? `cursor-pointer ${picked.has(file.path) ? 'bg-accent-soft' : 'hover:bg-well'}`
-                    : ''
-                }>
-                {/* a file not copied yet has a box to copy it, and one on the storage or in the bin to delete it */}
-                <td className={TD}>
-                  {canPick.has(file) && (
-                    <Tick
-                      label={pickLabel(file.name)}
-                      checked={picked.has(file.path)}
-                      onChange={() => toggle(file.path)}
-                    />
-                  )}
-                </td>
-                <td className={`${TD} truncate font-medium text-ink`}>{file.name}</td>
-                <td className={`${TD} text-small text-ink-2 tabular-nums`}>
+        <div className='flex flex-col gap-2'>
+          {files.map((file) => (
+            <FileRow
+              key={file.path}
+              title={i18n._(STANDING[file.state].title)}
+              /* the whole line picks, as a box's label would; the box itself answers its own click */
+              onClick={canPick.has(file) ? () => toggle(file.path) : undefined}
+              picked={picked.has(file.path)}
+              /* a file not copied yet has a box to copy it, and one on the storage or in the bin to delete it */
+              pick={
+                canPick.has(file)
+                  ? { label: pickLabel(file.name), onPick: () => toggle(file.path) }
+                  : undefined
+              }
+              picture={<Thumb src={getThumbUrl(file.path, isVideoFile(file.path) ? 1 : 0, 64)} />}
+              name={file.name}
+              meta={
+                <span className='tabular-nums'>
                   {/* a camera that gives no time for a file it has not handed over yet */}
-                  {file.mtime > 0 ? `${dateLabel(file.mtime)} ${hhmm(file.mtime)}` : '—'}
-                </td>
-                <td className={`${TD} text-right text-small text-ink-2 tabular-nums`}>
+                  {file.mtime > 0 ? `${dateLabel(file.mtime)} ${hhmm(file.mtime)}` : '—'} ·{' '}
                   {formatSize(file.size)}
-                </td>
-                <td className={TD}>
+                </span>
+              }
+              trailing={
+                <>
                   {deleting && chosen.includes(file) ? (
                     <DeleteBar path={file.path} />
                   ) : (
-                    <span
-                      className={`inline-flex h-chip w-max items-center gap-1.5 rounded-full px-2.25 text-micro font-bold before:size-1.5 before:rounded-full before:content-[''] ${STANDING[file.state].tone}`}>
+                    <State
+                      tone={STANDING[file.state].tone}
+                      ring={'ring' in STANDING[file.state]}>
                       <span className='inline-block first-letter:uppercase'>
                         {i18n._(STANDING[file.state].label)}
                       </span>
-                    </span>
+                    </State>
                   )}
-                </td>
-                <td className={`${TD} text-right`}>
                   {lookable.includes(file) && (
                     <button
                       type='button'
@@ -539,18 +520,18 @@ const CameraFiles = ({
                         e.stopPropagation()
                         setPreviewing(file.path)
                       }}
-                      className='grid size-7 cursor-pointer place-items-center rounded-full border-0 bg-well text-ink-2 hover:bg-line'>
+                      className='tool-button rounded-full'>
                       <Icon
                         name='play'
                         size={12}
                       />
                     </button>
                   )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                </>
+              }
+            />
+          ))}
+        </div>
       )}
       {lookingAt >= 0 && (
         <CameraPreview

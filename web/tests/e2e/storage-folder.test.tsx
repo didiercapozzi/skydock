@@ -80,20 +80,23 @@ describe('a file’s own link', () => {
    interface — File Station — on that file's folder, in a new browser tab. The player is a button of its
    own then. The address is the one the board is connected with. */
 describe('a file shown in the storage’s own web interface', () => {
-  test('is a link to File Station on that file, opened in a new tab', async () => {
+  test('opens File Station on that file, in a new tab', async () => {
     storageAnswers(folder)
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
     await renderFolder(undefined, 'https://nas.local:5001/')
 
-    const row = page.getByRole('link', { name: /luc favre\.mp4/ })
+    const row = page.getByRole('button', { name: /luc favre\.mp4/ })
     await expect.element(row).toBeVisible()
-    const link = row.element()
-    expect(link.getAttribute('target')).toBe('_blank')
-    const href = link.getAttribute('href') ?? ''
-    expect(href.startsWith('https://nas.local:5001/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
+    await userEvent.click(row)
+
+    const [href, target] = opened.mock.calls[0] ?? []
+    expect(target).toBe('_blank')
+    expect(String(href).startsWith('https://nas.local:5001/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
     /* the file itself, so its folder is shown with it chosen — its path twice encoded as File Station reads it */
-    expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toMatch(
+    expect(decodeURIComponent(decodeURIComponent(String(href).split('launchParam=')[1] ?? ''))).toMatch(
       new RegExp(`^openfile=${DIR}/`)
     )
+    opened.mockRestore()
   })
 
   /* a film is watched from a button of its own; a photo has none, and its row is only the link */
@@ -113,7 +116,7 @@ describe('a file shown in the storage’s own web interface', () => {
     await renderFolder()
 
     await expect.element(page.getByText('luc favre.mp4')).toBeVisible()
-    await expect.element(page.getByRole('link', { name: /luc favre\.mp4/ })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: /luc favre\.mp4/ })).toBeVisible()
   })
 })
 
@@ -151,7 +154,8 @@ describe('a place’s folder on the storage', () => {
     storageAnswers(folder)
     await renderFolder()
 
-    await expect.element(page.getByRole('button', { name: /luc\.photos\.zip/ })).toBeDisabled()
+    await expect.element(page.getByText('luc.photos.zip')).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /luc\.photos\.zip/ })).not.toBeInTheDocument()
   })
 
   test('asks the storage again when told to look again', async () => {
