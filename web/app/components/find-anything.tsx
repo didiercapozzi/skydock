@@ -37,7 +37,7 @@ const FindAnything = ({ find }: { find: (query: string) => Found[] }) => {
   }
   return (
     <div className='relative'>
-      <label className='flex h-9 w-[330px] items-center gap-2.5 rounded-[11px] bg-well px-3 text-ink-3'>
+      <label className='flex h-9 w-[330px] items-center gap-2.5 rounded-[12px] bg-pane/70 px-3 text-ink-3'>
         <Icon name='search' />
         <input
           ref={box}
@@ -52,7 +52,7 @@ const FindAnything = ({ find }: { find: (query: string) => Found[] }) => {
           }}
           className='min-w-0 flex-1 border-0 bg-transparent text-[13.5px] font-medium text-ink outline-none placeholder:text-ink-3'
         />
-        <kbd className='rounded-[6px] bg-pane px-[7px] py-0.5 font-sans text-[11px] leading-[normal] font-semibold text-ink-3 shadow-[0_0_0_1px_var(--color-line)]'>
+        <kbd className='rounded-[6px] bg-pane px-[7px] py-0.5 font-sans text-[11px] leading-[normal] font-semibold text-ink-3 shadow-soft'>
           Ctrl F
         </kbd>
       </label>

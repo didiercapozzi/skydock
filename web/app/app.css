@@ -1,20 +1,19 @@
 @import 'tailwindcss';
 
-@import '@fontsource-variable/sora';
 @import '@fontsource-variable/plus-jakarta-sans';
 @import '@fontsource-variable/jetbrains-mono';
 
-/* The palette, the type and the shapes of the "Horizon" design (docs/mockups/horizon): the window is
-   a quiet backdrop with floating islands on it — the places, the work, the details — and every
-   colour in the app comes from here. One ultramarine for where you are, what is picked and the next
-   action; a file's state is a small tinted badge, amber for what is still to do, magenta for what is
-   processed and green for what is up. Sora for titles, Plus Jakarta Sans for the
-   interface, JetBrains Mono for file names. Light and dark are the same design with the same names. */
+/* The palette, the type and the shapes of the sky look (docs/visual-design-rules.md): a pale sky of a
+   window with the places, the work and the details side by side on it, and every colour in the app
+   comes from here. One sky blue for where you are, what is picked and the next action; a file's state
+   is a small tinted badge, amber for what is still to do, blue for what is processed and green for
+   what is up. Plus Jakarta Sans for titles and the interface, JetBrains Mono for file names. Light
+   and dark are the same design with the same names. */
 @theme {
   --font-sans:
     'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --font-display:
-    'Sora Variable', 'Sora', 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+    'Plus Jakarta Sans Variable', 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
 
   /* Lighter weights than the utilities' usual 500/600/700: the interface reads calmer, and the
@@ -23,44 +22,48 @@
   --font-weight-semibold: 500;
   --font-weight-bold: 540;
 
-  --color-ground: #e3edf1;
+  --color-ground: #e4f3fd;
   --color-pane: #ffffff;
   --color-rail: #ffffff;
-  --color-well: #e5f1f5;
-  --color-check: #4f9db3;
-  --color-ink: #1d3540;
-  --color-ink-2: #3d5763;
-  --color-ink-3: #587a88;
-  --color-line: #dbe9ee;
-  --color-line-2: #e8f1f4;
-  --color-line-strong: #b9d6df;
-  --color-accent: #0e7490;
-  --color-accent-ink: #155e75;
-  --color-accent-soft: #e3f4f8;
-  --color-pick: #0e7490;
-  --color-pick-soft: #e3f4f8;
-  --color-local: #a04f07;
-  --color-local-soft: #fef1de;
-  --color-local-bar: #f0a231;
+  --color-well: #e0f2fe;
+  --color-check: #86bfe6;
+  --color-ink: #0f2f47;
+  --color-ink-2: #38607d;
+  --color-ink-3: #4a7090;
+  --color-line: #cfe6f7;
+  --color-line-2: #e2f0fa;
+  --color-line-strong: #a9d2ee;
+  /* the line that parts a panel from the one beside or under it: a tint of the accent, never grey */
+  --color-edge: rgba(11, 127, 214, 0.24);
+  --color-accent: #0b7fd6;
+  --color-accent-ink: #0762ab;
+  --color-accent-soft: #d3ecff;
+  --color-pick: #0b7fd6;
+  --color-pick-soft: #d3ecff;
+  --color-local: #7d4309;
+  --color-local-soft: #fdeacb;
+  --color-local-bar: #e8590c;
   --color-proc: #2b63d6;
   --color-proc-soft: #e2ebfc;
   --color-up: #0c7c55;
   --color-up-soft: #dcf5ea;
-  --color-lock: #454d61;
-  --color-lock-soft: #f1f3f8;
-  --color-changed: #155e75;
-  --color-changed-soft: #e3f4f8;
+  --color-lock: #3f5a73;
+  --color-lock-soft: #e6f0fa;
+  --color-changed: #0762ab;
+  --color-changed-soft: #d3ecff;
   --color-bin: #c0262d;
   --color-bin-soft: #fdecec;
 
-  /* the fact tiles of the details, each a different soft colour */
   --color-here: #ffffff;
-  --color-tile-1: #e6f3f7;
+  --color-tile-1: #e1f2fd;
   --color-tile-2: #e8eefb;
-  --color-tile-3: #e5f4ee;
-  --color-tile-4: #f4f1ec;
+  --color-tile-3: #e3f5ef;
+  --color-tile-4: #eaf2f9;
 
-  --shadow-card: 0 1px 2px rgba(16, 19, 26, 0.05), 0 8px 24px rgba(16, 19, 26, 0.06);
+  /* what is raised off the page: a button, a row, a card. Every shadow in the light theme is a tint
+     of the blue, never grey. */
+  --shadow-card: 0 2px 8px rgba(10, 110, 180, 0.16);
+  --shadow-soft: 0 1px 4px rgba(10, 100, 170, 0.08);
   --shadow-float:
     0 0 0 1px rgba(16, 19, 26, 0.08), 0 30px 80px rgba(16, 19, 26, 0.3),
     0 4px 12px rgba(16, 19, 26, 0.1);
@@ -88,6 +91,7 @@
     --color-line: #22363f;
     --color-line-2: #1b2b33;
     --color-line-strong: #2b4a57;
+    --color-edge: #1b2b33;
     --color-accent: #38bdd8;
     --color-accent-ink: #86dcee;
     --color-accent-soft: #0c3340;
@@ -130,6 +134,7 @@
   --color-line: #22363f;
   --color-line-2: #1b2b33;
   --color-line-strong: #2b4a57;
+  --color-edge: #1b2b33;
   --color-accent: #38bdd8;
   --color-accent-ink: #86dcee;
   --color-accent-soft: #0c3340;
@@ -159,30 +164,35 @@
 
 /* The interface's own type: the size everything inherits, the leading that sits with it, and
    tabular figures so a column of counts and times lines up. */
-/* Colour and shape, kept quiet. Each island has its own faint tint — the places a cool blue-grey
-   with a few fine arcs and contour lines, the work a pale wash at its head with a parachute's arcs
-   in the corner, the details a lavender-to-white wash with waves at its foot — over a backdrop of
-   soft blue and lilac glows. Drawn from these variables, so light and dark redraw them in their own
-   tints. */
+/* Colour and shape, kept quiet. The ground is a sky: pale blue, lightest in the middle, with a few
+   faint white beams of light falling from above the top-right corner. The places keep a film of white
+   over it and, falling across them, white rays of light that fade out and a haze that thickens to white at their foot. The work and the details are
+   washes from pale blue at their head to white at their foot. Drawn from these variables, so light and
+   dark redraw them in their own tints (docs/visual-design-rules.md). */
 :root {
   --ground-bg:
-    radial-gradient(50rem 32rem at 4% -8%, #d3e9f0 0%, transparent 64%),
-    radial-gradient(44rem 30rem at 100% 0%, #dcebf3 0%, transparent 62%),
-    radial-gradient(50rem 32rem at 96% 108%, #d8ede8 0%, transparent 62%), #e3edf1;
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1520 820' preserveAspectRatio='xMaxYMin slice'%3E%3Cdefs%3E%3CradialGradient id='sun' gradientUnits='userSpaceOnUse' cx='1420' cy='-260' r='1500'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.2'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpolygon points='1420,-260 1336,2139 1136,2123' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 942,2092 746,2044' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 560,1981 375,1901' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 202,1808 33,1699' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 -123,1579 -271,1443' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 -405,1299 -529,1140' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 -637,976 -733,800' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 -813,620 -879,430' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 -928,239 -961,41' fill='url(%23sun)'/%3E%3Cpolygon points='1420,-260 -978,-155 -978,-356' fill='url(%23sun)'/%3E%3C/svg%3E")
+      right top / cover no-repeat,
+    linear-gradient(160deg, #4066a5 0%, #f0f9ff 50%, #def1fd 100%);
   --rail-bg:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 830' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.10'%3E%3Ccircle cx='260' cy='20' r='70'/%3E%3Ccircle cx='260' cy='20' r='110'/%3E%3Ccircle cx='260' cy='20' r='150'/%3E%3C/g%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.09'%3E%3Cpath d='M0 720c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 746c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 772c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 798c44-22 88 22 132 0s88-22 132 0'/%3E%3C/g%3E%3C/svg%3E")
-      center / cover no-repeat,
-    linear-gradient(180deg, #eef7f9 0%, #e6f1f4 100%);
-  --head-tint: linear-gradient(90deg, #f2f9fb 0%, #edf5f8 100%);
-  --pane-shapes:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 240'%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.07'%3E%3Ccircle cx='500' cy='230' r='70'/%3E%3Ccircle cx='500' cy='230' r='112'/%3E%3Ccircle cx='500' cy='230' r='154'/%3E%3Ccircle cx='500' cy='230' r='196'/%3E%3C/g%3E%3C/svg%3E")
-      right top / 560px 240px no-repeat,
-    linear-gradient(180deg, #eff8fa 0, #ffffff 240px);
-  --side-wash:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 338 240'%3E%3Cg fill='none' stroke='%230e7490' stroke-opacity='.08'%3E%3Cpath d='M0 150c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 174c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 198c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 222c56-28 112 28 169 0s113-28 169 0'/%3E%3C/g%3E%3C/svg%3E")
-      left bottom / 100% auto no-repeat,
-    linear-gradient(180deg, #f0f8fa 0%, #f6fbfc 45%, #ffffff 100%);
-  --go-fill: linear-gradient(135deg, #0f8fb0 0%, #0a6a86 100%);
+    linear-gradient(to top, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 150px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 800' preserveAspectRatio='xMidYMin slice'%3E%3Cdefs%3E%3CradialGradient id='r' gradientUnits='userSpaceOnUse' cx='330' cy='-140' r='900'%3E%3Cstop offset='0' stop-color='%23fff' stop-opacity='.38'/%3E%3Cstop offset='1' stop-color='%23fff' stop-opacity='0'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cpolygon points='330,-140 173,1352 80,1339' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -13,1320 -104,1296' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -193,1266 -280,1230' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -365,1189 -447,1143' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -526,1092 -602,1036' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -674,975 -742,909' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -805,840 -865,767' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -919,690 -969,610' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -1014,527 -1053,441' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -1087,353 -1115,263' fill='url(%23r)'/%3E%3Cpolygon points='330,-140 -1137,172 -1154,79' fill='url(%23r)'/%3E%3C/svg%3E")
+      center top / cover no-repeat,
+    rgba(255, 255, 255, 0.22);
+  --head-tint: linear-gradient(90deg, #e0f2fd 0%, #f0f9ff 60%, #e3f4fe 100%);
+  --pane-shapes: linear-gradient(
+    180deg,
+    rgba(238, 248, 255, 0.93) 0%,
+    rgba(246, 252, 255, 0.93) 45%,
+    rgba(255, 255, 255, 0.95) 100%
+  );
+  --side-wash: linear-gradient(
+    180deg,
+    rgba(222, 241, 253, 0.92) 0%,
+    rgba(240, 249, 255, 0.96) 55%,
+    #ffffff 100%
+  );
+  --go-fill: linear-gradient(135deg, #1a8be0 0%, #0b72c8 100%);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {

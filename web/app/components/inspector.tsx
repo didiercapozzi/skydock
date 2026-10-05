@@ -21,6 +21,7 @@ import { JumpForm } from './jump-name'
 import { JumpSpan } from './jump-time'
 import { NameMontage, PassengerName } from './montage-card'
 import type { Passenger } from './montage-card'
+import { Slices } from './slices'
 import type { ManifestFile, ManifestGroup } from './types'
 import { kindsSaid } from './kinds'
 import { dateLabel, formatSize, getPictureUrl, hhmm, minFileMtime, shortDate } from './utils'
@@ -45,12 +46,20 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-none min-[1101px]:border-l min-[1101px]:border-line-2 min-[1101px]:shadow-card transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-start-2 ${
+        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-none transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-start-2 ${
           drawer ? '' : 'max-[1100px]:invisible max-[1100px]:translate-x-full'
         } ${column ? '' : 'min-[1101px]:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than
             being squeezed while the column closes */}
-        <div className='flex min-h-full w-[338px] flex-col max-[1100px]:w-full'>{children}</div>
+        <div className='relative flex min-h-full w-[338px] flex-col max-[1100px]:w-full'>
+          {/* the line that parts the panel from the work beside it: white, and starting under the
+              picture, which meets the header and the work with no line at all */}
+          <span
+            aria-hidden='true'
+            className='pointer-events-none absolute inset-y-0 left-0 z-10 w-0.5 bg-white dark:bg-line group-has-[[data-picture]]/side:top-[206px] max-[1100px]:hidden'
+          />
+          {children}
+        </div>
       </aside>
     </>
   )
@@ -95,8 +104,12 @@ const Who = ({
 )
 
 /* the picture at the top of the panel: what is being looked at, before any word about it */
+/* it stays at the top while the rest of the panel scrolls under it */
+const PICTURE = 'sticky top-0 z-20 h-[206px] flex-none'
 const Hero = ({ children }: { children: React.ReactNode }) => (
-  <div className='relative h-[190px] flex-none overflow-hidden bg-[linear-gradient(135deg,#9fc6cf,#cfe3e7)] dark:bg-well'>
+  <div
+    data-picture=''
+    className={`${PICTURE} overflow-hidden bg-[linear-gradient(135deg,#a6d8f6,#d3ecff)] dark:bg-well`}>
     {children}
   </div>
 )
@@ -149,7 +162,7 @@ const Part = ({
    a menu's button is wrapped once, so it is reached by what it does, and the entries of its open
    list are left as they are. */
 const BIG =
-  '[&>button]:h-[42px] [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-[13px] [&>button]:px-3.5 [&>button]:text-[14px] [&_button[aria-expanded]]:h-[42px] [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-[13px] [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-[14px] [&_button[aria-expanded]_svg]:size-[18px]'
+  '[&>button]:h-[42px] [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-full [&>button]:px-3.5 [&>button]:text-[14px] [&_button[aria-expanded]]:h-[42px] [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-full [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-[14px] [&_button[aria-expanded]_svg]:size-[18px]'
 
 /* what can be done, two buttons to a row and a wide one across; a button alone in its row takes it */
 const Acts = ({ children }: { children: React.ReactNode }) => (
@@ -171,7 +184,7 @@ const BinButton = ({ children, onClick }: { children: React.ReactNode; onClick: 
   <button
     type='button'
     onClick={onClick}
-    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-[11px] bg-well px-3.5 text-[13px] font-bold whitespace-nowrap text-bin hover:bg-bin-soft'>
+    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-full bg-pane px-3.5 text-[13px] font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft'>
     {children}
   </button>
 )
@@ -381,9 +394,6 @@ const MontageNamer = ({
   )
 }
 
-/* the first frame worth showing: a video's, where there is one, since a face is likelier in footage */
-const firstFrame = (files: ManifestFile[]) => files.find((f) => isVideoFile(f.path)) ?? files[0]
-
 const counts = (files: ManifestFile[]) => {
   const videos = files.filter((f) => isVideoFile(f.path)).length
   const photos = files.length - videos
@@ -446,9 +456,8 @@ const JumpPanel = ({
   const montage = isMontage(group)
   const named = hasCompletePassenger(group.passenger)
   const fileCount = group.files.length
-  const frame = group.freed ? undefined : firstFrame(group.files)
   /* a named montage is told by its name; anything else is told apart by what it shows */
-  const pictured = frame && !(montage && named)
+  const pictured = !group.freed && fileCount > 0 && !(montage && named)
   const tallied = tally(group.files, statusOf)
     .filter(([, n]) => n > 0)
     .map(([name, n]) => `${n} ${name.toLowerCase()}`)
@@ -461,9 +470,17 @@ const JumpPanel = ({
     const starts = hhmm(from)
     return (
       <>
+        {fileCount > 0 && (
+          <Slices
+            files={group.files}
+            width={480}
+            grow={0.2}
+            className={PICTURE}
+          />
+        )}
         <Who
           eyebrow={t`Jump · ${dateLabel(from)}`}
-          lower
+          lower={fileCount === 0}
           title={label}
           sub={`${kindsSaid(videos, photos, ' · ')} · ${t`starts ${starts}`}`}
         />
@@ -475,13 +492,20 @@ const JumpPanel = ({
                   key={name}
                   type='button'
                   onClick={() => fileTo.onFile(name)}
-                  className='flex h-[46px] w-full cursor-pointer items-center justify-between gap-2.5 rounded-[14px] border-0 bg-well px-4 text-[14px] font-bold text-ink hover:bg-line'>
-                  <span className='truncate'>{name}</span>
-                  <Icon
-                    name='next'
-                    size={16}
-                    className='text-ink-3'
-                  />
+                  className='flex h-[46px] w-full cursor-pointer items-center gap-2.5 rounded-full border-0 bg-pane p-2 text-left text-[14px] font-bold text-ink shadow-card hover:bg-accent-soft'>
+                  <span className='grid size-[30px] flex-none place-items-center rounded-full bg-accent-soft text-accent'>
+                    <Icon
+                      name='place'
+                      size={15}
+                    />
+                  </span>
+                  <span className='min-w-0 flex-1 truncate'>{name}</span>
+                  <span className='grid size-7 flex-none place-items-center rounded-full bg-accent-soft text-accent'>
+                    <Icon
+                      name='next'
+                      size={15}
+                    />
+                  </span>
                 </button>
               ))}
             </div>
@@ -529,13 +553,12 @@ const JumpPanel = ({
   return (
     <>
       {pictured && (
-        <Hero>
-          <img
-            src={getPictureUrl(frame, undefined, 480)}
-            alt={montage && !named ? t`A frame from this montage, to tell who it is` : label}
-            className='h-full w-full object-cover'
-          />
-        </Hero>
+        <Slices
+          files={group.files}
+          width={480}
+          grow={0.2}
+          className={PICTURE}
+        />
       )}
       {/* the name is changed where it is read, the way its start is */}
       {renaming && onRename ? (
@@ -896,11 +919,6 @@ const FilePanel = ({
   )
 }
 
-/* how many of what was picked are shown as pictures at the top, and in how many columns: a few are
-   shown large, many small, and what does not fit is counted on the last tile */
-const SHOWN = 9
-const columnsFor = (count: number) => (count <= 1 ? 1 : count <= 4 ? 2 : 3)
-
 /* Several files: what they add up to, and where they all go. */
 const ManyPanel = ({
   files,
@@ -935,34 +953,13 @@ const ManyPanel = ({
   return (
     <>
       {/* what was picked, as pictures in the order it was shot — enough of them to tell the files apart at
-          a glance, the rest counted on the last tile */}
-      <div
-        className='mx-4 mt-[18px] grid flex-none gap-1.5'
-        style={{ gridTemplateColumns: `repeat(${columnsFor(files.length)}, minmax(0, 1fr))` }}>
-        {[...files]
-          .sort((a, b) => a.mtime - b.mtime)
-          .slice(0, SHOWN)
-          .map((file, at, shown) => {
-            const more = files.length - shown.length
-            return (
-              <span
-                key={file.id ?? file.path}
-                className='relative block aspect-[4/3] overflow-hidden rounded-[12px] bg-well'>
-                <img
-                  src={getPictureUrl(file, undefined, 320)}
-                  alt=''
-                  loading='lazy'
-                  className='absolute inset-0 h-full w-full object-cover'
-                />
-                {more > 0 && at === shown.length - 1 && (
-                  <span className='absolute inset-0 grid place-items-center bg-black/55 text-[15px] font-bold text-white'>
-                    +{more}
-                  </span>
-                )}
-              </span>
-            )
-          })}
-      </div>
+          a glance, the rest counted on the last */}
+      <Slices
+        files={files}
+        width={480}
+        grow={0.2}
+        className={PICTURE}
+      />
       <Who
         eyebrow={where ? t`Picked in ${where}` : t`Picked`}
         title={plural(files.length, {

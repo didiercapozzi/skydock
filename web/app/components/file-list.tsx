@@ -427,12 +427,12 @@ const Row = ({
           ? `h-[52px] rounded-[10px] [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
               previewed ? 'bg-accent-soft' : picked ? 'bg-accent-soft' : 'hover:bg-well'
             }`
-          : `h-[64px] rounded-[16px] [contain-intrinsic-size:auto_64px] ${
+          : `h-[66px] rounded-[16px] pr-5 [contain-intrinsic-size:auto_66px] ${
               previewed
                 ? 'bg-accent-soft shadow-[0_0_0_2px_var(--color-accent)]'
                 : picked
-                  ? 'bg-accent-soft shadow-[0_0_0_1px_var(--color-line)]'
-                  : 'bg-pane shadow-[0_0_0_1px_var(--color-line)] hover:bg-well'
+                  ? 'bg-accent-soft shadow-card'
+                  : 'bg-pane shadow-card hover:bg-accent-soft'
             }`
       }`}>
       {/* a file that cannot move has nothing to be picked for, so it has no tick — a lock in its
@@ -455,10 +455,10 @@ const Row = ({
             e.stopPropagation()
             onPick(file)
           }}
-          className={`grid size-[18px] place-items-center rounded-[6px] border-2 p-0 ${
+          className={`grid size-5 place-items-center rounded-[6px] border-2 p-0 ${
             picked
               ? 'border-accent bg-accent text-white'
-              : 'border-check bg-pane text-transparent hover:border-accent'
+              : 'border-check bg-transparent text-transparent hover:border-accent'
           }`}>
           <Icon
             name='check'
@@ -468,7 +468,7 @@ const Row = ({
         </button>
       )}
       <span
-        className={`relative overflow-hidden bg-well ${joined ? 'h-[34px] w-[46px] rounded-[9px]' : 'h-11 w-16 rounded-[11px]'}`}>
+        className={`relative overflow-hidden bg-well ${joined ? 'h-[34px] w-[46px] rounded-[9px]' : 'h-11 w-16 rounded-lg'}`}>
         {/* a freed file is on the storage only: nothing here to draw it from */}
         {!file.freed && (
           <img
@@ -519,7 +519,7 @@ const Row = ({
           />
         </span>
       </span>
-      <span className='flex'>
+      <span className='flex justify-end'>
         <WhileLive
           id={file.id}
           filename={file.filename}
@@ -610,7 +610,7 @@ const Tile = ({
         ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-accent)]'
         : previewed
           ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-ink-3)]'
-          : 'shadow-card'
+          : 'shadow-soft'
     }`}>
     {/* a freed file is on the storage only: nothing here to draw it from */}
     {!file.freed && (
@@ -831,7 +831,7 @@ const Lane = ({
         className={
           shape === 'rows'
             ? joined
-              ? 'flex flex-col rounded-[18px] bg-pane px-3.5 py-1.5 shadow-[0_0_0_1px_var(--color-line)]'
+              ? 'flex flex-col rounded-[18px] bg-pane px-3.5 py-1.5 shadow-soft'
               : 'flex flex-col gap-2'
             : 'grid gap-3'
         }

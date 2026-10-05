@@ -6,7 +6,8 @@ import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/plac
 import type { Place } from '../helpers/places'
 import type { KnownCamera, Mounted } from '../hooks/useLiveProgress'
 import { Mini } from './buttons'
-import { Icon } from './icons'
+import { Icon, Mark } from './icons'
+import type { IconName } from './icons'
 import { PlaceLink } from './place-link'
 import { StepMeter } from './montage-steps'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
@@ -40,6 +41,20 @@ type Props = {
   flashPlace?: string | null
 }
 
+/* the mark a folder wears in its tile */
+const iconOf = (place: Place): IconName =>
+  place.kind === 'sort'
+    ? 'fresh'
+    : place.kind === 'dz'
+      ? 'place'
+      : place.kind === 'camera'
+        ? 'camera'
+        : place.kind === 'delivered'
+          ? 'check'
+          : place.kind === 'bin'
+            ? 'bin'
+            : 'montage'
+
 /* One row of the rail: its mark, its name and how many files it holds, and under that what it still
    owes — with, where it says more than a number, how far its files have got. The folder being looked
    at is filled in blue; one something is dragged over is ringed, to say it will take the drop. */
@@ -55,6 +70,7 @@ const Row = ({
   over = false,
   flash = false,
   quiet = false,
+  tone = 'solid',
   dot
 }: {
   place: Place
@@ -70,6 +86,8 @@ const Row = ({
   flash?: boolean
   /* a folder standing for what has no name yet, set apart from the named ones */
   quiet?: boolean
+  /* how the badge at the right reads: a solid pill for work waiting, a white one for "new", plain words otherwise */
+  tone?: 'solid' | 'white' | 'quiet'
   /* a camera: plugged in, or remembered and not */
   dot?: 'on' | 'off'
 }) => (
@@ -78,12 +96,12 @@ const Row = ({
     title={title}
     {...dropTarget}
     className={(current) =>
-      `block w-full rounded-[12px] px-2.5 py-[9px] text-left text-ink max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:border max-[780px]:border-line max-[780px]:px-[11px] ${
+      `flex w-full items-center gap-2.5 rounded-[14px] px-2 py-1.5 text-left text-ink min-[781px]:min-h-[42px] max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:px-[11px] max-[780px]:shadow-soft ${
         over
           ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed'
           : current
-            ? 'bg-pane shadow-[0_0_0_1px_var(--color-line),0_4px_12px_rgba(20,41,46,0.07)]'
-            : 'hover:bg-line-2 max-[780px]:bg-pane'
+            ? 'bg-pane shadow-soft'
+            : 'hover:bg-pane/50 max-[780px]:bg-pane'
       } ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`
     }>
     {(current) => {
@@ -91,35 +109,58 @@ const Row = ({
       const second = below?.(lit)
       return (
         <>
-          <span className='flex items-center justify-between gap-2'>
-            <span className='flex min-w-0 items-center gap-2.5'>
-              {dot && (
-                <i
-                  aria-hidden='true'
-                  className={`size-2 flex-none rounded-full ${
-                    dot === 'on' ? 'bg-up' : 'shadow-[inset_0_0_0_2px_var(--color-line-strong)]'
+          {/* the folder's mark in a tile: pale on the sky, solid blue for the folder being looked at */}
+          <span
+            className={`grid size-[30px] flex-none place-items-center rounded-[10px] max-[780px]:hidden ${
+              lit
+                ? 'bg-accent text-white shadow-[0_0_8px_rgba(11,127,214,0.35)] dark:text-[#04222b]'
+                : 'bg-pane/70 text-accent'
+            }`}>
+            <Icon
+              name={iconOf(place)}
+              size={16}
+            />
+          </span>
+          <span className='flex min-w-0 flex-1 flex-col'>
+            <span className='flex items-center justify-between gap-2'>
+              <span className='flex min-w-0 items-center gap-2.5'>
+                {dot && (
+                  <i
+                    aria-hidden='true'
+                    className={`size-2 flex-none rounded-full ${
+                      dot === 'on' ? 'bg-up' : 'shadow-[inset_0_0_0_2px_var(--color-line-strong)]'
+                    }`}
+                  />
+                )}
+                <span
+                  className={`min-w-0 truncate text-[15px] ${lit ? 'font-bold' : 'font-medium'} ${quiet ? 'italic' : ''} ${
+                    quiet && !lit ? 'text-ink-3' : ''
                   }`}
-                />
-              )}
-              <span
-                className={`min-w-0 truncate text-[14px] font-semibold ${quiet ? 'italic' : ''} ${
-                  quiet && !lit ? 'text-ink-3' : ''
-                }`}
-                title={label}>
-                {label}
+                  title={label}>
+                  {label}
+                </span>
               </span>
+              {(owed || (count ?? 0) > 0) && !second && (
+                <span
+                  className={`flex-none text-[12px] whitespace-nowrap tabular-nums max-[780px]:hidden ${
+                    tone === 'quiet'
+                      ? 'font-medium text-ink-3'
+                      : `rounded-full px-2 py-0.5 font-bold ${
+                          tone === 'white'
+                            ? 'bg-pane text-accent-ink'
+                            : 'bg-accent text-white dark:text-[#04222b]'
+                        }`
+                  }`}>
+                  {owed ?? count}
+                </span>
+              )}
             </span>
-            {(owed || count !== undefined) && !second && (
-              <span className='flex-none text-[12px] font-bold whitespace-nowrap text-ink-3 tabular-nums max-[780px]:hidden'>
-                {owed ?? count}
+            {second && (
+              <span className='mt-1.5 flex flex-col gap-1.5 text-[11.5px] font-medium text-ink-3 max-[780px]:hidden'>
+                {second}
               </span>
             )}
           </span>
-          {second && (
-            <span className='mt-1.5 flex flex-col gap-1.5 text-[11.5px] font-medium text-ink-3 max-[780px]:hidden'>
-              {second}
-            </span>
-          )}
         </>
       )
     }}
@@ -128,7 +169,7 @@ const Row = ({
 
 const Heading = ({ children, first }: { children: string; first?: boolean }) => (
   <h2
-    className={`mx-2.5 mb-[5px] text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none ${
+    className={`mx-2.5 mb-[5px] text-[11px] font-bold tracking-[0.09em] text-accent-ink/70 uppercase max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none ${
       first ? 'mt-1' : 'mt-3.5'
     }`}>
     {children}
@@ -150,7 +191,7 @@ const MontagesHeading = ({
   <h2
     {...dropTarget}
     title={t`Drop a jump or files here to make a montage — its name is asked for first`}
-    className={`mx-0 mt-3 mb-[3px] flex items-center gap-2 rounded-[11px] px-2.5 py-0.5 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
+    className={`mx-0 mt-3 mb-[3px] flex items-center gap-2 rounded-[11px] px-2.5 py-0.5 text-[11px] font-bold tracking-[0.09em] text-accent-ink/70 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
       over ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed' : ''
     }`}>
     <span className='flex-1'>{t`Montages`}</span>
@@ -177,7 +218,7 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
       <button
         type='button'
         onClick={() => setOpen(true)}
-        className='mt-1.5 flex w-full items-center gap-2.5 rounded-[11px] px-2.5 py-[7px] text-left text-[13.5px] font-semibold text-ink-3 hover:bg-well hover:text-ink-2 max-[780px]:hidden'>
+        className='mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-dashed border-white bg-white/25 text-[13.5px] font-semibold text-accent-ink hover:bg-white/45 max-[780px]:hidden dark:border-line-strong dark:bg-transparent dark:hover:bg-well'>
         <Icon
           name='plus'
           size={16}
@@ -264,7 +305,12 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail rounded-[18px] min-[781px]:rounded-r-none min-[781px]:rounded-b-none px-2.5 py-3.5 shadow-card max-[780px]:z-[8] max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:py-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
+      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-[8] rounded-[18px] min-[781px]:rounded-r-none min-[781px]:rounded-b-none px-2.5 pb-3.5 shadow-[2px_0_10px_rgba(8,80,150,0.1)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.3)] max-[780px]:pt-2 max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:pb-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
+      {/* the app's name, level with the header across from it */}
+      <div className='flex h-14 flex-none items-center gap-2.5 px-2 max-[780px]:hidden'>
+        <Mark size={32} />
+        <span className='text-[18px] font-extrabold text-ink'>SkyDock</span>
+      </div>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       <Heading first>{t`Work`}</Heading>
       <Row
@@ -279,7 +325,8 @@ const PlacesTree = ({
           <Row
             key={placeKey(p)}
             {...folder(p)}
-            owed={toDo(p) ?? (held.length > 0 ? t`all up` : t`new`)}
+            owed={toDo(p) ?? (held.length > 0 ? t`all up` : undefined)}
+            tone={toDo(p) ? 'solid' : 'white'}
           />
         )
       })}
@@ -340,6 +387,7 @@ const PlacesTree = ({
             place={{ kind: 'camera', name: k.key }}
             label={k.name}
             dot={here ? 'on' : 'off'}
+            tone={here && !k.auto && here.fresh ? 'white' : 'quiet'}
             quiet={!here}
             /* what is new on it, or that it is not here; a camera with no drive to offer is read a
                request at a time, which is the whole of why it is slower than the same card in a reader */

@@ -339,7 +339,7 @@ const Icon = ({
   </svg>
 )
 
-/* the app's own mark: a canopy over a drop, on the blue */
+/* the app's own mark: a canopy over a drop, on the accent gradient */
 const Mark = ({ size = 16 }: { size?: number }) => (
   <svg
     width={size}
@@ -347,11 +347,28 @@ const Mark = ({ size = 16 }: { size?: number }) => (
     viewBox='0 0 22 22'
     aria-hidden='true'
     className='flex-none'>
+    <defs>
+      <linearGradient
+        id='mark-fill'
+        x1='0'
+        y1='0'
+        x2='1'
+        y2='1'>
+        <stop
+          offset='0'
+          stopColor='#43b0f5'
+        />
+        <stop
+          offset='1'
+          stopColor='#0b7fd6'
+        />
+      </linearGradient>
+    </defs>
     <rect
       width='22'
       height='22'
-      rx='5.5'
-      className='fill-accent'
+      rx='7'
+      fill='url(#mark-fill)'
     />
     <path
       d='M5 10.5c2-4.4 10-4.4 12 0'

@@ -12,16 +12,16 @@ import { Menu } from './settings-menu'
 type Tone = 'todo' | 'done' | 'plain'
 
 const CARD: Record<Tone, string> = {
-  todo: 'bg-[linear-gradient(135deg,#fff6e8,#fffaf2)] shadow-[0_0_0_1px_#f0dcbc] dark:bg-local-soft dark:shadow-none',
-  done: 'bg-[linear-gradient(135deg,#eaf8f0,#f4fbf7)] shadow-[0_0_0_1px_#c9e6d6] dark:bg-up-soft dark:shadow-none',
+  todo: 'bg-[linear-gradient(135deg,#fff6e8,#fffaf2)] shadow-card dark:bg-none dark:bg-local-soft dark:shadow-none',
+  done: 'bg-[linear-gradient(135deg,#eaf8f0,#f4fbf7)] shadow-card dark:bg-none dark:bg-up-soft dark:shadow-none',
   plain:
-    'bg-[linear-gradient(135deg,#eef8f9,#f6fbfb)] shadow-[0_0_0_1px_#cfe5e9] dark:bg-accent-soft dark:shadow-none'
+    'bg-[linear-gradient(90deg,#e0f4ff,#f1faff)] shadow-card dark:bg-none dark:bg-accent-soft dark:shadow-none'
 }
 
 const BADGE: Record<Tone, string> = {
   todo: 'bg-local-soft text-local',
   done: 'bg-up-soft text-up',
-  plain: 'bg-accent-soft text-accent-ink'
+  plain: 'bg-pane text-accent-ink shadow-soft'
 }
 
 /* One sentence, one bar, one button. `progress` is how many of the whole are done, drawn as a slim bar. */
@@ -42,7 +42,7 @@ const StatusCard = ({
   /* the button, or buttons, that move it on */
   children?: React.ReactNode
 }) => (
-  <div className={`flex items-center gap-3.5 rounded-[16px] px-4 py-2.5 ${CARD[tone]}`}>
+  <div className={`flex items-center min-h-16 gap-3.5 rounded-[18px] px-4 py-2.5 ${CARD[tone]}`}>
     <span className={`grid size-9 flex-none place-items-center rounded-full ${BADGE[tone]}`}>
       <Icon
         name={icon}
@@ -74,7 +74,7 @@ const StatusCard = ({
       </div>
     )}
     {children && (
-      <div className='flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-[11px] [&_button]:px-4 [&_button]:text-[13.5px]'>
+      <div className='flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-full [&_button]:px-4 [&_button]:text-[13.5px]'>
         {children}
       </div>
     )}
@@ -82,8 +82,8 @@ const StatusCard = ({
 )
 
 /* a round icon button, the same on every page */
-const ROUND =
-  'grid size-10 flex-none place-items-center rounded-[13px] border-0 bg-well text-ink hover:bg-line'
+const SEARCH =
+  'inline-flex h-[42px] flex-none items-center gap-2 rounded-full border-0 bg-pane px-4 text-[13.5px] font-semibold text-accent-ink shadow-card hover:bg-accent-soft'
 
 const PageHead = ({
   tile,
@@ -128,7 +128,7 @@ const PageHead = ({
       <div className='flex items-center gap-[18px]'>
         <span
           className={`grid flex-none place-items-center ${
-            large ? 'size-[56px] rounded-[19px]' : 'size-[48px] rounded-[16px]'
+            large ? 'size-[56px] rounded-[19px]' : 'size-[48px] rounded-[14px]'
           } ${
             'letter' in tile
               ? tile.done
@@ -162,7 +162,7 @@ const PageHead = ({
         </div>
         {onQuery &&
           (showSearch ? (
-            <label className='flex h-10 w-[240px] items-center gap-2.5 rounded-[13px] bg-well px-3 text-ink-3 focus-within:shadow-[0_0_0_1.5px_var(--color-accent)]'>
+            <label className='flex h-[42px] w-[240px] items-center gap-2.5 rounded-full bg-well px-4 text-ink-3 focus-within:shadow-[0_0_0_1.5px_var(--color-accent)]'>
               <Icon
                 name='search'
                 size={16}
@@ -184,11 +184,12 @@ const PageHead = ({
               aria-label={t`Search`}
               title={t`Narrow by name`}
               onClick={() => setSearching(true)}
-              className={ROUND}>
+              className={SEARCH}>
               <Icon
                 name='search'
                 size={18}
               />
+              {t`Search`}
             </button>
           ))}
         {aside}
@@ -196,7 +197,8 @@ const PageHead = ({
         {menu && (
           <Menu
             label={t`More`}
-            icon='more'>
+            icon='more'
+            round>
             {menu}
           </Menu>
         )}

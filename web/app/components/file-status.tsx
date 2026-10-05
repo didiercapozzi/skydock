@@ -28,7 +28,7 @@ const TITLES: Record<ShownStatus, MessageDescriptor> = {
    like a report. Only `changed` is outlined — the dot drawn as a ring — because it is the one asking
    to be dealt with rather than simply saying where a file has got to. */
 const CHIP: Record<ShownStatus, string> = {
-  local: 'bg-local-soft text-local before:bg-current',
+  local: 'bg-local-soft text-local before:bg-[#f08a24]',
   changed: 'bg-changed-soft text-changed before:shadow-[inset_0_0_0_2px_currentColor]',
   processed: 'bg-proc-soft text-proc before:bg-current',
   uploaded: 'bg-up-soft text-up before:bg-current'
@@ -43,13 +43,13 @@ const StatusChip = ({ status, prepared = false }: { status: ShownStatus; prepare
   prepared && status === 'processed' ? (
     <span
       title={i18n._(TITLES[status])}
-      className='inline-flex h-6 w-max items-center rounded-full bg-up-soft px-2.5 text-[12px] font-bold whitespace-nowrap text-up'>
+      className='inline-flex h-6 w-max items-center rounded-full bg-up-soft px-3 text-[12px] font-semibold whitespace-nowrap text-up'>
       {t`prepared`}
     </span>
   ) : (
     <span
       title={i18n._(TITLES[status])}
-      className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
+      className={`inline-flex h-6 w-max items-center gap-1.5 rounded-full px-3 text-[12px] font-semibold whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
       {i18n._(LABELS[status])}
     </span>
   )

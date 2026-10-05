@@ -9,9 +9,10 @@ import { FileList, kindOf } from './file-list'
 import type { FileShape, Kind, Modifiers } from './file-list'
 import { Icon } from './icons'
 import { StepMeter } from './montage-steps'
+import { Slices } from './slices'
 import type { ManifestFile, ManifestGroup } from './types'
 import { kindsSaid } from './kinds'
-import { dateLabel, getPictureUrl, hhmm, minFileMtime, shortDate, weekday } from './utils'
+import { dateLabel, hhmm, minFileMtime, shortDate, weekday } from './utils'
 
 /* A folder's files. By day, under headers that stay pinned while their files scroll by; as one list,
    all together. By jump, the jumps are cards side by side and one is open, its files listed under
@@ -198,17 +199,10 @@ const DaySection = ({
   )
 }
 
-/* A jump as a card: enough to tell it from the others at a glance — its first frame, when it
+/* A jump as a card: enough to tell it from the others at a glance — a strip of its pictures, when it
    started, which it is, what it holds and how far it has got. Choosing it lists its files under the
    cards; dropping files on it moves them into it; dragging it onto a folder files the whole jump. A
    day's loose files get a card too, which lists them but takes nothing, since they are in no jump. */
-/* the colours a picture's place is held in until the picture is there */
-const STRIP = [
-  'bg-[linear-gradient(135deg,#bcd8de,#dbeaec)]',
-  'bg-[linear-gradient(135deg,#c8dcc9,#e4efe2)]',
-  'bg-[linear-gradient(135deg,#d9d3ea,#ece9f5)]'
-]
-
 const JumpCard = ({
   section,
   open,
@@ -235,8 +229,8 @@ const JumpCard = ({
   const frozen = group ? jump.frozen.has(group.id) : false
   const over = group !== null && jump.overTarget === `group:${group.id}`
   const from = minFileMtime(section.files) ?? 0
-  /* three of its pictures, first to last, or none for what is on the storage only */
-  const shown = group?.freed ? [] : [...section.files].sort((a, b) => a.mtime - b.mtime).slice(0, 3)
+  /* its pictures, or none for what is on the storage only */
+  const shown = group?.freed ? [] : section.files
   const label = section.kind === 'jump' ? section.label : t`Loose files`
   const progress = group ? (jump.progress?.(group) ?? null) : null
   return (
@@ -271,46 +265,31 @@ const JumpCard = ({
           ? t`Click to list its files · ⌘/ctrl-click a second jump to compare the two · drop files here to move them into it, holding alt to copy them instead · drag onto a folder to file the whole jump`
           : t`Click to list its files`
       }
-      /* a jump is a white card: three of its pictures side by side, under them its name, when it was
+      /* a jump is a white card: a strip of its pictures across the top, under it its name, when it was
          and what it holds, and at the right what it still needs. The loose card is not a jump and
          must not pass for one: dashed, flat and on no picture */
-      className={`relative flex w-full flex-col gap-3 rounded-[20px] p-3 text-left ${
+      className={`relative flex w-full flex-col overflow-hidden text-left ${
         group
-          ? `${frozen ? 'cursor-pointer' : 'cursor-grab'} ${open ? 'bg-accent-soft' : 'bg-pane'}`
-          : 'h-[150px] cursor-pointer border-2 border-dashed border-line-strong bg-transparent text-ink-3 hover:border-ink-3'
+          ? `rounded-[18px] bg-pane ${frozen ? 'cursor-pointer' : 'cursor-grab'}`
+          : 'h-[150px] cursor-pointer gap-3 rounded-[20px] border-2 border-dashed border-line-strong bg-transparent p-3 text-ink-3 hover:border-ink-3'
       } ${
         over
           ? 'shadow-[0_0_0_3px_var(--color-pick)]'
           : open
-            ? 'shadow-[0_0_0_2px_var(--color-accent),0_10px_24px_rgba(14,122,143,0.14)]'
+            ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-accent),0_10px_22px_rgba(11,127,214,0.32)]'
             : group
-              ? 'shadow-[0_0_0_1px_var(--color-line)]'
+              ? 'shadow-soft'
               : ''
       }`}>
       {group ? (
         <>
-          <span className='pointer-events-none grid grid-cols-3 gap-1.5'>
-            {[0, 1, 2].map((n) => {
-              const file = shown[n]
-              return (
-                <i
-                  key={n}
-                  className={`relative block h-[62px] overflow-hidden rounded-[12px] ${STRIP[n]}`}>
-                  {file && (
-                    <img
-                      src={getPictureUrl(file, proxies[file.path], 320)}
-                      alt=''
-                      loading='lazy'
-                      decoding='async'
-                      draggable={false}
-                      className='absolute inset-0 block h-full w-full object-cover'
-                    />
-                  )}
-                </i>
-              )
-            })}
-          </span>
-          <span className='pointer-events-none flex items-center justify-between gap-2 px-1 pb-0.5'>
+          <Slices
+            files={shown}
+            proxies={proxies}
+            width={320}
+            className='h-[88px]'
+          />
+          <span className='pointer-events-none flex min-h-[58px] items-center justify-between gap-2 px-3.5 py-2'>
             <span className='min-w-0'>
               <b className='block truncate font-display text-[17px] font-semibold tracking-[-0.02em]'>
                 {label}
@@ -348,7 +327,11 @@ const JumpCard = ({
               )}
             </span>
           </span>
-          {progress && <StepMeter progress={progress} />}
+          {progress && (
+            <span className='px-3.5 pb-2.5'>
+              <StepMeter progress={progress} />
+            </span>
+          )}
         </>
       ) : (
         /* loose files share no one moment and no one picture: only how many there are */

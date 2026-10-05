@@ -794,10 +794,6 @@ msgstr "A copy cannot go to the bin — its original stays where it is"
 msgid "a copy of the film"
 msgstr "a copy of the film"
 
-#: app/components/inspector.tsx
-msgid "A frame from this montage, to tell who it is"
-msgstr "A frame from this montage, to tell who it is"
-
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
 msgstr "a jump"
@@ -2974,10 +2970,6 @@ msgstr "Named {stem}.….zip — you choose the end, or none."
 #: app/components/place-pane.tsx
 msgid "Narrow by name"
 msgstr "Narrow by name"
-
-#: app/components/places-tree.tsx
-msgid "new"
-msgstr "new"
 
 #: app/components/places-tree.tsx
 msgid "New destination"

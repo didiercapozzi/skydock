@@ -146,10 +146,12 @@ describe('the panel a montage is named on', () => {
     return { onName }
   }
 
-  test('shows frames off the clips, so there is something to name it from', async () => {
+  test('shows a strip of pictures of the clips, so there is something to name it from', async () => {
     await renderPanel(withFiles())
 
-    await expect.element(page.getByAltText(/frame from this montage/i).first()).toBeVisible()
+    await expect
+      .poll(() => document.querySelectorAll('[data-picture] img').length)
+      .toBeGreaterThan(0)
   })
 
   test('asks for the name while there is not one', async () => {

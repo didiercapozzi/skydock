@@ -12,6 +12,7 @@ const TOOL =
 const Menu = ({
   label,
   icon,
+  round = false,
   lead,
   side = 'right',
   children
@@ -19,6 +20,8 @@ const Menu = ({
   label: string
   /* drawn as this mark alone, the label its name, as a tool on the toolbar is */
   icon?: IconName
+  /* a round white button of its own rather than a tool of the toolbar, for the head of a page */
+  round?: boolean
   /* a mark before the label, on a button that shows its label */
   lead?: IconName
   /* which edge of the button the panel lines up with */
@@ -56,10 +59,14 @@ const Menu = ({
           aria-label={label}
           title={label}
           onClick={() => setOpen(!open)}
-          className={`${TOOL} w-[34px] justify-center px-0 ${open ? 'bg-well' : ''}`}>
+          className={
+            round
+              ? `inline-flex size-[42px] items-center justify-center rounded-full border-0 shadow-card hover:bg-accent-soft ${open ? 'bg-accent-soft' : 'bg-pane'}`
+              : `${TOOL} w-[34px] justify-center px-0 ${open ? 'bg-well' : ''}`
+          }>
           <Icon
             name={icon}
-            className='text-ink-2'
+            className={round ? 'text-accent' : 'text-ink-2'}
           />
         </button>
       ) : (
@@ -67,7 +74,7 @@ const Menu = ({
           type='button'
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className='inline-flex h-[30px] w-full items-center justify-center gap-1.5 rounded-[10px] bg-well px-3 text-[12.5px] font-bold hover:bg-line'>
+          className='inline-flex h-[30px] w-full items-center justify-center gap-1.5 rounded-full bg-pane px-3 text-[12.5px] font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
           {lead && (
             <Icon
               name={lead}

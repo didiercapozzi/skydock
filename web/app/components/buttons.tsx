@@ -25,7 +25,7 @@ const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-[11px] go-fill px-3.5 text-[13px] font-bold whitespace-nowrap text-white shadow-[0_6px_18px_color-mix(in_srgb,var(--color-accent)_38%,transparent)] hover:brightness-110 disabled:cursor-default disabled:opacity-45 disabled:shadow-none dark:text-[#03222b]'>
+    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-full go-fill px-4 text-[13px] font-bold whitespace-nowrap text-white shadow-[0_8px_18px_rgba(11,127,214,0.32)] hover:brightness-110 disabled:cursor-default disabled:opacity-45 disabled:shadow-none dark:text-[#03222b]'>
     {children}
   </button>
 )
@@ -38,8 +38,8 @@ const Mini = ({ children, title, disabled, type = 'button', form, onClick, press
     disabled={disabled}
     onClick={onClick}
     aria-pressed={pressed}
-    className={`inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[10px] px-3 text-[12.5px] font-bold whitespace-nowrap disabled:cursor-default disabled:opacity-40 ${
-      pressed ? 'bg-accent-soft text-accent-ink' : 'bg-well text-ink hover:bg-line'
+    className={`inline-flex h-[30px] items-center justify-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-bold whitespace-nowrap shadow-card disabled:cursor-default disabled:opacity-40 ${
+      pressed ? 'bg-accent-soft text-accent-ink' : 'bg-pane text-accent-ink hover:bg-accent-soft'
     }`}>
     {children}
   </button>
@@ -73,7 +73,7 @@ const Danger = ({
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className={`inline-flex items-center justify-center gap-1.5 rounded-[11px] bg-well font-bold whitespace-nowrap text-bin hover:bg-bin-soft disabled:cursor-default disabled:opacity-45 ${
+    className={`inline-flex items-center justify-center gap-1.5 rounded-full bg-pane font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft disabled:cursor-default disabled:opacity-45 ${
       size === 'go' ? 'h-[34px] px-3.5 text-[13px]' : 'h-[30px] px-3 text-[12.5px]'
     }`}>
     {children}
@@ -126,7 +126,7 @@ const Seg = <T extends string>({
   <span
     role='group'
     aria-label={label}
-    className={`h-9 gap-0.5 rounded-[12px] bg-well p-[3px] ${wide ? 'flex w-full' : 'inline-flex'}`}>
+    className={`h-9 gap-0.5 rounded-full bg-well p-[3px] ${wide ? 'flex w-full' : 'inline-flex'}`}>
     {options.map(([option, name, mark]) => (
       <button
         key={option}
@@ -135,10 +135,8 @@ const Seg = <T extends string>({
         aria-label={mark ? name : undefined}
         title={mark ? name : undefined}
         onClick={() => onPick(option)}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-[9px] text-[13.5px] font-semibold whitespace-nowrap ${wide ? 'flex-1' : mark ? 'w-[30px]' : 'px-[13px]'} ${
-          value === option
-            ? 'bg-pane text-accent-ink shadow-[0_0_0_1px_var(--color-line-strong),0_1px_2px_rgba(16,19,26,0.06)]'
-            : 'text-ink-2 hover:text-ink'
+        className={`inline-flex items-center justify-center gap-1.5 rounded-full text-[13.5px] font-semibold whitespace-nowrap ${wide ? 'flex-1' : mark ? 'w-[30px]' : 'px-[13px]'} ${
+          value === option ? 'bg-accent-soft text-accent-ink' : 'text-ink-2 hover:text-ink'
         }`}>
         {mark ?? name}
       </button>

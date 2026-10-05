@@ -794,10 +794,6 @@ msgstr "Eine Kopie kann nicht in den Papierkorb — ihr Original bleibt, wo es i
 msgid "a copy of the film"
 msgstr "eine Kopie des Films"
 
-#: app/components/inspector.tsx
-msgid "A frame from this montage, to tell who it is"
-msgstr "Ein Bild aus dieser Montage, um zu erkennen, wer es ist"
-
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
 msgstr "ein Sprung"
@@ -2974,10 +2970,6 @@ msgstr "Heißt {stem}.….zip — das Ende wählst du, oder keines."
 #: app/components/place-pane.tsx
 msgid "Narrow by name"
 msgstr "Nach Name eingrenzen"
-
-#: app/components/places-tree.tsx
-msgid "new"
-msgstr "neu"
 
 #: app/components/places-tree.tsx
 msgid "New destination"
