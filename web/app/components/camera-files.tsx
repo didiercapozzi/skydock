@@ -327,7 +327,7 @@ const CameraFiles = ({
             <span
               key={state}
               title={i18n._(STANDING[state].title)}
-              className={`flex flex-col gap-0.5 px-[22px] text-[12px] font-medium text-ink-3 ${at > 0 ? 'border-l border-line' : ''}`}>
+              className={`flex flex-col gap-0.5 px-[22px] text-[12px] font-medium text-ink-3 ${at > 0 ? 'border-l border-line-2' : ''}`}>
               <b
                 className={`font-display text-[26px] leading-none font-bold tracking-[-0.03em] tabular-nums ${STANDING[state].ink}`}>
                 {files.filter((f) => f.state === state).length}

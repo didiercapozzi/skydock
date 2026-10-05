@@ -18,7 +18,7 @@ const Choice = ({
   <button
     type='button'
     onClick={onChoose}
-    className='flex flex-col gap-1 rounded-[10px] border border-line bg-pane px-3 py-2.5 text-left hover:border-accent hover:bg-accent-soft'>
+    className='flex flex-col gap-1 rounded-[10px] border border-line-2 bg-pane px-3 py-2.5 text-left hover:border-accent hover:bg-accent-soft'>
     <b className='text-[13px] font-semibold text-ink'>{title}</b>
     <span className='text-[12px] text-ink-2'>
       <span className='text-changed'>✕</span> {forgets}

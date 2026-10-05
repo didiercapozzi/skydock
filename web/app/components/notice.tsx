@@ -22,7 +22,7 @@ const Notice = ({
   <p
     role={problem ? 'alert' : 'status'}
     className={`m-0 flex items-center gap-[9px] rounded-md border px-2.5 py-[7px] text-[12.5px] ${
-      problem ? 'border-local/40 bg-local-soft text-local' : 'border-line bg-rail text-ink-2'
+      problem ? 'border-local/40 bg-local-soft text-local' : 'border-line-2 bg-rail text-ink-2'
     } ${className}`}>
     {!problem && (
       <Icon

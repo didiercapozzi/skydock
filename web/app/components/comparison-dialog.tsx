@@ -320,7 +320,7 @@ const ComparisonDialog = ({
                 {t`Which date should the merged jump have? The chosen jump keeps its times.`}
               </p>
               <div className='space-y-2 mb-4'>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -332,7 +332,7 @@ const ComparisonDialog = ({
                     {leftGroup.label} — {getGroupDate(leftGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -344,7 +344,7 @@ const ComparisonDialog = ({
                     {rightGroup.label} — {getGroupDate(rightGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-[12px] border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -464,7 +464,7 @@ const ComparePanel = ({
     <div
       data-compare-side={side}
       className='flex-1 flex flex-col overflow-hidden min-w-0'>
-      <div className='border-b border-line bg-well px-3 py-2.5'>
+      <div className='border-b border-line-2 bg-well px-3 py-2.5'>
         <div className='flex items-center justify-between mb-2'>
           <div className='flex items-center gap-2'>
             <button
@@ -548,7 +548,7 @@ const ComparePanel = ({
       </div>
 
       {file && (
-        <div className='flex h-[320px] shrink-0 flex-col border-t border-line px-4 py-3'>
+        <div className='flex h-[320px] shrink-0 flex-col border-t border-line-2 px-4 py-3'>
           <div className='flex-1 min-h-0'>
             {renderPreview(
               file,

@@ -124,7 +124,7 @@ const StepTrail = ({
                     ? 'border-up bg-up text-white'
                     : now
                       ? 'border-accent bg-pane shadow-[0_0_0_3px_var(--color-accent-soft)]'
-                      : 'border-line bg-pane'
+                      : 'border-line-2 bg-pane'
                 }`}>
                 {step.done ? (
                   <Tick />
@@ -294,7 +294,7 @@ const StepLine = ({
                   ? 'border-up bg-up text-white'
                   : now
                     ? 'border-accent shadow-[0_0_0_4px_var(--color-accent-soft)]'
-                    : 'border-line text-ink-3'
+                    : 'border-line-2 text-ink-3'
               }`}>
               {step.done ? (
                 <Tick size={15} />

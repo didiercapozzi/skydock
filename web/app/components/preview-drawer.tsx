@@ -1194,7 +1194,7 @@ const PreviewDrawer = ({
                     </span>
                   </div>
                 </div>
-                <div className='flex flex-col gap-2.5 rounded-[14px] border border-line px-3.5 py-3'>
+                <div className='flex flex-col gap-2.5 rounded-[14px] border border-line-2 px-3.5 py-3'>
                   <div className='flex items-baseline justify-between'>
                     <span className='text-[12.5px] text-ink-2'>
                       {t`Keeps`} <V>{clock(Math.max(0, to - from))}</V> {t`of`} {clock(duration)}

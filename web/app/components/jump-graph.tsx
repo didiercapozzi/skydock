@@ -267,7 +267,7 @@ const JumpGraph = ({
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerCancel={handleUp}
-        className={`relative cursor-ew-resize touch-none overflow-hidden bg-well ${joined ? 'rounded-b-[12px] border-t border-line' : 'rounded-[12px]'}`}
+        className={`relative cursor-ew-resize touch-none overflow-hidden bg-well ${joined ? 'rounded-b-[12px] border-t border-line-2' : 'rounded-[12px]'}`}
         style={{ height: HEIGHT }}>
         <svg
           width='100%'

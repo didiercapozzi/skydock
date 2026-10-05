@@ -96,7 +96,7 @@ const HistoryDialog = ({
       ) : steps && steps.length === 0 ? (
         <p className='m-0 text-[12.5px] text-ink-3'>{t`Nothing to go back to yet.`}</p>
       ) : (
-        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-[10px] border border-line'>
+        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-[10px] border border-line-2'>
           {(steps ?? []).map((step) => (
             <li
               key={step.step}

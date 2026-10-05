@@ -64,7 +64,7 @@ const ShortcutsDialog = ({ onClose }: { onClose: () => void }) => {
               <div
                 key={key}
                 className='contents'>
-                <dt className='w-max rounded-[6px] border border-line bg-well px-1 text-[11px] leading-4 font-medium text-ink-2'>
+                <dt className='w-max rounded-[6px] border border-line-2 bg-well px-1 text-[11px] leading-4 font-medium text-ink-2'>
                   {key}
                 </dt>
                 <dd className='m-0 text-ink-2'>{does}</dd>

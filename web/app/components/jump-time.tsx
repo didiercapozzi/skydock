@@ -66,7 +66,7 @@ const JumpSpan = ({
         disabled={disabled}
         onClick={open}
         title={`${tip}\n${t`This jump runs from ${start} to ${end}`}`}
-        className='flex items-center gap-2.5 rounded-[10px] border border-line bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-well disabled:opacity-60'>
+        className='flex items-center gap-2.5 rounded-[10px] border border-line-2 bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-well disabled:opacity-60'>
         <b className='text-[20px] font-semibold tracking-[-0.02em] tabular-nums'>{hhmm(from)}</b>
         <span className='text-[11.5px] leading-normal text-ink-3'>
           {dateLabel(from)}

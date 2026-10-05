@@ -305,7 +305,7 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-[8] rounded-[18px] min-[781px]:rounded-r-none min-[781px]:rounded-b-none px-2.5 pb-3.5 shadow-[2px_0_10px_rgba(8,80,150,0.1)] dark:shadow-[2px_0_10px_rgba(0,0,0,0.3)] max-[780px]:pt-2 max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:pb-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
+      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-[8] rounded-[18px] min-[781px]:rounded-r-none min-[781px]:rounded-b-none px-2.5 pb-3.5 min-[781px]:pr-0 min-[781px]:border-r min-[781px]:border-edge max-[780px]:pt-2 max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:pb-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
       {/* the app's name, level with the header across from it */}
       <div className='flex h-14 flex-none items-center gap-2.5 px-2 max-[780px]:hidden'>
         <Mark size={32} />

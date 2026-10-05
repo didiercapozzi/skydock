@@ -189,7 +189,7 @@ const BoardHeader = ({
                 onPick={speakIn}
               />
             </SettingsRow>
-            <div className='flex flex-col border-t border-line pt-2'>
+            <div className='flex flex-col border-t border-line-2 pt-2'>
               <MenuItem
                 title={t`The editing templates a montage is made from — look them over, or bring one in`}
                 onClick={() => {

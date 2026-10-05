@@ -46,18 +46,12 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-none transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-start-2 ${
+        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-none min-[1101px]:border-l min-[1101px]:border-edge min-[1101px]:border-l min-[1101px]:border-edge transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-start-2 ${
           drawer ? '' : 'max-[1100px]:invisible max-[1100px]:translate-x-full'
         } ${column ? '' : 'min-[1101px]:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than
             being squeezed while the column closes */}
         <div className='relative flex min-h-full w-[338px] flex-col max-[1100px]:w-full'>
-          {/* the line that parts the panel from the work beside it: white, and starting under the
-              picture, which meets the header and the work with no line at all */}
-          <span
-            aria-hidden='true'
-            className='pointer-events-none absolute inset-y-0 left-0 z-10 w-0.5 bg-white dark:bg-line group-has-[[data-picture]]/side:top-[206px] max-[1100px]:hidden'
-          />
           {children}
         </div>
       </aside>
