@@ -71,19 +71,22 @@ describe('a file’s own link', () => {
 })
 
 describe('a file shown in the storage’s own web interface', () => {
-  test('is a link to File Station on that file, opened in a new tab', async () => {
+  test('opens File Station on that file, in a new tab', async () => {
     storageAnswers(folder)
+    const opened = vi.spyOn(window, 'open').mockReturnValue(null)
     await renderFolder(undefined, 'https://nas.local:5001/')
 
-    const row = page.getByRole('link', { name: /luc favre\.mp4/ })
+    const row = page.getByRole('button', { name: /luc favre\.mp4/ })
     await expect.element(row).toBeVisible()
-    const link = row.element()
-    expect(link.getAttribute('target')).toBe('_blank')
-    const href = link.getAttribute('href') ?? ''
-    expect(href.startsWith('https://nas.local:5001/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
-    expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toMatch(
+    await userEvent.click(row)
+
+    const [href, target] = opened.mock.calls[0] ?? []
+    expect(target).toBe('_blank')
+    expect(String(href).startsWith('https://nas.local:5001/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
+    expect(decodeURIComponent(decodeURIComponent(String(href).split('launchParam=')[1] ?? ''))).toMatch(
       new RegExp(`^openfile=${DIR}/`)
     )
+    opened.mockRestore()
   })
 
   test('is watched from a button of its own, on a video only', async () => {
@@ -102,7 +105,7 @@ describe('a file shown in the storage’s own web interface', () => {
     await renderFolder()
 
     await expect.element(page.getByText('luc favre.mp4')).toBeVisible()
-    await expect.element(page.getByRole('link', { name: /luc favre\.mp4/ })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: /luc favre\.mp4/ })).toBeVisible()
   })
 })
 
@@ -139,7 +142,8 @@ describe('a place’s folder on the storage', () => {
     storageAnswers(folder)
     await renderFolder()
 
-    await expect.element(page.getByRole('button', { name: /luc\.photos\.zip/ })).toBeDisabled()
+    await expect.element(page.getByText('luc.photos.zip')).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /luc\.photos\.zip/ })).not.toBeInTheDocument()
   })
 
   test('asks the storage again when told to look again', async () => {

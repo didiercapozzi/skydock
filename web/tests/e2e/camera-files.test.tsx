@@ -86,11 +86,11 @@ describe('a camera plugged in', () => {
     await expect.element(page.getByText('copied, not uploaded', { exact: true })).toBeVisible()
     await expect.element(page.getByText('not copied yet', { exact: true })).toBeVisible()
     await expect.element(page.getByText('in the bin', { exact: true })).toBeVisible()
-    await expect.element(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' })).toBeVisible()
-    await expect.element(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' })).toBeVisible()
-    await expect.element(page.getByRole('checkbox', { name: 'Pick DJI_0003.MP4' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Pick DJI_0001.MP4' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Pick DJI_0004.MP4' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Pick DJI_0003.MP4' })).toBeVisible()
     await expect
-      .element(page.getByRole('checkbox', { name: 'Pick DJI_0002.MP4' }))
+      .element(page.getByRole('button', { name: 'Pick DJI_0002.MP4' }))
       .not.toBeInTheDocument()
   })
 
@@ -102,7 +102,7 @@ describe('a camera plugged in', () => {
     await expect
       .element(page.getByRole('button', { name: /files? selected/ }))
       .not.toBeInTheDocument()
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0003.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0003.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Copy 1 file selected' }))
 
     await expect
@@ -163,11 +163,11 @@ describe('a camera plugged in', () => {
       createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
     )
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0003.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0003.MP4' }))
     await expect
       .element(page.getByRole('button', { name: /Delete \d+ files? from the camera/ }))
       .not.toBeInTheDocument()
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0001.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
     await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
 
@@ -181,7 +181,7 @@ describe('a camera plugged in', () => {
       createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack })
     )
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0001.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Copy 1 file back here' }))
 
     expect(onCopyBack).toHaveBeenCalledWith([`${MOUNT}/DCIM/DJI_0001.MP4`])
@@ -194,7 +194,7 @@ describe('a camera plugged in', () => {
       createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
     )
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0004.MP4' }))
     await expect.element(page.getByRole('button', { name: /back here/ })).not.toBeInTheDocument()
     await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
     await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
@@ -212,7 +212,7 @@ describe('a camera plugged in', () => {
     await render(
       createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
     )
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0004.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
     await userEvent.click(page.getByRole('button', { name: /Check and delete 1 file/ }))
 
@@ -237,8 +237,8 @@ describe('a camera plugged in', () => {
     await render(
       createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
     )
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0004.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0004.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Delete 2 files from the camera…' }))
     await userEvent.click(page.getByRole('button', { name: /Check and delete 2 files/ }))
 
@@ -268,7 +268,7 @@ describe('a camera plugged in', () => {
     const onNote = vi.fn()
     await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote, onCopyBack: () => {} }))
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
+    await userEvent.click(page.getByRole('button', { name: 'Pick DJI_0001.MP4' }))
     await userEvent.click(page.getByRole('button', { name: 'Delete 1 file from the camera…' }))
     await expect.element(page.getByRole('dialog', { name: 'Delete from the camera' })).toBeVisible()
     expect(sent).toEqual([])
@@ -341,9 +341,9 @@ describe('a camera read through KDE', () => {
     await expect.element(page.getByText('GOPR0001.MP4')).toBeVisible()
     await expect.element(page.getByText(/delete on the camera itself/)).toBeVisible()
     await expect
-      .element(page.getByRole('checkbox', { name: 'Pick GOPR0001.MP4' }))
+      .element(page.getByRole('button', { name: 'Pick GOPR0001.MP4' }))
       .not.toBeInTheDocument()
-    await expect.element(page.getByRole('checkbox', { name: 'Pick GOPR0002.MP4' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Pick GOPR0002.MP4' })).toBeVisible()
     await expect
       .element(page.getByRole('button', { name: /Delete .*from the camera/ }))
       .not.toBeInTheDocument()
@@ -412,8 +412,8 @@ describe('looking at a file from the camera', () => {
     await userEvent.click(page.getByRole('button', { name: 'Preview DJI_0001.MP4' }))
     await expect.poll(playing).not.toBe('')
     await expect
-      .element(page.getByRole('checkbox', { name: 'Pick DJI_0001.MP4' }))
-      .not.toBeChecked()
+      .element(page.getByRole('button', { name: 'Pick DJI_0001.MP4' }))
+      .toHaveAttribute('aria-pressed', 'false')
   })
 
   test('steps to the next and previous file with the buttons and the arrow keys', async () => {

@@ -2,6 +2,7 @@ import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
 import type { FileStatus } from '@skydock/scripts'
+import { State } from './file-row'
 
 type ShownStatus = FileStatus | 'changed'
 
@@ -19,28 +20,30 @@ const TITLES: Record<ShownStatus, MessageDescriptor> = {
   uploaded: msg`On the storage`
 }
 
-const CHIP: Record<ShownStatus, string> = {
-  local: 'bg-local-soft text-local before:bg-dot-local',
-  changed: 'bg-changed-soft text-changed before:shadow-ring-current',
-  processed: 'bg-proc-soft text-proc before:bg-current',
-  uploaded: 'bg-up-soft text-up before:bg-current'
+const TONE: Record<ShownStatus, string> = {
+  local: 'bg-local-soft text-local',
+  changed: 'bg-changed-soft text-changed',
+  processed: 'bg-proc-soft text-proc',
+  uploaded: 'bg-up-soft text-up'
 }
 
 const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 
 const StatusChip = ({ status, prepared = false }: { status: ShownStatus; prepared?: boolean }) =>
   prepared && status === 'processed' ? (
-    <span
-      title={i18n._(TITLES[status])}
-      className='inline-flex h-6 w-max items-center rounded-full bg-up-soft px-3 text-small font-semibold whitespace-nowrap text-up'>
+    <State
+      tone='bg-up-soft text-up'
+      dot={false}
+      title={i18n._(TITLES[status])}>
       {t`prepared`}
-    </span>
+    </State>
   ) : (
-    <span
-      title={i18n._(TITLES[status])}
-      className={`inline-flex h-6 w-max items-center gap-1.5 rounded-full px-3 text-small font-semibold whitespace-nowrap capitalize before:size-1.5 before:rounded-full before:content-[''] ${CHIP[status]}`}>
+    <State
+      tone={TONE[status]}
+      ring={status === 'changed'}
+      title={i18n._(TITLES[status])}>
       {i18n._(LABELS[status])}
-    </span>
+    </State>
   )
 
 export { StatusChip, statusName }
