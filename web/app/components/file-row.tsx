@@ -17,8 +17,14 @@ import type { IconName } from './icons'
 const COLUMNS = 'grid grid-cols-[22px_64px_minmax(0,1fr)_auto] items-center gap-x-3.5 px-3'
 
 /* The row's own frame. The one looked at is marked apart from the picked ones by a ring round it. */
-const frameOf = (picked: boolean, previewed: boolean, joined: boolean, clickable: boolean) =>
-  `${COLUMNS} w-full text-left [content-visibility:auto] ${
+const frameOf = (
+  picked: boolean,
+  previewed: boolean,
+  joined: boolean,
+  clickable: boolean,
+  menu: boolean
+) =>
+  `${COLUMNS} w-full text-left ${menu ? '' : '[content-visibility:auto]'} ${
     joined
       ? `h-13 rounded-control [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
           previewed || picked ? 'bg-accent-soft' : clickable ? 'hover:bg-well' : ''
@@ -147,6 +153,7 @@ const FileRow = ({
   meta,
   trailing,
   href,
+  menu = false,
   ...frame
 }: Frame & {
   picked?: boolean
@@ -163,6 +170,8 @@ const FileRow = ({
   meta?: ReactNode
   /* where it has got to, and what can be done to it from here */
   trailing?: ReactNode
+  /* a menu in the row opens over the rows below it, which a row kept out of drawing until it is seen would cut off */
+  menu?: boolean
 }) => {
   const Root: ElementType = href ? 'a' : 'div'
   return createElement(
@@ -170,7 +179,7 @@ const FileRow = ({
     {
       ...frame,
       ...(href ? { href, target: '_blank', rel: 'noreferrer' } : {}),
-      className: frameOf(picked, previewed, joined, Boolean(frame.onClick || href))
+      className: frameOf(picked, previewed, joined, Boolean(frame.onClick || href), menu)
     },
     locked ? (
       <Lock why={locked} />

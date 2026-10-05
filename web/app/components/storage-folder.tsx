@@ -18,6 +18,7 @@ import { FileRow, Mark, State } from './file-row'
 import { Icon } from './icons'
 import { ParcelCards } from './montage-card'
 import { Modal } from './modal'
+import { Menu, MenuItem } from './settings-menu'
 import { dateLabel, formatSize, hhmm } from './utils'
 
 /* what the storage answered about one file's link: the link it now has, or none */
@@ -59,29 +60,10 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
   </Modal>
 )
 
-/* a button's word as short as the row has room for, and in full to whoever hears it read out */
-const Short = ({ shown, said }: { shown: string; said: string }) => (
-  <>
-    <span aria-hidden='true'>{shown}</span>
-    <span className='sr-only'>{said}</span>
-  </>
-)
-
-/* One file handed out by a link of its own, or that link taken away. A link is a way in — anybody
-   holding it fetches that one file — so what it does is said on the button rather than in a dialog
-   nobody reads, and taking it away again is one press. The link is in the tooltip as well as the
-   clipboard, so a browser that refuses the clipboard still shows it. */
-const LinkButtons = ({
-  file,
-  shareUrl,
-  busy,
-  onLink
-}: {
-  file: StorageFile
-  shareUrl: string | null
-  busy: boolean
-  onLink: (file: StorageFile, intent: 'create' | 'remove') => void
-}) => {
+/* A file with a link out says so on its row, and pressing the mark copies the link. The place is kept on
+   rows that have none, so the words beside it stand in the same columns down the list. The link is in the
+   tooltip as well as the clipboard, so a browser that refuses the clipboard still shows it. */
+const LinkMark = ({ shareUrl }: { shareUrl: string | null }) => {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     if (!shareUrl) return
@@ -90,54 +72,65 @@ const LinkButtons = ({
       setCopied(true)
       setTimeout(() => setCopied(false), 1500)
     } catch {
-      /* the link is in the button's tooltip either way */
+      /* the link is in the mark's tooltip either way */
     }
   }
-  if (!shareUrl)
-    return (
-      <Mini
-        disabled={busy}
-        title={t`Give this one file a link — anybody holding it can fetch it, and nothing else in the folder`}
-        onClick={() => onLink(file, 'create')}>
-        <Icon
-          name='link'
-          size={14}
-          className='text-ink-2'
-        />
-        {busy ? (
-          t`Asking…`
-        ) : (
-          <Short
-            shown={t`Link`}
-            said={t`Create a link`}
-          />
-        )}
-      </Mini>
-    )
   return (
-    <>
-      <Mini
-        title={shareUrl}
-        onClick={() => void copy()}>
-        {copied ? (
-          `✓ ${t`copied`}`
-        ) : (
-          <Short
-            shown={t`Copy link`}
-            said={t`Copy the link`}
+    <span className='flex w-control-sm flex-none justify-center'>
+      {shareUrl && (
+        <button
+          type='button'
+          aria-label={t`Copy the link`}
+          title={shareUrl}
+          onClick={() => void copy()}
+          className='inline-flex size-control-sm cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 hover:bg-well'>
+          <Icon
+            name={copied ? 'check' : 'link'}
+            size={14}
+            className={copied ? 'text-up' : 'text-accent'}
           />
-        )}
-      </Mini>
-      <Mini
-        disabled={busy}
-        title={t`Take the link away — the file stays where it is`}
-        onClick={() => onLink(file, 'remove')}>
-        <Short
-          shown={t`Take link away`}
-          said={t`Remove the link`}
-        />
-      </Mini>
-    </>
+        </button>
+      )}
+    </span>
+  )
+}
+
+/* One file handed out by a link of its own, or that link taken away. A link is a way in — anybody
+   holding it fetches that one file — so what it does is said on the item rather than in a dialog
+   nobody reads, and taking it away again is one press. */
+const LinkItems = ({
+  file,
+  shareUrl,
+  busy,
+  onLink,
+  close
+}: {
+  file: StorageFile
+  shareUrl: string | null
+  busy: boolean
+  onLink: (file: StorageFile, intent: 'create' | 'remove') => void
+  close: () => void
+}) => {
+  const link = (intent: 'create' | 'remove') => {
+    onLink(file, intent)
+    close()
+  }
+  return shareUrl ? (
+    <MenuItem
+      icon='link'
+      disabled={busy}
+      title={t`Take the link away — the file stays where it is`}
+      onClick={() => link('remove')}>
+      {t`Remove the link`}
+    </MenuItem>
+  ) : (
+    <MenuItem
+      icon='link'
+      disabled={busy}
+      title={t`Give this one file a link — anybody holding it can fetch it, and nothing else in the folder`}
+      onClick={() => link('create')}>
+      {busy ? t`Asking…` : t`Create a link`}
+    </MenuItem>
   )
 }
 
@@ -170,8 +163,9 @@ const useFileActions = (onProblem?: (problem: string) => void) => {
 }
 type FileActionsState = ReturnType<typeof useFileActions>
 
-/* What can be done to one file up there, as buttons beside it: watch it, if it is a film; give it a link,
-   copy it, or take it away. */
+/* What can be done to one file up there: a film is played from a button on its row, a link it has is said by
+   a mark that copies it, and the rest — fetching it back, giving a link or taking it away — is behind a ⋯
+   menu, so a row stays a name and a few marks however much there is to do. */
 const FileButtons = ({
   file,
   actions,
@@ -189,44 +183,64 @@ const FileButtons = ({
   /* whether this machine holds it too, where that is known; only what is not can be brought back */
   here?: boolean
   onBringBack?: (file: StorageFile) => void
-}) => (
-  <>
-    {/* only a video is watched */}
-    {watch && file.kind === 'video' && (
-      <Mini
-        title={t`Watch it from the storage`}
-        onClick={() => actions.setPlaying(file)}>
-        <Icon
-          name='play'
-          size={12}
-          className='text-ink-2'
-        />
-        {t`Watch`}
-      </Mini>
-    )}
-    {/* what is only up there is footage this machine no longer holds, and this is the way back */}
-    {onBringBack && here === false && (
-      <Mini
-        title={t`Fetch it back onto this machine`}
-        onClick={() => onBringBack(file)}>
-        <Icon
-          name='back'
-          size={14}
-          className='text-ink-2'
-        />
-        {t`Bring back`}
-      </Mini>
-    )}
-    {links && (
-      <LinkButtons
-        file={file}
-        shareUrl={file.path in actions.linked ? (actions.linked[file.path] ?? null) : file.shareUrl}
-        busy={actions.asking === file.path}
-        onLink={(one, intent) => void actions.setLink(one, intent)}
-      />
-    )}
-  </>
-)
+}) => {
+  /* what is only up there is footage this machine no longer holds, and this is the way back */
+  const bringBack = onBringBack && here === false
+  const shareUrl = file.path in actions.linked ? (actions.linked[file.path] ?? null) : file.shareUrl
+  return (
+    <>
+      {/* a link that is out there is said on the row, whatever the menu is closed on */}
+      {links && <LinkMark shareUrl={shareUrl} />}
+      {/* only a video is watched; the place of the button is kept on the rest */}
+      {watch &&
+        (file.kind === 'video' ? (
+          <Mini
+            title={t`Watch it from the storage`}
+            onClick={() => actions.setPlaying(file)}>
+            <Icon
+              name='play'
+              size={12}
+              className='text-ink-2'
+            />
+            <span className='sr-only'>{t`Watch`}</span>
+          </Mini>
+        ) : (
+          /* as wide as the play button it stands in for */
+          <span className='w-10 flex-none' />
+        ))}
+      {(bringBack || links) && (
+        <Menu
+          label={t`More`}
+          icon='more'>
+          {(close) => (
+            <>
+              {bringBack && (
+                <MenuItem
+                  icon='back'
+                  title={t`Fetch it back onto this machine`}
+                  onClick={() => {
+                    onBringBack(file)
+                    close()
+                  }}>
+                  {t`Bring back`}
+                </MenuItem>
+              )}
+              {links && (
+                <LinkItems
+                  file={file}
+                  shareUrl={shareUrl}
+                  busy={actions.asking === file.path}
+                  onLink={(one, intent) => void actions.setLink(one, intent)}
+                  close={close}
+                />
+              )}
+            </>
+          )}
+        </Menu>
+      )}
+    </>
+  )
+}
 
 /* What a place's folder on the storage holds, under the place's own files: a dropzone's folder, a
    passenger's — listed and played from here whether or not any of it is still on this machine. Each
@@ -323,9 +337,13 @@ const StorageFolder = ({
                   ? {
                       role: 'button',
                       tabIndex: 0,
-                      onClick: open,
+                      /* a button on the row — play, the menu and what is in it — is not the row pressed */
+                      onClick: (e: React.MouseEvent<HTMLElement>) => {
+                        if (!(e.target instanceof Element && e.target.closest('button'))) open()
+                      },
                       onKeyDown: (e: React.KeyboardEvent<HTMLElement>) => {
-                        if (e.key === 'Enter') e.currentTarget.click()
+                        if (e.key === 'Enter' && e.target === e.currentTarget)
+                          e.currentTarget.click()
                       }
                     }
                   : {})}
@@ -336,6 +354,7 @@ const StorageFolder = ({
                       ? t`Play it from the storage`
                       : t`Kept on the storage`
                 }
+                menu
                 picture={<Mark icon='storage' />}
                 name={file.name}
                 meta={
@@ -388,7 +407,7 @@ const StorageFolder = ({
 }
 
 /* How a montage was handed over — the cards of each folder up there — with, beside each item the
-   folder still holds, what can be done to it: watch it, give it a link. The folder is
+   folder still holds, what can be done to it: play it, see and copy its link, and in a menu give or take away one. The folder is
    asked of the storage for that, and its files are not listed a second time under the cards. */
 const StorageCards = ({
   where,
@@ -399,7 +418,7 @@ const StorageCards = ({
 }: {
   where: StorageWhere
   stamp?: unknown
-  /* no link buttons on the files: the montage's link is its panel's */
+  /* no link marks or link items on the files: the montage's link is its panel's */
   quiet?: boolean
   onProblem?: (problem: string) => void
   children: (itemActions: (dir: string, name: string) => React.ReactNode) => React.ReactNode

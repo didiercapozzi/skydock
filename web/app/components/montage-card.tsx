@@ -714,8 +714,8 @@ const NasCard = ({
      that file chosen */
   const dsm = dsmHost ? dsmFolderUrl(dsmHost, parcel.dir) : null
   return (
-    <div className='mt-2.5 overflow-hidden rounded-card shadow-hairline'>
-      <div className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-2.75 text-body'>
+    <div className='mt-2.5 rounded-card shadow-hairline'>
+      <div className='flex flex-wrap items-center gap-2.5 rounded-t-card bg-well px-3.5 py-2.75 text-body'>
         {parcel.title && <b className='font-bold'>{parcel.title}</b>}
         {dsm ? (
           <a

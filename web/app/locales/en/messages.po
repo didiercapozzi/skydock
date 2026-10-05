@@ -93,9 +93,10 @@ msgstr "{0, plural, one {# file it uses is not here: {missing}. The edit can sta
 msgid "{0, plural, one {# file, on the storage} other {# files, on the storage}}"
 msgstr "{0, plural, one {# file, on the storage} other {# files, on the storage}}"
 
+#. placeholder {0}: batch.files.length
 #. placeholder {0}: files.length
 #. placeholder {0}: folder.files.length
-#. placeholder {0}: lane.length
+#: app/components/bin-files.tsx
 #: app/components/delivered-list.tsx
 #: app/components/file-browser.tsx
 #: app/components/file-list.tsx
@@ -1347,10 +1348,6 @@ msgstr "Connecting again asks for the password — and for a code off your phone
 msgid "Connecting…"
 msgstr "Connecting…"
 
-#: app/components/storage-folder.tsx
-msgid "copied"
-msgstr "copied"
-
 #: app/components/jobs-panel.tsx
 msgid "Copied back"
 msgstr "Copied back"
@@ -1455,7 +1452,6 @@ msgstr "Copy into montage"
 #: app/components/email-dialog.tsx
 #: app/components/montage-card.tsx
 #: app/components/montage-panel.tsx
-#: app/components/storage-folder.tsx
 msgid "Copy link"
 msgstr "Copy link"
 
@@ -2002,10 +1998,6 @@ msgstr "Fetching"
 #: app/helpers/parcels.ts
 msgid "file"
 msgstr "file"
-
-#: app/components/bin-files.tsx
-msgid "File"
-msgstr "File"
 
 #: app/components/comparison-dialog.tsx
 msgid "File {position} of {fileCount}:"
@@ -2672,7 +2664,6 @@ msgstr "Light"
 #: app/components/email-dialog.tsx
 #: app/components/montage-panel.tsx
 #: app/components/montage-view.tsx
-#: app/components/storage-folder.tsx
 msgid "Link"
 msgstr "Link"
 
@@ -2892,6 +2883,7 @@ msgid "Montages that are done: emailed, and freed from this machine — only the
 msgstr "Montages that are done: emailed, and freed from this machine — only the storage holds them"
 
 #: app/components/page-head.tsx
+#: app/components/storage-folder.tsx
 msgid "More"
 msgstr "More"
 
@@ -3266,10 +3258,6 @@ msgstr "On the camera"
 msgid "On the camera {camera}"
 msgstr "On the camera {camera}"
 
-#: app/components/camera-files.tsx
-msgid "On the card"
-msgstr "On the card"
-
 #: app/components/preview-drawer.tsx
 msgid "On the file now"
 msgstr "On the file now"
@@ -3469,6 +3457,7 @@ msgid "Photos"
 msgstr "Photos"
 
 #: app/components/file-list.tsx
+#: app/components/file-row.tsx
 msgid "Pick"
 msgstr "Pick"
 
@@ -4064,8 +4053,6 @@ msgstr "Shares"
 msgid "Shift + ↑ ↓"
 msgstr "Shift + ↑ ↓"
 
-#: app/components/bin-files.tsx
-#: app/components/camera-files.tsx
 #: app/components/inspector.tsx
 #: app/components/preview-drawer.tsx
 msgid "Shot"
@@ -4130,8 +4117,6 @@ msgstr "Show what is inside"
 msgid "Shown as it will arrive — write in it; the signature stays for every email"
 msgstr "Shown as it will arrive — write in it; the signature stays for every email"
 
-#: app/components/bin-files.tsx
-#: app/components/camera-files.tsx
 #: app/components/inspector.tsx
 msgid "Size"
 msgstr "Size"
@@ -4320,10 +4305,6 @@ msgstr "Take {0} out of {1}"
 #: app/components/upload-dialog.tsx
 msgid "Take {0} out of {name}"
 msgstr "Take {0} out of {name}"
-
-#: app/components/storage-folder.tsx
-msgid "Take link away"
-msgstr "Take link away"
 
 #: app/components/storage-folder.tsx
 msgid "Take the link away — the file stays where it is"
@@ -4928,6 +4909,7 @@ msgid "unknown reason"
 msgstr "unknown reason"
 
 #: app/components/file-list.tsx
+#: app/components/file-row.tsx
 msgid "Unpick"
 msgstr "Unpick"
 
@@ -5163,10 +5145,6 @@ msgstr "Where in {0}"
 #: app/components/upload-dialog.tsx
 msgid "Where it goes"
 msgstr "Where it goes"
-
-#: app/components/camera-files.tsx
-msgid "Where it has got to"
-msgstr "Where it has got to"
 
 #: app/components/delivered-list.tsx
 msgid "Where its files are on the storage: each folder, what is in it and how big"

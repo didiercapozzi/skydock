@@ -126,6 +126,63 @@ describe('a destination’s storage tab', () => {
     await expect.element(region.getByText('video · only there')).toBeVisible()
   })
 
+  /* the list is a row of names, with one button on a film's row — play — and everything else behind a ⋯ menu */
+  test('keeps one play button on each film and the rest behind a ⋯ menu', async () => {
+    await render(
+      createElement(FolderCard, {
+        listing,
+        dsmHost: 'https://nas.local:5001',
+        hereToo: new Set(['yverdon_20260927_120500.mp4']),
+        onAgain: () => {},
+        onBringBack: () => {}
+      })
+    )
+
+    const region = page.getByRole('region', { name: 'On the storage' })
+    await expect.element(region.getByRole('button', { name: 'Watch' }).first()).toBeVisible()
+    expect(region.getByRole('button', { name: 'Watch' }).elements()).toHaveLength(2)
+    expect(region.getByRole('button', { name: 'Bring back' }).elements()).toHaveLength(0)
+    expect(region.getByRole('button', { name: 'Create a link' }).elements()).toHaveLength(0)
+
+    await userEvent.click(region.getByRole('button', { name: 'More' }).nth(1))
+    await expect.element(region.getByRole('button', { name: 'Bring back' })).toBeVisible()
+    await expect.element(region.getByRole('button', { name: 'Create a link' })).toBeVisible()
+  })
+
+  /* a row with a link and a row without keep their words in the same columns */
+  test('keeps the sizes in line whether or not a row has a link', async () => {
+    await render(
+      createElement(FolderCard, {
+        listing: {
+          ok: true as const,
+          dir: DIR,
+          files: [
+            { ...there('with_a_link.mp4'), shareUrl: 'https://nas.local/sharing/abc' },
+            there('without.mp4'),
+            there('a_photo.jpg', 'photo')
+          ]
+        },
+        dsmHost: 'https://nas.local:5001',
+        onAgain: () => {}
+      })
+    )
+
+    const sizes = page.getByRole('region', { name: 'On the storage' }).getByText('503 MB').elements()
+    expect(sizes).toHaveLength(3)
+    const edges = sizes.map((size) => size.getBoundingClientRect().right)
+    for (const edge of edges) expect(edge).toBeCloseTo(edges[0]!, 0)
+  })
+
+  /* the menu of the last row opens over the foot of the card, and is whole there */
+  test('opens the menu of the last row whole, not cut off by the card', async () => {
+    await card()
+
+    await userEvent.click(page.getByRole('button', { name: 'More' }).nth(1))
+    const item = page.getByRole('button', { name: 'Create a link' }).element()
+    const at = item.getBoundingClientRect()
+    expect(document.elementFromPoint(at.left + at.width / 2, at.top + at.height / 2)).toBe(item)
+  })
+
   test('can bring back only a file that is only up there', async () => {
     const asked: string[] = []
     await render(
@@ -138,11 +195,12 @@ describe('a destination’s storage tab', () => {
       })
     )
 
-    /* one button: the file that is here too has none */
-    const buttons = page.getByRole('button', { name: 'Bring back' })
-    await expect.element(buttons.first()).toBeVisible()
-    expect(buttons.elements()).toHaveLength(1)
-    await userEvent.click(buttons.first())
+    /* the file that is here too has none in its menu */
+    await userEvent.click(page.getByRole('button', { name: 'More' }).first())
+    expect(page.getByRole('button', { name: 'Bring back' }).elements()).toHaveLength(0)
+    await userEvent.keyboard('{Escape}')
+    await userEvent.click(page.getByRole('button', { name: 'More' }).nth(1))
+    await userEvent.click(page.getByRole('button', { name: 'Bring back' }))
     expect(asked).toEqual(['only_there.mp4'])
   })
 
