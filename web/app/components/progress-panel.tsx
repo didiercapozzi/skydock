@@ -46,7 +46,7 @@ const ofSize = (part: number, bytes: number) => {
 const underWay = (doing: string, name: string) => t`${doing} ${name}`
 
 const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; opened: boolean }) => (
-  <ol className='m-0 flex min-h-0 flex-1 list-none flex-col gap-0.5 overflow-y-auto border-t border-line-2 p-0 pt-[7px] font-mono text-[11px] text-ink-2'>
+  <ol className='m-0 flex min-h-0 flex-1 list-none flex-col gap-0.5 overflow-y-auto border-t border-line-2 p-0 pt-1.75 font-mono text-micro text-ink-2'>
     {rows.map((row) => (
       <li key={row.key}>
         <span className='flex items-baseline gap-3'>
@@ -61,18 +61,18 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
               target='_blank'
               rel='noreferrer'
               title={t`Show its folder in the storage’s own web interface, in a new tab`}
-              className='inline-flex h-[22px] flex-none items-center rounded-full bg-accent px-2.5 font-sans text-[11px] font-bold whitespace-nowrap text-white no-underline hover:opacity-90'>
+              className='inline-flex h-chip flex-none items-center rounded-full bg-accent px-2.5 font-sans text-micro font-bold whitespace-nowrap text-white no-underline hover:opacity-90'>
               {t`Open in DSM`}
             </a>
           )}
           {opened && row.note !== stateOf(row.at) && (
             <span
-              className={`flex-none text-right font-sans text-[11px] ${row.at === 'skipped' && row.note ? '' : 'w-[5.5rem]'} ${TONE[row.at]}`}>
+              className={`flex-none text-right font-sans text-micro ${row.at === 'skipped' && row.note ? '' : 'w-22'} ${TONE[row.at]}`}>
               {row.at === 'skipped' && row.note ? row.note : stateOf(row.at)}
             </span>
           )}
           <span
-            className={`flex-none text-right tabular-nums ${opened ? 'w-[4.5rem]' : ''} ${TONE[row.at]}`}>
+            className={`flex-none text-right tabular-nums ${opened ? 'w-18' : ''} ${TONE[row.at]}`}>
             {(opened && row.at === 'skipped' ? undefined : row.note) ??
               (row.at === 'now' && (row.part ?? 0) > 0
                 ? ofSize(row.part ?? 0, row.size)
@@ -82,7 +82,7 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
           </span>
         </span>
         {opened && row.title && row.title !== row.name && (
-          <span className='block text-[10.5px] break-all text-ink-3'>{row.title}</span>
+          <span className='block text-micro break-all text-ink-3'>{row.title}</span>
         )}
         {row.at === 'now' && (
           <span
@@ -91,7 +91,7 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round((row.part ?? 0) * 100)}
-            className='mt-[3px] mb-[2px] flex h-[3px] overflow-hidden rounded-[2px] bg-line'>
+            className='mt-0.75 mb-0.5 flex h-0.75 overflow-hidden rounded-bar bg-line'>
             <i
               className={`block h-full bg-accent transition-[width] duration-200`}
               style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
@@ -150,7 +150,7 @@ const ProgressPanel = ({
   return (
     <aside
       aria-label={label}
-      className={`flex flex-col gap-2 rounded-[18px] bg-pane px-4 py-3.5 text-ink shadow-float ${
+      className={`flex flex-col gap-2 rounded-panel bg-pane px-4 py-3.5 text-ink shadow-float ${
         opened
           ? 'max-h-[min(78vh,720px)] w-[min(760px,calc(100vw-2rem))]'
           : 'max-h-[min(440px,60vh)] w-[min(330px,calc(100vw-2rem))]'
@@ -163,11 +163,11 @@ const ProgressPanel = ({
         />
         <b
           title={title}
-          className='min-w-0 flex-1 truncate font-display text-[15px] font-bold tracking-[-0.02em]'>
+          className='min-w-0 flex-1 truncate font-display text-title font-bold tracking-title'>
           {title}
         </b>
         {folded && count && (
-          <span className='flex-none font-mono text-[11px] text-ink-3 tabular-nums'>{count}</span>
+          <span className='flex-none font-mono text-micro text-ink-3 tabular-nums'>{count}</span>
         )}
         {action}
         <button
@@ -179,7 +179,7 @@ const ProgressPanel = ({
             setOpened(!opened)
             setFolded(false)
           }}
-          className='grid size-7 flex-none place-items-center rounded-[9px] border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink'>
+          className='tool-button'>
           <Icon
             name={opened ? 'restore' : 'maximise'}
             size={14}
@@ -191,7 +191,7 @@ const ProgressPanel = ({
           aria-label={folded ? t`Show the list` : t`Hide the list`}
           title={folded ? t`Show the list` : t`Hide the list`}
           onClick={() => setFolded(!folded)}
-          className='grid size-7 flex-none place-items-center rounded-[9px] border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink'>
+          className='tool-button'>
           <svg
             aria-hidden='true'
             viewBox='0 0 16 16'
@@ -214,13 +214,13 @@ const ProgressPanel = ({
             aria-valuemax={100}
             aria-valuenow={percent}
             title={barTitle}
-            className='flex h-1 flex-none overflow-hidden rounded-[2px] bg-line'>
+            className='flex h-1 flex-none overflow-hidden rounded-bar bg-line'>
             <i
               className='block h-full bg-accent transition-[width] duration-200'
               style={{ width: `${percent}%` }}
             />
           </div>
-          <div className='flex items-baseline justify-between gap-3 text-[11.5px] font-medium text-ink-3'>
+          <div className='flex items-baseline justify-between gap-3 text-micro font-medium text-ink-3'>
             <span className='min-w-0'>{summary ?? barTitle}</span>
             <span className='flex-none font-mono tabular-nums'>{percent}%</span>
           </div>

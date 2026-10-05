@@ -19,15 +19,13 @@ import type { ManifestGroup } from './types'
 import { dateLabel, dayShort, hhmm, minFileMtime, shortDate } from './utils'
 
 const Line = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className='flex min-w-0 items-baseline justify-between gap-3 border-t border-line-2 py-2.5 text-[14px] first:border-t-0'>
+  <div className='flex min-w-0 items-baseline justify-between gap-3 border-t border-line-2 py-2.5 text-lead first:border-t-0'>
     <span className='flex-none text-ink-3'>{label}</span>
     <b className='min-w-0 truncate text-right'>{children}</b>
   </div>
 )
 
-const Heading = ({ children }: { children: string }) => (
-  <h3 className='m-0 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>{children}</h3>
-)
+const Heading = ({ children }: { children: string }) => <h3 className='m-0 eyebrow'>{children}</h3>
 
 const MontagePanel = ({
   group,
@@ -106,7 +104,7 @@ const MontagePanel = ({
                 {shareUrl ? (
                   <>
                     {!group.freed && (
-                      <div className='truncate border-t border-line-2 pt-2.5 font-mono text-[12px]'>
+                      <div className='truncate border-t border-line-2 pt-2.5 font-mono text-small'>
                         {shareUrl.replace(/^https?:\/\/[^/]+/, '…')}
                       </div>
                     )}
@@ -128,7 +126,7 @@ const MontagePanel = ({
                   </>
                 ) : (
                   <span className='flex items-center gap-3'>
-                    <span className='text-[13px] text-ink-3'>{t`No link`}</span>
+                    <span className='text-body text-ink-3'>{t`No link`}</span>
                     <Mini
                       disabled={busy}
                       title={t`Make a link to its folder, to send`}
@@ -146,7 +144,7 @@ const MontagePanel = ({
                 {shareUrl ? (
                   <>
                     {!group.freed && (
-                      <div className='truncate border-t border-line-2 pt-2.5 font-mono text-[12px]'>
+                      <div className='truncate border-t border-line-2 pt-2.5 font-mono text-small'>
                         {shareUrl.replace(/^https?:\/\/[^/]+/, '…')}
                       </div>
                     )}
@@ -168,7 +166,7 @@ const MontagePanel = ({
                   </>
                 ) : (
                   <span className='flex items-center gap-3'>
-                    <span className='text-[13px] text-ink-3'>{t`No link`}</span>
+                    <span className='text-body text-ink-3'>{t`No link`}</span>
                     <Mini
                       disabled={busy}
                       title={t`Make a link to its folder, to send`}
@@ -199,7 +197,7 @@ const MontagePanel = ({
           )}
           <div className='mt-auto px-6 pt-4 pb-6'>
             {group.freed ? (
-              <p className='m-0 text-[12px] text-ink-3'>
+              <p className='m-0 text-small text-ink-3'>
                 {t`Bring back fetches one file onto this machine again. Nothing is deleted from the storage.`}
               </p>
             ) : (
@@ -227,12 +225,12 @@ const MontagePanel = ({
                 onShift={onShift}
               />
             ) : (
-              <span className='text-[13px] tabular-nums'>{`${dateLabel(from)} ${hhmm(from)}`}</span>
+              <span className='text-body tabular-nums'>{`${dateLabel(from)} ${hhmm(from)}`}</span>
             )}
           </Part>
           {locked && locked !== UPLOADED_LOCKED && (
             <Part>
-              <p className='m-0 flex gap-2.5 rounded-[12px] bg-well px-3 py-2.5 text-[12px] text-ink-2'>
+              <p className='m-0 flex gap-2.5 rounded-control bg-well px-3 py-2.5 text-small text-ink-2'>
                 {locked}
               </p>
             </Part>
@@ -253,7 +251,7 @@ const MontagePanel = ({
               <div>
                 <Line label={t`Name`}>{who}</Line>
                 <Line label={t`Folder`}>
-                  <span className='font-mono text-[12px] font-medium'>{slugOf(who)}</span>
+                  <span className='font-mono text-small font-medium'>{slugOf(who)}</span>
                 </Line>
                 {!locked && (
                   <div className='pt-1'>

@@ -71,13 +71,13 @@ const copyText = async (text: string) => {
 
 type EmailSubject = EmailFacts & { shareUrl: string }
 
-const EYEBROW = 'text-[11.5px] font-bold text-ink-3'
+const EYEBROW = 'text-micro font-bold text-ink-3'
 const FIELD =
-  'h-[38px] min-w-0 flex-1 rounded-[10px] border-0 bg-well px-3 text-[13px] text-ink placeholder:font-normal placeholder:text-ink-3'
+  'h-9.5 min-w-0 flex-1 rounded-control border-0 bg-well px-3 text-body text-ink placeholder:font-normal placeholder:text-ink-3'
 const TOOL =
-  'grid h-7 w-7 place-items-center rounded-[9px] text-[13px] text-ink-2 hover:bg-well hover:text-ink'
+  'grid h-7 w-7 place-items-center rounded-control text-body text-ink-2 hover:bg-well hover:text-ink'
 const QUIET =
-  'inline-flex h-7 items-center rounded-[9px] px-[9px] text-[12.5px] font-medium text-ink-2 hover:bg-well hover:text-ink'
+  'inline-flex h-7 items-center rounded-control px-2.25 text-body font-medium text-ink-2 hover:bg-well hover:text-ink'
 
 const sentLabel = (at: number) => new Date(at * 1000).toLocaleDateString('de-CH')
 
@@ -306,13 +306,13 @@ const EmailDialog = ({
         footer={
           writingTemplate ? (
             <>
-              <span className='text-[11.5px] text-ink-3'>{t`Kept as it is written, for every email.`}</span>
+              <span className='text-micro text-ink-3'>{t`Kept as it is written, for every email.`}</span>
               <Spacer />
               <Go onClick={closeTemplate}>{t`Done — back to this email`}</Go>
             </>
           ) : (
             <>
-              <span className='min-w-0 text-[11.5px] leading-normal text-ink-3'>
+              <span className='min-w-0 text-micro leading-normal text-ink-3'>
                 {t`SkyDock sends nothing: it copies the email and opens a new message with the address and subject filled in. Click into it, paste (Ctrl+V, or ⌘V on a Mac) and press Send.`}
               </span>
               <Spacer />
@@ -339,7 +339,7 @@ const EmailDialog = ({
           )
         }>
         <div className='grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_340px]'>
-          <div className='flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-line-2 px-6 py-[18px]'>
+          <div className='flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-line-2 px-6 py-4.5'>
             <label className='flex items-center gap-3.5'>
               <span className={`${EYEBROW} w-11 flex-none`}>{t`To`}</span>
               <input
@@ -352,7 +352,7 @@ const EmailDialog = ({
               />
             </label>
             {writingTemplate && (
-              <p className='m-0 rounded-r-md border-l-[3px] border-accent bg-accent-soft px-3 py-[9px] text-[12px] text-ink-2'>
+              <p className='m-0 rounded-r-chip border-l-3 border-accent bg-accent-soft px-3 py-2.25 text-small text-ink-2'>
                 <b className='text-ink'>{t`The template for every email.`}</b>{' '}
                 {t`What is written here is kept on this machine and drafts every email; each`}{' '}
                 {'{variable}'}{' '}
@@ -370,7 +370,7 @@ const EmailDialog = ({
                 className={`${FIELD} font-semibold`}
               />
             </label>
-            <div className='flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-[16px] border border-line-2'>
+            <div className='flex min-h-75 flex-1 flex-col overflow-hidden rounded-card border border-line-2'>
               <div className='flex flex-none flex-wrap items-center gap-0.5 border-b border-line-2 bg-well px-2 py-1.5'>
                 <span
                   role='toolbar'
@@ -384,7 +384,7 @@ const EmailDialog = ({
                       title={i18n._(name)}
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => style(command)}
-                      className={`${TOOL} ${command === 'bold' ? 'font-bold' : command === 'italic' ? 'font-serif text-[15px] italic' : ''}`}>
+                      className={`${TOOL} ${command === 'bold' ? 'font-bold' : command === 'italic' ? 'font-serif text-title italic' : ''}`}>
                       {command === 'insertUnorderedList' ? <Icon name='rows' /> : mark}
                     </button>
                   ))}
@@ -411,7 +411,7 @@ const EmailDialog = ({
                         e.stopPropagation()
                         setLinking(null)
                       }}
-                      className={`${INPUT} w-56 py-0.5 text-[12px]`}
+                      className={`${INPUT} w-56 py-0.5 text-small`}
                     />
                     <Mini onClick={putLink}>{t`Add link`}</Mini>
                   </span>
@@ -421,7 +421,7 @@ const EmailDialog = ({
                     aria-label={t`Put in a variable`}
                     value=''
                     onChange={(e) => e.target.value && putVariable(e.target.value)}
-                    className='ml-1.5 h-7 rounded-[9px] border border-line-strong bg-pane px-1.5 text-[12px] text-ink-2'>
+                    className='ml-1.5 h-7 rounded-control border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
                     <option value=''>{t`Put in a variable…`}</option>
                     {EMAIL_VARIABLES.map((variable) => {
                       const here = values[variable.name]
@@ -435,7 +435,7 @@ const EmailDialog = ({
                     })}
                   </select>
                 )}
-                <span className='ml-auto pr-1.5 pl-3 text-[11.5px] text-ink-3'>
+                <span className='ml-auto pr-1.5 pl-3 text-micro text-ink-3'>
                   {t`Shown as it will arrive — write in it; the signature stays for every email`}
                 </span>
               </div>
@@ -468,7 +468,7 @@ const EmailDialog = ({
                   )
                 }}
                 dangerouslySetInnerHTML={{ __html: shown }}
-                className='min-h-0 w-full flex-1 overflow-y-auto bg-[#eef1f4] text-[#171c22]'
+                className='min-h-0 w-full flex-1 overflow-y-auto bg-paper text-stage-ink'
               />
             </div>
             <div className='flex flex-none flex-wrap items-center gap-2'>
@@ -505,20 +505,20 @@ const EmailDialog = ({
               )}
             </div>
           </div>
-          <div className='flex min-h-0 flex-col gap-3.5 overflow-y-auto bg-well px-[22px] py-5'>
+          <div className='flex min-h-0 flex-col gap-3.5 overflow-y-auto bg-well px-5.5 py-5'>
             <span className={EYEBROW}>{t`At the counter`}</span>
-            <span className='text-[15px] leading-[1.15] font-semibold tracking-[-0.02em]'>
+            <span className='text-title leading-title font-semibold tracking-title'>
               {t`${firstname} can take the link with a phone, before the email has even gone.`}
             </span>
             {showingQr ? (
-              <span className='self-start rounded-[16px] border border-line-2 bg-white p-1.5'>
+              <span className='self-start rounded-card border border-line-2 bg-white p-1.5'>
                 <ShareQr
                   url={shareUrl}
                   size={196}
                 />
               </span>
             ) : (
-              <span className='grid h-[210px] w-[210px] place-items-center rounded-[16px] border border-dashed border-line-strong'>
+              <span className='grid h-52.5 w-52.5 place-items-center rounded-card border border-dashed border-line-strong'>
                 <Mini
                   pressed={false}
                   title={t`The link as a QR code, for a phone to take it now`}
@@ -528,7 +528,7 @@ const EmailDialog = ({
               </span>
             )}
             <span className='flex items-center gap-2'>
-              <span className='min-w-0 font-mono text-[11.5px] break-all text-ink-3'>
+              <span className='min-w-0 font-mono text-micro break-all text-ink-3'>
                 {shareUrl.replace(/^https?:\/\//, '')}
               </span>
               {showingQr && (
@@ -546,10 +546,10 @@ const EmailDialog = ({
             {canRecord && (
               <div
                 role={opened && !emailed ? 'status' : undefined}
-                className='mt-auto flex flex-col gap-2 rounded-[16px] border border-line-2 bg-pane p-4'>
+                className='mt-auto flex flex-col gap-2 rounded-card border border-line-2 bg-pane p-4'>
                 {emailed ? (
                   <>
-                    <span className='text-[15px] leading-none font-semibold tracking-[-0.02em] text-up'>
+                    <span className='text-title leading-none font-semibold tracking-title text-up'>
                       ✓ {sentTo ? t`Sent ${sentOn} to ${sentTo}` : t`Sent ${sentOn}`}
                     </span>
                     <span className='flex'>
@@ -562,10 +562,10 @@ const EmailDialog = ({
                   </>
                 ) : (
                   <>
-                    <span className='text-[15px] leading-none font-semibold tracking-[-0.02em]'>
+                    <span className='text-title leading-none font-semibold tracking-title'>
                       {t`Sent it?`}
                     </span>
-                    <span className='text-[11.5px] leading-normal text-ink-3'>
+                    <span className='text-micro leading-normal text-ink-3'>
                       {opened === 'gmail'
                         ? t`The mail was opened in Gmail from here. Say so once it went, and the storage’s list records it.`
                         : opened
@@ -617,7 +617,7 @@ const EmailDialog = ({
               </Go>
             </>
           }>
-          <p className='m-0 text-[13px] text-ink-2'>
+          <p className='m-0 text-body text-ink-2'>
             {t`The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does.`}
           </p>
         </Modal>

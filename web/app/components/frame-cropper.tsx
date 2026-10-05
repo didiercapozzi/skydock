@@ -103,7 +103,7 @@ const FrameCropper = ({
       onPointerUp={end}
       onPointerCancel={end}
       className='absolute inset-0 touch-none select-none'>
-      <div className='pointer-events-none absolute inset-0 bg-[rgba(20,19,17,0.55)]' />
+      <div className='pointer-events-none absolute inset-0 bg-veil/55' />
       <div
         role='presentation'
         aria-label={t`Part of the picture to keep`}
@@ -114,15 +114,15 @@ const FrameCropper = ({
           width: `${crop.width * 100}%`,
           height: `${crop.height * 100}%`
         }}
-        className='absolute cursor-move rounded-[6px] border-2 border-white'>
-        <div className='absolute inset-0 rounded-[2px] bg-transparent backdrop-brightness-[1.8]' />
+        className='absolute cursor-move rounded-chip border-2 border-white'>
+        <div className='absolute inset-0 rounded-bar bg-transparent backdrop-brightness-[1.8]' />
         {HANDLES.map(({ corner, style }) => (
           <span
             key={corner}
             role='presentation'
             aria-label={t`Resize ${corner}`}
             onPointerDown={start(corner)}
-            className={`absolute h-2.5 w-2.5 rounded-[2px] bg-white shadow-[0_0_0_1px_rgba(20,19,17,0.25)] ${style}`}
+            className={`absolute h-2.5 w-2.5 rounded-bar bg-white shadow-ring-stage ${style}`}
           />
         ))}
       </div>

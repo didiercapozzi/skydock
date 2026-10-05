@@ -61,7 +61,7 @@ const TAGS = {
 
 const Tag = ({ tone, children }: { tone: keyof typeof TAGS; children: string }) => (
   <span
-    className={`inline-flex h-[22px] items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current before:content-[''] ${TAGS[tone]}`}>
+    className={`inline-flex h-chip items-center gap-1.5 rounded-full px-2.25 text-micro font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current before:content-[''] ${TAGS[tone]}`}>
     {children}
   </span>
 )
@@ -103,10 +103,10 @@ const DayHeader = ({
   fold?: () => void
 }) => (
   <div className='flex flex-wrap items-center gap-x-3 gap-y-1 pt-3.5 pb-2.5'>
-    <span className='text-[14px] font-bold text-ink'>
+    <span className='text-lead font-bold text-ink'>
       {loose ? t`Loose files` : dayLabel(day, true)}
     </span>
-    <span className='text-[12.5px] font-medium text-ink-3'>
+    <span className='text-body font-medium text-ink-3'>
       {loose ? `${day ? `${dayLabel(day)} · ` : ''}${t`in no jump`} · ` : ''}
       {plural(files.length, { one: '# file', other: '# files' })}
     </span>
@@ -117,7 +117,7 @@ const DayHeader = ({
         aria-label={t`Fold this day`}
         title={t`Fold this day`}
         onClick={fold}
-        className='ml-auto grid size-7 place-items-center rounded-lg border-0 bg-transparent text-ink-3 hover:bg-well hover:text-ink'>
+        className='ml-auto grid size-7 place-items-center rounded-control border-0 bg-transparent text-ink-3 hover:bg-well hover:text-ink'>
         <Icon
           name='next'
           size={14}
@@ -147,7 +147,7 @@ const DaySection = ({
         type='button'
         aria-expanded={false}
         onClick={() => setShown(true)}
-        className='my-1.5 flex w-full items-center gap-3 rounded-2xl border-0 bg-well px-[18px] py-3.5 text-left font-semibold text-ink-2 hover:bg-line'>
+        className='my-1.5 flex w-full items-center gap-3 rounded-card border-0 bg-well px-4.5 py-3.5 text-left font-semibold text-ink-2 hover:bg-line'>
         <Icon
           name='check'
           size={16}
@@ -240,31 +240,23 @@ const JumpCard = ({
       }
       className={`relative flex w-full flex-col overflow-hidden text-left ${
         group
-          ? `rounded-[18px] bg-pane ${frozen ? 'cursor-pointer' : 'cursor-grab'}`
-          : 'h-[150px] cursor-pointer gap-3 rounded-[20px] border-2 border-dashed border-line-strong bg-transparent p-3 text-ink-3 hover:border-ink-3'
-      } ${
-        over
-          ? 'shadow-[0_0_0_3px_var(--color-pick)]'
-          : open
-            ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-accent),0_10px_22px_rgba(11,127,214,0.32)]'
-            : group
-              ? 'shadow-soft'
-              : ''
-      }`}>
+          ? `rounded-panel bg-pane ${frozen ? 'cursor-pointer' : 'cursor-grab'}`
+          : 'h-37.5 cursor-pointer gap-3 rounded-panel border-2 border-dashed border-line-strong bg-transparent p-3 text-ink-3 hover:border-ink-3'
+      } ${over ? 'shadow-ring-pick' : open ? 'shadow-picked' : group ? 'shadow-soft' : ''}`}>
       {group ? (
         <>
           <Slices
             files={shown}
             proxies={proxies}
             width={320}
-            className='h-[88px]'
+            className='h-22'
           />
-          <span className='pointer-events-none flex min-h-[58px] items-center justify-between gap-2 px-3.5 py-2'>
+          <span className='pointer-events-none flex min-h-14.5 items-center justify-between gap-2 px-3.5 py-2'>
             <span className='min-w-0'>
-              <b className='block truncate font-display text-[17px] font-semibold tracking-[-0.02em]'>
+              <b className='block truncate font-display text-subhead font-semibold tracking-title'>
                 {label}
               </b>
-              <span className='block truncate text-[13px] text-ink-3'>
+              <span className='block truncate text-body text-ink-3'>
                 {weekday(new Date(from * 1000), 'short')} {shortDate(from)} · {hhmm(from)} ·{' '}
                 {kindsSaid(videosIn(section.files), section.files.length - videosIn(section.files))}
               </span>
@@ -288,7 +280,7 @@ const JumpCard = ({
                     other:
                       '# files more than 15 minutes from the rest of this jump — the gap rule would not have put them here'
                   })}
-                  className='pointer-events-auto inline-flex h-[22px] items-center rounded-full bg-changed-soft px-[9px] text-[11.5px] font-bold whitespace-nowrap text-changed'>
+                  className='pointer-events-auto inline-flex h-chip items-center rounded-full bg-changed-soft px-2.25 text-micro font-bold whitespace-nowrap text-changed'>
                   ⧗ {t`${strays} off the gap`}
                 </span>
               )}
@@ -302,10 +294,10 @@ const JumpCard = ({
         </>
       ) : (
         <span className='pointer-events-none flex h-full flex-col justify-between'>
-          <span className='text-[12px] font-semibold'>
+          <span className='text-small font-semibold'>
             {plural(section.files.length, { one: '# file', other: '# files' })}
           </span>
-          <b className='font-display text-[19px] font-bold tracking-[-0.02em]'>{t`Loose`}</b>
+          <b className='font-display text-subhead font-bold tracking-title'>{t`Loose`}</b>
         </span>
       )}
     </div>
@@ -315,7 +307,7 @@ const JumpCard = ({
 const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props) => {
   if (sections.length === 0)
     return (
-      <div className='mt-3 rounded-[16px] border-2 border-dashed border-line-strong px-4 py-7 text-center font-medium text-ink-3'>
+      <div className='mt-3 rounded-card border-2 border-dashed border-line-strong px-4 py-7 text-center font-medium text-ink-3'>
         {empty}
       </div>
     )
@@ -365,7 +357,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
             className='flex flex-col gap-2'>
             <div className='flex items-center gap-3 font-bold'>
               {chosen.kind === 'jump' ? chosen.label : t`Loose files`}
-              <span className='inline-flex h-[26px] items-center rounded-full bg-well px-3 text-[12.5px] text-ink-2'>
+              <span className='inline-flex h-6.5 items-center rounded-full bg-well px-3 text-body text-ink-2'>
                 {chosen.kind === 'jump'
                   ? counts(chosen.files)
                   : t`in no jump · ${chosen.files.length}`}
@@ -400,7 +392,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
         )}
         <section
           aria-label={openLabel}
-          className='mt-[18px] flex flex-col gap-[18px]'>
+          className='mt-4.5 flex flex-col gap-4.5'>
           {open.kind === 'jump' && jump.actions?.(open.group) && (
             <div className='flex flex-wrap items-center gap-2'>{jump.actions(open.group)}</div>
           )}
@@ -408,10 +400,10 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
           {open.kind === 'jump' && isMontage(open.group) && !open.group.freed ? (
             <>
               <div className='flex items-center gap-3'>
-                <h3 className='m-0 font-display text-[16px] font-semibold tracking-[-0.02em]'>
+                <h3 className='m-0 font-display text-title font-semibold tracking-title'>
                   {t`Its files`}
                 </h3>
-                <span className='inline-flex h-6 items-center rounded-full bg-well px-2.5 text-[12px] font-bold text-ink-2'>
+                <span className='inline-flex h-6 items-center rounded-full bg-well px-2.5 text-small font-bold text-ink-2'>
                   {open.files.length}
                 </span>
               </div>
