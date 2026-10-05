@@ -197,6 +197,26 @@ describe('proxies', () => {
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'small1.mp4'))).toBe(false)
   })
 
+  it('says the moment a clip is found to be its own proxy, so the board stops waiting for it', async () => {
+    execSyncMock.mockImplementation(toolsPresent(640))
+    const src = writeTempFile(outputDir, 'original_files/small.mp4')
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => event.kind === 'file-done' && heard.push(event))
+
+    await ensureProxies(manifestOf([fileEntry(src, 'small1')]), outputDir)
+    stop()
+
+    expect(heard).toEqual([
+      {
+        kind: 'file-done',
+        work: 'proxy',
+        fileId: 'small1',
+        ok: true,
+        proxy: { path: src, fact: { state: 'own', play: src } }
+      }
+    ])
+  })
+
   it('does nothing and complains about nothing when the machine cannot encode video', async () => {
     tellTools(['ffmpeg', 'ffprobe', 'exiftool'])
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')

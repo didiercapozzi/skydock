@@ -25,3 +25,5 @@ web/build/
 playwright-screenshots/
 
 SkydiveVideo
+/web/tests/journey/screens/
+/web/tests/journey/videos/
