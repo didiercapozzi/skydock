@@ -370,7 +370,7 @@ const EmailDialog = ({
                 className={`${FIELD} font-semibold`}
               />
             </label>
-            <div className='flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-[16px] border border-line'>
+            <div className='flex min-h-[300px] flex-1 flex-col overflow-hidden rounded-[16px] border border-line-2'>
               <div className='flex flex-none flex-wrap items-center gap-0.5 border-b border-line-2 bg-well px-2 py-1.5'>
                 <span
                   role='toolbar'
@@ -511,7 +511,7 @@ const EmailDialog = ({
               {t`${firstname} can take the link with a phone, before the email has even gone.`}
             </span>
             {showingQr ? (
-              <span className='self-start rounded-[16px] border border-line bg-white p-1.5'>
+              <span className='self-start rounded-[16px] border border-line-2 bg-white p-1.5'>
                 <ShareQr
                   url={shareUrl}
                   size={196}
@@ -546,7 +546,7 @@ const EmailDialog = ({
             {canRecord && (
               <div
                 role={opened && !emailed ? 'status' : undefined}
-                className='mt-auto flex flex-col gap-2 rounded-[16px] border border-line bg-pane p-4'>
+                className='mt-auto flex flex-col gap-2 rounded-[16px] border border-line-2 bg-pane p-4'>
                 {emailed ? (
                   <>
                     <span className='text-[15px] leading-none font-semibold tracking-[-0.02em] text-up'>

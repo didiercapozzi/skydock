@@ -18,7 +18,7 @@
 
 | Role                  | Value                                                                                                               |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
-| Window ground         | the app's original soft grey-teal wash: `#e3edf1` under three radial glows (`#d3e9f0` top left, `#dcebf3` top right, `#d8ede8` bottom right) |
+| Window ground         | a soft sky-blue wash: `#dbebf8` under three radial glows (`#6fabd1` top left, `#4d7ca3` top right, `#6595aa` bottom right) |
 | Header strip          | `linear-gradient(90deg, #f2f9fb, #edf5f8)`, fully opaque so nothing shows through it |
 | Left panel            | the same wash as the right panel, `linear-gradient(180deg, #f0f8fa, #f6fbfc 45%, #ffffff)`, with the waves and a white haze at its foot over it |
 | Main area             | `linear-gradient(180deg, #eff8fa 0, #ffffff 240px)` — pale at its head, white from 240 px down |

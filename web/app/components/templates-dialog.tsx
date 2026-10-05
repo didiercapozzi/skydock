@@ -44,7 +44,7 @@ const TemplateRow = ({
       className={`flex flex-col gap-1 rounded-[10px] border px-3 py-2 ${
         picked
           ? 'border-accent bg-accent-soft shadow-[0_0_0_1px_var(--color-accent)]'
-          : 'border-line bg-pane'
+          : 'border-line-2 bg-pane'
       }`}>
       <span className='flex flex-wrap items-center gap-2'>
         <label className={`flex flex-wrap items-center gap-2 ${onPick ? 'cursor-pointer' : ''}`}>
@@ -192,7 +192,7 @@ const TemplatesDialog = ({
         <p className='m-0 text-[12.5px] text-ink-3'>{t`Reading the templates…`}</p>
       )}
       {answer && templates.length === 0 && (
-        <p className='m-0 rounded-[9px] border border-dashed border-line px-3 py-4 text-center text-[12.5px] text-ink-3'>
+        <p className='m-0 rounded-[9px] border border-dashed border-line-2 px-3 py-4 text-center text-[12.5px] text-ink-3'>
           {t`No template yet — bring one in below.`}
         </p>
       )}
@@ -218,7 +218,7 @@ const TemplatesDialog = ({
         </p>
       )}
 
-      <section className='flex flex-col gap-2 rounded-[10px] border border-line bg-well px-3 py-2.5'>
+      <section className='flex flex-col gap-2 rounded-[10px] border border-line-2 bg-well px-3 py-2.5'>
         <h4 className='m-0 text-[11.5px] font-bold text-ink-3'>{t`Bring a template in`}</h4>
         <p className='m-0 text-[12px] text-ink-2'>
           <b>{t`The folder kdenlive left`}</b>{' '}
