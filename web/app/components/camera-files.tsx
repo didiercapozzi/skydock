@@ -10,6 +10,7 @@ import { routingEngine } from '../helpers/routing'
 import { forgetJobsOf, useJobRow, useJobRows } from '../hooks/liveStore'
 import { usePicked } from '../hooks/usePicked'
 import { refusalSchema } from '../hooks/useBoardState'
+import { CameraPreview, previewable } from './camera-preview'
 import { Go, Mini, ToBin } from './buttons'
 import { Empty, Looking, Problem } from './blurbs'
 import { TD, TH, Tick } from './file-table'
@@ -141,6 +142,7 @@ const CameraFiles = ({
   const [asking, setAsking] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [copying, setCopying] = useState(false)
+  const [previewing, setPreviewing] = useState<string | null>(null)
   const [readAgain, setReadAgain] = useState(0)
 
   useEffect(() => {
@@ -183,14 +185,17 @@ const CameraFiles = ({
   const pickable = listing?.deletable
     ? files.filter((f) => f.state === 'stored' || f.state === 'binned')
     : []
-  const canPick = new Set(pickable)
-  const chosen = pickable.filter((f) => picked.has(f.path))
   const missing = files.filter((f) => f.state === 'missing')
+  const canPick = new Set([...missing, ...pickable])
+  const chosen = pickable.filter((f) => picked.has(f.path))
+  const chosenToCopy = missing.filter((f) => picked.has(f.path))
   const toCopyBack = chosen.filter((f) => f.state === 'stored')
   const count = files.length
   const size = formatSize(files.reduce((n, f) => n + f.size, 0))
   const pickedSize = formatSize(chosen.reduce((n, f) => n + f.size, 0))
   const toCopy = missing.length
+  const lookable = listing?.over === 'drive' ? files.filter(previewable) : []
+  const lookingAt = lookable.findIndex((f) => f.path === previewing)
   const backCount = toCopyBack.length
   const picks = chosen.length
 
@@ -205,6 +210,43 @@ const CameraFiles = ({
     if (refused.success)
       setProblem(refused.data.globalErrors?.[0] ?? t`The camera could not be copied.`)
     else {
+      const camera = listing?.camera ?? t`the camera`
+      onNote(t`Copying ${camera} — the header shows how far it has got.`)
+    }
+  }
+
+  const copyOne = async (file: CameraFile) => {
+    setPreviewing(null)
+    setCopying(true)
+    setProblem(null)
+    const raw = await routingEngine
+      .action({ url: '/api/camera', actionArgs: { copyFiles: { mount, paths: [file.path] } } })
+      .catch(() => null)
+    setCopying(false)
+    const refused = refusalSchema.safeParse(raw)
+    if (refused.success)
+      setProblem(refused.data.globalErrors?.[0] ?? t`The files could not be copied.`)
+    else {
+      const camera = listing?.camera ?? t`the camera`
+      onNote(t`Copying ${camera} — the header shows how far it has got.`)
+    }
+  }
+
+  const copyChosen = async () => {
+    setCopying(true)
+    setProblem(null)
+    const raw = await routingEngine
+      .action({
+        url: '/api/camera',
+        actionArgs: { copyFiles: { mount, paths: chosenToCopy.map((f) => f.path) } }
+      })
+      .catch(() => null)
+    setCopying(false)
+    const refused = refusalSchema.safeParse(raw)
+    if (refused.success)
+      setProblem(refused.data.globalErrors?.[0] ?? t`The files could not be copied.`)
+    else {
+      setPicked(new Set())
       const camera = listing?.camera ?? t`the camera`
       onNote(t`Copying ${camera} — the header shows how far it has got.`)
     }
@@ -260,7 +302,15 @@ const CameraFiles = ({
           ))}
           <Spacer />
           {missing.length > 0 && !looking && (
-            <span className='mr-3.5'>
+            <span className='mr-3.5 flex items-center gap-2'>
+              {chosenToCopy.length > 0 && (
+                <Go
+                  disabled={copying}
+                  title={t`Copy only the files picked — the rest of what is new stays on the card`}
+                  onClick={() => void copyChosen()}>
+                  {t`Copy ${plural(chosenToCopy.length, { one: '# file', other: '# files' })} selected`}
+                </Go>
+              )}
               <Go
                 disabled={copying}
                 title={t`Copy what is not on this machine yet, without unplugging the camera — what is here already is passed over`}
@@ -298,6 +348,22 @@ const CameraFiles = ({
           <span className='text-[12.5px] text-ink-2'>
             <b className='font-semibold text-ink'>{t`${picks} picked`}</b> · {pickedSize}
           </span>
+        )}
+        {missing.length > 0 && (
+          <Mini
+            title={t`Tick every file not copied yet, to copy them all — or tick the ones wanted one by one`}
+            onClick={() => {
+              const every = missing.every((f) => picked.has(f.path))
+              setPicked(
+                every
+                  ? new Set([...picked].filter((p) => !missing.some((f) => f.path === p)))
+                  : new Set([...picked, ...missing.map((f) => f.path)])
+              )
+            }}>
+            {missing.every((f) => picked.has(f.path))
+              ? t`Pick no new file`
+              : t`Pick every new file`}
+          </Mini>
         )}
         {pickable.length > 0 && (
           <Mini
@@ -345,7 +411,7 @@ const CameraFiles = ({
           />
           {listing.deletable ? (
             <span>
-              {t`Only a file uploaded to the storage, or one whose copy here went in the bin, can be picked. Deleted files go to the bin, never erased.`}
+              {t`Pick a file not copied yet to copy just that one. Only a file uploaded to the storage, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased.`}
             </span>
           ) : (
             <span
@@ -375,6 +441,7 @@ const CameraFiles = ({
               <th className={`${TH} w-[160px]`}>{t`Shot`}</th>
               <th className={`${TH} w-[84px] text-right`}>{t`Size`}</th>
               <th className={`${TH} w-[190px]`}>{t`Where it has got to`}</th>
+              <th className={`${TH} w-[56px]`} />
             </tr>
           </thead>
           <tbody>
@@ -419,10 +486,37 @@ const CameraFiles = ({
                     </span>
                   )}
                 </td>
+                <td className={`${TD} text-right`}>
+                  {lookable.includes(file) && (
+                    <button
+                      type='button'
+                      aria-label={t`Preview ${file.name}`}
+                      title={t`Look at it from the card, without copying it`}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPreviewing(file.path)
+                      }}
+                      className='grid size-7 cursor-pointer place-items-center rounded-full border-0 bg-well text-ink-2 hover:bg-line'>
+                      <Icon
+                        name='play'
+                        size={12}
+                      />
+                    </button>
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>
         </table>
+      )}
+      {lookingAt >= 0 && (
+        <CameraPreview
+          files={lookable}
+          at={lookingAt}
+          onStep={(to) => setPreviewing(lookable[to]?.path ?? null)}
+          onClose={() => setPreviewing(null)}
+          onCopy={(file) => void copyOne(file)}
+        />
       )}
       {asking && listing && (
         <Confirm

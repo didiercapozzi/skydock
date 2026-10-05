@@ -8,8 +8,16 @@ import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './ki
 import type { SeenClip } from './kioCamera'
 import { job, publish } from './live'
 import { catchUp } from './catchUp'
+import {
+  forgetCamera,
+  knownCameras,
+  rememberCamera,
+  setCameraAuto,
+  touchCamera
+} from './knownCameras'
 import { scanMedia } from './scan'
 import { messageOf } from './lib/words'
+import { getTrashDir } from './utils'
 
 const DEFAULT_ROOTS: Record<string, string[]> = {
   darwin: ['/Volumes'],
@@ -120,6 +128,60 @@ const overMtp = (mount: string) => {
 const cameraName = (mount: string) =>
   isKioCamera(mount) ? kioCameraName(mount) : path.basename(mount) || mount.replace(/[\\/]+$/, '')
 
+const diskIds = () => {
+  const folder = process.env.SKYDOCK_DISK_IDS ?? '/dev/disk/by-uuid'
+  try {
+    return new Map(
+      fs.readdirSync(folder).flatMap((id) => {
+        try {
+          return [[fs.realpathSync(path.join(folder, id)), id] as const]
+        } catch {
+          return []
+        }
+      })
+    )
+  } catch {
+    return new Map<string, string>()
+  }
+}
+
+const deviceOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
+  let text: string
+  try {
+    text = fs.readFileSync(mountinfo, 'utf-8')
+  } catch {
+    return null
+  }
+  const here = path.resolve(mount)
+  let best: { point: string; source: string } | null = null
+  for (const line of text.split('\n')) {
+    const [before, after] = line.split(' - ')
+    const point = before?.split(' ')[4]
+    const source = after?.split(' ')[1]
+    if (!point || !source) continue
+    const place = path.resolve(unescapeMount(point))
+    if (
+      (here === place || here.startsWith(`${place}${path.sep}`)) &&
+      (!best || place.length > best.point.length)
+    )
+      best = { point: place, source }
+  }
+  return best?.source ?? null
+}
+
+const cameraKey = (mount: string, mountinfo?: string) => {
+  if (!isKioCamera(mount) && process.platform === 'linux') {
+    const device = deviceOf(mount, mountinfo)
+    let real: string | null = null
+    try {
+      real = device ? fs.realpathSync(device) : null
+    } catch {}
+    const id = (real && diskIds().get(real)) || (device && diskIds().get(device)) || null
+    if (id) return `id:${id}`
+  }
+  return `name:${cameraName(mount)}`
+}
+
 type Watch = {
   timer: ReturnType<typeof setInterval> | null
   seen: Set<string>
@@ -134,6 +196,13 @@ type Watch = {
   askedAt: number
   seenOn: Record<string, { done: boolean; clips: SeenClip[] }>
   stop?: AbortController
+  outputDir?: string
+  keys: Record<string, string>
+  fresh: Record<string, number | null>
+  checking: Set<string>
+  prompts: string[]
+  only: Record<string, Set<string>>
+  saidKnown: string
 }
 
 declare global {
@@ -151,13 +220,21 @@ const watch = () =>
     asking: false,
     askUntil: 0,
     askedAt: 0,
-    seenOn: {}
+    seenOn: {},
+    keys: {},
+    fresh: {},
+    checking: new Set(),
+    prompts: [],
+    only: {},
+    saidKnown: ''
   })
 
 const copyNext = async (outputDir: string) => {
   const state = watch()
   const cameraDir = state.queue.shift()
   if (!cameraDir || state.copying) return
+  const only = state.only[cameraDir]
+  delete state.only[cameraDir]
   state.copying = true
   state.current = cameraDir
   const stop = new AbortController()
@@ -196,13 +273,14 @@ const copyNext = async (outputDir: string) => {
   }
   try {
     const result = isKioCamera(cameraDir)
-      ? await copyThroughKde(cameraDir, outputDir, onProgress, onCopied, stop.signal)
+      ? await copyThroughKde(cameraDir, outputDir, onProgress, onCopied, stop.signal, only)
       : await copyCamera({
           cameraDir: path.join(cameraDir, 'DCIM'),
           outputDir,
           onProgress,
           onCopied,
-          stop: stop.signal
+          stop: stop.signal,
+          only
         })
     const onBoard = gatherArrivals(outputDir, arrived)
     if (result.copied > onBoard) await scanMedia({ outputDir })
@@ -235,6 +313,13 @@ const copyNext = async (outputDir: string) => {
     state.copying = false
     state.current = undefined
     state.stop = undefined
+    if (
+      state.seen.has(cameraDir) &&
+      !knownCameras().some((c) => c.auto && c.key === state.keys[cameraDir])
+    ) {
+      delete state.fresh[cameraDir]
+      void check(cameraDir)
+    }
     if (state.queue.length > 0) void copyNext(outputDir)
   }
 }
@@ -244,7 +329,8 @@ const copyThroughKde = async (
   outputDir: string,
   onProgress: (progress: CopyProgress) => void,
   onCopied: (copied: Copied) => void,
-  stop: AbortSignal
+  stop: AbortSignal,
+  only?: Set<string>
 ) => {
   const reader = await kioReader()
   if (!reader) throw new CameraGone('KDE no longer reaches this camera.')
@@ -258,6 +344,25 @@ const copyThroughKde = async (
       onProgress,
       onCopied,
       stop,
+      fetch: only ? (clip) => only.has(clip.url) : undefined,
+      onClip: (clip) => seen.clips.push(clip)
+    })
+  } finally {
+    seen.done = true
+  }
+}
+
+const lookThroughKde = async (camera: string, outputDir: string) => {
+  const reader = await kioReader()
+  if (!reader) return
+  const seen = { done: false, clips: [] as SeenClip[] }
+  watch().seenOn[camera] = seen
+  try {
+    await copyOverKio({
+      camera,
+      reader,
+      outputDir,
+      fetch: () => false,
       onClip: (clip) => seen.clips.push(clip)
     })
   } finally {
@@ -301,33 +406,139 @@ const askKde = async (find = camerasThroughKde) => {
   }
 }
 
+const isOnCamera = (file: string, mounts = mountedCameras()) => {
+  try {
+    const real = fs.realpathSync(file)
+    return mounts.some((mount) => {
+      if (isKioCamera(mount)) return false
+      const dcim = fs.realpathSync(path.join(mount, 'DCIM'))
+      return real.startsWith(`${dcim}${path.sep}`)
+    })
+  } catch {
+    return false
+  }
+}
+
+const keyOfMount = (mount: string) => watch().keys[mount] ?? cameraKey(mount)
+
+const describe = (mount: string, known: ReturnType<typeof knownCameras>) => {
+  const state = watch()
+  const key = state.keys[mount] ?? cameraKey(mount)
+  const met = known.find((c) => c.key === key)
+  return {
+    camera: cameraName(mount),
+    mount,
+    over: overMtp(mount) ? ('mtp' as const) : ('drive' as const),
+    key,
+    known: Boolean(met),
+    auto: met?.auto ?? false,
+    fresh: state.fresh[mount] ?? null
+  }
+}
+
+const sayCameras = (force = false) => {
+  const state = watch()
+  const known = knownCameras()
+  const mounted = [...state.seen].sort().map((mount) => describe(mount, known))
+  const prompts = state.prompts.filter((mount) => state.seen.has(mount))
+  const said = JSON.stringify({ mounted, known, prompts })
+  if (!force && said === state.saidKnown) return
+  state.saidKnown = said
+  state.said = [...state.seen].sort().join('\n')
+  publish({
+    kind: 'cameras',
+    mounted,
+    known: known.map(({ key, name, auto, lastSeen }) => ({ key, name, auto, lastSeen })),
+    prompts
+  })
+}
+
+const countNew = async (mount: string, outputDir: string) => {
+  const { listCamera, listCameraThroughKde } = await import('./cameraFiles')
+  if (isKioCamera(mount)) {
+    await lookThroughKde(mount, outputDir)
+    return listCameraThroughKde(mount, outputDir).files.filter((f) => f.state === 'missing').length
+  }
+  const listed = await listCamera(mount, outputDir, getTrashDir())
+  return listed.files.filter((f) => f.state === 'missing').length
+}
+
+const check = async (mount: string) => {
+  const state = watch()
+  const outputDir = state.outputDir
+  if (!outputDir || state.checking.has(mount)) return
+  state.checking.add(mount)
+  try {
+    state.fresh[mount] = await countNew(mount, outputDir)
+  } catch {
+    state.fresh[mount] = null
+  } finally {
+    state.checking.delete(mount)
+    if (state.seen.has(mount)) sayCameras()
+  }
+}
+
+const meet = (mount: string, mountinfo?: string) => {
+  const state = watch()
+  const key = cameraKey(mount, mountinfo)
+  state.keys[mount] = key
+  const met = knownCameras().find((c) => c.key === key)
+  if (!met) {
+    state.prompts.push(mount)
+    void check(mount)
+    return
+  }
+  touchCamera(key)
+  if (met.auto) state.queue.push(mount)
+  else void check(mount)
+}
+
 const lookForCameras = (outputDir: string, mountinfo?: string) => {
   const state = watch()
+  state.outputDir = outputDir
   void askKde()
   const now = new Set([...mountedCameras(mountinfo), ...state.kde])
   for (const camera of now)
     if (!state.seen.has(camera)) {
       state.seen.add(camera)
-      state.queue.push(camera)
+      meet(camera, mountinfo)
     }
   for (const camera of state.seen)
     if (!now.has(camera)) {
+      const key = state.keys[camera]
+      if (key) touchCamera(key)
       state.seen.delete(camera)
       delete state.seenOn[camera]
+      delete state.keys[camera]
+      delete state.fresh[camera]
+      delete state.only[camera]
+      state.prompts = state.prompts.filter((mount) => mount !== camera)
     }
-  const mounted = [...now].sort()
-  if (mounted.join('\n') !== state.said) {
-    state.said = mounted.join('\n')
-    publish({
-      kind: 'cameras',
-      mounted: mounted.map((mount) => ({
-        camera: cameraName(mount),
-        mount,
-        over: overMtp(mount) ? ('mtp' as const) : ('drive' as const)
-      }))
-    })
-  }
+  sayCameras()
   if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
+}
+
+const answerCamera = (
+  outputDir: string,
+  answer:
+    | { remember: string; auto: boolean; copy: boolean }
+    | { forget: string }
+    | { auto: { key: string; on: boolean } }
+) => {
+  const state = watch()
+  const mountOf = (key: string) => [...state.seen].find((mount) => state.keys[mount] === key)
+  if ('remember' in answer) {
+    const mount = mountOf(answer.remember)
+    const name =
+      knownCameras().find((c) => c.key === answer.remember)?.name ??
+      (mount ? cameraName(mount) : answer.remember)
+    rememberCamera({ key: answer.remember, name, auto: answer.auto })
+    state.prompts = state.prompts.filter((m) => m !== mount)
+    if (mount && answer.copy) copyAgain(outputDir, mount, [mount])
+  } else if ('forget' in answer) {
+    forgetCamera(answer.forget)
+  } else setCameraAuto(answer.auto.key, answer.auto.on)
+  sayCameras(true)
 }
 
 const watchCameras = (outputDir: string) => {
@@ -339,11 +550,21 @@ const watchCameras = (outputDir: string) => {
   state.timer = setInterval(() => lookForCameras(outputDir), EVERY_MS)
 }
 
-const copyAgain = (outputDir: string, camera?: string, mounts = mountedCameras()) => {
+const copyAgain = (
+  outputDir: string,
+  camera?: string,
+  mounts = mountedCameras(),
+  only?: Set<string>
+) => {
   const state = watch()
   const now = [...mounts, ...state.kde]
-  const wanted = camera ? now.filter((c) => c === camera) : now
-  for (const c of wanted) if (c !== state.current && !state.queue.includes(c)) state.queue.push(c)
+  const wanted = camera
+    ? now.filter((c) => c === camera)
+    : now.filter((c) => !state.prompts.includes(c))
+  for (const c of wanted) {
+    if (only) state.only[c] = only
+    if (c !== state.current && !state.queue.includes(c)) state.queue.push(c)
+  }
   if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
   return wanted.length
 }
@@ -363,15 +584,20 @@ const camerasSeenThroughKde = () => watch().kde
 const seenOnCamera = (camera: string) => watch().seenOn[camera] ?? { done: false, clips: [] }
 
 export {
+  answerCamera,
   askKde,
+  cameraKey,
   stopCameraCopy,
   cameraCopying,
   cameraName,
   camerasSeenThroughKde,
   copyAgain,
+  isOnCamera,
+  keyOfMount,
   lookForCameras,
   mountedCameras,
   overMtp,
+  sayCameras,
   seenOnCamera,
   watchCameras
 }

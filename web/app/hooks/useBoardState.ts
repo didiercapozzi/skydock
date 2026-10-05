@@ -320,6 +320,11 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     setBusy('scan')
     fetcher.submit({ url: '/api/scan', actionArgs: {} })
   }
+  const firstScan = () => {
+    setNote(null)
+    setBusy('scan')
+    fetcher.submit({ url: '/api/scan', actionArgs: { cameras: false } })
+  }
 
   const proxyFacts = Object.values(proxies)
   const clips = [...groups.flatMap((g) => g.files), ...loose].filter(
@@ -349,6 +354,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     proxyProgress,
     jumpProgress,
     cameras: live.cameras,
+    knownCameras: live.known,
+    cameraPrompts: live.prompts,
     disk: live.disk,
     montageFacts,
     remoteAfterUpload,
@@ -366,6 +373,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     manifest,
     send,
     scan,
+    firstScan,
     scanning: busy === 'scan'
   }
 }

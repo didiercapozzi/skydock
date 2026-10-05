@@ -22,9 +22,9 @@ const FRESH: Place = { kind: 'sort' }
 
 const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
 
-const cameraLabel = (mount: string) => {
-  const camera = mount.split('/').pop() ?? ''
-  return t`On the camera ${camera}`
+const cameraLabel = (key: string) => {
+  const camera = key.startsWith('name:') ? key.slice('name:'.length) : ''
+  return camera ? t`On the camera ${camera}` : t`On a camera`
 }
 
 const placeLabel = (place: Place) =>

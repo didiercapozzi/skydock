@@ -15,6 +15,8 @@ type Disk = Omit<Extract<LiveEvent, { kind: 'disk' }>, 'kind'>
 
 type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
+type KnownCamera = Extract<LiveEvent, { kind: 'cameras' }>['known'][number]
+
 type Job = Omit<Extract<LiveEvent, { kind: 'job' }>, 'kind' | 'row' | 'rows'> & { rows: JobRow[] }
 
 const useLiveProgress = (
@@ -26,6 +28,8 @@ const useLiveProgress = (
   const found = useEffectEvent(onJump)
   const [ended, setEnded] = useState<CameraEnded | null>(null)
   const [cameras, setCameras] = useState<Mounted[]>([])
+  const [known, setKnown] = useState<KnownCamera[]>([])
+  const [prompts, setPrompts] = useState<string[]>([])
   const [disk, setDisk] = useState<Disk | null>(null)
   const [changed, setChanged] = useState<string | null>(null)
 
@@ -75,6 +79,8 @@ const useLiveProgress = (
       }
       if (event.kind === 'cameras') {
         setCameras(event.mounted)
+        setKnown(event.known)
+        setPrompts(event.prompts)
         return
       }
       if (event.kind === 'file') {
@@ -98,8 +104,8 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onMontages, onNote])
 
-  return { ended, cameras, disk, changed }
+  return { ended, cameras, known, prompts, disk, changed }
 }
 
 export { useLiveProgress }
-export type { Disk, Job, LiveFile, Mounted }
+export type { Disk, Job, KnownCamera, LiveFile, Mounted }

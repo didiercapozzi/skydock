@@ -11,6 +11,7 @@ const cameraFileSchema = z.object({
 const cameraListingSchema = z.object({
   camera: z.string(),
   mount: z.string(),
+  key: z.string().default(''),
   over: z.enum(['drive', 'mtp']),
   deletable: z.boolean(),
   looking: z.boolean(),

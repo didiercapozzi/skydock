@@ -90,6 +90,7 @@ const copyOverKio = async ({
   onProgress,
   onClip,
   onCopied,
+  fetch: wanted = () => true,
   stop
 }: {
   camera: string
@@ -100,6 +101,7 @@ const copyOverKio = async ({
   onProgress?: (progress: CopyProgress) => void
   onCopied?: (copied: Copied) => Promise<void> | void
   onClip?: (clip: SeenClip) => void
+  fetch?: (clip: { url: string; name: string }) => boolean
 }) => {
   const clips = await clipsUnder(reader, `${camera}/DCIM`)
   const here = hereAlready(outputDir)
@@ -121,6 +123,8 @@ const copyOverKio = async ({
         if (said && (found || givenBack(board, clip.name, said.size))) {
           progress.skipped++
           onClip?.({ ...clip, size: said.size, mtime: said.mtime, original: found })
+        } else if (!wanted(clip)) {
+          onClip?.({ ...clip, size: said?.size ?? 0, mtime: said?.mtime ?? null, original: null })
         } else {
           const fetched = await fetchInto(reader, clip, said, incoming, outputDir, here, (part) =>
             onProgress?.({ ...progress, part })

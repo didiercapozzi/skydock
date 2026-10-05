@@ -17,6 +17,7 @@ import { TemplatesDialog } from './templates-dialog'
 import type { TakeBackMode } from './take-back-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
+import { ForgetCameraDialog } from './camera-dialogs'
 import { WorkFolderDialog } from './work-folder-dialog'
 import { ShortcutsDialog } from './shortcuts-dialog'
 import { HistoryDialog } from './history-dialog'
@@ -43,6 +44,7 @@ type BoardDialog =
   | { kind: 'name-montage'; groupId?: string; fileIds?: string[]; keeps?: string }
   | { kind: 'work-folder' }
   | { kind: 'delete-jump'; groupId: string }
+  | { kind: 'forget-camera'; key: string; name: string }
   | { kind: 'shortcuts' }
   | { kind: 'history' }
 
@@ -75,7 +77,8 @@ const DialogHost = ({
   workFolder,
   onRemoveFiles,
   onGoBack,
-  onResetFresh
+  onResetFresh,
+  onForgetCamera
 }: {
   dialog: BoardDialog
   onDialog: (dialog: BoardDialog) => void
@@ -113,6 +116,7 @@ const DialogHost = ({
   onRemoveFiles: (to: 'fresh' | 'bin', files: ManifestFile[]) => void
   onGoBack: (step: string) => void
   onResetFresh: (what: 'times' | 'everything') => void
+  onForgetCamera: (key: string) => void
 }) => {
   const close = () => onDialog(null)
   return (
@@ -233,6 +237,16 @@ const DialogHost = ({
         />
       )}
 
+      {dialog?.kind === 'forget-camera' && (
+        <ForgetCameraDialog
+          name={dialog.name}
+          onClose={close}
+          onConfirm={() => {
+            close()
+            onForgetCamera(dialog.key)
+          }}
+        />
+      )}
       {dialog?.kind === 'work-folder' && (
         <WorkFolderDialog
           folder={workFolder.folder}

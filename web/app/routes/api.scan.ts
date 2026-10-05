@@ -11,13 +11,13 @@ import { catchUp } from '../../../packages/skydock-scripts/src/catchUp'
 import { copyAgain } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { boardAnswer } from '../helpers/manifest'
 
-const actionArgs = z.object({})
+const actionArgs = z.object({ cameras: z.boolean().optional() })
 
 const action = createValidatedFormAction()({
   schema: actionArgs,
-  handler: async () => {
+  handler: async ({ data }) => {
     const outputDir = getOutputDir()
-    copyAgain(outputDir)
+    if (data.cameras !== false) copyAgain(outputDir)
     keepBoardStep(getManifestPath(outputDir))
     const result = await scanMedia({ outputDir })
     void catchUp(outputDir)

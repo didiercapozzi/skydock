@@ -135,16 +135,18 @@ const copyCamera = async ({
   manifest = loadBoard(outputDir),
   onProgress,
   onCopied,
-  stop
+  stop,
+  only
 }: {
   cameraDir: string
+  only?: ReadonlySet<string>
   outputDir?: string
   manifest?: Manifest | null
   stop?: AbortSignal
   onProgress?: (progress: CopyProgress) => void
   onCopied?: (copied: Copied) => Promise<void> | void
 }) => {
-  const files = findMediaFiles(cameraDir)
+  const files = findMediaFiles(cameraDir).filter((file) => !only || only.has(file))
   const shots = await shotTimes(files)
   const board = manifest
     ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]

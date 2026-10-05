@@ -133,10 +133,19 @@ two cameras of one make both start at the same number — is kept beside it unde
 Each file is only given its name once it is whole, so a card pulled out half way leaves nothing behind
 that could be taken for an original.
 
-**Plugging a camera in is enough.** Once a board has been opened, and from then on for as long as
-SkyDock runs, anything that turns up with a DCIM folder at its top — where every camera keeps its
-pictures — is copied off by itself, each file on the board as it lands and gathered into jumps once
-the card is done, with nobody pressing anything.
+**SkyDock remembers the cameras it has met, and copies from them only as told.** Once a board has been
+opened, and from then on for as long as SkyDock runs, anything that turns up with a DCIM folder at its
+top — where every camera keeps its pictures — is looked at. A camera SkyDock has never met asks, in a
+small dialog: its name, how many files on it are not here yet, and the choice to _Copy the new files_ or
+_Just remember it_, with a box, **unticked**, to copy this camera's new files automatically from now on —
+unticked because a camera is often somebody else's and one file is all that is wanted. Closing the
+dialog remembers the camera and copies nothing. Either way the camera is remembered, on this machine and
+not in any work folder, told apart by its disk's own id where the machine gives one and else by the name it
+shows. A camera set to be copied automatically is copied off the moment it is plugged in, each file on the
+board as it lands and gathered into jumps once the card is done, with nobody pressing anything; one that
+is not is looked at, and says how many new files it holds, and nothing is copied until it is asked: from
+its page, which lists them with a box each — one file, some, or all, with a button to tick every new one — or
+from the dialog itself, whose _Choose which files…_ remembers the camera and opens that page.
 
 **A camera that hands its files over is a camera too.** Many cameras — a GoPro among them — never
 show their card as a drive: they answer for it one request at a time, and only one program at a time
@@ -166,10 +175,11 @@ not a copy, so the looking must not be mistaken for copying it all again. The bo
 says what came off once it is done: how many new files and how many already there. The copy can be stopped from its panel: the file under
 way is finished, whole, nothing after it is begun, every camera waiting its turn is let go, and what
 came across stays on the board; the rest stays on the card for the next plug-in or Rescan cameras,
-which pass over what is already here. A camera is copied
-each time it is plugged in, and again whenever asked while it stays plugged in — from its page, which
-offers to copy what is not here yet, or with Rescan cameras, which copies every camera plugged in and
-then scans — so what went missing here comes back across without unplugging anything; a camera asked
+which pass over what is already here. A camera set to be copied automatically is copied
+each time it is plugged in, and any camera again whenever asked while it stays plugged in — from its page, which
+offers to copy what is not here yet, or with Rescan cameras, which copies every camera plugged in that has been answered for and
+then scans (a camera still waiting to be asked about is left out, and so is the scan that looks through a
+new work folder for the first time) — so what went missing here comes back across without unplugging anything; a camera asked
 for while it is already being copied is left to that copy. One unplugged half way keeps what was
 copied whole, and plugging it in again copies the rest. Only one camera is copied at a time, in the order they came. A drive
 without a DCIM folder is not a camera and is never looked into, and copying never writes to a camera. The
@@ -177,15 +187,26 @@ without a DCIM folder is not a camera and is never looked into, and copying neve
 nor listed.
 Where cameras are mounted is told to SkyDock when it starts, and telling it nothing turns this off.
 
-**Seeing what is on a camera.** A camera plugged in is listed at the foot of the menu for as long as it
-stays plugged in, and its page lists every photo and video on its card, each saying how far it has got:
+**Seeing what is on a camera.** Every camera SkyDock has met is listed at the foot of the menu — a green dot
+while it is plugged in, with how many new files it holds, and greyed as _not connected_ when it is not, like
+a wifi network a phone remembers. A camera can be forgotten from its page, which asks first and touches
+no file: it is then new again the next time it is plugged in. Its page has the switch _Copy new files
+automatically_, and lists every photo and video on its card, each saying how far it has got:
 not copied yet, copied here but not uploaded, copied here and then put in the bin, or on the storage —
 copied read by the same rule the copy uses to pass a file over, and in the bin read by the file's bytes,
 never its name, which the copy may have changed: only a file of the bin of the very same size is read
 through to be compared, so the rest of the card is not read at all, and what was read is remembered
 while it stays the same. Only a file on the storage, or one whose
-copy here was put in the bin, can be picked and deleted from the camera, to make room on the card; the
-others have no tick, since until a file is uploaded or thrown away the card is its other copy. The picks
+copy here was put in the bin, can be picked and deleted from the camera, to make room on the card; a file not
+copied yet has a tick too, to be copied alone, and the rest have none, since until a file is uploaded or
+thrown away the card is its other copy. A camera that hands its files over has to be gone over — read, never
+copied — before it can say how many files are new or list them.
+
+A file on a camera that shows as a drive can be **looked at from the card**, without copying it: a button on its
+row plays the video or shows the picture where it is, with the arrows stepping through the files and, for a file
+not copied yet, a button to copy just that one. Only what lies under the card's own DCIM folder can be asked
+for, whatever address is typed, and the card is only read. A camera that hands its files over cannot be looked
+at this way, and neither can a file the browser cannot play or show — which says so, and offers to copy it. The picks
 on the storage are also what can be **copied back here**, which is the one thing that undoes a freeing
 and is never done by plugging the card in. Deleting asks first, saying how many files and how much, and
 that they go to the bin. Then each file is read through and known by its bytes, never by its name:
@@ -485,8 +506,8 @@ A group of picked files puts several of their pictures across the top, up to nin
 cameras that is not filed yet; _Destinations_, one entry per destination, and _Add a destination…_,
 which opens the field to name one; and
 _Montages_, one entry per named montage and one for the montages still waiting for a name. Under
-_Elsewhere_ come what is not worked on here: each camera plugged in, for as long as it stays plugged
-in; _Montages done_, with how many montages are in it, once there is one; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
+_Elsewhere_ come what is not worked on here: each camera this machine has met, plugged in or not;
+_Montages done_, with how many montages are in it, once there is one; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
 montage shows its own folder up there, on its own _On the storage_ tab. The place you
 are on is drawn as a white card. Each place is one line, its name and, at the right, what is left there in
 a few words: the jumps still to file in Fresh files, the files still to do at a destination ("all up" when

@@ -179,6 +179,11 @@ msgstr "{0, plural, one {Uploaded # file} other {Uploaded # files}}"
 msgid "{0} · copying {1} of {2}"
 msgstr "{0} · copying {1} of {2}"
 
+#. placeholder {0}: here.fresh
+#: app/components/places-tree.tsx
+msgid "{0} new"
+msgstr "{0} new"
+
 #. placeholder {0}: index + 1
 #. placeholder {1}: files.length
 #: app/components/preview-drawer.tsx
@@ -208,10 +213,6 @@ msgstr "{addedCount, plural, one {# file} other {# files}} have been added to {w
 #: app/helpers/notes.ts
 msgid "{back, plural, one {# file} other {# files}} back in Fresh files, out of the bin."
 msgstr "{back, plural, one {# file} other {# files}} back in Fresh files, out of the bin."
-
-#: app/components/places-tree.tsx
-msgid "{camera} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
-msgstr "{camera} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
 
 #: app/helpers/notes.ts
 msgid "{camera} was unplugged during the copy — {tally}; plug it in again for the rest"
@@ -470,6 +471,14 @@ msgstr "{more, plural, one {… and # more, not listed here.} other {… and # m
 #: app/components/file-list.tsx
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  from {filename}"
+
+#: app/components/places-tree.tsx
+msgid "{name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
+msgstr "{name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
+
+#: app/components/places-tree.tsx
+msgid "{name} is not connected — it is remembered, and checked for new files when it is plugged in."
+msgstr "{name} is not connected — it is remembered, and checked for new files when it is plugged in."
 
 #: app/routes/place.tsx
 msgid "{name} was not sent from this machine, so it cannot come back."
@@ -769,6 +778,10 @@ msgstr "2-step verification code"
 msgid "A camera is being copied"
 msgstr "A camera is being copied"
 
+#: app/components/camera-dialogs.tsx
+msgid "A camera SkyDock has not seen before"
+msgstr "A camera SkyDock has not seen before"
+
 #: app/components/file-list.tsx
 msgid "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
 msgstr "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
@@ -812,6 +825,10 @@ msgstr "A montage comes here by itself once it is freed from this machine. Press
 #: app/components/montage-card.tsx
 msgid "A name: a person, an event"
 msgstr "A name: a person, an event"
+
+#: app/components/camera-dialogs.tsx
+msgid "A new camera"
+msgstr "A new camera"
 
 #: app/components/move-to.tsx
 msgid "A new montage…"
@@ -1223,6 +1240,10 @@ msgstr "choose its folder on the storage"
 msgid "Choose the folder…"
 msgstr "Choose the folder…"
 
+#: app/components/camera-dialogs.tsx
+msgid "Choose which files…"
+msgstr "Choose which files…"
+
 #: app/routes/place.tsx
 msgid "Choose…"
 msgstr "Choose…"
@@ -1390,9 +1411,18 @@ msgstr "copy"
 msgid "Copy"
 msgstr "Copy"
 
+#. placeholder {0}: chosenToCopy.length
+#: app/components/camera-files.tsx
+msgid "Copy {0, plural, one {# file} other {# files}} selected"
+msgstr "Copy {0, plural, one {# file} other {# files}} selected"
+
 #: app/components/camera-files.tsx
 msgid "Copy {backCount, plural, one {# file} other {# files}} back here"
 msgstr "Copy {backCount, plural, one {# file} other {# files}} back here"
+
+#: app/components/camera-dialogs.tsx
+msgid "Copy {fresh, plural, one {the # new file} other {the # new files}}"
+msgstr "Copy {fresh, plural, one {the # new file} other {the # new files}}"
 
 #: app/components/camera-files.tsx
 msgid "Copy {toCopy, plural, one {# file} other {# files}} here"
@@ -1437,6 +1467,18 @@ msgstr "Copy link"
 msgid "Copy more cameras off and rescan to see their jumps here."
 msgstr "Copy more cameras off and rescan to see their jumps here."
 
+#: app/components/camera-page.tsx
+msgid "Copy new files automatically"
+msgstr "Copy new files automatically"
+
+#: app/components/camera-dialogs.tsx
+msgid "Copy new files automatically from now on"
+msgstr "Copy new files automatically from now on"
+
+#: app/components/camera-files.tsx
+msgid "Copy only the files picked — the rest of what is new stays on the card"
+msgstr "Copy only the files picked — the rest of what is new stays on the card"
+
 #: app/components/email-dialog.tsx
 msgid "Copy subject"
 msgstr "Copy subject"
@@ -1455,6 +1497,14 @@ msgstr "Copy the project’s path"
 #: app/components/camera-files.tsx
 msgid "Copy these back onto this machine — the one way back from having given them back"
 msgstr "Copy these back onto this machine — the one way back from having given them back"
+
+#: app/components/camera-preview.tsx
+msgid "Copy this file"
+msgstr "Copy this file"
+
+#: app/components/camera-dialogs.tsx
+msgid "Copy what is new"
+msgstr "Copy what is new"
 
 #: app/components/board-header.tsx
 msgid "Copy what is new on every camera plugged in — what is here already is passed over — and look through the work folder for files the board does not know yet"
@@ -2063,9 +2113,25 @@ msgstr "For a camera mounted sideways or upside down — a quarter turn makes it
 msgid "For a camera mounted sideways or upside down."
 msgstr "For a camera mounted sideways or upside down."
 
+#: app/components/camera-dialogs.tsx
+msgid "Forget {name}?"
+msgstr "Forget {name}?"
+
 #: app/components/transfers-panel.tsx
 msgid "Forget {what} · {label}"
 msgstr "Forget {what} · {label}"
+
+#: app/components/camera-dialogs.tsx
+msgid "Forget it"
+msgstr "Forget it"
+
+#: app/components/camera-dialogs.tsx
+msgid "Forget this camera"
+msgstr "Forget this camera"
+
+#: app/routes/place.tsx
+msgid "Forget this camera…"
+msgstr "Forget this camera…"
 
 #: app/components/transfers-panel.tsx
 msgid "Forget this one — nothing that was sent or copied is touched"
@@ -2390,6 +2456,10 @@ msgstr "is filled from their montage. A line whose variables are all empty for a
 msgid "It cannot be uploaded yet."
 msgstr "It cannot be uploaded yet."
 
+#: app/components/camera-dialogs.tsx
+msgid "It holds {fresh, plural, one {# file} other {# files}} that {fresh, plural, one {is} other {are}} not on this machine yet. SkyDock will remember this camera, so it is in the list next time even when it is not plugged in."
+msgstr "It holds {fresh, plural, one {# file} other {# files}} that {fresh, plural, one {is} other {are}} not on this machine yet. SkyDock will remember this camera, so it is in the list next time even when it is not plugged in."
+
 #: app/components/montage-steps.tsx
 msgid "It needs a name first — a person, an event. The name becomes its folder, its file names and its film."
 msgstr "It needs a name first — a person, an event. The name becomes its folder, its file names and its film."
@@ -2397,6 +2467,10 @@ msgstr "It needs a name first — a person, an event. The name becomes its folde
 #: app/components/remove-place-dialog.tsx
 msgid "it stops being linked to {linked} on the storage"
 msgstr "it stops being linked to {linked} on the storage"
+
+#: app/components/camera-page.tsx
+msgid "It was forgotten, or this is an address from another machine. Plug a camera in and it appears here."
+msgstr "It was forgotten, or this is an address from another machine. Plug a camera in and it appears here."
 
 #: app/components/email-dialog.tsx
 msgid "It was not sent after all"
@@ -2418,6 +2492,10 @@ msgstr "Its files"
 #: app/hooks/useBoardModel.ts
 msgid "Its files stayed where they were."
 msgstr "Its files stayed where they were."
+
+#: app/components/camera-dialogs.tsx
+msgid "Its files that are already here stay where they are. The next time it is plugged in, SkyDock will treat it as a new camera and ask."
+msgstr "Its files that are already here stay where they are. The next time it is plugged in, SkyDock will treat it as a new camera and ask."
 
 #: app/routes/place.tsx
 msgid "its folder"
@@ -2469,6 +2547,10 @@ msgstr "Jumps"
 msgid "Jumps found"
 msgstr "Jumps found"
 
+#: app/components/camera-dialogs.tsx
+msgid "Just remember it"
+msgstr "Just remember it"
+
 #: app/components/templates-dialog.tsx
 msgid "kdenlive version not said"
 msgstr "kdenlive version not said"
@@ -2476,6 +2558,10 @@ msgstr "kdenlive version not said"
 #: app/components/preview-drawer.tsx
 msgid "Keep editing"
 msgstr "Keep editing"
+
+#: app/components/camera-dialogs.tsx
+msgid "Keep it"
+msgstr "Keep it"
 
 #: app/components/jump-name.tsx
 #: app/components/templates-dialog.tsx
@@ -2574,6 +2660,10 @@ msgstr "Leave it empty to call it by its place among the jumps"
 msgid "Leave it empty to name it after the project"
 msgstr "Leave it empty to name it after the project"
 
+#: app/components/camera-dialogs.tsx
+msgid "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
+msgstr "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
+
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
 msgstr "let go of the picks"
@@ -2618,6 +2708,10 @@ msgstr "Local"
 #: app/components/storage-folder.tsx
 msgid "Look again"
 msgstr "Look again"
+
+#: app/components/camera-files.tsx
+msgid "Look at it from the card, without copying it"
+msgstr "Look at it from the card, without copying it"
 
 #: app/components/jobs-panel.tsx
 msgid "Looking at what the storage holds — {done} of {total}"
@@ -2893,6 +2987,7 @@ msgstr "New destination"
 msgid "New folder name"
 msgstr "New folder name"
 
+#: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
 msgid "Next"
 msgstr "Next"
@@ -2996,6 +3091,16 @@ msgstr "not added — {reasons}"
 msgid "not brought back"
 msgstr "not brought back"
 
+#: app/components/places-tree.tsx
+msgid "not connected"
+msgstr "not connected"
+
+#. placeholder {0}: dateLabel(knownCamera.lastSeen)
+#. placeholder {1}: hhmm(knownCamera.lastSeen)
+#: app/routes/place.tsx
+msgid "Not connected · last seen {0} {1}"
+msgstr "Not connected · last seen {0} {1}"
+
 #: app/components/board-header.tsx
 msgid "Not connected to the storage"
 msgstr "Not connected to the storage"
@@ -3011,6 +3116,10 @@ msgstr "not copied yet"
 #: app/components/jobs-panel.tsx
 msgid "not deleted"
 msgstr "not deleted"
+
+#: app/routes/place.tsx
+msgid "Not in the list"
+msgstr "Not in the list"
 
 #: app/components/file-status.tsx
 msgid "Not processed yet"
@@ -3141,9 +3250,21 @@ msgstr "of {total} shown"
 msgid "of the picture"
 msgstr "of the picture"
 
+#: app/components/camera-page.tsx
+msgid "Off — when it is plugged in, SkyDock says how many new files it holds and waits. Right for a camera that is not yours."
+msgstr "Off — when it is plugged in, SkyDock says how many new files it holds and waits. Right for a camera that is not yours."
+
 #: app/components/remove-files-dialog.tsx
 msgid "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
 msgstr "off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy."
+
+#: app/components/camera-page.tsx
+msgid "On — new files are copied as soon as it is plugged in. Switch it off to choose files yourself."
+msgstr "On — new files are copied as soon as it is plugged in. Switch it off to choose files yourself."
+
+#: app/helpers/places.ts
+msgid "On a camera"
+msgstr "On a camera"
 
 #: app/components/camera-files.tsx
 msgid "On the camera"
@@ -3202,10 +3323,6 @@ msgstr "On this machine: nothing — everything is on the storage."
 #: app/components/place-pane.tsx
 msgid "One list"
 msgstr "One list"
-
-#: app/components/camera-files.tsx
-msgid "Only a file uploaded to the storage, or one whose copy here went in the bin, can be picked. Deleted files go to the bin, never erased."
-msgstr "Only a file uploaded to the storage, or one whose copy here went in the bin, can be picked. Deleted files go to the bin, never erased."
 
 #: app/components/preview-drawer.tsx
 msgid "Only for a clip that stands upright. This one is landscape."
@@ -3368,6 +3485,10 @@ msgstr "Pick"
 msgid "Pick {name}"
 msgstr "Pick {name}"
 
+#: app/components/camera-files.tsx
+msgid "Pick a file not copied yet to copy just that one. Only a file uploaded to the storage, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased."
+msgstr "Pick a file not copied yet to copy just that one. Only a file uploaded to the storage, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased."
+
 #: app/components/shortcuts-dialog.tsx
 msgid "pick a run of files"
 msgstr "pick a run of files"
@@ -3379,6 +3500,14 @@ msgstr "pick every file shown"
 #: app/components/camera-files.tsx
 msgid "Pick every file that can go"
 msgstr "Pick every file that can go"
+
+#: app/components/camera-files.tsx
+msgid "Pick every new file"
+msgstr "Pick every new file"
+
+#: app/components/camera-files.tsx
+msgid "Pick no new file"
+msgstr "Pick no new file"
 
 #: app/components/camera-files.tsx
 msgid "Pick none"
@@ -3407,6 +3536,14 @@ msgstr "Play it from the storage"
 #: app/components/shortcuts-dialog.tsx
 msgid "play or pause"
 msgstr "play or pause"
+
+#: app/components/camera-page.tsx
+msgid "Plug it in to look at it"
+msgstr "Plug it in to look at it"
+
+#: app/routes/place.tsx
+msgid "Plugged in"
+msgstr "Plugged in"
 
 #: app/components/preview-drawer.tsx
 msgid "Portrait"
@@ -3440,6 +3577,16 @@ msgstr "press to put it in a new zip"
 msgid "Preview"
 msgstr "Preview"
 
+#. placeholder {0}: file.name
+#: app/components/camera-files.tsx
+msgid "Preview {0}"
+msgstr "Preview {0}"
+
+#: app/components/camera-preview.tsx
+msgid "Preview from the camera"
+msgstr "Preview from the camera"
+
+#: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
 msgid "Previous"
 msgstr "Previous"
@@ -3630,6 +3777,10 @@ msgstr "Reading the templates…"
 #: app/components/jump-graph.tsx
 msgid "Reading what the camera measured…"
 msgstr "Reading what the camera measured…"
+
+#: app/components/camera-dialogs.tsx
+msgid "Remember this camera and open its page, to tick the files to copy"
+msgstr "Remember this camera and open its page, to tick the files to copy"
 
 #: app/components/remove-files-dialog.tsx
 msgid "Remove {counted} from {from}?"
@@ -4009,6 +4160,10 @@ msgstr "Size now"
 msgid "Size of the board"
 msgstr "Size of the board"
 
+#: app/components/camera-dialogs.tsx
+msgid "SkyDock cannot say how many of its files are not on this machine yet. It will remember this camera, so it is in the list next time even when it is not plugged in."
+msgstr "SkyDock cannot say how many of its files are not on this machine yet. It will remember this camera, so it is in the list next time even when it is not plugged in."
+
 #: app/components/camera-files.tsx
 msgid "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
 msgstr "SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own."
@@ -4288,6 +4443,7 @@ msgstr "the corrected times, the jumps made and named by hand, any copies, and e
 msgid "The editing templates a montage is made from — look them over, or bring one in"
 msgstr "The editing templates a montage is made from — look them over, or bring one in"
 
+#: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
 msgid "The file"
 msgstr "The file"
@@ -4295,6 +4451,10 @@ msgstr "The file"
 #: app/components/preview-drawer.tsx
 msgid "The file itself, at the quality it was shot in"
 msgstr "The file itself, at the quality it was shot in"
+
+#: app/components/camera-files.tsx
+msgid "The files could not be copied."
+msgstr "The files could not be copied."
 
 #: app/helpers/parcels.ts
 msgid "the film"
@@ -4560,9 +4720,17 @@ msgstr "This browser has no decoder for the clip itself — the small copy is pl
 msgid "This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card."
 msgstr "This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card."
 
+#: app/components/camera-page.tsx
+msgid "This camera is not in the list"
+msgstr "This camera is not in the list"
+
 #: app/components/camera-files.tsx
 msgid "This camera is not plugged in any more."
 msgstr "This camera is not plugged in any more."
+
+#: app/components/camera-preview.tsx
+msgid "This file cannot be played here. Copy it to look at it with the board's own player."
+msgstr "This file cannot be played here. Copy it to look at it with the board's own player."
 
 #: app/components/work-folder-dialog.tsx
 msgid "this folder stays exactly as it is, and can be chosen again"
@@ -4603,6 +4771,10 @@ msgstr "Thumbnail size — or Ctrl/⌘ and the mouse wheel over the thumbnails"
 #: app/components/board-header.tsx
 msgid "Thumbnails"
 msgstr "Thumbnails"
+
+#: app/components/camera-files.tsx
+msgid "Tick every file not copied yet, to copy them all — or tick the ones wanted one by one"
+msgstr "Tick every file not copied yet, to copy them all — or tick the ones wanted one by one"
 
 #: app/components/jump-time.tsx
 msgid "Time"
@@ -4986,6 +5158,10 @@ msgstr "What was sent and copied in, and how it went — even when it is all don
 #: app/components/take-back-dialog.tsx
 msgid "what was uploaded stays there until someone removes it by hand."
 msgstr "what was uploaded stays there until someone removes it by hand."
+
+#: app/components/camera-page.tsx
+msgid "When it is connected again, SkyDock checks it for new files. What was copied from it stays on this machine either way."
+msgstr "When it is connected again, SkyDock checks it for new files. What was copied from it stays on this machine either way."
 
 #. placeholder {0}: p.name
 #: app/components/upload-dialog.tsx

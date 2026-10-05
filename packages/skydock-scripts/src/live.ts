@@ -95,8 +95,22 @@ const liveEventSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('cameras'),
     mounted: z.array(
-      z.object({ camera: z.string(), mount: z.string(), over: z.enum(['drive', 'mtp']) })
-    )
+      z.object({
+        camera: z.string(),
+        mount: z.string(),
+        over: z.enum(['drive', 'mtp']),
+        key: z.string().default(''),
+        known: z.boolean().default(false),
+        auto: z.boolean().default(false),
+        fresh: z.number().nullable().default(null)
+      })
+    ),
+    known: z
+      .array(
+        z.object({ key: z.string(), name: z.string(), auto: z.boolean(), lastSeen: z.number() })
+      )
+      .default([]),
+    prompts: z.array(z.string()).default([])
   })
 ])
 
