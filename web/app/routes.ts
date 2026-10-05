@@ -14,6 +14,7 @@ const routes = [
   route('api/nas', 'routes/api.nas.ts'),
   route('api/scan', 'routes/api.scan.ts'),
   route('api/camera', 'routes/api.camera.ts'),
+  route('api/camera-file', 'routes/api.camera-file.ts'),
   route('api/bin', 'routes/api.bin.ts'),
   route('api/busy', 'routes/api.busy.ts'),
   route('api/history', 'routes/api.history.ts'),

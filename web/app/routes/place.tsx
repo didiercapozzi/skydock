@@ -21,6 +21,7 @@ import { CameraFiles } from '../components/camera-files'
 import { ComparisonDialog } from '../components/comparison-dialog'
 import { FileBrowser } from '../components/file-browser'
 import { lanesOf, lockReason, shownStatus } from '../components/file-list'
+import { AbsentCamera, CameraSwitch } from '../components/camera-page'
 import { PageHead, StatusCard } from '../components/page-head'
 import { MenuItem } from '../components/settings-menu'
 import { FolderOwed } from '../components/folder-owed'
@@ -50,7 +51,7 @@ import {
 } from '../components/montage-view'
 import { StepTrail } from '../components/montage-steps'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { formatSize } from '../components/utils'
+import { dateLabel, formatSize, hhmm } from '../components/utils'
 import {
   familyOf,
   filesIn,
@@ -63,7 +64,7 @@ import {
   stillHere
 } from '../helpers/places'
 import type { Place } from '../helpers/places'
-import { useSafeSearchParams } from '../helpers/routing'
+import { routingEngine, useSafeSearchParams } from '../helpers/routing'
 import { GROUPINGS, cardsOf, sectionsOf } from '../helpers/sections'
 import { boardViewSchema } from '../helpers/view'
 import { useCameraCopying } from '../hooks/liveStore'
@@ -161,6 +162,11 @@ const Place = () => {
   const goTo = useNavigate()
   const { setSearchParams: look } = useSafeSearchParams(boardViewSchema)
   const folder = useFolder(model, place)
+  /* a camera's page is addressed by the key it is known by: who it is, and whether it is plugged in */
+  const knownCamera =
+    place.kind === 'camera' ? board.knownCameras.find((k) => k.key === place.name) : undefined
+  const cameraHere =
+    place.kind === 'camera' ? board.cameras.find((c) => c.key === place.name) : undefined
   const { looking, query, family, openCard, sections, plain } = folder
   const kind = looking.kind ?? 'all'
 
@@ -337,121 +343,154 @@ const Place = () => {
         }}
         kind={{ value: kind, onChange: (next) => look({ kind: next }) }}
         head={
-          place.kind === 'pax'
-            ? () => {
-                const mine = soleMontage
-                return (
-                  <PageHead
-                    large
-                    tile={{
-                      letter: place.name.charAt(0).toUpperCase(),
-                      done: Boolean(mine?.freed)
-                    }}
-                    title={place.name}
-                    sub={mine ? montageSub(mine, model.emailedOn(mine)?.at ?? null) : summary}
-                    aside={mine?.freed ? <WayDone /> : undefined}
-                    menu={
-                      mine
-                        ? (close) => (
-                            <MontageMenu
-                              group={mine}
-                              close={close}
-                              trimToJump={
-                                frozen.has(mine.id) || !mine.files.some((f) => f.moments)
-                                  ? undefined
-                                  : () => model.trimToJump(mine)
-                              }
-                            />
-                          )
-                        : undefined
-                    }
-                  />
-                )
-              }
-            : place.kind === 'dz'
-              ? ({ query: q, onQuery }) => (
-                  <PageHead
-                    tile={{ icon: 'place' }}
-                    title={placeLabel(place)}
-                    sub={
-                      folder.files.length === 0
-                        ? t`No files yet`
-                        : plural(folder.files.length, { one: '# file', other: '# files' })
-                    }
-                    query={q}
-                    onQuery={onQuery}
-                    menu={(close) => (
-                      <div className='flex flex-col'>
-                        <MenuItem
-                          icon='storage'
-                          onClick={() => {
-                            setDialog({ kind: 'folder', destination: place.name })
-                            close()
-                          }}>
-                          {model.folderFor(place.name) ? t`Change folder…` : t`Choose a folder…`}
-                        </MenuItem>
-                        <MenuItem
-                          icon='bin'
-                          danger
-                          disabled={busy !== null}
-                          title={t`Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
-                          onClick={() => {
-                            setDialog({ kind: 'remove-place', place: place.name })
-                            close()
-                          }}>
-                          {busy === `remove:dz:${place.name}`
-                            ? t`Removing…`
-                            : t`Remove destination…`}
-                        </MenuItem>
-                      </div>
-                    )}
-                    status={<DropzoneCard name={place.name} />}
-                  />
-                )
-              : place.kind === 'sort'
-                ? ({ query: q, onQuery }) => (
+          place.kind === 'camera'
+            ? () => (
+                <PageHead
+                  tile={{ icon: 'camera' }}
+                  title={knownCamera?.name ?? placeLabel(place)}
+                  sub={
+                    cameraHere
+                      ? t`Plugged in`
+                      : knownCamera
+                        ? t`Not connected · last seen ${dateLabel(knownCamera.lastSeen)} ${hhmm(knownCamera.lastSeen)}`
+                        : t`Not in the list`
+                  }
+                  menu={
+                    knownCamera
+                      ? (close) => (
+                          <MenuItem
+                            icon='bin'
+                            danger
+                            onClick={() => {
+                              setDialog({
+                                kind: 'forget-camera',
+                                key: knownCamera.key,
+                                name: knownCamera.name
+                              })
+                              close()
+                            }}>
+                            {t`Forget this camera…`}
+                          </MenuItem>
+                        )
+                      : undefined
+                  }
+                />
+              )
+            : place.kind === 'pax'
+              ? () => {
+                  const mine = soleMontage
+                  return (
                     <PageHead
-                      tile={{ icon: 'fresh' }}
-                      title={placeLabel(place)}
-                      sub={t`What came off the cameras, waiting to be sorted`}
-                      query={q}
-                      onQuery={onQuery}
-                      menu={(close) => (
-                        <MenuItem
-                          icon='back'
-                          danger
-                          disabled={busy !== null}
-                          title={t`Put Fresh files back — the times alone, or everything as just scanned. Asks which first.`}
-                          onClick={() => {
-                            model.resetFresh()
-                            close()
-                          }}>
-                          {t`Reset Fresh files…`}
-                        </MenuItem>
-                      )}
-                      status={
-                        <FreshCard
-                          jumps={folder.groups.length}
-                          loose={folder.loose.length}
-                          busy={busy !== null}
-                          onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
-                        />
+                      large
+                      tile={{
+                        letter: place.name.charAt(0).toUpperCase(),
+                        done: Boolean(mine?.freed)
+                      }}
+                      title={place.name}
+                      sub={mine ? montageSub(mine, model.emailedOn(mine)?.at ?? null) : summary}
+                      aside={mine?.freed ? <WayDone /> : undefined}
+                      menu={
+                        mine
+                          ? (close) => (
+                              <MontageMenu
+                                group={mine}
+                                close={close}
+                                trimToJump={
+                                  frozen.has(mine.id) || !mine.files.some((f) => f.moments)
+                                    ? undefined
+                                    : () => model.trimToJump(mine)
+                                }
+                              />
+                            )
+                          : undefined
                       }
                     />
                   )
-                : place.kind === 'delivered'
+                }
+              : place.kind === 'dz'
+                ? ({ query: q, onQuery }) => (
+                    <PageHead
+                      tile={{ icon: 'place' }}
+                      title={placeLabel(place)}
+                      sub={
+                        folder.files.length === 0
+                          ? t`No files yet`
+                          : plural(folder.files.length, { one: '# file', other: '# files' })
+                      }
+                      query={q}
+                      onQuery={onQuery}
+                      menu={(close) => (
+                        <div className='flex flex-col'>
+                          <MenuItem
+                            icon='storage'
+                            onClick={() => {
+                              setDialog({ kind: 'folder', destination: place.name })
+                              close()
+                            }}>
+                            {model.folderFor(place.name) ? t`Change folder…` : t`Choose a folder…`}
+                          </MenuItem>
+                          <MenuItem
+                            icon='bin'
+                            danger
+                            disabled={busy !== null}
+                            title={t`Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
+                            onClick={() => {
+                              setDialog({ kind: 'remove-place', place: place.name })
+                              close()
+                            }}>
+                            {busy === `remove:dz:${place.name}`
+                              ? t`Removing…`
+                              : t`Remove destination…`}
+                          </MenuItem>
+                        </div>
+                      )}
+                      status={<DropzoneCard name={place.name} />}
+                    />
+                  )
+                : place.kind === 'sort'
                   ? ({ query: q, onQuery }) => (
                       <PageHead
-                        tile={{ icon: 'check', up: true }}
+                        tile={{ icon: 'fresh' }}
                         title={placeLabel(place)}
-                        sub={t`${plural(model.delivered, { one: '# montage', other: '# montages' })} · freed from this machine — everything is on the storage`}
+                        sub={t`What came off the cameras, waiting to be sorted`}
                         query={q}
                         onQuery={onQuery}
-                        searchOpen
-                        findLabel={t`Find a montage`}
+                        menu={(close) => (
+                          <MenuItem
+                            icon='back'
+                            danger
+                            disabled={busy !== null}
+                            title={t`Put Fresh files back — the times alone, or everything as just scanned. Asks which first.`}
+                            onClick={() => {
+                              model.resetFresh()
+                              close()
+                            }}>
+                            {t`Reset Fresh files…`}
+                          </MenuItem>
+                        )}
+                        status={
+                          <FreshCard
+                            jumps={folder.groups.length}
+                            loose={folder.loose.length}
+                            busy={busy !== null}
+                            onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
+                          />
+                        }
                       />
                     )
-                  : undefined
+                  : place.kind === 'delivered'
+                    ? ({ query: q, onQuery }) => (
+                        <PageHead
+                          tile={{ icon: 'check', up: true }}
+                          title={placeLabel(place)}
+                          sub={t`${plural(model.delivered, { one: '# montage', other: '# montages' })} · freed from this machine — everything is on the storage`}
+                          query={q}
+                          onQuery={onQuery}
+                          searchOpen
+                          findLabel={t`Find a montage`}
+                        />
+                      )
+                    : undefined
         }
         left={
           place.kind === 'dz' || place.kind === 'sort' || place.kind === 'pax' ? undefined : (
@@ -503,12 +542,31 @@ const Place = () => {
           </div>
         )}
         {place.kind === 'camera' ? (
-          <CameraFiles
-            mount={place.name}
-            stamp={`${board.cameras.map((c) => c.mount).join('\n')}\n${copying ? 'copying' : ''}`}
-            onNote={setNote}
-            onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
-          />
+          <div className='flex flex-col gap-3'>
+            {knownCamera && (
+              <CameraSwitch
+                auto={knownCamera.auto}
+                onChange={(on) =>
+                  void routingEngine
+                    .action({
+                      url: '/api/camera',
+                      actionArgs: { auto: { key: knownCamera.key, on } }
+                    })
+                    .catch(() => undefined)
+                }
+              />
+            )}
+            {cameraHere ? (
+              <CameraFiles
+                mount={cameraHere.mount}
+                stamp={`${board.cameras.map((c) => c.mount).join('\n')}\n${copying ? 'copying' : ''}`}
+                onNote={setNote}
+                onCopyBack={(paths) => send('copy-back', { intent: 'copy-back', paths })}
+              />
+            ) : (
+              <AbsentCamera known={Boolean(knownCamera)} />
+            )}
+          </div>
         ) : place.kind === 'delivered' ? (
           <DeliveredList
             groups={groups.filter(model.finished)}

@@ -26,10 +26,11 @@ const FRESH: Place = { kind: 'sort' }
 
 const placeKey = (place: Place) => `${place.kind}:${'name' in place ? place.name : ''}`
 
-/* a camera, by the last part of where it is mounted */
-const cameraLabel = (mount: string) => {
-  const camera = mount.split('/').pop() ?? ''
-  return t`On the camera ${camera}`
+/* a camera is addressed by the key it is known by: `name:HERO5 Black`, or a disk's own id, which has no
+   name to show — its page says the name, where the board knows it */
+const cameraLabel = (key: string) => {
+  const camera = key.startsWith('name:') ? key.slice('name:'.length) : ''
+  return camera ? t`On the camera ${camera}` : t`On a camera`
 }
 
 /* what a place is called, wherever it is named — the folder and the heading above its files are the

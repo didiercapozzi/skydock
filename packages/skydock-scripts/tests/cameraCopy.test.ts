@@ -3,7 +3,9 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  answerCamera,
   cameraCopying,
+  cameraKey,
   copyAgain,
   lookForCameras,
   mountedCameras,
@@ -11,6 +13,7 @@ import {
   watchCameras
 } from '../src/cameraWatch'
 import { CameraGone, CopyStopped, copyBack, copyCamera } from '../src/copy'
+import { forgetCamera, knownCameras, rememberCamera } from '../src/knownCameras'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifest, saveManifest } from '../src/manifest'
@@ -564,6 +567,10 @@ describe('a camera plugged in', () => {
   beforeEach(() => {
     heard.length = 0
     process.env.SKYDOCK_CAMERA_ROOTS = media
+    /* its own settings, so what is known of cameras is what each test says */
+    process.env.SKYDOCK_CONFIG_DIR = createTmpDir('skydock-config-')
+    /* a camera is copied by itself only once it is known, and said to be */
+    rememberCamera({ key: 'name:GOPRO', name: 'GOPRO', auto: true })
   })
 
   it('is copied off and scanned by itself, saying how far it has got as it goes', async () => {
@@ -649,12 +656,180 @@ describe('watching for cameras', () => {
       asking: false,
       askUntil: 0,
       askedAt: 0,
-      seenOn: {}
+      seenOn: {},
+      keys: {},
+      fresh: {},
+      checking: new Set(),
+      prompts: [],
+      only: {},
+      saidKnown: ''
     }
 
     watchCameras(outputDir)
     vi.advanceTimersByTime(10_000)
 
     expect(oldLooks).toBe(0)
+  })
+})
+
+/* A camera is copied off by itself only when it is known and was told to be; a camera never met is asked
+   about, and one that is not copied by itself says how many new files it holds (RULES, Cameras). */
+describe('cameras this machine knows', () => {
+  const clips = {
+    'GX010001.MP4': { bytes: 32, fill: 1, at: DAY },
+    'GX010002.MP4': { bytes: 32, fill: 2, at: new Date(DAY.getTime() + 60_000) }
+  }
+  const plugged = (points: string[]) => {
+    const file = path.join(media, 'mountinfo')
+    fs.writeFileSync(
+      file,
+      points.map((p, i) => `${100 + i} 1 8:${i} / ${p} rw - vfat x rw`).join('\n')
+    )
+    return file
+  }
+  const last = (heard: LiveEvent[]) =>
+    [...heard]
+      .reverse()
+      .find((e): e is Extract<LiveEvent, { kind: 'cameras' }> => e.kind === 'cameras')
+  /* the look at what is new on a camera is made behind the event, so it is waited for */
+  const quiet = () => new Promise((r) => setTimeout(r, 1500))
+
+  beforeEach(() => {
+    process.env.SKYDOCK_CAMERA_ROOTS = media
+    process.env.SKYDOCK_CONFIG_DIR = createTmpDir('skydock-config-')
+  })
+
+  it('asks about a camera it has never met, and copies nothing from it', async () => {
+    const camera = card('GOPRO', clips)
+    const heard: LiveEvent[] = []
+    subscribe((e) => heard.push(e))
+
+    lookForCameras(outputDir, plugged([camera]))
+    await quiet()
+
+    expect(last(heard)).toMatchObject({
+      mounted: [{ camera: 'GOPRO', mount: camera, known: false, auto: false, fresh: 2 }],
+      prompts: [camera]
+    })
+    expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
+    expect(knownCameras()).toEqual([])
+  })
+
+  it('looks at a known camera that is not copied by itself, and says how many files are new', async () => {
+    rememberCamera({ key: 'name:GOPRO', name: 'GOPRO', auto: false })
+    const camera = card('GOPRO', clips)
+    const heard: LiveEvent[] = []
+    subscribe((e) => heard.push(e))
+
+    lookForCameras(outputDir, plugged([camera]))
+    await quiet()
+
+    expect(last(heard)).toMatchObject({
+      mounted: [{ known: true, auto: false, fresh: 2 }],
+      prompts: []
+    })
+    expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
+  })
+
+  it('leaves a camera nobody has answered out of a rescan of every camera', async () => {
+    const camera = card('GOPRO', clips)
+    lookForCameras(outputDir, plugged([camera]))
+    await quiet()
+
+    expect(copyAgain(outputDir, undefined, [camera])).toBe(0)
+    await quiet()
+    expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
+  })
+
+  it('copies a known camera by itself when it was told to', async () => {
+    rememberCamera({ key: 'name:GOPRO', name: 'GOPRO', auto: true })
+    const camera = card('GOPRO', clips)
+    const done = new Promise((resolve) => {
+      const stop = subscribe((e) => {
+        if (e.kind === 'job' && e.type === 'camera-copy' && e.outcome) {
+          stop()
+          resolve(e)
+        }
+      })
+    })
+
+    lookForCameras(outputDir, plugged([camera]))
+
+    expect(await done).toMatchObject({ outcome: { copied: 2 } })
+  })
+
+  it('copies only the files picked, and the others are still new afterwards', async () => {
+    rememberCamera({ key: 'name:GOPRO', name: 'GOPRO', auto: false })
+    const camera = card('GOPRO', clips)
+    const heard: LiveEvent[] = []
+    subscribe((e) => heard.push(e))
+    lookForCameras(outputDir, plugged([camera]))
+    await quiet()
+    const done = new Promise((resolve) => {
+      const stop = subscribe((e) => {
+        if (e.kind === 'job' && e.type === 'camera-copy' && e.outcome) {
+          stop()
+          resolve(e)
+        }
+      })
+    })
+
+    copyAgain(
+      outputDir,
+      camera,
+      [camera],
+      new Set([path.join(camera, 'DCIM', '100GOPRO', 'GX010002.MP4')])
+    )
+    await done
+    await quiet()
+
+    expect(fs.readdirSync(day())).toEqual(['GX010002.MP4'])
+    expect(last(heard)).toMatchObject({ mounted: [{ fresh: 1 }] })
+  })
+
+  it('remembers a camera answered, copying now when asked, and forgets it again', async () => {
+    const camera = card('GOPRO', clips)
+    lookForCameras(outputDir, plugged([camera]))
+    await quiet()
+    const done = new Promise((resolve) => {
+      const stop = subscribe((e) => {
+        if (e.kind === 'job' && e.type === 'camera-copy' && e.outcome) {
+          stop()
+          resolve(e)
+        }
+      })
+    })
+
+    answerCamera(outputDir, { remember: 'name:GOPRO', auto: false, copy: true })
+
+    expect(await done).toMatchObject({ outcome: { copied: 2 } })
+    expect(knownCameras()).toMatchObject([{ key: 'name:GOPRO', name: 'GOPRO', auto: false }])
+    answerCamera(outputDir, { auto: { key: 'name:GOPRO', on: true } })
+    expect(knownCameras()[0]?.auto).toBe(true)
+    forgetCamera('name:GOPRO')
+    expect(knownCameras()).toEqual([])
+  })
+
+  it('knows a card by its disk, wherever it is mounted, and by its name where there is no disk', () => {
+    const ids = createTmpDir('skydock-ids-')
+    const device = path.join(ids, 'sdb1')
+    fs.writeFileSync(device, '')
+    fs.mkdirSync(path.join(ids, 'by-uuid'))
+    fs.symlinkSync(device, path.join(ids, 'by-uuid', '1234-ABCD'))
+    process.env.SKYDOCK_DISK_IDS = path.join(ids, 'by-uuid')
+    try {
+      const mountinfo = path.join(ids, 'mountinfo')
+      const at = (mount: string) => {
+        fs.writeFileSync(mountinfo, `100 1 8:17 / ${mount} rw - vfat ${device} rw`)
+        return cameraKey(mount, mountinfo)
+      }
+      expect(at('/media/a/CARD')).toBe('id:1234-ABCD')
+      expect(at('/media/b/OTHER')).toBe('id:1234-ABCD')
+      fs.writeFileSync(mountinfo, '')
+      expect(cameraKey('/media/a/CARD', mountinfo)).toBe('name:CARD')
+    } finally {
+      delete process.env.SKYDOCK_DISK_IDS
+      fs.rmSync(ids, { recursive: true, force: true })
+    }
   })
 })

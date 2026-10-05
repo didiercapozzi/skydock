@@ -19,6 +19,9 @@ type Disk = Omit<Extract<LiveEvent, { kind: 'disk' }>, 'kind'>
 /* a camera plugged in right now: its name, and where it is mounted */
 type Mounted = Extract<LiveEvent, { kind: 'cameras' }>['mounted'][number]
 
+/* a camera this machine has met, plugged in or not */
+type KnownCamera = Extract<LiveEvent, { kind: 'cameras' }>['known'][number]
+
 /* a task with no file of its own, as it goes */
 type Job = Omit<Extract<LiveEvent, { kind: 'job' }>, 'kind' | 'row' | 'rows'> & { rows: JobRow[] }
 
@@ -42,6 +45,9 @@ const useLiveProgress = (
   const found = useEffectEvent(onJump)
   const [ended, setEnded] = useState<CameraEnded | null>(null)
   const [cameras, setCameras] = useState<Mounted[]>([])
+  const [known, setKnown] = useState<KnownCamera[]>([])
+  /* where the cameras waiting to be asked about are mounted */
+  const [prompts, setPrompts] = useState<string[]>([])
   const [disk, setDisk] = useState<Disk | null>(null)
   /* which state of the board's record was last said to have changed outside this page */
   const [changed, setChanged] = useState<string | null>(null)
@@ -95,6 +101,8 @@ const useLiveProgress = (
       }
       if (event.kind === 'cameras') {
         setCameras(event.mounted)
+        setKnown(event.known)
+        setPrompts(event.prompts)
         return
       }
       if (event.kind === 'file') {
@@ -119,8 +127,8 @@ const useLiveProgress = (
     return () => source.close()
   }, [onProxies, onMontages, onNote])
 
-  return { ended, cameras, disk, changed }
+  return { ended, cameras, known, prompts, disk, changed }
 }
 
 export { useLiveProgress }
-export type { Disk, Job, LiveFile, Mounted }
+export type { Disk, Job, KnownCamera, LiveFile, Mounted }

@@ -4,7 +4,7 @@ import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { groupsIn, hereIn, looseIn, placeKey, placeLabel } from '../helpers/places'
 import type { Place } from '../helpers/places'
-import type { Mounted } from '../hooks/useLiveProgress'
+import type { KnownCamera, Mounted } from '../hooks/useLiveProgress'
 import { Mini } from './buttons'
 import { Icon } from './icons'
 import { PlaceLink } from './place-link'
@@ -24,6 +24,8 @@ type Props = {
   looseFiles: ManifestFile[]
   /* the cameras plugged in right now */
   cameras: Mounted[]
+  /* every camera this machine has met, plugged in or not */
+  knownCameras: KnownCamera[]
   statusContext: (file: ManifestFile) => StatusContext
   /* whether a montage still has a step to take here */
   montageOpen: (group: ManifestGroup) => boolean
@@ -52,7 +54,8 @@ const Row = ({
   dropTarget = {},
   over = false,
   flash = false,
-  quiet = false
+  quiet = false,
+  dot
 }: {
   place: Place
   label?: string
@@ -67,6 +70,8 @@ const Row = ({
   flash?: boolean
   /* a folder standing for what has no name yet, set apart from the named ones */
   quiet?: boolean
+  /* a camera: plugged in, or remembered and not */
+  dot?: 'on' | 'off'
 }) => (
   <PlaceLink
     place={place}
@@ -87,12 +92,22 @@ const Row = ({
       return (
         <>
           <span className='flex items-center justify-between gap-2'>
-            <span
-              className={`min-w-0 truncate text-[14px] font-semibold ${quiet ? 'italic' : ''} ${
-                quiet && !lit ? 'text-ink-3' : ''
-              }`}
-              title={label}>
-              {label}
+            <span className='flex min-w-0 items-center gap-2.5'>
+              {dot && (
+                <i
+                  aria-hidden='true'
+                  className={`size-2 flex-none rounded-full ${
+                    dot === 'on' ? 'bg-up' : 'shadow-[inset_0_0_0_2px_var(--color-line-strong)]'
+                  }`}
+                />
+              )}
+              <span
+                className={`min-w-0 truncate text-[14px] font-semibold ${quiet ? 'italic' : ''} ${
+                  quiet && !lit ? 'text-ink-3' : ''
+                }`}
+                title={label}>
+                {label}
+              </span>
             </span>
             {(owed || count !== undefined) && !second && (
               <span className='flex-none text-[12px] font-bold whitespace-nowrap text-ink-3 tabular-nums max-[780px]:hidden'>
@@ -201,6 +216,7 @@ const PlacesTree = ({
   groups,
   looseFiles,
   cameras,
+  knownCameras,
   statusContext,
   montageOpen,
   delivered,
@@ -314,21 +330,34 @@ const PlacesTree = ({
         />
       )}
       <Heading>{t`Elsewhere`}</Heading>
-      {/* a camera is listed for as long as it is plugged in, and goes with it */}
-      {cameras.map((c) => {
-        const camera = c.camera
+      {/* a camera is listed for as long as this machine knows it — plugged in, or not */}
+      {knownCameras.map((k) => {
+        const here = cameras.find((c) => c.key === k.key)
+        const name = k.name
         return (
           <Row
-            key={c.mount}
-            place={{ kind: 'camera', name: c.mount }}
-            label={c.camera}
-            /* a camera with no drive to offer is read a request at a time, which is the whole of
-               why it is slower than the same card in a reader */
-            owed={c.over === 'mtp' ? 'MTP' : null}
+            key={k.key}
+            place={{ kind: 'camera', name: k.key }}
+            label={k.name}
+            dot={here ? 'on' : 'off'}
+            quiet={!here}
+            /* what is new on it, or that it is not here; a camera with no drive to offer is read a
+               request at a time, which is the whole of why it is slower than the same card in a reader */
+            owed={
+              !here
+                ? t`not connected`
+                : !k.auto && here.fresh
+                  ? t`${here.fresh} new`
+                  : here.over === 'mtp'
+                    ? 'MTP'
+                    : null
+            }
             title={
-              c.over === 'mtp'
-                ? t`${camera} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader.`
-                : camera
+              !here
+                ? t`${name} is not connected — it is remembered, and checked for new files when it is plugged in.`
+                : here.over === 'mtp'
+                  ? t`${name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader.`
+                  : name
             }
           />
         )

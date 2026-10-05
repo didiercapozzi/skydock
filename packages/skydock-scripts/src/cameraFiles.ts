@@ -8,7 +8,8 @@ import {
   camerasSeenThroughKde,
   mountedCameras,
   overMtp,
-  seenOnCamera
+  seenOnCamera,
+  keyOfMount
 } from './cameraWatch'
 import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
 import { idFromHash } from './fileId'
@@ -214,6 +215,7 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
   return {
     camera: cameraName(mount),
     mount,
+    key: keyOfMount(mount),
     over: overMtp(mount) ? ('mtp' as const) : ('drive' as const),
     deletable: true,
     looking: false,
@@ -243,6 +245,7 @@ const listCameraThroughKde = (camera: string, outputDir: string) => {
   return {
     camera: cameraName(camera),
     mount: camera,
+    key: keyOfMount(camera),
     over: 'mtp' as const,
     deletable: false,
     looking: !seen.done,
@@ -447,4 +450,4 @@ const deleteFromCameras = async (
   )
 }
 
-export { deleteFromCameras, listCameras }
+export { deleteFromCameras, listCamera, listCameraThroughKde, listCameras }

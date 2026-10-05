@@ -134,8 +134,27 @@ const liveEventSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('cameras'),
     mounted: z.array(
-      z.object({ camera: z.string(), mount: z.string(), over: z.enum(['drive', 'mtp']) })
-    )
+      z.object({
+        camera: z.string(),
+        mount: z.string(),
+        over: z.enum(['drive', 'mtp']),
+        /* which camera it is, across plugs: the disk's own id where there is one, else its name */
+        key: z.string().default(''),
+        /* whether this machine has met it, and copies what is new on it by itself */
+        known: z.boolean().default(false),
+        auto: z.boolean().default(false),
+        /* how many files on it are not here yet, once looked at; none where it cannot be counted */
+        fresh: z.number().nullable().default(null)
+      })
+    ),
+    /* every camera this machine has met, plugged in or not, and when each was last there (seconds) */
+    known: z
+      .array(
+        z.object({ key: z.string(), name: z.string(), auto: z.boolean(), lastSeen: z.number() })
+      )
+      .default([]),
+    /* the cameras plugged in that have never been met: waiting to be asked about, by where they are mounted */
+    prompts: z.array(z.string()).default([])
   })
 ])
 

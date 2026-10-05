@@ -13,7 +13,9 @@ import { catchUp } from '../../../packages/skydock-scripts/src/catchUp'
 import { copyAgain } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { boardAnswer } from '../helpers/manifest'
 
-const actionArgs = z.object({})
+/* `cameras: false` is a scan alone, for a work folder being looked through for the first time: nothing is
+   copied from a camera then, since nobody has asked */
+const actionArgs = z.object({ cameras: z.boolean().optional() })
 
 /* Rescan cameras: every camera plugged in is copied again — what is already here is passed over, so
    only what is missing comes across — and the output folder is scanned. A scan rewrites the whole
@@ -22,9 +24,9 @@ const actionArgs = z.object({})
    as a camera being plugged in is, and scans what it brought when it ends. */
 const action = createValidatedFormAction()({
   schema: actionArgs,
-  handler: async () => {
+  handler: async ({ data }) => {
     const outputDir = getOutputDir()
-    copyAgain(outputDir)
+    if (data.cameras !== false) copyAgain(outputDir)
     /* a scan can regroup what was not filed: one more step to go back to */
     keepBoardStep(getManifestPath(outputDir))
     const result = await scanMedia({ outputDir })

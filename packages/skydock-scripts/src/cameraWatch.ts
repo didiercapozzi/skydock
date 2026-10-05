@@ -8,8 +8,16 @@ import { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName } from './ki
 import type { SeenClip } from './kioCamera'
 import { job, publish } from './live'
 import { catchUp } from './catchUp'
+import {
+  forgetCamera,
+  knownCameras,
+  rememberCamera,
+  setCameraAuto,
+  touchCamera
+} from './knownCameras'
 import { scanMedia } from './scan'
 import { messageOf } from './lib/words'
+import { getTrashDir } from './utils'
 
 /* A camera plugged in is copied off on its own. The machine mounts its card like any drive; while the
    board's server runs, the mounted drives are looked at every couple of seconds, and one that has
@@ -172,6 +180,68 @@ const overMtp = (mount: string) => {
 const cameraName = (mount: string) =>
   isKioCamera(mount) ? kioCameraName(mount) : path.basename(mount) || mount.replace(/[\\/]+$/, '')
 
+/* The disks this machine knows by an id of their own, by the device each is: a card has the id its maker
+   or its format gave it, which is the same whichever reader it is in and wherever it is mounted. Where the
+   system keeps that list is told with `SKYDOCK_DISK_IDS` for a test. */
+const diskIds = () => {
+  const folder = process.env.SKYDOCK_DISK_IDS ?? '/dev/disk/by-uuid'
+  try {
+    return new Map(
+      fs.readdirSync(folder).flatMap((id) => {
+        try {
+          return [[fs.realpathSync(path.join(folder, id)), id] as const]
+        } catch {
+          return []
+        }
+      })
+    )
+  } catch {
+    return new Map<string, string>()
+  }
+}
+
+/* The device a mount is on: the nearest mount at or above it, which for a camera that keeps its
+   pictures one level into a drive is the drive. */
+const deviceOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
+  let text: string
+  try {
+    text = fs.readFileSync(mountinfo, 'utf-8')
+  } catch {
+    return null
+  }
+  const here = path.resolve(mount)
+  let best: { point: string; source: string } | null = null
+  for (const line of text.split('\n')) {
+    const [before, after] = line.split(' - ')
+    const point = before?.split(' ')[4]
+    const source = after?.split(' ')[1]
+    if (!point || !source) continue
+    const place = path.resolve(unescapeMount(point))
+    if (
+      (here === place || here.startsWith(`${place}${path.sep}`)) &&
+      (!best || place.length > best.point.length)
+    )
+      best = { point: place, source }
+  }
+  return best?.source ?? null
+}
+
+/* Which camera this is, told apart across plugs: the disk's own id where the machine has one for it,
+   or else the name it shows — a camera that hands its files over has no disk, and a card in a
+   machine that keeps no list has only its label. */
+const cameraKey = (mount: string, mountinfo?: string) => {
+  if (!isKioCamera(mount) && process.platform === 'linux') {
+    const device = deviceOf(mount, mountinfo)
+    let real: string | null = null
+    try {
+      real = device ? fs.realpathSync(device) : null
+    } catch {}
+    const id = (real && diskIds().get(real)) || (device && diskIds().get(device)) || null
+    if (id) return `id:${id}`
+  }
+  return `name:${cameraName(mount)}`
+}
+
 type Watch = {
   timer: ReturnType<typeof setInterval> | null
   /* the cameras already seen while they stay plugged in: one is copied once per plugging in */
@@ -194,6 +264,20 @@ type Watch = {
   seenOn: Record<string, { done: boolean; clips: SeenClip[] }>
   /* stops the camera being copied now, between one file and the next */
   stop?: AbortController
+  /* where the work is kept, as the watch was last started on it */
+  outputDir?: string
+  /* each camera plugged in, by the key it is known by, read once when it appeared */
+  keys: Record<string, string>
+  /* how many files on each are not here yet, once counted — null where it cannot be */
+  fresh: Record<string, number | null>
+  /* the cameras being counted right now */
+  checking: Set<string>
+  /* cameras plugged in that have never been met, waiting for an answer */
+  prompts: string[]
+  /* what a camera is to copy, when only some of it is wanted: its files as the listing names them */
+  only: Record<string, Set<string>>
+  /* what was last said, so that a change is said once */
+  saidKnown: string
 }
 
 declare global {
@@ -211,7 +295,13 @@ const watch = () =>
     asking: false,
     askUntil: 0,
     askedAt: 0,
-    seenOn: {}
+    seenOn: {},
+    keys: {},
+    fresh: {},
+    checking: new Set(),
+    prompts: [],
+    only: {},
+    saidKnown: ''
   })
 
 /* One camera at a time, in the order they were plugged in: two cards read at once are each read at
@@ -220,6 +310,9 @@ const copyNext = async (outputDir: string) => {
   const state = watch()
   const cameraDir = state.queue.shift()
   if (!cameraDir || state.copying) return
+  /* what is wanted of it, when it is only some: asked for once, so it is taken now */
+  const only = state.only[cameraDir]
+  delete state.only[cameraDir]
   state.copying = true
   state.current = cameraDir
   const stop = new AbortController()
@@ -263,13 +356,14 @@ const copyNext = async (outputDir: string) => {
   }
   try {
     const result = isKioCamera(cameraDir)
-      ? await copyThroughKde(cameraDir, outputDir, onProgress, onCopied, stop.signal)
+      ? await copyThroughKde(cameraDir, outputDir, onProgress, onCopied, stop.signal, only)
       : await copyCamera({
           cameraDir: path.join(cameraDir, 'DCIM'),
           outputDir,
           onProgress,
           onCopied,
-          stop: stop.signal
+          stop: stop.signal,
+          only
         })
     const onBoard = gatherArrivals(outputDir, arrived)
     /* Every file that came off is on the board already; the scan is only for one that could not be
@@ -309,6 +403,14 @@ const copyNext = async (outputDir: string) => {
     state.copying = false
     state.current = undefined
     state.stop = undefined
+    /* a camera that is not copied by itself says again how many it still holds that are not here */
+    if (
+      state.seen.has(cameraDir) &&
+      !knownCameras().some((c) => c.auto && c.key === state.keys[cameraDir])
+    ) {
+      delete state.fresh[cameraDir]
+      void check(cameraDir)
+    }
     if (state.queue.length > 0) void copyNext(outputDir)
   }
 }
@@ -319,7 +421,8 @@ const copyThroughKde = async (
   outputDir: string,
   onProgress: (progress: CopyProgress) => void,
   onCopied: (copied: Copied) => void,
-  stop: AbortSignal
+  stop: AbortSignal,
+  only?: Set<string>
 ) => {
   const reader = await kioReader()
   if (!reader) throw new CameraGone('KDE no longer reaches this camera.')
@@ -333,6 +436,27 @@ const copyThroughKde = async (
       onProgress,
       onCopied,
       stop,
+      fetch: only ? (clip) => only.has(clip.url) : undefined,
+      onClip: (clip) => seen.clips.push(clip)
+    })
+  } finally {
+    seen.done = true
+  }
+}
+
+/* a camera read through KDE gone over and nothing copied: what it holds, so its page can list it and say
+   how many files on it are not here yet */
+const lookThroughKde = async (camera: string, outputDir: string) => {
+  const reader = await kioReader()
+  if (!reader) return
+  const seen = { done: false, clips: [] as SeenClip[] }
+  watch().seenOn[camera] = seen
+  try {
+    await copyOverKio({
+      camera,
+      reader,
+      outputDir,
+      fetch: () => false,
       onClip: (clip) => seen.clips.push(clip)
     })
   } finally {
@@ -385,35 +509,156 @@ const askKde = async (find = camerasThroughKde) => {
   }
 }
 
-/* One look at what is mounted, and at what KDE last said it reaches. A camera that has appeared is
-   queued; one that has gone is forgotten, so plugging it in again copies what is new on it since. */
+/* Whether a file is one on a camera plugged in right now: under its DCIM folder, however it is spelled —
+   `..` and links that lead out are followed to where they land first. The one thing a card's files may be
+   asked for by, so nothing else on this machine can be read through it. */
+const isOnCamera = (file: string, mounts = mountedCameras()) => {
+  try {
+    const real = fs.realpathSync(file)
+    return mounts.some((mount) => {
+      if (isKioCamera(mount)) return false
+      const dcim = fs.realpathSync(path.join(mount, 'DCIM'))
+      return real.startsWith(`${dcim}${path.sep}`)
+    })
+  } catch {
+    return false
+  }
+}
+
+/* the key a camera plugged in is known by, read when it appeared */
+const keyOfMount = (mount: string) => watch().keys[mount] ?? cameraKey(mount)
+
+/* What a plugged-in camera is, in what the board is told of it. */
+const describe = (mount: string, known: ReturnType<typeof knownCameras>) => {
+  const state = watch()
+  const key = state.keys[mount] ?? cameraKey(mount)
+  const met = known.find((c) => c.key === key)
+  return {
+    camera: cameraName(mount),
+    mount,
+    over: overMtp(mount) ? ('mtp' as const) : ('drive' as const),
+    key,
+    known: Boolean(met),
+    auto: met?.auto ?? false,
+    fresh: state.fresh[mount] ?? null
+  }
+}
+
+/* The cameras, said to every board: the ones plugged in, every one this machine has met, and the ones
+   waiting to be asked about. Said once for each change — or again when asked, for a change made here. */
+const sayCameras = (force = false) => {
+  const state = watch()
+  const known = knownCameras()
+  const mounted = [...state.seen].sort().map((mount) => describe(mount, known))
+  const prompts = state.prompts.filter((mount) => state.seen.has(mount))
+  const said = JSON.stringify({ mounted, known, prompts })
+  if (!force && said === state.saidKnown) return
+  state.saidKnown = said
+  state.said = [...state.seen].sort().join('\n')
+  publish({
+    kind: 'cameras',
+    mounted,
+    known: known.map(({ key, name, auto, lastSeen }) => ({ key, name, auto, lastSeen })),
+    prompts
+  })
+}
+
+/* How many files on a camera are not here yet, read without copying any: the camera's own listing, which
+   is how the page tells what is new. A camera read through KDE has to be gone over first — read, never
+   copied — before it can say. */
+const countNew = async (mount: string, outputDir: string) => {
+  const { listCamera, listCameraThroughKde } = await import('./cameraFiles')
+  if (isKioCamera(mount)) {
+    await lookThroughKde(mount, outputDir)
+    return listCameraThroughKde(mount, outputDir).files.filter((f) => f.state === 'missing').length
+  }
+  const listed = await listCamera(mount, outputDir, getTrashDir())
+  return listed.files.filter((f) => f.state === 'missing').length
+}
+
+const check = async (mount: string) => {
+  const state = watch()
+  const outputDir = state.outputDir
+  if (!outputDir || state.checking.has(mount)) return
+  state.checking.add(mount)
+  try {
+    state.fresh[mount] = await countNew(mount, outputDir)
+  } catch {
+    state.fresh[mount] = null
+  } finally {
+    state.checking.delete(mount)
+    if (state.seen.has(mount)) sayCameras()
+  }
+}
+
+/* A camera that has just been plugged in. One this machine has never met is asked about — nothing
+   is copied from a camera nobody has said anything about; one it knows is copied if that is what was
+   chosen for it, and otherwise looked at, so the board can say how many new files it holds. */
+const meet = (mount: string, mountinfo?: string) => {
+  const state = watch()
+  const key = cameraKey(mount, mountinfo)
+  state.keys[mount] = key
+  const met = knownCameras().find((c) => c.key === key)
+  if (!met) {
+    state.prompts.push(mount)
+    void check(mount)
+    return
+  }
+  touchCamera(key)
+  if (met.auto) state.queue.push(mount)
+  else void check(mount)
+}
+
+/* One look at what is mounted, and at what KDE last said it reaches. A camera that has appeared is met;
+   one that has gone is forgotten, so plugging it in again is met again. */
 const lookForCameras = (outputDir: string, mountinfo?: string) => {
   const state = watch()
+  state.outputDir = outputDir
   void askKde()
   const now = new Set([...mountedCameras(mountinfo), ...state.kde])
   for (const camera of now)
     if (!state.seen.has(camera)) {
       state.seen.add(camera)
-      state.queue.push(camera)
+      meet(camera, mountinfo)
     }
   for (const camera of state.seen)
     if (!now.has(camera)) {
+      const key = state.keys[camera]
+      if (key) touchCamera(key)
       state.seen.delete(camera)
       delete state.seenOn[camera]
+      delete state.keys[camera]
+      delete state.fresh[camera]
+      delete state.only[camera]
+      state.prompts = state.prompts.filter((mount) => mount !== camera)
     }
-  const mounted = [...now].sort()
-  if (mounted.join('\n') !== state.said) {
-    state.said = mounted.join('\n')
-    publish({
-      kind: 'cameras',
-      mounted: mounted.map((mount) => ({
-        camera: cameraName(mount),
-        mount,
-        over: overMtp(mount) ? ('mtp' as const) : ('drive' as const)
-      }))
-    })
-  }
+  sayCameras()
   if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
+}
+
+/* the camera's own words about itself, answered: remembered — copied now if that is asked, and by itself
+   from now on if that is — forgotten, or told to copy by itself or not. */
+const answerCamera = (
+  outputDir: string,
+  answer:
+    | { remember: string; auto: boolean; copy: boolean }
+    | { forget: string }
+    | { auto: { key: string; on: boolean } }
+) => {
+  const state = watch()
+  const mountOf = (key: string) => [...state.seen].find((mount) => state.keys[mount] === key)
+  if ('remember' in answer) {
+    const mount = mountOf(answer.remember)
+    const name =
+      knownCameras().find((c) => c.key === answer.remember)?.name ??
+      (mount ? cameraName(mount) : answer.remember)
+    rememberCamera({ key: answer.remember, name, auto: answer.auto })
+    state.prompts = state.prompts.filter((m) => m !== mount)
+    if (mount && answer.copy) copyAgain(outputDir, mount, [mount])
+  } else if ('forget' in answer) {
+    forgetCamera(answer.forget)
+  } else setCameraAuto(answer.auto.key, answer.auto.on)
+  sayCameras(true)
 }
 
 /* Kept for as long as the server runs — a camera plugged in with no board open is still copied, and
@@ -434,11 +679,23 @@ const watchCameras = (outputDir: string) => {
    same way plugging it in copies it: what is already here is passed over, so what comes across is
    only what is missing, whatever the reason it is. One already waiting or being copied is left to that
    copy. Says how many cameras were asked for. */
-const copyAgain = (outputDir: string, camera?: string, mounts = mountedCameras()) => {
+const copyAgain = (
+  outputDir: string,
+  camera?: string,
+  mounts = mountedCameras(),
+  /* only these files of it, as its listing names them — for a camera whose new files are chosen */
+  only?: Set<string>
+) => {
   const state = watch()
   const now = [...mounts, ...state.kde]
-  const wanted = camera ? now.filter((c) => c === camera) : now
-  for (const c of wanted) if (c !== state.current && !state.queue.includes(c)) state.queue.push(c)
+  /* every camera asked for at once leaves out one nobody has said anything about yet: that one asks first */
+  const wanted = camera
+    ? now.filter((c) => c === camera)
+    : now.filter((c) => !state.prompts.includes(c))
+  for (const c of wanted) {
+    if (only) state.only[c] = only
+    if (c !== state.current && !state.queue.includes(c)) state.queue.push(c)
+  }
   if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
   return wanted.length
 }
@@ -464,15 +721,20 @@ const camerasSeenThroughKde = () => watch().kde
 const seenOnCamera = (camera: string) => watch().seenOn[camera] ?? { done: false, clips: [] }
 
 export {
+  answerCamera,
   askKde,
+  cameraKey,
   stopCameraCopy,
   cameraCopying,
   cameraName,
   camerasSeenThroughKde,
   copyAgain,
+  isOnCamera,
+  keyOfMount,
   lookForCameras,
   mountedCameras,
   overMtp,
+  sayCameras,
   seenOnCamera,
   watchCameras
 }

@@ -45,6 +45,8 @@ describe('a work folder with no record', () => {
 
     await expect.element(page.getByRole('status', { name: 'Scanning…' })).toBeVisible()
     await vi.waitFor(() => expect(scans).toHaveLength(1))
+    /* a look through the folder alone: no camera is copied behind it */
+    expect(JSON.stringify(scans[0])).toContain('"cameras":false')
     expect(document.body.textContent).not.toContain('Plug a camera in')
   })
 })

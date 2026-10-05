@@ -14,6 +14,8 @@ const cameraFileSchema = z.object({
 const cameraListingSchema = z.object({
   camera: z.string(),
   mount: z.string(),
+  /* which camera it is across plugs — what its page is addressed by */
+  key: z.string().default(''),
   /* how it hands its files over: as a drive the machine mounted, or by MTP — a camera with no
      drive to offer, read a request at a time and so slower than the same card in a reader */
   over: z.enum(['drive', 'mtp']),

@@ -32,6 +32,7 @@ import type { ShouldRevalidateFunctionArgs } from 'react-router'
 import { BoardHeader, StatusBar } from '../components/board-header'
 import type { NasLink } from '../components/board-header'
 import { FirstScan } from '../components/first-scan'
+import { NewCameraDialog } from '../components/camera-dialogs'
 import { DialogHost } from '../components/dialog-host'
 import { JobsPanel } from '../components/jobs-panel'
 import { TransfersPanel } from '../components/transfers-panel'
@@ -217,6 +218,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const model = useBoardModel(looked ? { ...loaderData, ...looked } : loaderData)
   const details = useDetailsColumn()
   const { board, nas, drag, setDialog } = model
+  /* the camera waiting to be asked about, when there is one */
+  const newCamera = board.cameras.find((c) => board.cameraPrompts.includes(c.mount))
   const { groups, loose, places, note, setNote, send } = board
   const dialogOpen = model.dialog !== null
   /* ? opens the list of every key the board knows — a key of the whole window, so it listens there */
@@ -266,7 +269,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     return (
       <FirstScan
         scanning={board.scanning}
-        onScan={board.scan}
+        onScan={board.firstScan}
         note={note}
         problem={board.noteIsProblem}
         onClose={() => setNote(null)}
@@ -351,6 +354,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           groups={model.listed}
           looseFiles={loose}
           cameras={board.cameras}
+          knownCameras={board.knownCameras}
           statusContext={model.statusContext}
           montageOpen={(g) => !model.asOnStorage(g).uploaded}
           delivered={model.delivered}
@@ -425,6 +429,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             send('reset', { intent: 'reset-fresh', resetWhat: what })
           })
         }
+        onForgetCamera={(key) => {
+          model.pickPlace({ kind: 'sort' })
+          void routingEngine
+            .action({ url: '/api/camera', actionArgs: { forget: key } })
+            .catch(() => undefined)
+        }}
         onMontage={(groupId, template) => closeThen(() => model.makeMontage(groupId, template))}
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
@@ -446,6 +456,24 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
                     : null
         }}
       />
+
+      {/* a camera never met before asks what to do about it, one at a time */}
+      {newCamera && (
+        <NewCameraDialog
+          key={newCamera.key}
+          name={newCamera.camera}
+          fresh={newCamera.fresh}
+          onAnswer={({ choose, ...answer }) => {
+            void routingEngine
+              .action({
+                url: '/api/camera',
+                actionArgs: { remember: { key: newCamera.key, ...answer } }
+              })
+              .catch(() => undefined)
+            if (choose) model.pickPlace({ kind: 'camera', name: newCamera.key })
+          }}
+        />
+      )}
 
       {/* what is on its way, in the bottom-right corner, whatever page is open: a camera being copied off, files
           being copied in, and the upload going out — one above the other when several are */}

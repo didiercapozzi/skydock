@@ -180,9 +180,12 @@ const copyCamera = async ({
   manifest = loadBoard(outputDir),
   onProgress,
   onCopied,
-  stop
+  stop,
+  only
 }: {
   cameraDir: string
+  /* only these files, by where they are on the card, when the rest are not wanted */
+  only?: ReadonlySet<string>
   outputDir?: string
   manifest?: Manifest | null
   /* asked to stop: the file in hand is finished, whole, and nothing after it is begun */
@@ -191,7 +194,7 @@ const copyCamera = async ({
   /* each file as it lands, so the board can show it before the whole card is done */
   onCopied?: (copied: Copied) => Promise<void> | void
 }) => {
-  const files = findMediaFiles(cameraDir)
+  const files = findMediaFiles(cameraDir).filter((file) => !only || only.has(file))
   const shots = await shotTimes(files)
   /* a file is in the registry and in its jump, and either may carry the mark */
   const board = manifest

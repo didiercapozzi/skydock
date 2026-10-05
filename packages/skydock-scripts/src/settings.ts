@@ -50,5 +50,5 @@ const rememberOutputDir = (dir: string, configDir?: string) => {
   saveSettings({ outputDir: dir }, configDir)
 }
 
-export { readSettings, rememberOutputDir, resolveOutputDir }
+export { readSettings, rememberOutputDir, resolveOutputDir, saveSettings }
 export type { Settings }
