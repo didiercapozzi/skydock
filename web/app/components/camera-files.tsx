@@ -30,7 +30,7 @@ const STANDING = {
   missing: {
     label: msg`not copied yet`,
     many: msg`not copied yet`,
-    tone: 'bg-changed-soft text-changed before:shadow-[inset_0_0_0_2px_currentColor]',
+    tone: 'bg-changed-soft text-changed before:shadow-ring-current',
     ink: 'text-accent',
     title: msg`Not copied here yet — it cannot be deleted from the camera`
   },
@@ -82,7 +82,7 @@ const DeleteBar = ({ path }: { path: string }) => {
       aria-valuemax={100}
       aria-valuenow={percent}
       className='flex w-full flex-col gap-1'>
-      <span className='flex items-center justify-between text-[11.5px] font-bold text-accent-ink'>
+      <span className='flex items-center justify-between text-micro font-bold text-accent-ink'>
         <span>{word}</span>
         <span className='tabular-nums'>{percent}%</span>
       </span>
@@ -123,10 +123,10 @@ const Confirm = ({
           </Go>
         </>
       }>
-      <p className='m-0 text-[12.5px] text-ink-2'>
+      <p className='m-0 text-body text-ink-2'>
         {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
       </p>
-      <p className='m-0 rounded-xl bg-local-soft px-3.5 py-2.5 text-[12px] text-ink-2'>
+      <p className='m-0 rounded-control bg-local-soft px-3.5 py-2.5 text-small text-ink-2'>
         {t`They are not erased: they go to the bin,`} <span className='font-mono'>.trash/</span>
         {t`, kept as they sat on the card, and stay there until it is emptied by hand.`}
       </p>
@@ -322,14 +322,14 @@ const CameraFiles = ({
       className='flex flex-col gap-3'>
       {/* how far the card has got, counted — and, beside it, the one thing to do next about it */}
       {listing && (
-        <div className='flex items-center rounded-2xl bg-well py-3.5'>
+        <div className='flex items-center rounded-card bg-well py-3.5'>
           {STATES.map((state, at) => (
             <span
               key={state}
               title={i18n._(STANDING[state].title)}
-              className={`flex flex-col gap-0.5 px-[22px] text-[12px] font-medium text-ink-3 ${at > 0 ? 'border-l border-line-2' : ''}`}>
+              className={`flex flex-col gap-0.5 px-5.5 text-small font-medium text-ink-3 ${at > 0 ? 'border-l border-line-2' : ''}`}>
               <b
-                className={`font-display text-[26px] leading-none font-bold tracking-[-0.03em] tabular-nums ${STANDING[state].ink}`}>
+                className={`font-display text-display leading-none font-bold tracking-display tabular-nums ${STANDING[state].ink}`}>
                 {files.filter((f) => f.state === state).length}
               </b>{' '}
               {i18n._(STANDING[state].many)}
@@ -359,16 +359,16 @@ const CameraFiles = ({
           )}
         </div>
       )}
-      <div className='flex min-h-[30px] flex-wrap items-center gap-2'>
+      <div className='flex min-h-control-sm flex-wrap items-center gap-2'>
         {listing && (
-          <span className='text-[13.5px] font-medium text-ink-3'>
+          <span className='text-lead font-medium text-ink-3'>
             {plural(count, { one: '# file', other: '# files' })} · {size}
           </span>
         )}
         {looking && (
           <span
             title={t`SkyDock is going over the camera, file by file, as it copies it. What it has been over is listed here; the rest follow on their own.`}
-            className='inline-flex h-[22px] items-center rounded-full bg-accent-soft px-2.5 text-[11.5px] font-bold text-accent-ink'>
+            className='inline-flex h-chip items-center rounded-full bg-accent-soft px-2.5 text-micro font-bold text-accent-ink'>
             {t`still going over the camera — ${plural(count, { one: '# file', other: '# files' })} so far`}
           </span>
         )}
@@ -378,13 +378,13 @@ const CameraFiles = ({
         {listing?.over === 'mtp' && (
           <span
             title={t`This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card.`}
-            className='inline-flex h-[22px] items-center rounded-full bg-local-soft px-2.5 text-[11.5px] font-bold text-local'>
+            className='inline-flex h-chip items-center rounded-full bg-local-soft px-2.5 text-micro font-bold text-local'>
             {t`handed over, not a drive — slower than a card reader`}
           </span>
         )}
         <Spacer />
         {picks > 0 && (
-          <span className='text-[12.5px] text-ink-2'>
+          <span className='text-body text-ink-2'>
             <b className='font-semibold text-ink'>{t`${picks} picked`}</b> · {pickedSize}
           </span>
         )}
@@ -443,7 +443,7 @@ const CameraFiles = ({
         )}
       </div>
       {listing && (
-        <p className='m-0 flex items-center gap-2.5 rounded-xl bg-well px-3 py-2 text-[12.5px] font-medium text-ink-2'>
+        <p className='m-0 flex items-center gap-2.5 rounded-control bg-well px-3 py-2 text-body font-medium text-ink-2'>
           <Icon
             name='lock'
             size={14}
@@ -473,15 +473,15 @@ const CameraFiles = ({
             : t`Nothing on the camera’s card.`}
         </Empty>
       ) : (
-        <table className='w-full table-fixed border-collapse text-[12.5px]'>
+        <table className='w-full table-fixed border-collapse text-body'>
           <thead>
             <tr>
-              <th className={`${TH} w-[36px]`} />
+              <th className={`${TH} w-9`} />
               <th className={TH}>{t`On the card`}</th>
-              <th className={`${TH} w-[160px]`}>{t`Shot`}</th>
-              <th className={`${TH} w-[84px] text-right`}>{t`Size`}</th>
-              <th className={`${TH} w-[190px]`}>{t`Where it has got to`}</th>
-              <th className={`${TH} w-[56px]`} />
+              <th className={`${TH} w-40`}>{t`Shot`}</th>
+              <th className={`${TH} w-21 text-right`}>{t`Size`}</th>
+              <th className={`${TH} w-47.5`}>{t`Where it has got to`}</th>
+              <th className={`${TH} w-14`} />
             </tr>
           </thead>
           <tbody>
@@ -510,11 +510,11 @@ const CameraFiles = ({
                   )}
                 </td>
                 <td className={`${TD} truncate font-medium text-ink`}>{file.name}</td>
-                <td className={`${TD} text-[12px] text-ink-2 tabular-nums`}>
+                <td className={`${TD} text-small text-ink-2 tabular-nums`}>
                   {/* a camera that gives no time for a file it has not handed over yet */}
                   {file.mtime > 0 ? `${dateLabel(file.mtime)} ${hhmm(file.mtime)}` : '—'}
                 </td>
-                <td className={`${TD} text-right text-[12px] text-ink-2 tabular-nums`}>
+                <td className={`${TD} text-right text-small text-ink-2 tabular-nums`}>
                   {formatSize(file.size)}
                 </td>
                 <td className={TD}>
@@ -522,7 +522,7 @@ const CameraFiles = ({
                     <DeleteBar path={file.path} />
                   ) : (
                     <span
-                      className={`inline-flex h-[22px] w-max items-center gap-1.5 rounded-full px-[9px] text-[11.5px] font-bold before:size-1.5 before:rounded-full before:content-[''] ${STANDING[file.state].tone}`}>
+                      className={`inline-flex h-chip w-max items-center gap-1.5 rounded-full px-2.25 text-micro font-bold before:size-1.5 before:rounded-full before:content-[''] ${STANDING[file.state].tone}`}>
                       <span className='inline-block first-letter:uppercase'>
                         {i18n._(STANDING[file.state].label)}
                       </span>

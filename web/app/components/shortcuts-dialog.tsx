@@ -58,13 +58,13 @@ const ShortcutsDialog = ({ onClose }: { onClose: () => void }) => {
       }>
       {sections.map(([heading, keys]) => (
         <section key={heading}>
-          <h5 className='m-0 mb-1.5 text-[11.5px] font-bold text-ink-3'>{heading}</h5>
-          <dl className='m-0 grid grid-cols-[230px_1fr] items-center gap-x-4 gap-y-1.5 text-[12.5px]'>
+          <h5 className='m-0 mb-1.5 text-micro font-bold text-ink-3'>{heading}</h5>
+          <dl className='m-0 grid grid-cols-[230px_1fr] items-center gap-x-4 gap-y-1.5 text-body'>
             {keys.map(([key, does]) => (
               <div
                 key={key}
                 className='contents'>
-                <dt className='w-max rounded-[6px] border border-line-2 bg-well px-1 text-[11px] leading-4 font-medium text-ink-2'>
+                <dt className='w-max rounded-chip border border-line-2 bg-well px-1 text-micro leading-4 font-medium text-ink-2'>
                   {key}
                 </dt>
                 <dd className='m-0 text-ink-2'>{does}</dd>

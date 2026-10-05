@@ -74,16 +74,16 @@ const BinFiles = ({
     <section
       aria-label={t`In the bin`}
       className='flex flex-col gap-3'>
-      <div className='flex min-h-[30px] flex-wrap items-center gap-2'>
+      <div className='flex min-h-control-sm flex-wrap items-center gap-2'>
         {answered && (
-          <span className='text-[13.5px] font-medium text-ink-3'>
+          <span className='text-lead font-medium text-ink-3'>
             {plural(count, { one: '# file', other: '# files' })} ·{' '}
             {formatSize(files.reduce((n, f) => n + f.size, 0))}
           </span>
         )}
         <Spacer />
         {picks > 0 && (
-          <span className='text-[12.5px] text-ink-2'>
+          <span className='text-body text-ink-2'>
             <b className='font-semibold text-ink'>{t`${picks} picked`}</b> ·{' '}
             {formatSize(chosen.reduce((n, f) => n + f.size, 0))}
           </span>
@@ -105,7 +105,7 @@ const BinFiles = ({
         </Go>
       </div>
       {answered && (
-        <p className='m-0 flex items-center gap-2.5 rounded-xl bg-well px-3 py-2 text-[12.5px] font-medium text-ink-2'>
+        <p className='m-0 flex items-center gap-2.5 rounded-control bg-well px-3 py-2 text-body font-medium text-ink-2'>
           <Icon
             name='bin'
             size={14}
@@ -113,7 +113,7 @@ const BinFiles = ({
           />
           <span className='min-w-0'>
             {t`SkyDock never empties the bin. To delete these files for good, remove them yourself from`}{' '}
-            <code className='font-mono text-[12px] break-all text-ink'>{answered.dir}</code>
+            <code className='font-mono text-small break-all text-ink'>{answered.dir}</code>
           </span>
         </p>
       )}
@@ -123,14 +123,14 @@ const BinFiles = ({
       ) : answered && batches.length === 0 ? (
         <Empty>{t`The bin is empty.`}</Empty>
       ) : (
-        <table className='w-full table-fixed border-collapse text-[12.5px]'>
+        <table className='w-full table-fixed border-collapse text-body'>
           <thead>
             <tr>
-              <th className={`${TH} w-[36px]`} />
-              <th className={`${TH} w-[112px]`} />
+              <th className={`${TH} w-9`} />
+              <th className={`${TH} w-28`} />
               <th className={TH}>{t`File`}</th>
-              <th className={`${TH} w-[160px]`}>{t`Shot`}</th>
-              <th className={`${TH} w-[84px] text-right`}>{t`Size`}</th>
+              <th className={`${TH} w-40`}>{t`Shot`}</th>
+              <th className={`${TH} w-21 text-right`}>{t`Size`}</th>
             </tr>
           </thead>
           {/* each time files were put aside is a run of its own, headed by where they came from */}
@@ -141,9 +141,9 @@ const BinFiles = ({
                   colSpan={5}
                   scope='colgroup'
                   className='px-3 pt-5 pb-1.5 text-left font-normal'>
-                  <h3 className='m-0 truncate font-display text-[16px] font-bold tracking-[-0.02em] text-ink'>
+                  <h3 className='m-0 truncate font-display text-title font-bold tracking-title text-ink'>
                     {fromWhere(batch)}
-                    <span className='font-sans text-[12.5px] font-medium tracking-normal text-ink-3'>
+                    <span className='font-sans text-body font-medium tracking-normal text-ink-3'>
                       {' '}
                       · {dateLabel(batch.at)} {hhmm(batch.at)}
                     </span>
@@ -172,16 +172,16 @@ const BinFiles = ({
                       alt=''
                       loading='lazy'
                       decoding='async'
-                      className='block h-11 w-[78px] rounded-[9px] bg-well object-cover'
+                      className='block h-11 w-19.5 rounded-control bg-well object-cover'
                     />
                   </td>
-                  <td className={`${TD} truncate font-mono text-[12.5px] font-normal text-ink`}>
+                  <td className={`${TD} truncate font-mono text-body font-normal text-ink`}>
                     {file.name}
                   </td>
-                  <td className={`${TD} text-[12px] text-ink-2 tabular-nums`}>
+                  <td className={`${TD} text-small text-ink-2 tabular-nums`}>
                     {dateLabel(file.mtime)} {hhmm(file.mtime)}
                   </td>
-                  <td className={`${TD} text-right text-[12px] text-ink-2 tabular-nums`}>
+                  <td className={`${TD} text-right text-small text-ink-2 tabular-nums`}>
                     {formatSize(file.size)}
                   </td>
                 </tr>

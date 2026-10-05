@@ -87,21 +87,21 @@ const HistoryDialog = ({
           <Mini onClick={onClose}>{t`Close`}</Mini>
         </>
       }>
-      <p className='m-0 text-[12.5px] text-ink-2'>
+      <p className='m-0 text-body text-ink-2'>
         {t`The last changes made on the board, the latest first. Going back to before one undoes it and every change after it — the jumps, names and trims; no file on the disk or on the storage is touched.`}
       </p>
-      {problem && <p className='m-0 text-[12.5px] text-local'>{problem}</p>}
+      {problem && <p className='m-0 text-body text-local'>{problem}</p>}
       {steps === null && !problem ? (
-        <p className='m-0 text-[12.5px] text-ink-3'>{t`Reading the history…`}</p>
+        <p className='m-0 text-body text-ink-3'>{t`Reading the history…`}</p>
       ) : steps && steps.length === 0 ? (
-        <p className='m-0 text-[12.5px] text-ink-3'>{t`Nothing to go back to yet.`}</p>
+        <p className='m-0 text-body text-ink-3'>{t`Nothing to go back to yet.`}</p>
       ) : (
-        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-[10px] border border-line-2'>
+        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-control border border-line-2'>
           {(steps ?? []).map((step) => (
             <li
               key={step.step}
-              className='flex items-center gap-3 border-b border-line-2 px-2.5 py-2 text-[12.5px] last:border-b-0 hover:bg-well'>
-              <span className='w-[7.5rem] flex-none font-mono text-[12px] text-ink-3 tabular-nums'>
+              className='flex items-center gap-3 border-b border-line-2 px-2.5 py-2 text-body last:border-b-0 hover:bg-well'>
+              <span className='w-30 flex-none font-mono text-small text-ink-3 tabular-nums'>
                 {whenSaid(step.at)}
               </span>
               <span className='flex min-w-0 flex-1 flex-col text-ink'>

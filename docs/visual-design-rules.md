@@ -4,6 +4,29 @@
 
 **Status.** This is the light theme of the app. It was drawn on the design canvas (https://claude.ai/artifact/WdR97TrNkiiseJ49fQrfsT, board _Growing slices_) for the main view — _Fresh files_ with one jump open — at 1520 × 820, and is built into `web/app/app.css` and the components. The dark theme is not redrawn here and keeps its own values under the same token names. Where this file gives a value it is the mockup's, except where a value was darkened for contrast when it was built, which the table says. The pictures of a jump are one component, `web/app/components/slices.tsx`.
 
+## 0. The variables — the one place a size, a corner or a colour is said
+
+Everything below is built from variables in `web/app/app.css`. A component never writes a size, a corner, a
+shadow or a colour in its own pixels or hex; it names the one it means, so the whole app is kept alike and
+changed from one place. `web/tests/server/design-rules.test.ts` reads every component and fails on the
+first one that breaks this.
+
+| What | Names | Notes |
+| --- | --- | --- |
+| Type | `text-micro` 11 · `text-small` 12 · `text-body` 13 · `text-lead` 14 · `text-title` 16 · `text-subhead` 18 · `text-heading` 22 · `text-display` 28 | seven sizes, and no other |
+| Letter spacing | `tracking-title` · `tracking-display` · `tracking-eyebrow` · `tracking-spaced` | |
+| Line height | `leading-title` 1.15 · `leading-text` 1.3 · `leading-prose` 1.5 | |
+| Corners | `rounded-bar` 2 · `rounded-chip` 6 · `rounded-control` 10 · `rounded-card` 14 · `rounded-panel` 18 · `rounded-full` | five corners; only a pill is round |
+| Control sizes | `h-chip` 22 · `h-control-sm` 30 · `h-control` 34 · `h-control-lg` 42 · `size-mark` 18 | everything else is on the 4 px scale (`p-3`, `gap-2.5`, `top-4`), never in pixels |
+| Breakpoints | `desk:` from 781 · `roomy:` from 901 · `wide:` from 1101, and `max-desk:` `max-roomy:` `max-wide:` below them | |
+| Shadows | `shadow-soft` · `-card` · `-float` · `-overlay` · `-chip` · `-inset` · `-lift` · `-glow` · `-hairline` · `-divider` · `-edge-left`, and the rings `-ring` `-ring-2` `-ring-pick` `-ring-white` `-ring-dark` `-ring-stage` `-ring-current` `-picked` `-looked` `-halo` `-focus` `-inset-ring` `-inset-ring-accent` `-inset-bar` | a ring is a shadow, so it takes no room |
+| Colours | the roles in section 2, plus `on-accent` and `on-bin` (the ink on a solid fill), `stage` and `stage-ink` (the viewer and what is written over it), `scrim` and `veil` (what darkens), `paper`, `dot-local` `dot-proc` `dot-up` | each is defined for both themes |
+| Gradients | `bg-(image:--gradient-avatar-1)` … `-paper-todo` `-paper-done` `-paper-plain` `-picture` `-marker` `-veil-bottom` `-veil-side` | named for what they colour |
+| Shared looks | `eyebrow` (the quiet capital line over a part), `tool-button` (a small square button in a panel's head), `bare-input` (a field with no box of its own), `go-fill` (the main button) | |
+
+Dark is the same variables redefined once, under the `dark` variant: it applies when the app is set to dark and, only while the app is on automatic, when the machine is — so a `dark:` class and a variable always agree.
+
+
 ## 1. The idea in five lines
 
 1. **Light, soft grey-teal, easy to see.** The app's original pale grey-teal ground, with white panels on it. Nothing is dark except text and photographs.

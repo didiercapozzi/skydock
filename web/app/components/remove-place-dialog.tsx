@@ -39,7 +39,7 @@ const RemovePlaceDialog = ({
           <Danger onClick={onConfirm}>{t`Remove ${place}`}</Danger>
         </>
       }>
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`What happens`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`What happens`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✕'>{t`${place} stops being a destination files can be filed under`}</Line>
         {filed.length > 0 ? (
@@ -52,7 +52,7 @@ const RemovePlaceDialog = ({
         {linked && <Line mark='✕'>{t`it stops being linked to ${linked} on the storage`}</Line>}
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`What does not`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`What does not`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✓'>{t`every original stays on this machine, exactly where it is`}</Line>
         {linked && (

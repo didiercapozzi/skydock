@@ -70,9 +70,9 @@ const CameraPreview = ({
           if (e.key === 'ArrowRight') step(1)
           else if (e.key === 'ArrowLeft') step(-1)
         }}
-        className='flex min-h-[320px] items-center justify-center rounded-xl bg-black outline-none'>
+        className='flex min-h-80 items-center justify-center rounded-control bg-black outline-none'>
         {failed === file.path ? (
-          <p className='m-0 max-w-[420px] p-6 text-center text-[13px] text-white/80'>
+          <p className='m-0 max-w-105 p-6 text-center text-body text-white/80'>
             {t`This file cannot be played here. Copy it to look at it with the board's own player.`}
           </p>
         ) : isVideoFile(file.path) ? (

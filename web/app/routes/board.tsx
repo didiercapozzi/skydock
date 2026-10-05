@@ -334,10 +334,10 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       className='ground flex h-screen flex-col overflow-hidden'>
       <div
         data-docked={details ? '' : undefined}
-        className={`group grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 min-[781px]:px-0 min-[781px]:pt-0 min-[781px]:pb-0 min-[781px]:grid-cols-[264px_0px_minmax(0,1fr)] min-[781px]:grid-rows-[56px_minmax(0,1fr)] min-[781px]:gap-y-0 min-[1101px]:transition-[grid-template-columns] min-[1101px]:duration-300 min-[1101px]:ease-out motion-reduce:transition-none ${
+        className={`group grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 desk:px-0 desk:pt-0 desk:pb-0 desk:grid-cols-[264px_0px_minmax(0,1fr)] desk:grid-rows-[56px_minmax(0,1fr)] desk:gap-y-0 wide:transition-[grid-template-columns] wide:duration-300 wide:ease-out motion-reduce:transition-none ${
           details
-            ? 'min-[1101px]:grid-cols-[264px_0px_minmax(0,1fr)_0px_338px]'
-            : 'min-[1101px]:grid-cols-[264px_0px_minmax(0,1fr)_0px_0px]'
+            ? 'wide:grid-cols-[264px_0px_minmax(0,1fr)_0px_338px]'
+            : 'wide:grid-cols-[264px_0px_minmax(0,1fr)_0px_0px]'
         }`}>
         <BoardHeader
           scanning={board.scanning}
@@ -478,7 +478,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       {/* what is on its way, in the bottom-right corner, whatever page is open: a camera being copied off, files
           being copied in, and the upload going out — one above the other when several are */}
       {(board.uploading || copying || jobs.length > 0 || transfersOpen) && (
-        <div className='fixed right-4 bottom-[34px] z-40 flex flex-col items-end gap-2'>
+        <div className='fixed right-4 bottom-8.5 z-40 flex flex-col items-end gap-2'>
           <JobsPanel dsmHost={nas.host} />
           {transfersOpen && (
             <TransfersPanel

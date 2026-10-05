@@ -57,7 +57,7 @@ const Slices = ({
             zIndex: n + 1,
             transform: 'skewX(-14deg)'
           }}
-          className='absolute -top-1 -bottom-1 block overflow-hidden shadow-[-5px_0_10px_rgba(15,45,100,0.38)]'>
+          className='absolute -top-1 -bottom-1 block overflow-hidden shadow-edge-left'>
           <img
             src={getPictureUrl(file, proxies?.[file.path], width)}
             alt=''
@@ -70,7 +70,7 @@ const Slices = ({
         </i>
       ))}
       {more > 0 && (
-        <b className='absolute right-2.5 bottom-2 z-20 rounded-full bg-[rgba(6,40,70,0.55)] px-2.5 py-0.5 text-[12px] font-bold text-white'>
+        <b className='absolute right-2.5 bottom-2 z-20 rounded-full bg-veil/55 px-2.5 py-0.5 text-small font-bold text-white'>
           +{more}
         </b>
       )}

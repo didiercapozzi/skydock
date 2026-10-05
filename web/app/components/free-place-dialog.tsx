@@ -41,7 +41,7 @@ const FreePlaceDialog = ({
           <Danger onClick={onConfirm}>{t`Check and free about ${about}`}</Danger>
         </>
       }>
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Proved first`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Proved first`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✓'>
           {plural(files.length, {
@@ -52,18 +52,18 @@ const FreePlaceDialog = ({
         </Line>
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Then deleted from this machine`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Then deleted from this machine`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✕'>{t`${deleted}: the originals, the copies and the working copies`}</Line>
       </ul>
 
       {reshaped > 0 && (
-        <p className='m-0 rounded-[10px] bg-changed-soft px-2.5 py-2 text-[12px] text-ink-2'>
+        <p className='m-0 rounded-control bg-changed-soft px-2.5 py-2 text-small text-ink-2'>
           {t`${plural(reshaped, { one: '# file', other: '# files' })} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good.`}
         </p>
       )}
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Kept`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Kept`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✓'>{t`everything on the storage, still listed and played from this page`}</Line>
         {kept > 0 && (

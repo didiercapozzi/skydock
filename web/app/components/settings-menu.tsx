@@ -5,7 +5,7 @@ import type { IconName } from './icons'
 
 /* a tool on the toolbar: no frame until the pointer is over it */
 const TOOL =
-  'inline-flex h-[34px] items-center gap-2 rounded-[10px] border-0 px-[11px] text-[13.5px] font-semibold text-ink hover:bg-well disabled:opacity-40'
+  'inline-flex h-control items-center gap-2 rounded-control border-0 px-2.75 text-lead font-semibold text-ink hover:bg-well disabled:opacity-40'
 
 /* A button that opens a small panel of choices under it. It closes on Escape, on a click outside
    it, and once something in it is chosen. */
@@ -61,8 +61,8 @@ const Menu = ({
           onClick={() => setOpen(!open)}
           className={
             round
-              ? `inline-flex size-[42px] items-center justify-center rounded-full border-0 shadow-card hover:bg-accent-soft ${open ? 'bg-accent-soft' : 'bg-pane'}`
-              : `${TOOL} w-[34px] justify-center px-0 ${open ? 'bg-well' : ''}`
+              ? `inline-flex size-control-lg items-center justify-center rounded-full border-0 shadow-card hover:bg-accent-soft ${open ? 'bg-accent-soft' : 'bg-pane'}`
+              : `${TOOL} w-control justify-center px-0 ${open ? 'bg-well' : ''}`
           }>
           <Icon
             name={icon}
@@ -74,7 +74,7 @@ const Menu = ({
           type='button'
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className='inline-flex h-[30px] w-full items-center justify-center gap-1.5 rounded-full bg-pane px-3 text-[12.5px] font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
+          className='inline-flex h-control-sm w-full items-center justify-center gap-1.5 rounded-full bg-pane px-3 text-body font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
           {lead && (
             <Icon
               name={lead}
@@ -89,7 +89,7 @@ const Menu = ({
         <div
           role='group'
           aria-label={label}
-          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-[200px] flex-col gap-3 overflow-y-auto rounded-[16px] bg-pane p-3.5 shadow-float ${
+          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-50 flex-col gap-3 overflow-y-auto rounded-card bg-pane p-3.5 shadow-float ${
             side === 'right' ? 'right-0' : 'left-0'
           }`}>
           {children(close)}
@@ -112,7 +112,7 @@ const SettingsMenu = ({ children }: { children: (close: () => void) => React.Rea
 
 /* one line of the menu: what it is, and the control for it */
 const SettingsRow = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <div className='flex items-center justify-between gap-3 text-[12.5px] font-semibold text-ink-2'>
+  <div className='flex items-center justify-between gap-3 text-body font-semibold text-ink-2'>
     <span>{label}</span>
     {children}
   </div>
@@ -140,7 +140,7 @@ const MenuItem = ({
     title={title}
     onClick={onClick}
     disabled={disabled}
-    className={`flex w-full items-center gap-2 rounded-[9px] border-0 bg-transparent px-2.5 py-1.5 text-left text-[12.5px] font-semibold hover:bg-well disabled:cursor-default disabled:opacity-40 ${danger ? 'text-bin' : 'text-ink'}`}>
+    className={`flex w-full items-center gap-2 rounded-control border-0 bg-transparent px-2.5 py-1.5 text-left text-body font-semibold hover:bg-well disabled:cursor-default disabled:opacity-40 ${danger ? 'text-bin' : 'text-ink'}`}>
     {icon && (
       <Icon
         name={icon}

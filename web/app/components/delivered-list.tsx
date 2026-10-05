@@ -18,10 +18,10 @@ import { dayShort, formatSize, minFileMtime } from './utils'
 
 /* each name its own colour, so a list of them is told apart at a glance */
 const AVATARS = [
-  'bg-[linear-gradient(135deg,#0e7a8f,#5cc0cf)]',
-  'bg-[linear-gradient(135deg,#7a5ad2,#b3a0ef)]',
-  'bg-[linear-gradient(135deg,#d98a3a,#f0b877)]',
-  'bg-[linear-gradient(135deg,#1f8a5a,#6fcf9f)]'
+  'bg-(image:--gradient-avatar-1)',
+  'bg-(image:--gradient-avatar-2)',
+  'bg-(image:--gradient-avatar-3)',
+  'bg-(image:--gradient-avatar-4)'
 ]
 const avatarOf = (name: string) =>
   AVATARS[[...name].reduce((n, c) => n + c.charCodeAt(0), 0) % AVATARS.length]
@@ -42,15 +42,14 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
   return (
     <div className='flex min-h-full flex-col gap-3'>
       <div>
-        <div
-          className={`${COLUMNS} pb-2 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase`}>
+        <div className={`${COLUMNS} pb-2 eyebrow`}>
           <span>{t`Montage`}</span>
           <span>{t`Day`}</span>
           <span>{t`Emailed`}</span>
           <span>{t`On the storage`}</span>
           <span>{t`Link`}</span>
         </div>
-        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-[18px] bg-pane p-0 shadow-[0_0_0_1px_var(--color-line)]'>
+        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-panel bg-pane p-0 shadow-hairline'>
           {rows.map(([name, jumps]) => {
             const files = jumps.flatMap((g) => g.files)
             const videos = files.filter((f) => isVideoFile(f.path)).length
@@ -70,27 +69,27 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                 <span className='flex min-w-0 items-center gap-3.5'>
                   <span
                     aria-hidden='true'
-                    className={`grid size-11 flex-none place-items-center rounded-[14px] font-display text-[18px] font-semibold text-white ${avatarOf(name)}`}>
+                    className={`grid size-11 flex-none place-items-center rounded-card font-display text-subhead font-semibold text-white ${avatarOf(name)}`}>
                     {name.charAt(0).toUpperCase()}
                   </span>
                   <span className='min-w-0'>
-                    <b className='block truncate font-display text-[16px] font-semibold tracking-[-0.02em]'>
+                    <b className='block truncate font-display text-title font-semibold tracking-title'>
                       {name}
                     </b>
-                    <span className='block truncate text-[12px] text-ink-3'>
+                    <span className='block truncate text-small text-ink-3'>
                       {kindsSaid(videos, files.length - videos, ' · ') ||
                         plural(files.length, { one: '# file', other: '# files' })}
                     </span>
                   </span>
                 </span>
-                <span className='text-[14px]'>
+                <span className='text-lead'>
                   {first ? dayShort(minFileMtime(first.files) ?? 0) : ''}
                 </span>
-                <span className='text-[14px]'>{emailed ? dayShort(emailed) : '—'}</span>
-                <b className='text-[14px] tabular-nums'>{size ? formatSize(size) : '—'}</b>
+                <span className='text-lead'>{emailed ? dayShort(emailed) : '—'}</span>
+                <b className='text-lead tabular-nums'>{size ? formatSize(size) : '—'}</b>
                 <span className='flex items-center gap-3'>
                   <span
-                    className={`inline-flex h-6 w-[88px] items-center justify-center rounded-full text-[12px] font-bold ${
+                    className={`inline-flex h-6 w-22 items-center justify-center rounded-full text-small font-bold ${
                       linked ? 'bg-up-soft text-up' : 'bg-well text-ink-2'
                     }`}>
                     {linked ? t`active` : t`no link`}
@@ -109,13 +108,13 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                   </Mini>
                   <Link
                     to={placeHref({ kind: 'pax', name })}
-                    className='no-underline [&>button]:h-[34px] [&>button]:px-4'>
+                    className='no-underline [&>button]:h-control [&>button]:px-4'>
                     <Mini>{t`Open`}</Mini>
                   </Link>
                 </span>
                 {shown.has(name) && (
                   <div className='col-span-full pt-1 pb-2'>
-                    <p className='m-0 mb-1 text-[12.5px] text-ink-3'>
+                    <p className='m-0 mb-1 text-body text-ink-3'>
                       {t`On this machine: nothing — everything is on the storage.`}
                     </p>
                     <ParcelCards
@@ -129,7 +128,7 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
           })}
         </ul>
       </div>
-      <p className='m-0 mt-auto pt-6 text-[12.5px] text-ink-3'>
+      <p className='m-0 mt-auto pt-6 text-body text-ink-3'>
         {t`A montage comes here by itself once it is freed from this machine. Press Storage to see where its files are on the storage, or Open for its page.`}
       </p>
     </div>

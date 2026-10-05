@@ -21,7 +21,7 @@ import type { ManifestGroup } from './types'
 
 /* a name typed in, as tall as the button beside it */
 const FIELD =
-  'h-[34px] min-w-0 flex-1 rounded-[10px] border border-transparent bg-well px-3 text-[13px] font-medium text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none'
+  'h-control min-w-0 flex-1 rounded-control border border-transparent bg-well px-3 text-body font-medium text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none'
 
 /* A montage is named once, by one name — "Luc Favre", "Boogie 2026" — and the name *is* the folder
    it gets (RULES, Places). Renaming moves the montage, or joins it to another, so it is never done by
@@ -67,7 +67,7 @@ const PassengerName = ({
         {changed && <Mini onClick={() => setName(was)}>{t`Cancel`}</Mini>}
       </span>
       {joins && (
-        <span className='text-[11.5px] font-medium text-accent-ink'>{t`Joins ${joined}’s montage`}</span>
+        <span className='text-micro font-medium text-accent-ink'>{t`Joins ${joined}’s montage`}</span>
       )}
     </span>
   )
@@ -99,7 +99,7 @@ const PassengerFrames = ({
   if (shown.length === 0) return null
   if (inline)
     return (
-      <span className='flex gap-[3px]'>
+      <span className='flex gap-0.75'>
         {shown.map((file) => (
           <img
             key={file.id ?? file.path}
@@ -107,7 +107,7 @@ const PassengerFrames = ({
             alt={alt}
             loading='lazy'
             decoding='async'
-            className='h-6 w-[34px] rounded-[6px] bg-well object-cover'
+            className='h-6 w-control rounded-chip bg-well object-cover'
           />
         ))}
       </span>
@@ -122,7 +122,7 @@ const PassengerFrames = ({
           alt={alt}
           loading='lazy'
           decoding='async'
-          className='h-[42px] w-full min-w-0 rounded-[8px] bg-well object-cover'
+          className='h-control-lg w-full min-w-0 rounded-control bg-well object-cover'
         />
       ))}
     </span>
@@ -204,7 +204,7 @@ const NameMontage = ({
       </span>
       <span className='flex items-start justify-between gap-2'>
         <span
-          className={`text-[11.5px] leading-normal ${joins ? 'font-medium text-accent-ink' : 'text-ink-3'}`}>
+          className={`text-micro leading-normal ${joins ? 'font-medium text-accent-ink' : 'text-ink-3'}`}>
           {joins
             ? t`Joins ${joined}’s montage${copied}`
             : complete
@@ -249,7 +249,7 @@ const FilmStrip = ({
   const renderedAt = hhmm(film.mtime)
   return (
     <div
-      className={`relative h-[250px] flex-none overflow-hidden rounded-[18px] bg-[#10131a] text-white shadow-card [--color-ink-2:rgba(255,255,255,0.8)] [--color-ink-3:rgba(255,255,255,0.7)] [--color-ink:#fff] [--color-line:rgba(255,255,255,0.3)] [--color-well:rgba(255,255,255,0.2)]`}>
+      className={`relative h-62.5 flex-none overflow-hidden rounded-panel bg-stage text-white shadow-card [--color-ink-2:rgba(255,255,255,0.8)] [--color-ink-3:rgba(255,255,255,0.7)] [--color-ink:#fff] [--color-line:rgba(255,255,255,0.3)] [--color-well:rgba(255,255,255,0.2)]`}>
       {watching ? (
         <>
           <video
@@ -279,12 +279,12 @@ const FilmStrip = ({
               className='absolute inset-0 h-full w-full object-cover'
             />
           )}
-          <span className='absolute inset-0 bg-[linear-gradient(90deg,rgba(8,12,22,0.86)_0%,rgba(8,12,22,0.6)_48%,rgba(8,12,22,0)_78%)]' />
-          <div className='absolute top-0 right-[110px] bottom-0 left-[26px] z-[1] flex flex-col justify-center gap-2'>
-            <span className='text-[11px] font-bold tracking-[0.1em] uppercase opacity-85'>
+          <span className='absolute inset-0 bg-(image:--gradient-veil-side)' />
+          <div className='absolute top-0 right-27.5 bottom-0 left-6.5 z-1 flex flex-col justify-center gap-2'>
+            <span className='text-micro font-bold tracking-eyebrow uppercase opacity-85'>
               {t`The film`}
             </span>
-            <b className='font-display text-[27px] tracking-[-0.03em] break-words'>
+            <b className='font-display text-display tracking-display break-words'>
               {filmNameOf(facts.baseName)}
             </b>
             <span className='font-semibold opacity-90'>
@@ -299,7 +299,7 @@ const FilmStrip = ({
             aria-label={t`Watch the film here`}
             title={t`Watch the film here`}
             onClick={() => setWatching(true)}
-            className='absolute top-1/2 right-[34px] z-[1] -mt-8 grid size-16 place-items-center rounded-full border-0 bg-white/92 text-[#10131a] hover:bg-white'>
+            className='absolute top-1/2 right-8.5 z-1 -mt-8 grid size-16 place-items-center rounded-full border-0 bg-white/92 text-stage-ink hover:bg-white'>
             <Icon
               name='play'
               size={26}
@@ -314,12 +314,12 @@ const FilmStrip = ({
 /* While the montage has an edit, that the edit holds its files, with the lock that says so */
 const FilmNote = ({ locked }: { locked?: string | null }) =>
   locked && (
-    <div className='flex items-center gap-3.5 rounded-[12px] bg-well px-3.5 py-3'>
+    <div className='flex items-center gap-3.5 rounded-control bg-well px-3.5 py-3'>
       <Icon
         name='lock'
         className='text-ink-2'
       />
-      <span className='text-[11.5px] leading-normal text-ink-3'>{locked}</span>
+      <span className='text-micro leading-normal text-ink-3'>{locked}</span>
     </div>
   )
 
@@ -342,7 +342,7 @@ const ProjectPath = ({ path: projectPath }: { path: string }) => {
       type='button'
       onClick={copy}
       title={`${projectPath}\n\n${t`Click to copy`}`}
-      className='max-w-full truncate border-0 bg-transparent p-0 font-mono text-[11.5px] text-ink-3 hover:text-accent-ink'>
+      className='max-w-full truncate border-0 bg-transparent p-0 font-mono text-micro text-ink-3 hover:text-accent-ink'>
       {copied ? t`✓ copied` : `${projectPath} ⧉`}
     </button>
   )
@@ -415,7 +415,7 @@ const MontageCardActions = ({
         {/* The editor opens on proxies, and a project made before them opens on the full clips, so
             it waits until each clip has one, or has failed to get one (RULES, The editing project). */}
         {proxiesWaiting > 0 && (
-          <span className='text-[12px] text-ink-3'>
+          <span className='text-small text-ink-3'>
             {plural(proxiesWaiting, {
               one: 'waiting for # proxy',
               other: 'waiting for # proxies'
@@ -535,7 +535,7 @@ const MontageCardActions = ({
       )}
       {children}
       {/* the film itself is shown above the montage once it exists */}
-      {!facts.film && <span className='text-[11.5px] text-ink-3'>{t`edit and render it`}</span>}
+      {!facts.film && <span className='text-micro text-ink-3'>{t`edit and render it`}</span>}
       <span className='basis-full'>
         <ProjectPath path={facts.projectPath} />
       </span>
@@ -560,8 +560,8 @@ const FolderInside = ({ line }: { line: Extract<Inside, { kind: 'folder' }> }) =
   return (
     <div>
       <span className='flex items-baseline gap-2'>
-        <span className='font-mono text-[11.5px] font-semibold text-ink-2'>{line.name}</span>
-        <span className='text-[11.5px] text-ink-3'>
+        <span className='font-mono text-micro font-semibold text-ink-2'>{line.name}</span>
+        <span className='text-micro text-ink-3'>
           {line.name === 'videos/'
             ? plural(count, { one: '# clip', other: '# clips' })
             : line.name === 'photos/'
@@ -572,7 +572,7 @@ const FolderInside = ({ line }: { line: Extract<Inside, { kind: 'folder' }> }) =
       {named.map((name) => (
         <span
           key={name}
-          className='block truncate pl-4 font-mono text-[11px]'>
+          className='block truncate pl-4 font-mono text-micro'>
           {name}
         </span>
       ))}
@@ -581,7 +581,7 @@ const FolderInside = ({ line }: { line: Extract<Inside, { kind: 'folder' }> }) =
           type='button'
           aria-expanded={all}
           onClick={() => setAll(!all)}
-          className='ml-4 cursor-pointer border-0 bg-transparent p-0 text-[11px] font-semibold text-accent-ink hover:underline'>
+          className='ml-4 cursor-pointer border-0 bg-transparent p-0 text-micro font-semibold text-accent-ink hover:underline'>
           {all ? t`Show fewer` : t`+ ${more} more — show all`}
         </button>
       )}
@@ -591,8 +591,8 @@ const FolderInside = ({ line }: { line: Extract<Inside, { kind: 'folder' }> }) =
 
 /* what is in a zip, or in a folder sent as it is */
 const InsideList = ({ inside }: { inside: Inside[] }) => (
-  <div className='mt-0.5 mb-1.5 ml-[30px] flex flex-col gap-1 border-l border-line-2 pl-3 text-ink-3'>
-    <span className='text-[10.5px] font-semibold tracking-[0.06em] uppercase'>{t`Inside`}</span>
+  <div className='mt-0.5 mb-1.5 ml-7.5 flex flex-col gap-1 border-l border-line-2 pl-3 text-ink-3'>
+    <span className='text-micro font-semibold tracking-eyebrow uppercase'>{t`Inside`}</span>
     {inside.map((line) =>
       line.kind === 'folder' ? (
         <FolderInside
@@ -602,7 +602,7 @@ const InsideList = ({ inside }: { inside: Inside[] }) => (
       ) : (
         <span
           key={line.name}
-          className='font-mono text-[11.5px] text-ink-2'>
+          className='font-mono text-micro text-ink-2'>
           {line.name}
         </span>
       )
@@ -630,7 +630,7 @@ const ParcelRow = ({
   const [open, setOpen] = useState(false)
   const holds = Boolean(item.inside && item.inside.length > 0) && !missing
   const ROW =
-    'flex min-w-0 flex-1 items-center gap-2.5 rounded-[9px] px-2 py-1.5 text-ink no-underline hover:bg-well'
+    'flex min-w-0 flex-1 items-center gap-2.5 rounded-control px-2 py-1.5 text-ink no-underline hover:bg-well'
   const body = (
     <>
       {holds && (
@@ -641,18 +641,18 @@ const ParcelRow = ({
         />
       )}
       <span
-        className={`min-w-0 flex-1 truncate font-mono text-[12px] ${missing ? 'text-ink-3 line-through' : ''}`}
+        className={`min-w-0 flex-1 truncate font-mono text-small ${missing ? 'text-ink-3 line-through' : ''}`}
         title={item.name}>
         {item.name}
       </span>
       {missing && (
-        <span className='inline-flex h-[22px] flex-none items-center rounded-full bg-local-soft px-[9px] text-[11.5px] font-bold whitespace-nowrap text-local'>
+        <span className='inline-flex h-chip flex-none items-center rounded-full bg-local-soft px-2.25 text-micro font-bold whitespace-nowrap text-local'>
           {t`no longer on the storage`}
         </span>
       )}
-      <span className='flex-none text-[12.5px] whitespace-nowrap text-ink-3'>{item.what}</span>
+      <span className='flex-none text-body whitespace-nowrap text-ink-3'>{item.what}</span>
       {item.size ? (
-        <span className='mr-1 flex-none text-[12.5px] whitespace-nowrap text-ink-3'>
+        <span className='mr-1 flex-none text-body whitespace-nowrap text-ink-3'>
           {formatFilmSize(item.size)}
         </span>
       ) : null}
@@ -714,8 +714,8 @@ const NasCard = ({
      that file chosen */
   const dsm = dsmHost ? dsmFolderUrl(dsmHost, parcel.dir) : null
   return (
-    <div className='mt-2.5 overflow-hidden rounded-[16px] shadow-[0_0_0_1px_var(--color-line)]'>
-      <div className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-[11px] text-[12.5px]'>
+    <div className='mt-2.5 overflow-hidden rounded-card shadow-hairline'>
+      <div className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-2.75 text-body'>
         {parcel.title && <b className='font-bold'>{parcel.title}</b>}
         {dsm ? (
           <a
@@ -723,13 +723,13 @@ const NasCard = ({
             target='_blank'
             rel='noreferrer'
             title={t`Show this folder in the storage’s own web interface, in a new tab`}
-            className='font-mono text-[11.5px] text-accent-ink hover:underline'>
+            className='font-mono text-micro text-accent-ink hover:underline'>
             {parcel.dir}
           </a>
         ) : (
-          <span className='font-mono text-[11.5px] text-ink-3'>{parcel.dir}</span>
+          <span className='font-mono text-micro text-ink-3'>{parcel.dir}</span>
         )}
-        <span className='ml-auto text-[11.5px] text-ink-3'>{parcel.tag}</span>
+        <span className='ml-auto text-micro text-ink-3'>{parcel.tag}</span>
       </div>
       <div className='px-1.5 py-1'>
         {parcel.items.map((item) => (
@@ -749,7 +749,7 @@ const NasCard = ({
               size={14}
               className='text-ink-3'
             />
-            <span className='text-[11.5px] text-ink-3'>{t`No link`}</span>
+            <span className='text-micro text-ink-3'>{t`No link`}</span>
             <span className='ml-auto'>
               <Mini
                 title={t`Make a link to its folder, to send`}
@@ -770,7 +770,7 @@ const NasCard = ({
               href={parcel.shareUrl}
               target='_blank'
               rel='noreferrer'
-              className='truncate font-mono text-[11px] text-accent-ink hover:underline'>
+              className='truncate font-mono text-micro text-accent-ink hover:underline'>
               {parcel.shareUrl}
             </a>
             {onLink && (
@@ -835,13 +835,13 @@ const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: nu
   if (gone.length === 0) return null
   const uploadedOn = at ? new Date(at * 1000).toLocaleDateString('de-CH') : ''
   return (
-    <p className='mt-2.5 mb-0 rounded-[12px] bg-changed-soft px-3.5 py-2.5 text-[12.5px] text-changed'>
+    <p className='mt-2.5 mb-0 rounded-control bg-changed-soft px-3.5 py-2.5 text-body text-changed'>
       {at ? t`Uploaded ${uploadedOn}, but ` : ''}
       {plural(gone.length, {
         one: 'this is no longer on the storage:',
         other: 'these are no longer on the storage:'
       })}{' '}
-      <code className='font-mono text-[11.5px]'>
+      <code className='font-mono text-micro'>
         {gone.map((f) => lastSegment(f.remotePath)).join(', ')}
       </code>{' '}
       {plural(gone.length, {

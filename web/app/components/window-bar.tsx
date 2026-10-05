@@ -7,7 +7,7 @@ import { Icon } from './icons'
    app itself, at the end of its own header, with nothing of a title bar of their own around them. Only
    SkyDock's own window has them; a browser tab shows none. */
 const CONTROL =
-  'grid size-7 place-items-center rounded-[9px] text-ink-2 hover:bg-well hover:text-ink'
+  'grid size-7 place-items-center rounded-control text-ink-2 hover:bg-well hover:text-ink'
 
 /* `onClose` stands in for the window's own close, where closing has something to ask first: a file with
    changes not saved yet */

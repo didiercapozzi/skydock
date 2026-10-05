@@ -21,7 +21,7 @@ const GROUPING_LABEL: Record<Grouping, MessageDescriptor> = {
 
 /* how many of a kind, small and grey beside its name */
 const Count = ({ n }: { n: number }) => (
-  <span className='text-[13.5px] font-semibold text-ink-3 tabular-nums'>{n}</span>
+  <span className='text-lead font-semibold text-ink-3 tabular-nums'>{n}</span>
 )
 
 /* Videos, photos or both — each with how many the folder holds. Shown on every folder, even where
@@ -48,7 +48,7 @@ const KindSeg = ({
     <span
       role='group'
       aria-label={t`Videos or photos`}
-      className='inline-flex gap-0.5 rounded-full bg-well p-1 shadow-[inset_0_1px_2px_rgba(10,100,170,0.1)]'>
+      className='inline-flex gap-0.5 rounded-full bg-well p-1 shadow-inset'>
       {options.map(([value, label, count, title]) => (
         <button
           key={value}
@@ -57,7 +57,7 @@ const KindSeg = ({
           disabled={count === 0 && kind !== value}
           title={title}
           onClick={() => onPick(value)}
-          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-4 text-[13.5px] font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-default disabled:opacity-45 ${
+          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-4 text-lead font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-default disabled:opacity-45 ${
             kind === value
               ? 'bg-pane text-accent-ink shadow-card'
               : 'text-ink-2 hover:bg-pane/60 hover:text-accent-ink'
@@ -119,7 +119,7 @@ const PlacePane = ({
   const controls = browsing ? (
     <>
       {browsing && (
-        <label className='flex h-9 w-[160px] items-center gap-2.5 rounded-[11px] bg-well px-3 text-ink-3 focus-within:shadow-[0_0_0_1.5px_var(--color-accent)] max-[780px]:w-[130px]'>
+        <label className='flex h-9 w-40 items-center gap-2.5 rounded-control bg-well px-3 text-ink-3 focus-within:shadow-focus max-desk:w-32.5'>
           <Icon name='narrow' />
           <input
             type='text'
@@ -127,7 +127,7 @@ const PlacePane = ({
             onChange={(e) => onQuery(e.target.value)}
             placeholder={t`Narrow by name`}
             aria-label={t`Find a file`}
-            className='min-w-0 flex-1 border-0 bg-transparent text-[13.5px] font-medium text-ink outline-none placeholder:text-ink-3'
+            className='bare-input'
           />
         </label>
       )}
@@ -163,7 +163,7 @@ const PlacePane = ({
         e.preventDefault()
         onImport(carried, incoming.target, incoming.where)
       }}
-      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-[18px] isle-pane max-[780px]:rounded-[18px] min-[781px]:rounded-b-none min-[781px]:border-t min-[781px]:border-edge min-[781px]:col-start-3 min-[781px]:row-start-2'>
+      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-panel isle-pane max-desk:rounded-panel desk:rounded-b-none desk:border-t desk:border-edge desk:col-start-3 desk:row-start-2'>
       {/* a page's own head, or the plain one: one row, the folder's name and count and at the right
           everything that acts on it — narrowing by name, the ways of arranging it, kinds, and the
           folder's own tools */}
@@ -173,10 +173,10 @@ const PlacePane = ({
         <div className='flex flex-wrap items-center gap-x-3.5 gap-y-2.5 px-7 pt-4 pb-2'>
           {/* the count beside the name, on its line, so the controls at the right are level with it */}
           <div className='flex min-w-0 flex-wrap items-baseline gap-x-3'>
-            <h1 className='m-0 font-display text-[28px] leading-[1.15] font-bold tracking-[-0.035em] text-ink'>
+            <h1 className='m-0 font-display text-display leading-title font-bold tracking-display text-ink'>
               {placeLabel(place)}
             </h1>
-            <p className='m-0 text-[13px] font-medium text-ink-3'>{summary}</p>
+            <p className='m-0 text-body font-medium text-ink-3'>{summary}</p>
           </div>
           {(browsing || tools) && (
             <div className='ml-auto flex flex-wrap items-center gap-x-3.5 gap-y-2'>
@@ -226,11 +226,11 @@ const Owed = ({
     <button
       type='button'
       onClick={onClick}
-      className={`border-0 bg-transparent p-0 text-[12.5px] hover:underline ${look}`}>
+      className={`border-0 bg-transparent p-0 text-body hover:underline ${look}`}>
       {children}
     </button>
   ) : (
-    <span className={`text-[12.5px] ${look}`}>{children}</span>
+    <span className={`text-body ${look}`}>{children}</span>
   )
 }
 

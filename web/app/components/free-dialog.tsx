@@ -51,12 +51,12 @@ const FreeDialog = ({
           <Danger onClick={onConfirm}>{t`Check and free about ${about}`}</Danger>
         </>
       }>
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Proved first`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Proved first`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         {sent.length > 0 && (
           <Line mark='✓'>
             {t`each file that went up is hashed here and by the storage, and both must match what was sent:`}{' '}
-            <code className='font-mono text-[11.5px]'>
+            <code className='font-mono text-micro'>
               {sent
                 .slice(0, 3)
                 .map((f) => lastSegment(f.remotePath))
@@ -69,7 +69,7 @@ const FreeDialog = ({
         <Line mark='✓'>{t`nothing about the montage changed since it was uploaded`}</Line>
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Then deleted from this machine`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Then deleted from this machine`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✕'>
           {t`${plural(count, { one: 'the # original', other: 'the # originals' })} (${originalsSize})`}
@@ -78,7 +78,7 @@ const FreeDialog = ({
         <Line mark='✕'>{t`the film and the zips`}</Line>
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Kept`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Kept`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✓'>{t`the kdenlive project, and the record of what went where`}</Line>
       </ul>

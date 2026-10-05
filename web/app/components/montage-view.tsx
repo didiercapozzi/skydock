@@ -195,14 +195,14 @@ const Card = ({
   aside?: React.ReactNode
   children: React.ReactNode
 }) => (
-  <section className='flex min-h-0 flex-col gap-3 overflow-hidden rounded-[18px] bg-pane p-5 shadow-[0_0_0_1px_var(--color-line)]'>
+  <section className='flex min-h-0 flex-col gap-3 overflow-hidden rounded-panel bg-pane p-5 shadow-hairline'>
     <div className='flex items-center gap-3'>
       <Icon
         name={icon}
         size={20}
         className={icon === 'storage' ? 'text-accent' : 'text-ink-3'}
       />
-      <h3 className='m-0 font-display text-[17px] font-semibold tracking-[-0.02em]'>{title}</h3>
+      <h3 className='m-0 font-display text-subhead font-semibold tracking-title'>{title}</h3>
       {aside && <span className='ml-auto'>{aside}</span>}
     </div>
     {children}
@@ -210,7 +210,7 @@ const Card = ({
 )
 
 const SAFE =
-  'inline-flex h-6 items-center rounded-full bg-up-soft px-2.5 text-[12px] font-bold text-up'
+  'inline-flex h-6 items-center rounded-full bg-up-soft px-2.5 text-small font-bold text-up'
 
 /* the day the jump was, as the page's line says it */
 const jumpDay = (group: ManifestGroup) => dayLabel(dayOf(group))
@@ -273,54 +273,48 @@ const MontageBody = ({
     return (
       <div className='flex flex-col gap-4 pb-6'>
         <div className='grid grid-cols-3 gap-3.5'>
-          <div className='rounded-[18px] bg-pane px-[18px] py-4 shadow-[0_0_0_1px_var(--color-line)]'>
-            <div className='text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
-              {t`Stored`}
-            </div>
-            <div className='mt-0.5 font-display text-[28px] font-semibold tracking-[-0.03em]'>
+          <div className='rounded-panel bg-pane px-4.5 py-4 shadow-hairline'>
+            <div className='eyebrow'>{t`Stored`}</div>
+            <div className='mt-0.5 font-display text-display font-semibold tracking-display'>
               {plural(items.length, { one: '# item', other: '# items' })}
             </div>
-            <div className='text-[12px] text-ink-3'>{t`${formatSize(stored)} on the storage`}</div>
+            <div className='text-small text-ink-3'>{t`${formatSize(stored)} on the storage`}</div>
           </div>
-          <div className='rounded-[18px] bg-pane px-[18px] py-4 shadow-[0_0_0_1px_var(--color-line)]'>
-            <div className='text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
-              {t`Link`}
-            </div>
+          <div className='rounded-panel bg-pane px-4.5 py-4 shadow-hairline'>
+            <div className='eyebrow'>{t`Link`}</div>
             <div className='mt-1.5 flex items-center gap-2'>
               <span
                 className={
                   shareUrl
                     ? SAFE
-                    : 'inline-flex h-6 items-center rounded-full bg-well px-2.5 text-[12px] font-bold text-ink-2'
+                    : 'inline-flex h-6 items-center rounded-full bg-well px-2.5 text-small font-bold text-ink-2'
                 }>
                 {shareUrl ? t`active` : t`no link`}
               </span>
               {shareUrl && (
-                <span className='truncate font-mono text-[12px] text-ink-3'>
+                <span className='truncate font-mono text-small text-ink-3'>
                   …/{shareUrl.split('/').pop()}
                 </span>
               )}
             </div>
             {emailed && (
-              <div className='mt-1 text-[12px] text-ink-3'>
+              <div className='mt-1 text-small text-ink-3'>
                 {t`emailed ${shortDate(emailed.at)}`}
               </div>
             )}
           </div>
-          <div className='rounded-[18px] bg-pane px-[18px] py-4 shadow-[0_0_0_1px_var(--color-line)]'>
-            <div className='text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
-              {t`This machine`}
-            </div>
-            <div className='mt-0.5 font-display text-[28px] font-semibold tracking-[-0.03em]'>
+          <div className='rounded-panel bg-pane px-4.5 py-4 shadow-hairline'>
+            <div className='eyebrow'>{t`This machine`}</div>
+            <div className='mt-0.5 font-display text-display font-semibold tracking-display'>
               {t`Empty`}
             </div>
-            <div className='text-[12px] text-ink-3'>{t`freed ${bytes} on ${shortDate(group.freed.at)}`}</div>
+            <div className='text-small text-ink-3'>{t`freed ${bytes} on ${shortDate(group.freed.at)}`}</div>
           </div>
         </div>
         <Card
           icon='storage'
           title={t`Only on the storage now`}
-          aside={<span className='text-[12px] text-ink-3'>{t`press a zip to see inside`}</span>}>
+          aside={<span className='text-small text-ink-3'>{t`press a zip to see inside`}</span>}>
           {storage}
         </Card>
       </div>
@@ -331,21 +325,21 @@ const MontageBody = ({
     <div className='flex flex-col gap-4 pb-6'>
       <MontageActions group={group} />
       <div
-        className='grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] gap-[18px] max-[900px]:grid-cols-1'
+        className='grid grid-cols-[minmax(0,1fr)_minmax(0,1.25fr)] gap-4.5 max-roomy:grid-cols-1'
         style={{ minHeight: 'calc(100vh - 470px)' }}>
         <Card
           icon='monitor'
           title={t`On this machine`}>
           <div>
-            <div className='font-display text-[30px] leading-[1.1] font-semibold tracking-[-0.03em]'>
+            <div className='font-display text-display leading-title font-semibold tracking-display'>
               {formatSize(group.files.reduce((n, f) => n + f.size, 0))}
             </div>
-            <div className='text-[12px] text-ink-3'>
+            <div className='text-small text-ink-3'>
               {kindsSaid(videos, group.files.length - videos, ' · ')}
             </div>
           </div>
           {!gone && (
-            <div className='flex items-start gap-2.5 rounded-[14px] bg-well px-3.5 py-3 text-[12.5px]'>
+            <div className='flex items-start gap-2.5 rounded-card bg-well px-3.5 py-3 text-body'>
               <Icon
                 name='check'
                 size={18}
@@ -362,7 +356,7 @@ const MontageBody = ({
               onClick={() => model.setDialog({ kind: 'free', groupId: group.id })}>
               {t`Free up space…`}
             </Mini>
-            <p className='m-0 mt-1.5 text-[12px] text-ink-3'>
+            <p className='m-0 mt-1.5 text-small text-ink-3'>
               {t`Deletes what is here once the storage is proved to hold it. Asks first.`}
             </p>
           </div>
@@ -493,14 +487,14 @@ const WayDone = () => (
       <span
         key={n}
         className='flex items-center gap-1'>
-        <span className='grid size-[18px] place-items-center rounded-full bg-up text-white'>
+        <span className='grid size-mark place-items-center rounded-full bg-up text-white'>
           <Icon
             name='check'
             size={10}
             weight={4}
           />
         </span>
-        {n < 5 && <span className='h-[3px] w-3.5 rounded-[3px] bg-up' />}
+        {n < 5 && <span className='h-0.75 w-3.5 rounded-bar bg-up' />}
       </span>
     ))}
   </span>

@@ -96,12 +96,12 @@ const Row = ({
     title={title}
     {...dropTarget}
     className={(current) =>
-      `flex w-full items-center gap-2.5 rounded-[14px] px-2 py-1.5 text-left text-ink min-[781px]:min-h-[42px] max-[780px]:w-auto max-[780px]:flex-none max-[780px]:rounded-full max-[780px]:px-[11px] max-[780px]:shadow-soft ${
+      `flex w-full items-center gap-2.5 rounded-card px-2 py-1.5 text-left text-ink desk:min-h-control-lg max-desk:w-auto max-desk:flex-none max-desk:rounded-full max-desk:px-2.75 max-desk:shadow-soft ${
         over
           ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed'
           : current
             ? 'bg-pane shadow-soft'
-            : 'hover:bg-pane/50 max-[780px]:bg-pane'
+            : 'hover:bg-pane/50 max-desk:bg-pane'
       } ${flash ? 'animate-[placeflash_1.8s_ease-out]' : ''}`
     }>
     {(current) => {
@@ -111,10 +111,8 @@ const Row = ({
         <>
           {/* the folder's mark in a tile: pale on the sky, solid blue for the folder being looked at */}
           <span
-            className={`grid size-[30px] flex-none place-items-center rounded-[10px] max-[780px]:hidden ${
-              lit
-                ? 'bg-accent text-white shadow-[0_0_8px_rgba(11,127,214,0.35)] dark:text-[#04222b]'
-                : 'bg-pane/70 text-accent'
+            className={`grid size-control-sm flex-none place-items-center rounded-control max-desk:hidden ${
+              lit ? 'bg-accent text-on-accent shadow-glow' : 'bg-pane/70 text-accent'
             }`}>
             <Icon
               name={iconOf(place)}
@@ -128,12 +126,12 @@ const Row = ({
                   <i
                     aria-hidden='true'
                     className={`size-2 flex-none rounded-full ${
-                      dot === 'on' ? 'bg-up' : 'shadow-[inset_0_0_0_2px_var(--color-line-strong)]'
+                      dot === 'on' ? 'bg-up' : 'shadow-inset-ring'
                     }`}
                   />
                 )}
                 <span
-                  className={`min-w-0 truncate text-[15px] ${lit ? 'font-bold' : 'font-medium'} ${quiet ? 'italic' : ''} ${
+                  className={`min-w-0 truncate text-title ${lit ? 'font-bold' : 'font-medium'} ${quiet ? 'italic' : ''} ${
                     quiet && !lit ? 'text-ink-3' : ''
                   }`}
                   title={label}>
@@ -142,13 +140,11 @@ const Row = ({
               </span>
               {(owed || (count ?? 0) > 0) && !second && (
                 <span
-                  className={`flex-none text-[12px] whitespace-nowrap tabular-nums max-[780px]:hidden ${
+                  className={`flex-none text-small whitespace-nowrap tabular-nums max-desk:hidden ${
                     tone === 'quiet'
                       ? 'font-medium text-ink-3'
                       : `rounded-full px-2 py-0.5 font-bold ${
-                          tone === 'white'
-                            ? 'bg-pane text-accent-ink'
-                            : 'bg-accent text-white dark:text-[#04222b]'
+                          tone === 'white' ? 'bg-pane text-accent-ink' : 'bg-accent text-on-accent'
                         }`
                   }`}>
                   {owed ?? count}
@@ -156,7 +152,7 @@ const Row = ({
               )}
             </span>
             {second && (
-              <span className='mt-1.5 flex flex-col gap-1.5 text-[11.5px] font-medium text-ink-3 max-[780px]:hidden'>
+              <span className='mt-1.5 flex flex-col gap-1.5 text-micro font-medium text-ink-3 max-desk:hidden'>
                 {second}
               </span>
             )}
@@ -169,7 +165,7 @@ const Row = ({
 
 const Heading = ({ children, first }: { children: string; first?: boolean }) => (
   <h2
-    className={`mx-2.5 mb-[5px] text-[11px] font-bold tracking-[0.09em] text-accent-ink/70 uppercase max-[780px]:my-0 max-[780px]:mr-0.5 max-[780px]:ml-1.5 max-[780px]:flex-none ${
+    className={`mx-2.5 mb-1.25 text-micro font-bold tracking-eyebrow text-accent-ink/70 uppercase max-desk:my-0 max-desk:mr-0.5 max-desk:ml-1.5 max-desk:flex-none ${
       first ? 'mt-1' : 'mt-3.5'
     }`}>
     {children}
@@ -191,12 +187,12 @@ const MontagesHeading = ({
   <h2
     {...dropTarget}
     title={t`Drop a jump or files here to make a montage — its name is asked for first`}
-    className={`mx-0 mt-3 mb-[3px] flex items-center gap-2 rounded-[11px] px-2.5 py-0.5 text-[11px] font-bold tracking-[0.09em] text-accent-ink/70 uppercase max-[780px]:my-0 max-[780px]:flex-none ${
+    className={`mx-0 mt-3 mb-0.75 flex items-center gap-2 rounded-control px-2.5 py-0.5 text-micro font-bold tracking-eyebrow text-accent-ink/70 uppercase max-desk:my-0 max-desk:flex-none ${
       over ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed' : ''
     }`}>
     <span className='flex-1'>{t`Montages`}</span>
     {todo && (
-      <span className='flex-none tracking-normal whitespace-nowrap text-accent-ink normal-case max-[780px]:hidden'>
+      <span className='flex-none tracking-normal whitespace-nowrap text-accent-ink normal-case max-desk:hidden'>
         {todo}
       </span>
     )}
@@ -218,7 +214,7 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
       <button
         type='button'
         onClick={() => setOpen(true)}
-        className='mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-[14px] border-[1.5px] border-dashed border-white bg-white/25 text-[13.5px] font-semibold text-accent-ink hover:bg-white/45 max-[780px]:hidden dark:border-line-strong dark:bg-transparent dark:hover:bg-well'>
+        className='mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-card border-[1.5px] border-dashed border-white bg-white/25 text-lead font-semibold text-accent-ink hover:bg-white/45 max-desk:hidden dark:border-line-strong dark:bg-transparent dark:hover:bg-well'>
         <Icon
           name='plus'
           size={16}
@@ -227,7 +223,7 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
       </button>
     )
   return (
-    <span className='mx-2 my-1 flex gap-1 max-[780px]:hidden'>
+    <span className='mx-2 my-1 flex gap-1 max-desk:hidden'>
       <input
         type='text'
         autoFocus
@@ -242,7 +238,7 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
         onBlur={() => {
           if (!adding.trim()) setOpen(false)
         }}
-        className='h-8 min-w-0 flex-1 rounded-[9px] border border-line-strong bg-well px-2.5 text-[12.5px] outline-none placeholder:text-ink-3 focus:border-accent'
+        className='h-8 min-w-0 flex-1 rounded-control border border-line-strong bg-well px-2.5 text-body outline-none placeholder:text-ink-3 focus:border-accent'
       />
       <Mini onClick={add}>{t`Add`}</Mini>
     </span>
@@ -305,11 +301,11 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-[8] rounded-[18px] min-[781px]:rounded-r-none min-[781px]:rounded-b-none px-2.5 pb-3.5 min-[781px]:pr-0 min-[781px]:border-r min-[781px]:border-edge max-[780px]:pt-2 max-[780px]:flex max-[780px]:h-auto max-[780px]:items-center max-[780px]:gap-1.5 max-[780px]:overflow-x-auto max-[780px]:overflow-y-hidden max-[780px]:px-3 max-[780px]:pb-2 min-[781px]:col-start-1 min-[781px]:row-span-2 min-[781px]:row-start-1 min-[781px]:flex min-[781px]:h-full min-[781px]:flex-col'>
+      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-8 rounded-panel desk:rounded-r-none desk:rounded-b-none px-2.5 pb-3.5 desk:pr-0 desk:border-r desk:border-edge max-desk:pt-2 max-desk:flex max-desk:h-auto max-desk:items-center max-desk:gap-1.5 max-desk:overflow-x-auto max-desk:overflow-y-hidden max-desk:px-3 max-desk:pb-2 desk:col-start-1 desk:row-span-2 desk:row-start-1 desk:flex desk:h-full desk:flex-col'>
       {/* the app's name, level with the header across from it */}
-      <div className='flex h-14 flex-none items-center gap-2.5 px-2 max-[780px]:hidden'>
+      <div className='flex h-14 flex-none items-center gap-2.5 px-2 max-desk:hidden'>
         <Mark size={32} />
-        <span className='text-[18px] font-extrabold text-ink'>SkyDock</span>
+        <span className='text-subhead font-extrabold text-ink'>SkyDock</span>
       </div>
       {/* what came off the cameras and is not filed yet: one entry, and the first thing on it */}
       <Heading first>{t`Work`}</Heading>
@@ -365,7 +361,7 @@ const PlacesTree = ({
         )
       })}
       {passengers.length === 0 && unnamed === 0 && delivered > 0 && (
-        <span className='px-2.5 py-1 text-[12.5px] text-ink-3 max-[780px]:hidden'>
+        <span className='px-2.5 py-1 text-body text-ink-3 max-desk:hidden'>
           {t`Nothing left to do`}
         </span>
       )}

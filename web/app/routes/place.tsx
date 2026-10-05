@@ -1219,7 +1219,7 @@ const Inspector = ({
             type='button'
             disabled={board.busy !== null}
             onClick={() => model.setDialog({ kind: 'remove-place', place: place.name })}
-            className='cursor-pointer border-0 bg-transparent p-0 text-[13px] font-bold text-bin disabled:opacity-40'>
+            className='cursor-pointer border-0 bg-transparent p-0 text-body font-bold text-bin disabled:opacity-40'>
             {t`Remove destination…`}
           </button>
         </div>

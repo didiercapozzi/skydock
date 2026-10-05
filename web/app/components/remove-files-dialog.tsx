@@ -58,20 +58,18 @@ const RemoveFilesDialog = ({
           {canLoose && <Go onClick={() => onChoose('fresh')}>{t`Loose in Fresh files`}</Go>}
         </>
       }>
-      <p className='m-0 text-[12.5px] text-ink-2'>
+      <p className='m-0 text-body text-ink-2'>
         {t`${kinds}, ${inAll} in all`}
         {count <= 3 && (
           <>
             {' '}
             —{' '}
-            <span className='font-mono text-[11.5px]'>
-              {files.map((f) => f.filename).join(', ')}
-            </span>
+            <span className='font-mono text-micro'>{files.map((f) => f.filename).join(', ')}</span>
           </>
         )}
         .
       </p>
-      <ul className='m-0 flex list-none flex-col gap-1.5 p-0 text-[12.5px] text-ink-2'>
+      <ul className='m-0 flex list-none flex-col gap-1.5 p-0 text-body text-ink-2'>
         {canLoose && (
           <li>
             <b className='text-ink'>{t`Loose in Fresh files`}</b> —{' '}
@@ -84,7 +82,7 @@ const RemoveFilesDialog = ({
         </li>
       </ul>
       {copies && (
-        <p className='m-0 text-[12px] text-ink-3'>
+        <p className='m-0 text-small text-ink-3'>
           {t`Some of these are copies: a copy can only be taken out, and its original stays where it is.`}
         </p>
       )}

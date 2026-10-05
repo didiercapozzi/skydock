@@ -33,7 +33,7 @@ const FolderOwed = ({
     const jumps = groups.length
     const looseCount = loose.length
     return (
-      <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px] text-ink-2'>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body text-ink-2'>
         {groups.length === 0 && loose.length === 0 && (
           <Owed tone='done'>{t`Nothing left to sort`}</Owed>
         )}
@@ -54,7 +54,7 @@ const FolderOwed = ({
                   disabled={busy}
                   title={t`Gather the loose files here into jumps, by the gap rule — nothing is forgotten`}
                   onClick={onRegroup}
-                  className='border-0 bg-transparent p-0 text-[12.5px] font-medium text-accent hover:underline disabled:opacity-40'>
+                  className='border-0 bg-transparent p-0 text-body font-medium text-accent hover:underline disabled:opacity-40'>
                   {t`Group loose files into jumps`}
                 </button>
               </>
@@ -62,13 +62,13 @@ const FolderOwed = ({
           </Owed>
         )}
         {(groups.length > 0 || loose.length > 0) && (
-          <span className='ml-auto text-[11.5px] text-ink-3 max-[900px]:hidden'>
+          <span className='ml-auto text-micro text-ink-3 max-roomy:hidden'>
             {t`Drag a jump onto a destination on the left, or use Move to… on it`}
           </span>
         )}
         {/* at the far end and drawn as a button: it is not another way of grouping, it asks what to
             forget */}
-        <span className={groups.length > 0 || loose.length > 0 ? 'max-[900px]:ml-auto' : 'ml-auto'}>
+        <span className={groups.length > 0 || loose.length > 0 ? 'max-roomy:ml-auto' : 'ml-auto'}>
           <Mini
             disabled={busy}
             title={t`Put Fresh files back — the times alone, or everything as just scanned. Asks which first.`}
@@ -91,7 +91,7 @@ const FolderOwed = ({
   const uploaded = groups.filter((g) => g.uploaded).length
   if (unnamed + toProcess + toEdit + toRender + toUpload + uploaded === 0) return null
   return (
-    <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[12.5px]'>
+    <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body'>
       {unnamed > 0 && (
         <Owed
           tone='todo'

@@ -30,35 +30,35 @@ const FirstScan = ({
   return (
     <div className='ground flex h-screen flex-col overflow-hidden'>
       <WindowBar />
-      <main className='mx-2.5 mb-2.5 grid flex-1 place-items-center overflow-auto rounded-[18px] bg-pane p-6 shadow-card'>
-        <div className='flex max-w-[460px] flex-col items-center gap-4 text-center'>
+      <main className='mx-2.5 mb-2.5 grid flex-1 place-items-center overflow-auto rounded-panel bg-pane p-6 shadow-card'>
+        <div className='flex max-w-115 flex-col items-center gap-4 text-center'>
           {scanning || !note ? (
             <>
               <span
                 role='status'
                 aria-label={t`Scanning…`}
-                className='size-12 animate-spin rounded-full border-[5px] border-line-strong border-t-accent'
+                className='size-12 animate-spin rounded-full border-5 border-line-strong border-t-accent'
               />
-              <h1 className='m-0 font-display text-[20px] font-bold tracking-[-0.03em]'>
+              <h1 className='m-0 font-display text-heading font-bold tracking-display'>
                 {t`Scanning…`}
               </h1>
             </>
           ) : (
             <>
-              <h1 className='m-0 font-display text-[20px] font-bold tracking-[-0.03em]'>
+              <h1 className='m-0 font-display text-heading font-bold tracking-display'>
                 {t`The work folder could not be looked through`}
               </h1>
               <Notice
                 problem={problem}
                 onClose={onClose}
                 onOpen={onOpen}
-                className='rounded-md border px-2.5 py-[7px] text-left'>
+                className='rounded-chip border px-2.5 py-1.75 text-left'>
                 {note}
               </Notice>
               <button
                 type='button'
                 onClick={onScan}
-                className='rounded-md border border-accent bg-accent px-[11px] py-[5px] text-[12.5px] font-medium text-white'>
+                className='rounded-chip border border-accent bg-accent px-2.75 py-1.25 text-body font-medium text-white'>
                 {t`Scan`}
               </button>
             </>

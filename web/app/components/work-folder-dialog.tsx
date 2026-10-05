@@ -57,10 +57,10 @@ const WorkFolderDialog = ({
           )}
         </>
       }>
-      <p className='m-0 text-[12.5px] text-ink-2'>{t`SkyDock works in`}</p>
-      <code className='font-mono text-[12.5px] break-all text-ink'>{folder}</code>
+      <p className='m-0 text-body text-ink-2'>{t`SkyDock works in`}</p>
+      <code className='font-mono text-body break-all text-ink'>{folder}</code>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Choosing another folder`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Choosing another folder`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✓'>
           {t`the board opens on what that folder holds — empty, or the work already kept there`}
@@ -77,9 +77,9 @@ const WorkFolderDialog = ({
         </Note>
       )}
       {working && choose && (
-        <p className='m-0 text-[12px] text-local'>{t`${working} — wait until it is done.`}</p>
+        <p className='m-0 text-small text-local'>{t`${working} — wait until it is done.`}</p>
       )}
-      {said && <p className='m-0 text-[12.5px] text-ink'>{said}</p>}
+      {said && <p className='m-0 text-body text-ink'>{said}</p>}
     </Modal>
   )
 }

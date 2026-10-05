@@ -102,7 +102,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-[18px] isle-head px-3.5 max-[780px]:rounded-[18px] min-[781px]:rounded-tl-none min-[1101px]:group-data-[docked]:rounded-tr-none min-[781px]:col-start-3 min-[1101px]:col-end-6 min-[781px]:row-start-1'>
+    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-panel isle-head px-3.5 max-desk:rounded-panel desk:rounded-tl-none wide:group-data-[docked]:rounded-tr-none desk:col-start-3 wide:col-end-6 desk:row-start-1'>
       <button
         type='button'
         disabled={scanning}
@@ -129,7 +129,7 @@ const BoardHeader = ({
             aria-label={i18n._(name)}
             title={i18n._(name)}
             onClick={() => setFileView(option)}
-            className={`inline-flex h-[34px] w-[34px] items-center justify-center rounded-[10px] ${
+            className={`inline-flex h-control w-control items-center justify-center rounded-control ${
               view === option ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-well'
             }`}>
             <Icon name={icon} />
@@ -141,7 +141,7 @@ const BoardHeader = ({
       {view === 'grid' && (
         <label
           title={t`Thumbnail size — or Ctrl/⌘ and the mouse wheel over the thumbnails`}
-          className='ml-2 inline-flex items-center gap-1.5 text-[12px] text-ink-3'>
+          className='ml-2 inline-flex items-center gap-1.5 text-small text-ink-3'>
           <span aria-hidden='true'>▫</span>
           <input
             type='range'
@@ -164,7 +164,7 @@ const BoardHeader = ({
         aria-label={t`Keyboard shortcuts`}
         title={t`Keyboard shortcuts (?)`}
         onClick={onShortcuts}
-        className={`${TOOL} w-[34px] justify-center px-0`}>
+        className={`${TOOL} w-control justify-center px-0`}>
         <Icon
           name='keyboard'
           className='text-ink-2'
@@ -249,7 +249,7 @@ const DetailsToggle = () => {
       aria-label={open ? t`Hide details` : t`Details`}
       title={open ? t`Hide details` : t`Details`}
       onClick={() => set(!open)}
-      className={`${TOOL} w-[34px] justify-center px-0 ${only} ${open ? 'bg-accent-soft hover:bg-accent-soft' : ''}`}>
+      className={`${TOOL} w-control justify-center px-0 ${only} ${open ? 'bg-accent-soft hover:bg-accent-soft' : ''}`}>
       <Icon
         name='details'
         className={open ? 'text-accent' : 'text-ink-2'}
@@ -258,8 +258,8 @@ const DetailsToggle = () => {
   )
   return (
     <>
-      {one(column, setDetailsColumn, 'max-[1100px]:hidden')}
-      {one(drawer, setDetailsDrawer, 'min-[1101px]:hidden')}
+      {one(column, setDetailsColumn, 'max-wide:hidden')}
+      {one(drawer, setDetailsDrawer, 'wide:hidden')}
     </>
   )
 }
@@ -294,9 +294,9 @@ const StatusBar = ({
   const { read, total: clips } = jumps
   const host = nas.host ?? t`the storage`
   const user = nas.user
-  const item = 'inline-flex h-5 items-center gap-[7px] whitespace-nowrap'
+  const item = 'inline-flex h-5 items-center gap-1.75 whitespace-nowrap'
   return (
-    <footer className='mx-2.5 mb-2 min-[781px]:mx-0 min-[781px]:mb-0 min-[781px]:rounded-none flex h-[30px] flex-none items-center gap-5 rounded-[12px] relative z-30 border-t border-edge bg-pane/60 px-3.5 min-[781px]:rounded-t-none text-[11.5px] font-semibold text-ink-2'>
+    <footer className='mx-2.5 mb-2 desk:mx-0 desk:mb-0 desk:rounded-none flex h-control-sm flex-none items-center gap-5 rounded-control relative z-30 border-t border-edge bg-pane/60 px-3.5 desk:rounded-t-none text-micro font-semibold text-ink-2'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span
@@ -309,10 +309,10 @@ const StatusBar = ({
         }
         className={item}>
         <span
-          className={`size-[7px] flex-none rounded-full ${nas.connected ? 'bg-[#23b877]' : 'bg-ink-3'}`}
+          className={`size-1.75 flex-none rounded-full ${nas.connected ? 'bg-dot-up' : 'bg-ink-3'}`}
         />
         {nas.connected && (
-          <span className='max-w-[15rem] truncate'>
+          <span className='max-w-60 truncate'>
             {user ? `${user} @ ${shortHost(host)}` : shortHost(host)}
           </span>
         )}
@@ -326,7 +326,7 @@ const StatusBar = ({
             onClick={link.onClick}
             className={
               link.mark
-                ? 'grid size-[18px] place-items-center rounded-[3px] text-ink-2 hover:bg-line hover:text-ink disabled:opacity-40'
+                ? 'grid size-mark place-items-center rounded-bar text-ink-2 hover:bg-line hover:text-ink disabled:opacity-40'
                 : 'text-accent-ink hover:underline disabled:opacity-60 disabled:no-underline'
             }>
             {link.mark === '⟳' ? (
@@ -353,7 +353,7 @@ const StatusBar = ({
         aria-pressed={transfers.open}
         title={t`What was sent and copied in, and how it went — even when it is all done`}
         onClick={transfers.onToggle}
-        className={`${item} rounded-[6px] px-1.5 hover:bg-line hover:text-ink ${transfers.open ? 'bg-line text-ink' : ''}`}>
+        className={`${item} rounded-chip px-1.5 hover:bg-line hover:text-ink ${transfers.open ? 'bg-line text-ink' : ''}`}>
         <Icon
           name='upload'
           size={12}
@@ -370,7 +370,7 @@ const StatusBar = ({
             className='text-accent'
           />
           {working.what}
-          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-sm bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-bar bg-line'>
             <i
               className='block h-full bg-accent'
               style={{ width: `${Math.round(working.part * 100)}%` }}
@@ -410,7 +410,7 @@ const StatusBar = ({
           className={item}>
           <span className='size-2.5 flex-none animate-spin rounded-full border-2 border-line-strong border-t-accent' />
           {t`Marks found ${read}/${clips}`}
-          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-sm bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-bar bg-line'>
             <i
               className='block h-full bg-accent transition-[width] duration-500'
               style={{ width: `${Math.round((read / clips) * 100)}%` }}
@@ -430,7 +430,7 @@ const StatusBar = ({
             aria-label={t`Smaller`}
             disabled={zoom.factor <= 0.5}
             onClick={zoom.smaller}
-            className='grid size-[18px] place-items-center rounded-[5px] hover:bg-line disabled:opacity-40'>
+            className='grid size-mark place-items-center rounded-chip hover:bg-line disabled:opacity-40'>
             −
           </button>
           <button
@@ -446,7 +446,7 @@ const StatusBar = ({
             aria-label={t`Bigger`}
             disabled={zoom.factor >= 3}
             onClick={zoom.bigger}
-            className='grid size-[18px] place-items-center rounded-[5px] hover:bg-line disabled:opacity-40'>
+            className='grid size-mark place-items-center rounded-chip hover:bg-line disabled:opacity-40'>
             +
           </button>
         </span>

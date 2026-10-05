@@ -31,11 +31,11 @@ const DisconnectDialog = ({
           <Go onClick={onConfirm}>{t`Disconnect`}</Go>
         </>
       }>
-      <p className='m-0 text-[12.5px] text-ink-2'>
+      <p className='m-0 text-body text-ink-2'>
         {user ? t`${user} on ${storage} is connected.` : t`${storage} is connected.`}
       </p>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`What happens`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`What happens`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✕'>{t`this machine forgets the connection`}</Line>
         <Line mark='✕'>
@@ -43,7 +43,7 @@ const DisconnectDialog = ({
         </Line>
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`What does not`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`What does not`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✓'>{t`everything on the storage stays exactly as it is`}</Line>
         <Line mark='✓'>

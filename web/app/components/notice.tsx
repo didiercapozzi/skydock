@@ -21,7 +21,7 @@ const Notice = ({
 }) => (
   <p
     role={problem ? 'alert' : 'status'}
-    className={`m-0 flex items-center gap-[9px] rounded-md border px-2.5 py-[7px] text-[12.5px] ${
+    className={`m-0 flex items-center gap-2.25 rounded-chip border px-2.5 py-1.75 text-body ${
       problem ? 'border-local/40 bg-local-soft text-local' : 'border-line-2 bg-rail text-ink-2'
     } ${className}`}>
     {!problem && (

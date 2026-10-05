@@ -114,7 +114,7 @@ const StepTrail = ({
               {!last && (
                 <span
                   aria-hidden='true'
-                  className={`absolute top-[18px] bottom-px left-[7.5px] w-px ${step.done ? 'bg-up' : 'bg-line'}`}
+                  className={`absolute top-4.5 bottom-px left-1.875 w-px ${step.done ? 'bg-up' : 'bg-line'}`}
                 />
               )}
               <span
@@ -123,7 +123,7 @@ const StepTrail = ({
                   step.done
                     ? 'border-up bg-up text-white'
                     : now
-                      ? 'border-accent bg-pane shadow-[0_0_0_3px_var(--color-accent-soft)]'
+                      ? 'border-accent bg-pane shadow-halo'
                       : 'border-line-2 bg-pane'
                 }`}>
                 {step.done ? (
@@ -134,12 +134,12 @@ const StepTrail = ({
               </span>
               <span className='flex min-w-0 flex-col'>
                 <span
-                  className={`text-[13px] ${step.done || now ? 'font-semibold text-ink' : 'font-medium text-ink-3'}`}>
+                  className={`text-body ${step.done || now ? 'font-semibold text-ink' : 'font-medium text-ink-3'}`}>
                   {i18n._(STEP_WORD[step.name])}
                   {step.done && <span className='sr-only'> {t`— done`}</span>}
                 </span>
                 {now && next && (
-                  <span className='text-[11.5px] text-accent-ink'>{t`Next: ${how}`}</span>
+                  <span className='text-micro text-accent-ink'>{t`Next: ${how}`}</span>
                 )}
                 {now && onStep && (
                   <span className='mt-1'>
@@ -156,7 +156,7 @@ const StepTrail = ({
         })}
       </ol>
       {at === steps.length && (
-        <p className='m-0 text-[12px] font-semibold text-up'>
+        <p className='m-0 text-small font-semibold text-up'>
           {t`Every step done — whoever it is for has their film.`}
         </p>
       )}
@@ -185,11 +185,11 @@ const StepMeter = ({
       role='img'
       aria-label={said}
       title={said}
-      className={`flex gap-[3px] ${className}`}>
+      className={`flex gap-0.75 ${className}`}>
       {steps.map((step, i) => (
         <i
           key={step.name}
-          className={`block h-1 min-w-2.5 flex-1 rounded-[2px] ${
+          className={`block h-1 min-w-2.5 flex-1 rounded-bar ${
             step.done ? 'bg-up' : i === at ? 'bg-accent' : 'bg-line'
           }`}
         />
@@ -244,20 +244,18 @@ const StepLine = ({
             aria-current={i === at ? 'step' : undefined}
             className='flex items-center gap-2'>
             <span
-              className={`grid size-[22px] place-items-center rounded-full ${
-                step.done
-                  ? 'bg-up text-white'
-                  : 'bg-pane shadow-[inset_0_0_0_3px_var(--color-accent)]'
+              className={`grid size-chip place-items-center rounded-full ${
+                step.done ? 'bg-up text-white' : 'bg-pane shadow-inset-ring-accent'
               }`}>
               {step.done && <Tick size={11} />}
             </span>
-            <b className={`text-[12.5px] ${i === at ? 'text-accent-ink' : ''}`}>
+            <b className={`text-body ${i === at ? 'text-accent-ink' : ''}`}>
               {i18n._(STEP_WORD[step.name])}
               {step.done && <span className='sr-only'> {t`— done`}</span>}
             </b>
             {i < steps.length - 1 && (
               <span
-                className={`h-[3px] w-[26px] rounded-[3px] ${steps[i + 1]?.done ? 'bg-up' : 'bg-line'}`}
+                className={`h-0.75 w-6.5 rounded-bar ${steps[i + 1]?.done ? 'bg-up' : 'bg-line'}`}
               />
             )}
           </li>
@@ -272,11 +270,11 @@ const StepLine = ({
       className='relative m-0 grid list-none gap-0 p-0 py-1'
       style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       <span
-        className='absolute top-[17px] right-[8.33%] left-[8.33%] h-0.5 rounded bg-line'
+        className='absolute top-4.25 right-[8.33%] left-[8.33%] h-0.5 rounded bg-line'
         aria-hidden='true'
       />
       <span
-        className='absolute top-[17px] left-[8.33%] h-0.5 rounded bg-up'
+        className='absolute top-4.25 left-[8.33%] h-0.5 rounded bg-up'
         style={{ width: `${reach * 83.33}%` }}
         aria-hidden='true'
       />
@@ -289,11 +287,11 @@ const StepLine = ({
             className='relative flex min-w-0 flex-col items-center gap-1 text-center'>
             <span
               aria-hidden='true'
-              className={`grid size-[34px] place-items-center rounded-full border-2 bg-pane text-[13px] font-bold ${
+              className={`grid size-control place-items-center rounded-full border-2 bg-pane text-body font-bold ${
                 step.done
                   ? 'border-up bg-up text-white'
                   : now
-                    ? 'border-accent shadow-[0_0_0_4px_var(--color-accent-soft)]'
+                    ? 'border-accent shadow-halo'
                     : 'border-line-2 text-ink-3'
               }`}>
               {step.done ? (
@@ -305,11 +303,11 @@ const StepLine = ({
               )}
             </span>
             <b
-              className={`text-[13.5px] ${now ? 'text-accent-ink' : step.done ? 'text-ink' : 'text-ink-3'}`}>
+              className={`text-lead ${now ? 'text-accent-ink' : step.done ? 'text-ink' : 'text-ink-3'}`}>
               {i18n._(STEP_WORD[step.name])}
               {step.done && <span className='sr-only'> {t`— done`}</span>}
             </b>
-            <span className='max-w-full truncate text-[12px] text-ink-3'>
+            <span className='max-w-full truncate text-small text-ink-3'>
               {step.done
                 ? step.name === 'Named' && who
                   ? who
@@ -355,8 +353,8 @@ const NextStep = ({
         mini={mini}
       />
       {film ?? (
-        <div className='flex items-center gap-3.5 rounded-[18px] bg-accent-soft px-4 py-3'>
-          <span className='grid size-[42px] flex-none place-items-center rounded-[14px] bg-pane text-accent-ink'>
+        <div className='flex items-center gap-3.5 rounded-panel bg-accent-soft px-4 py-3'>
+          <span className='grid size-control-lg flex-none place-items-center rounded-card bg-pane text-accent-ink'>
             <Icon
               name={step ? (step.name === 'Emailed' ? 'mail' : 'next') : 'check'}
               size={20}
@@ -364,7 +362,7 @@ const NextStep = ({
           </span>
           <div className='min-w-0 flex-1'>
             <div className='flex flex-wrap items-baseline gap-x-2'>
-              <b className='font-display text-[16px] font-semibold'>
+              <b className='font-display text-title font-semibold'>
                 {step
                   ? step.name === 'Emailed' && who
                     ? t`Send ${who} the link`
@@ -372,12 +370,12 @@ const NextStep = ({
                   : t`Every step done`}
               </b>
               {step && (
-                <span className='text-[11px] font-bold tracking-[0.08em] text-accent-ink uppercase'>
+                <span className='text-micro font-bold tracking-eyebrow text-accent-ink uppercase'>
                   {step.name === 'Emailed' ? t`Last step` : t`Step ${n} of ${total}`}
                 </span>
               )}
             </div>
-            <p className={`m-0 text-[12.5px] text-ink-2 ${explained ? '' : 'truncate'}`}>
+            <p className={`m-0 text-body text-ink-2 ${explained ? '' : 'truncate'}`}>
               {step
                 ? i18n._(STEP_ABOUT[step.name])
                 : t`Every step done — whoever it is for has their film.`}
@@ -390,7 +388,7 @@ const NextStep = ({
               aria-expanded={explained}
               title={t`What happens?`}
               onClick={() => explain(!explained)}
-              className='grid size-[34px] flex-none cursor-pointer place-items-center rounded-[11px] border-0 bg-pane text-[13px] font-bold text-accent-ink'>
+              className='grid size-control flex-none cursor-pointer place-items-center rounded-control border-0 bg-pane text-body font-bold text-accent-ink'>
               ?
             </button>
           )}

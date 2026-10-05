@@ -89,11 +89,11 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
         </>
       }>
       {/* where you are, and every step of the way back to the shares */}
-      <div className='flex flex-wrap items-center gap-1 font-mono text-[11.5px]'>
+      <div className='flex flex-wrap items-center gap-1 font-mono text-micro'>
         <button
           type='button'
           onClick={() => load('/')}
-          className='border-0 bg-transparent px-0.5 text-[11.5px] text-accent underline'>
+          className='border-0 bg-transparent px-0.5 text-micro text-accent underline'>
           {t`Shares`}
         </button>
         {breadcrumbs
@@ -111,7 +111,7 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
                 <button
                   type='button'
                   onClick={() => load(path)}
-                  className='border-0 bg-transparent px-0.5 text-[11.5px] text-accent underline'>
+                  className='border-0 bg-transparent px-0.5 text-micro text-accent underline'>
                   {part}
                 </button>
               </span>
@@ -143,18 +143,18 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
         </div>
       )}
 
-      <div className='max-h-[260px] overflow-auto rounded-[12px] border border-line-2'>
+      <div className='max-h-65 overflow-auto rounded-control border border-line-2'>
         {parentPath && (
           <button
             type='button'
             onClick={() => load(parentPath)}
-            className='flex w-full items-center gap-2 border-0 border-b border-line-2 bg-transparent px-[11px] py-[7px] text-left text-[13px] text-ink-2 hover:bg-line-2'>
+            className='flex w-full items-center gap-2 border-0 border-b border-line-2 bg-transparent px-2.75 py-1.75 text-left text-body text-ink-2 hover:bg-line-2'>
             <span aria-hidden='true'>↰</span>
             <span className='truncate'>{parentPath}</span>
           </button>
         )}
         {fetcher.state !== 'idle' && folders.length === 0 ? (
-          <div className='px-4 py-4 text-center text-[12.5px] text-ink-3'>{t`Loading…`}</div>
+          <div className='px-4 py-4 text-center text-body text-ink-3'>{t`Loading…`}</div>
         ) : folders.length > 0 ? (
           folders.map((child) => (
             <button
@@ -163,7 +163,7 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
               aria-selected={selected === child.path}
               onClick={() => setSelected(child.path)}
               onDoubleClick={() => load(child.path)}
-              className={`flex w-full items-center gap-2 border-0 border-b border-line-2 px-[11px] py-[7px] text-left text-[13px] last:border-b-0 ${
+              className={`flex w-full items-center gap-2 border-0 border-b border-line-2 px-2.75 py-1.75 text-left text-body last:border-b-0 ${
                 selected === child.path
                   ? 'bg-accent-soft font-semibold text-accent'
                   : 'bg-transparent hover:bg-line-2'
@@ -173,13 +173,13 @@ const NasFolderBrowser = ({ onSelect, onClose, initialPath, title }: Props) => {
             </button>
           ))
         ) : (
-          <div className='px-4 py-4 text-center text-[12.5px] text-ink-3'>
+          <div className='px-4 py-4 text-center text-body text-ink-3'>
             {t`No folders in here. Make one, or use this folder as it is.`}
           </div>
         )}
       </div>
 
-      <span className='text-[12px] text-ink-2'>
+      <span className='text-small text-ink-2'>
         {t`Click to choose, double-click to open. Nothing is guessed: a dropzone with no folder is asked for one rather than filed somewhere sensible-looking.`}
       </span>
     </Modal>

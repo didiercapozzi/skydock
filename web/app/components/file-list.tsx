@@ -123,7 +123,7 @@ const Adj = ({
 }) => (
   <span
     title={title}
-    className={`flex-none rounded-full border px-1.5 text-[10.5px] leading-[14px] font-semibold whitespace-nowrap text-ink-2 ${
+    className={`flex-none rounded-full border px-1.5 text-micro leading-3.5 font-semibold whitespace-nowrap text-ink-2 ${
       applied ? 'border-transparent bg-well' : 'border-dashed border-line-strong bg-transparent'
     }`}>
     {children}
@@ -282,10 +282,8 @@ const PickMark = ({ picked, onPick }: { picked: boolean; onPick: () => void }) =
       e.stopPropagation()
       onPick()
     }}
-    className={`absolute top-[9px] left-[9px] z-[2] grid size-5 place-items-center rounded-[7px] border-2 p-0 ${
-      picked
-        ? 'border-accent bg-accent text-white'
-        : 'border-white/90 bg-[rgba(8,12,22,0.28)] text-transparent'
+    className={`absolute top-2.25 left-2.25 z-2 grid size-5 place-items-center rounded-chip border-2 p-0 ${
+      picked ? 'border-accent bg-accent text-white' : 'border-white/90 bg-veil/30 text-transparent'
     }`}>
     <Icon
       name='check'
@@ -321,11 +319,11 @@ const LiveBar = ({
     aria-valuemax={100}
     aria-valuenow={live.percent}
     title={`${i18n._(LIVE_WORK[live.work])} — ${live.percent}%`}
-    className={`flex flex-col gap-1 ${short ? 'w-14' : 'w-[104px]'}`}>
+    className={`flex flex-col gap-1 ${short ? 'w-14' : 'w-26'}`}>
     {!short && (
-      <span className='flex justify-between text-[11.5px] text-ink-2'>
+      <span className='flex justify-between text-micro text-ink-2'>
         <span className='truncate'>{i18n._(LIVE_WORK[live.work])}</span>
-        <span className='font-mono text-[11px] tabular-nums'>{live.percent}%</span>
+        <span className='font-mono text-micro tabular-nums'>{live.percent}%</span>
       </span>
     )}
     <span className={`block h-1 overflow-hidden rounded-full ${short ? 'bg-white/40' : 'bg-line'}`}>
@@ -424,12 +422,12 @@ const Row = ({
       /* the one looked at is marked apart from the picked ones by a ring round it */
       className={`${COLUMNS} w-full text-left [content-visibility:auto] ${
         joined
-          ? `h-[52px] rounded-[10px] [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
+          ? `h-13 rounded-control [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
               previewed ? 'bg-accent-soft' : picked ? 'bg-accent-soft' : 'hover:bg-well'
             }`
-          : `h-[66px] rounded-[16px] pr-5 [contain-intrinsic-size:auto_66px] ${
+          : `h-16.5 rounded-card pr-5 [contain-intrinsic-size:auto_66px] ${
               previewed
-                ? 'bg-accent-soft shadow-[0_0_0_2px_var(--color-accent)]'
+                ? 'bg-accent-soft shadow-ring-2'
                 : picked
                   ? 'bg-accent-soft shadow-card'
                   : 'bg-pane shadow-card hover:bg-accent-soft'
@@ -455,7 +453,7 @@ const Row = ({
             e.stopPropagation()
             onPick(file)
           }}
-          className={`grid size-5 place-items-center rounded-[6px] border-2 p-0 ${
+          className={`grid size-5 place-items-center rounded-chip border-2 p-0 ${
             picked
               ? 'border-accent bg-accent text-white'
               : 'border-check bg-transparent text-transparent hover:border-accent'
@@ -468,7 +466,7 @@ const Row = ({
         </button>
       )}
       <span
-        className={`relative overflow-hidden bg-well ${joined ? 'h-[34px] w-[46px] rounded-[9px]' : 'h-11 w-16 rounded-lg'}`}>
+        className={`relative overflow-hidden bg-well ${joined ? 'h-control w-11.5 rounded-control' : 'h-11 w-16 rounded-control'}`}>
         {/* a freed file is on the storage only: nothing here to draw it from */}
         {!file.freed && (
           <img
@@ -483,13 +481,13 @@ const Row = ({
       </span>
       <span className='min-w-0'>
         <span
-          className='block truncate font-mono text-[12px] font-medium tracking-[-0.02em] text-ink'
+          className='block truncate font-mono text-small font-medium tracking-title text-ink'
           title={name ? t`${name}  ·  from ${filename}` : file.filename}>
           {name ?? file.filename}
         </span>
         {/* the camera's name once a copy is named for handing over, or else what kind of file it
             is — then whatever is worth a second look about it */}
-        <span className='flex min-w-0 items-center gap-1 truncate text-[12px] font-medium text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
+        <span className='flex min-w-0 items-center gap-1 truncate text-small font-medium text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
           <span className='tabular-nums'>
             {formatTime(file.mtime)} · {formatSize(file.size)}
             {afterNote(file)}
@@ -537,15 +535,15 @@ const Row = ({
 
 /* what sits over a thumbnail's picture, small and dark so it reads on any frame */
 const OVER =
-  'rounded-full bg-[rgba(8,12,22,0.55)] px-[6px] text-[10.5px] leading-[18px] font-semibold whitespace-nowrap text-white'
+  'rounded-full bg-veil/55 px-1.5 text-micro leading-4.5 font-semibold whitespace-nowrap text-white'
 
 /* where a file has got to, as the dot in a thumbnail's corner: the state's own bright colour, ringed
    in white so it reads on any picture */
 const DOT: Record<ShownStatus, string> = {
   local: 'bg-local-bar',
   changed: 'bg-accent',
-  processed: 'bg-[#e05ab6]',
-  uploaded: 'bg-[#23b877]'
+  processed: 'bg-dot-proc',
+  uploaded: 'bg-dot-up'
 }
 
 const Tile = ({
@@ -605,12 +603,8 @@ const Tile = ({
     /* the picked one ringed in the accent, the one looked at in grey — a ring outside the picture,
        parted from it by a gap of the pane's own colour, so the picture is never covered. Not
        content-visibility: that would clip the ring at the tile's edge. */
-    className={`@container/tile relative aspect-[16/11] max-w-full min-w-0 cursor-pointer overflow-hidden rounded-[14px] bg-well ${
-      picked
-        ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-accent)]'
-        : previewed
-          ? 'shadow-[0_0_0_3px_var(--color-pane),0_0_0_5px_var(--color-ink-3)]'
-          : 'shadow-soft'
+    className={`@container/tile relative aspect-[16/11] max-w-full min-w-0 cursor-pointer overflow-hidden rounded-card bg-well ${
+      picked ? 'shadow-picked' : previewed ? 'shadow-looked' : 'shadow-soft'
     }`}>
     {/* a freed file is on the storage only: nothing here to draw it from */}
     {!file.freed && (
@@ -623,10 +617,10 @@ const Tile = ({
         className='absolute inset-0 h-full w-full object-cover'
       />
     )}
-    <span className='pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(8,12,22,0)_55%,rgba(8,12,22,0.7)_100%)]' />
+    <span className='pointer-events-none absolute inset-0 bg-(image:--gradient-veil-bottom)' />
     {isVideoFile(file.path) && (
       <span
-        className={`absolute top-[9px] right-[9px] inline-grid h-[22px] min-w-[22px] place-items-center px-[7px] ${OVER}`}>
+        className={`absolute top-2.25 right-2.25 inline-grid h-chip min-w-chip place-items-center px-1.75 ${OVER}`}>
         <Icon
           name='play'
           size={9}
@@ -636,7 +630,7 @@ const Tile = ({
     {/* when it was shot, whatever is worth a second look, and where it has got to. On a small
         thumbnail there is room for the dot only, and the state is in its title. */}
     <span className='pointer-events-none absolute right-2.5 bottom-2 left-2.5 flex items-center gap-1.5 text-white'>
-      <span className='hidden font-mono text-[12px] font-semibold tracking-[-0.02em] @[80px]/tile:inline'>
+      <span className='hidden font-mono text-small font-semibold tracking-title @[80px]/tile:inline'>
         {hhmm(file.mtime)}
       </span>
       {/* only the clip still waiting is marked here — a proxy that exists is the ordinary case, and
@@ -644,7 +638,7 @@ const Tile = ({
       {proxy?.state === 'none' && (
         <span
           title={proxy.reason ? proxyFailedTitle(proxy.reason) : i18n._(NO_PROXY_TITLE)}
-          className='h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-[0_0_0_1.5px_rgba(0,0,0,0.45)]'
+          className='h-2 w-2 rounded-full border border-dashed border-white bg-local shadow-ring-dark'
         />
       )}
       {file.moments && (
@@ -695,7 +689,7 @@ const Tile = ({
           otherwise={
             <span
               title={statusName(status)}
-              className={`size-[9px] rounded-full shadow-[0_0_0_2px_rgba(255,255,255,0.85)] ${DOT[status]}`}
+              className={`size-2.25 rounded-full shadow-ring-white ${DOT[status]}`}
             />
           }
         />
@@ -754,8 +748,8 @@ const DrawMoreWhenNear = ({ onNear }: { onNear: () => void }) => {
 /* what a run of files is and how many it holds, as a line of type over it */
 const LaneTitle = ({ label, count }: { label: string; count: string }) => (
   <p className={`m-0 flex items-center gap-3 ${label ? 'mb-2.5' : 'mb-2'}`}>
-    {label && <b className='text-[12px] font-bold text-ink-3'>{label}</b>}
-    <span className='text-[12px] font-medium text-ink-3'>{count}</span>
+    {label && <b className='text-small font-bold text-ink-3'>{label}</b>}
+    <span className='text-small font-medium text-ink-3'>{count}</span>
   </p>
 )
 
@@ -802,7 +796,7 @@ const Lane = ({
   const [shown, setShown] = useState(PAGE[shape])
   const tileSize = useTileSize()
   if (lane.length === 0) {
-    return <p className='px-3 py-1 text-[13px] font-medium text-ink-3'>{t`Nothing here.`}</p>
+    return <p className='px-3 py-1 text-body font-medium text-ink-3'>{t`Nothing here.`}</p>
   }
   const page = Math.min(shown, lane.length)
   const drawn = lane.slice(0, page)
@@ -831,7 +825,7 @@ const Lane = ({
         className={
           shape === 'rows'
             ? joined
-              ? 'flex flex-col rounded-[18px] bg-pane px-3.5 py-1.5 shadow-soft'
+              ? 'flex flex-col rounded-panel bg-pane px-3.5 py-1.5 shadow-soft'
               : 'flex flex-col gap-2'
             : 'grid gap-3'
         }
@@ -891,7 +885,7 @@ const Lane = ({
         />
       )}
       {lane.length > PAGE[shape] && (
-        <div className='mt-3 flex flex-wrap items-center gap-2 px-3 text-[12.5px] font-medium text-ink-2'>
+        <div className='mt-3 flex flex-wrap items-center gap-2 px-3 text-body font-medium text-ink-2'>
           <span className='mr-0.5 tabular-nums'>
             <b className='font-semibold text-ink'>{page}</b> {t`of ${total} shown`}
           </span>

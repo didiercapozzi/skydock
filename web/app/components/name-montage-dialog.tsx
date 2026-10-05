@@ -28,7 +28,7 @@ const NameMontageDialog = ({
     label={t`Name the montage`}
     title={t`Name the montage`}
     onClose={onClose}>
-    <p className='m-0 text-[12.5px] text-ink-2'>
+    <p className='m-0 text-body text-ink-2'>
       {jump
         ? t`This jump becomes a montage once it has a name.`
         : plural(count ?? 0, {

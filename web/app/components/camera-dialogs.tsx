@@ -42,21 +42,21 @@ const NewCameraDialog = ({
           </Go>
         </>
       }>
-      <p className='m-0 text-[13px] text-ink-2'>
+      <p className='m-0 text-body text-ink-2'>
         {fresh === null
           ? t`SkyDock cannot say how many of its files are not on this machine yet. It will remember this camera, so it is in the list next time even when it is not plugged in.`
           : t`It holds ${plural(fresh, { one: '# file', other: '# files' })} that ${plural(fresh, { one: 'is', other: 'are' })} not on this machine yet. SkyDock will remember this camera, so it is in the list next time even when it is not plugged in.`}
       </p>
-      <label className='flex cursor-pointer items-start gap-3 rounded-xl bg-well px-3.5 py-3'>
+      <label className='flex cursor-pointer items-start gap-3 rounded-control bg-well px-3.5 py-3'>
         <input
           type='checkbox'
           checked={auto}
           onChange={(e) => setAuto(e.target.checked)}
-          className='mt-0.5 size-[18px] flex-none'
+          className='mt-0.5 size-mark flex-none'
         />
         <span>
-          <b className='block text-[13px]'>{t`Copy new files automatically from now on`}</b>
-          <span className='text-[12px] text-ink-3'>
+          <b className='block text-body'>{t`Copy new files automatically from now on`}</b>
+          <span className='text-small text-ink-3'>
             {t`Leave this unticked for a camera that is not yours — you will pick the files to copy each time.`}
           </span>
         </span>
@@ -86,7 +86,7 @@ const ForgetCameraDialog = ({
         <Danger onClick={onConfirm}>{t`Forget it`}</Danger>
       </>
     }>
-    <p className='m-0 text-[13px] text-ink-2'>
+    <p className='m-0 text-body text-ink-2'>
       {t`Its files that are already here stay where they are. The next time it is plugged in, SkyDock will treat it as a new camera and ask.`}
     </p>
   </Modal>

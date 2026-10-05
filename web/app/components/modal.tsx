@@ -85,7 +85,7 @@ const Modal = ({
     <div
       {...rest}
       onClick={onClose ? (e) => e.target === e.currentTarget && onClose() : undefined}
-      className='fixed inset-0 z-40 grid place-items-center bg-[rgba(16,19,26,0.42)] dark:bg-[rgba(3,5,10,0.62)] p-4'>
+      className='fixed inset-0 z-40 grid place-items-center bg-scrim p-4'>
       <div
         ref={box}
         role='dialog'
@@ -93,7 +93,7 @@ const Modal = ({
         aria-label={label}
         onKeyDown={keys}
         style={full ? { width: `min(${full === true ? 1360 : full}px, 94vw)` } : undefined}
-        className={`flex max-h-full flex-col overflow-hidden rounded-[22px] bg-pane text-ink shadow-[0_0_0_1px_rgba(16,19,26,0.08),0_30px_80px_rgba(16,19,26,0.3)] dark:shadow-[0_0_0_1px_rgba(255,255,255,0.1),0_30px_80px_rgba(0,0,0,0.6)] ${
+        className={`flex max-h-full flex-col overflow-hidden rounded-panel bg-pane text-ink shadow-float ${
           full
             ? typeof full === 'number'
               ? 'h-[min(800px,94vh)]'
@@ -102,9 +102,9 @@ const Modal = ({
               ? 'w-[min(680px,100%)]'
               : 'w-[min(560px,100%)]'
         }`}>
-        <div className='flex flex-none items-center gap-3.5 border-b border-line-2 px-[26px] pt-5 pb-4'>
+        <div className='flex flex-none items-center gap-3.5 border-b border-line-2 px-6.5 pt-5 pb-4'>
           <div className='flex min-w-0 flex-col'>
-            <h2 className='font-display m-0 text-[23px] font-bold tracking-[-0.03em]'>{title}</h2>
+            <h2 className='font-display m-0 text-heading font-bold tracking-display'>{title}</h2>
             {sub && <span className='font-medium text-ink-3'>{sub}</span>}
           </div>
           <span className='flex-1' />
@@ -119,7 +119,7 @@ const Modal = ({
               aria-hidden='true'
               title={t`Close (Esc)`}
               onClick={onClose}
-              className='grid h-8 w-8 flex-none place-items-center rounded-[10px] text-ink-2 hover:bg-well hover:text-ink'>
+              className='grid h-8 w-8 flex-none place-items-center rounded-control text-ink-2 hover:bg-well hover:text-ink'>
               <Icon name='close' />
             </button>
           )}
@@ -128,12 +128,12 @@ const Modal = ({
           className={
             full
               ? 'flex min-h-0 flex-1 flex-col overflow-hidden'
-              : 'flex flex-col gap-3 overflow-auto px-[26px] py-5'
+              : 'flex flex-col gap-3 overflow-auto px-6.5 py-5'
           }>
           {children}
         </div>
         {footer && (
-          <div className='flex flex-none items-center gap-3 bg-well px-[26px] py-3.5 [&_button]:h-[38px] [&_button]:gap-2 [&_button]:rounded-[11px] [&_button]:px-4 [&_button]:text-[13.5px]'>
+          <div className='flex flex-none items-center gap-3 bg-well px-6.5 py-3.5 [&_button]:h-9.5 [&_button]:gap-2 [&_button]:rounded-control [&_button]:px-4 [&_button]:text-lead'>
             {footer}
           </div>
         )}
@@ -146,13 +146,13 @@ const Modal = ({
 const Spacer = () => <span className='flex-1' />
 
 const INPUT =
-  'rounded-[10px] border border-line-strong bg-pane px-3 py-2 text-[13px] text-ink placeholder:text-ink-3 hover:border-check focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50'
+  'rounded-control border border-line-strong bg-pane px-3 py-2 text-body text-ink placeholder:text-ink-3 hover:border-check focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50'
 
-const ERROR = 'rounded-[10px] bg-local-soft px-3 py-2 text-[12.5px] text-local'
+const ERROR = 'rounded-control bg-local-soft px-3 py-2 text-body text-local'
 
 /* one line of what a dialog proves, deletes or keeps, marked with what happens to it */
 const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (
-  <li className='flex gap-2 text-[12.5px] text-ink-2'>
+  <li className='flex gap-2 text-body text-ink-2'>
     <span className='w-3 flex-none text-center'>{mark}</span>
     <span>{children}</span>
   </li>

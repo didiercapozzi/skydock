@@ -46,14 +46,12 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-[18px] isle-side min-[1101px]:rounded-none min-[1101px]:border-l min-[1101px]:border-edge min-[1101px]:border-l min-[1101px]:border-edge transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-[1100px]:fixed max-[1100px]:inset-y-0 max-[1100px]:right-0 max-[1100px]:z-30 max-[1100px]:w-[min(340px,90vw)] max-[1100px]:shadow-[0_0_40px_rgba(0,0,0,0.25)] min-[1101px]:col-start-5 min-[1101px]:row-start-2 ${
-          drawer ? '' : 'max-[1100px]:invisible max-[1100px]:translate-x-full'
-        } ${column ? '' : 'min-[1101px]:invisible'}`}>
+        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-panel isle-side wide:rounded-none wide:border-l wide:border-edge wide:border-l wide:border-edge transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-wide:fixed max-wide:inset-y-0 max-wide:right-0 max-wide:z-30 max-wide:w-[min(340px,90vw)] max-wide:shadow-overlay wide:col-start-5 wide:row-start-2 ${
+          drawer ? '' : 'max-wide:invisible max-wide:translate-x-full'
+        } ${column ? '' : 'wide:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than
             being squeezed while the column closes */}
-        <div className='relative flex min-h-full w-[338px] flex-col max-[1100px]:w-full'>
-          {children}
-        </div>
+        <div className='relative flex min-h-full w-84.5 flex-col max-wide:w-full'>{children}</div>
       </aside>
     </>
   )
@@ -78,17 +76,13 @@ const Who = ({
   file?: boolean
   lower?: boolean
 }) => (
-  <div className={`flex flex-col px-6 pb-1.5 ${lower ? 'pt-[26px]' : 'pt-5'}`}>
-    {eyebrow && (
-      <span className='text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'>
-        {eyebrow}
-      </span>
-    )}
+  <div className={`flex flex-col px-6 pb-1.5 ${lower ? 'pt-6.5' : 'pt-5'}`}>
+    {eyebrow && <span className='eyebrow'>{eyebrow}</span>}
     <h2
-      className={`m-0 mt-1 mb-2 leading-[1.45] tracking-[-0.03em] break-words ${
+      className={`m-0 mt-1 mb-2 leading-prose tracking-display break-words ${
         file
-          ? 'font-display text-[19px] leading-[1.25] font-semibold break-all'
-          : 'font-display text-[24px] font-semibold'
+          ? 'font-display text-subhead leading-text font-semibold break-all'
+          : 'font-display text-heading font-semibold'
       }`}>
       {title}
     </h2>
@@ -99,11 +93,11 @@ const Who = ({
 
 /* the picture at the top of the panel: what is being looked at, before any word about it */
 /* it stays at the top while the rest of the panel scrolls under it */
-const PICTURE = 'sticky top-0 z-20 h-[206px] flex-none'
+const PICTURE = 'sticky top-0 z-20 h-51.5 flex-none'
 const Hero = ({ children }: { children: React.ReactNode }) => (
   <div
     data-picture=''
-    className={`${PICTURE} overflow-hidden bg-[linear-gradient(135deg,#c9e1f3,#e4f1fc)] dark:bg-well`}>
+    className={`${PICTURE} overflow-hidden bg-(image:--gradient-picture) dark:bg-well`}>
     {children}
   </div>
 )
@@ -120,7 +114,7 @@ const Part = ({
   children: React.ReactNode
 }) => {
   const [open, setOpen] = useState(!folded)
-  const title = 'm-0 text-[11px] font-bold tracking-[0.08em] text-ink-3 uppercase'
+  const title = 'm-0 eyebrow'
   return (
     <section className='flex flex-col gap-2.5 px-6 py-2.5'>
       {heading && folded ? (
@@ -156,7 +150,7 @@ const Part = ({
    a menu's button is wrapped once, so it is reached by what it does, and the entries of its open
    list are left as they are. */
 const BIG =
-  '[&>button]:h-[42px] [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-full [&>button]:px-3.5 [&>button]:text-[14px] [&_button[aria-expanded]]:h-[42px] [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-full [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-[14px] [&_button[aria-expanded]_svg]:size-[18px]'
+  '[&>button]:h-control-lg [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-full [&>button]:px-3.5 [&>button]:text-lead [&_button[aria-expanded]]:h-control-lg [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-full [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-lead [&_button[aria-expanded]_svg]:size-mark'
 
 /* what can be done, two buttons to a row and a wide one across; a button alone in its row takes it */
 const Acts = ({ children }: { children: React.ReactNode }) => (
@@ -178,27 +172,27 @@ const BinButton = ({ children, onClick }: { children: React.ReactNode; onClick: 
   <button
     type='button'
     onClick={onClick}
-    className='inline-flex h-[34px] items-center justify-center gap-2 rounded-full bg-pane px-3.5 text-[13px] font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft'>
+    className='inline-flex h-control items-center justify-center gap-2 rounded-full bg-pane px-3.5 text-body font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft'>
     {children}
   </button>
 )
 
 /* the state of a file's proxy, quieter than its own state */
 const PlainTag = ({ children }: { children: React.ReactNode }) => (
-  <span className='inline-flex h-[22px] items-center rounded-full bg-well px-[9px] text-[11.5px] font-bold whitespace-nowrap text-ink-2'>
+  <span className='inline-flex h-chip items-center rounded-full bg-well px-2.25 text-micro font-bold whitespace-nowrap text-ink-2'>
     {children}
   </span>
 )
 
 /* what is known, one line each: the name muted at the left, the value in bold at the right */
 const Facts = ({ rows }: { rows: [string, React.ReactNode][] }) => (
-  <dl className='m-0 flex flex-col text-[14px]'>
+  <dl className='m-0 flex flex-col text-lead'>
     {rows.map(([term, value]) => (
       <div
         key={term}
         className='flex min-w-0 items-baseline justify-between gap-3 border-t border-line-2 py-2.5 first:border-t-0'>
         <dt className='flex-none text-ink-3'>{term}</dt>
-        <dd className='m-0 min-w-0 text-right font-bold break-words tabular-nums [&_button]:text-[14px] [&_button]:font-bold'>
+        <dd className='m-0 min-w-0 text-right font-bold break-words tabular-nums [&_button]:text-lead [&_button]:font-bold'>
           {value}
         </dd>
       </div>
@@ -218,10 +212,10 @@ const JumpMarks = ({ moments }: { moments: NonNullable<ManifestFile['moments']> 
     [t`Landing`, moments.landing]
   ]
   return (
-    <div className='relative h-[46px]'>
-      <div className='absolute inset-x-1 top-3 h-1.5 rounded-[3px] bg-well'>
+    <div className='relative h-11.5'>
+      <div className='absolute inset-x-1 top-3 h-1.5 rounded-bar bg-well'>
         <i
-          className='absolute inset-y-0 rounded-[3px] bg-[linear-gradient(90deg,#7fb0ff,#9a8cff)]'
+          className='absolute inset-y-0 rounded-bar bg-(image:--gradient-marker)'
           style={{
             left: `${along(moments.exit)}%`,
             width: `${along(last) - along(moments.exit)}%`
@@ -232,9 +226,9 @@ const JumpMarks = ({ moments }: { moments: NonNullable<ManifestFile['moments']> 
         at === undefined ? null : (
           <i
             key={name}
-            className='absolute top-1.5 -ml-[9px] h-[18px] w-[18px] rounded-full border-[3px] border-accent bg-pane'
+            className='absolute top-1.5 -ml-2.25 h-mark w-mark rounded-full border-3 border-accent bg-pane'
             style={{ left: `${along(at)}%` }}>
-            <span className='absolute top-[22px] left-1/2 -translate-x-1/2 text-[10.5px] font-bold whitespace-nowrap text-ink-3 not-italic'>
+            <span className='absolute top-5.5 left-1/2 -translate-x-1/2 text-micro font-bold whitespace-nowrap text-ink-3 not-italic'>
               {name}
             </span>
           </i>
@@ -246,7 +240,7 @@ const JumpMarks = ({ moments }: { moments: NonNullable<ManifestFile['moments']> 
 
 /* what holds the thing still — an edit, or being on the storage only — drawn with a lock */
 const Lock = ({ children }: { children: React.ReactNode }) => (
-  <p className='m-0 flex gap-2.5 rounded-[12px] bg-well px-3 py-2.5 text-[12px] text-ink-2'>
+  <p className='m-0 flex gap-2.5 rounded-control bg-well px-3 py-2.5 text-small text-ink-2'>
     <Icon
       name='lock'
       size={14}
@@ -257,7 +251,7 @@ const Lock = ({ children }: { children: React.ReactNode }) => (
 )
 
 const Hint = ({ children }: { children: React.ReactNode }) => (
-  <p className='m-0 text-[11.5px] leading-normal text-ink-3'>{children}</p>
+  <p className='m-0 text-micro leading-normal text-ink-3'>{children}</p>
 )
 
 const tally = (files: ManifestFile[], statusOf: (file: ManifestFile) => FileStatus) => {
@@ -319,7 +313,7 @@ const SettingRow = ({
   children?: React.ReactNode
 }) => (
   <div className='flex items-center gap-3 border-t border-line-2 py-3 first:border-t-0'>
-    <span className='grid size-[38px] flex-none place-items-center rounded-[12px] bg-accent-soft text-accent'>
+    <span className='grid size-9.5 flex-none place-items-center rounded-control bg-accent-soft text-accent'>
       <Icon
         name={icon}
         size={18}
@@ -327,7 +321,7 @@ const SettingRow = ({
     </span>
     <div className='min-w-0 flex-1'>
       <b>{label}</b>
-      <div className={`truncate text-ink-3 ${mono ? 'font-mono text-[12px]' : 'text-[12.5px]'}`}>
+      <div className={`truncate text-ink-3 ${mono ? 'font-mono text-small' : 'text-body'}`}>
         {value}
       </div>
     </div>
@@ -486,8 +480,8 @@ const JumpPanel = ({
                   key={name}
                   type='button'
                   onClick={() => fileTo.onFile(name)}
-                  className='flex h-[46px] w-full cursor-pointer items-center gap-2.5 rounded-full border-0 bg-pane p-2 text-left text-[14px] font-bold text-ink shadow-card hover:bg-accent-soft'>
-                  <span className='grid size-[30px] flex-none place-items-center rounded-full bg-accent-soft text-accent'>
+                  className='flex h-11.5 w-full cursor-pointer items-center gap-2.5 rounded-full border-0 bg-pane p-2 text-left text-lead font-bold text-ink shadow-card hover:bg-accent-soft'>
+                  <span className='grid size-control-sm flex-none place-items-center rounded-full bg-accent-soft text-accent'>
                     <Icon
                       name='place'
                       size={15}
@@ -580,13 +574,13 @@ const JumpPanel = ({
                   type='button'
                   onClick={() => setRenaming(true)}
                   title={t`Rename this jump`}
-                  className='cursor-text border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] text-ink hover:text-accent-ink hover:underline hover:decoration-dotted hover:underline-offset-[3px]'>
+                  className='cursor-text border-0 bg-transparent p-0 text-left font-[inherit] text-[inherit] text-ink hover:text-accent-ink hover:underline hover:decoration-dotted hover:underline-offset-3'>
                   {label}
                 </button>
               ) : (
                 label
               )}
-              <span className='font-sans text-[12.5px] font-medium tracking-normal text-ink-3'>
+              <span className='font-sans text-body font-medium tracking-normal text-ink-3'>
                 {shortDate(from)}
               </span>
             </span>
@@ -611,7 +605,7 @@ const JumpPanel = ({
             onShift={onShift}
           />
         ) : (
-          <span className='text-[12.5px] tabular-nums'>{`${dateLabel(from)} ${hhmm(from)}`}</span>
+          <span className='text-body tabular-nums'>{`${dateLabel(from)} ${hhmm(from)}`}</span>
         )}
       </Part>
       {locked && locked !== UPLOADED_LOCKED && (
@@ -622,7 +616,7 @@ const JumpPanel = ({
       {montage ? (
         <Part heading={t`Who it is for`}>
           {locked ? (
-            <p className='m-0 text-[13px] font-semibold'>{passengerName(group.passenger)}</p>
+            <p className='m-0 text-body font-semibold'>{passengerName(group.passenger)}</p>
           ) : (
             <>
               <PassengerName
@@ -637,7 +631,7 @@ const JumpPanel = ({
                   : t`Give it a name — a person, an event. It becomes the montage’s folder.`}
               </Hint>
               {named && (group.processed || group.uploaded) && (
-                <p className='m-0 text-[11.5px] text-changed'>
+                <p className='m-0 text-micro text-changed'>
                   {group.uploaded
                     ? t`Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.`
                     : t`Already processed — a new name means processing it again, into the new folder.`}
@@ -707,7 +701,7 @@ const StorageTwinPart = ({ name }: { name: string | null }) => {
   const dsm = twin.dsmHost ? dsmFolderUrl(twin.dsmHost, twin.file.path) : null
   return (
     <Part>
-      <div className='flex flex-col gap-2.5 rounded-[16px] bg-up-soft px-4 py-3.5'>
+      <div className='flex flex-col gap-2.5 rounded-card bg-up-soft px-4 py-3.5'>
         <b className='flex items-center gap-2'>
           <Icon
             name='storage'
@@ -716,7 +710,7 @@ const StorageTwinPart = ({ name }: { name: string | null }) => {
           />
           {t`On the storage`}
         </b>
-        <span className='font-mono text-[12px] break-all text-ink-3'>{twin.file.path}</span>
+        <span className='font-mono text-small break-all text-ink-3'>{twin.file.path}</span>
         {dsm && (
           <span className='flex'>
             <a
@@ -724,7 +718,7 @@ const StorageTwinPart = ({ name }: { name: string | null }) => {
               target='_blank'
               rel='noreferrer'
               title={t`Show it in the storage’s own web interface, in a new tab`}
-              className='inline-flex h-[34px] items-center justify-center gap-1.5 rounded-[11px] bg-accent px-3.5 text-[13px] font-bold whitespace-nowrap text-white no-underline'>
+              className='inline-flex h-control items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-body font-bold whitespace-nowrap text-white no-underline'>
               {t`Open in DSM`}
             </a>
           </span>
@@ -794,7 +788,7 @@ const FilePanel = ({
           />
           {video && (
             <span className='absolute inset-0 grid place-items-center'>
-              <span className='grid h-[52px] w-[52px] place-items-center rounded-full bg-white/[.92] text-[#10131a] shadow-[0_8px_24px_rgba(0,0,0,0.3)]'>
+              <span className='grid h-13 w-13 place-items-center rounded-full bg-white/[.92] text-stage-ink shadow-overlay'>
                 <Icon
                   name='play'
                   size={20}
@@ -1003,7 +997,7 @@ const ManyPanel = ({
               title={t`Clear (esc)`}
               onClick={onClear}>
               {t`Clear`}
-              <kbd className='rounded-[5px] bg-pane px-1.5 font-sans text-[10.5px] leading-4 font-semibold text-ink-3 shadow-[0_0_0_1px_var(--color-line)]'>
+              <kbd className='rounded-chip bg-pane px-1.5 font-sans text-micro leading-4 font-semibold text-ink-3 shadow-hairline'>
                 esc
               </kbd>
             </Mini>

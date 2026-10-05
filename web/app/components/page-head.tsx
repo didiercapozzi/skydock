@@ -12,10 +12,10 @@ import { Menu } from './settings-menu'
 type Tone = 'todo' | 'done' | 'plain'
 
 const CARD: Record<Tone, string> = {
-  todo: 'bg-[linear-gradient(135deg,#fff6e8,#fffaf2)] shadow-card dark:bg-none dark:bg-local-soft dark:shadow-none',
-  done: 'bg-[linear-gradient(135deg,#eaf8f0,#f4fbf7)] shadow-card dark:bg-none dark:bg-up-soft dark:shadow-none',
+  todo: 'bg-(image:--gradient-paper-todo) shadow-card dark:bg-none dark:bg-local-soft dark:shadow-none',
+  done: 'bg-(image:--gradient-paper-done) shadow-card dark:bg-none dark:bg-up-soft dark:shadow-none',
   plain:
-    'bg-[linear-gradient(90deg,#e8f3fb,#f5faff)] shadow-card dark:bg-none dark:bg-accent-soft dark:shadow-none'
+    'bg-(image:--gradient-paper-plain) shadow-card dark:bg-none dark:bg-accent-soft dark:shadow-none'
 }
 
 const BADGE: Record<Tone, string> = {
@@ -42,7 +42,7 @@ const StatusCard = ({
   /* the button, or buttons, that move it on */
   children?: React.ReactNode
 }) => (
-  <div className={`flex items-center min-h-16 gap-3.5 rounded-[18px] px-4 py-2.5 ${CARD[tone]}`}>
+  <div className={`flex items-center min-h-16 gap-3.5 rounded-panel px-4 py-2.5 ${CARD[tone]}`}>
     <span className={`grid size-9 flex-none place-items-center rounded-full ${BADGE[tone]}`}>
       <Icon
         name={icon}
@@ -51,30 +51,30 @@ const StatusCard = ({
       />
     </span>
     <div className='min-w-0 flex-1'>
-      <h2 className='m-0 truncate font-display text-[16px] font-semibold tracking-[-0.02em] text-ink'>
+      <h2 className='m-0 truncate font-display text-title font-semibold tracking-title text-ink'>
         {title}
       </h2>
-      {text && <p className='m-0 truncate text-[12.5px] text-ink-3'>{text}</p>}
+      {text && <p className='m-0 truncate text-body text-ink-3'>{text}</p>}
     </div>
     {progress && progress.of > 0 && (
-      <div className='flex flex-none items-center gap-2.5 max-[900px]:hidden'>
+      <div className='flex flex-none items-center gap-2.5 max-roomy:hidden'>
         <span
           role='progressbar'
           aria-label={progress.word}
           aria-valuemin={0}
           aria-valuemax={progress.of}
           aria-valuenow={progress.done}
-          className='flex h-1.5 w-[110px] overflow-hidden rounded-lg bg-line'>
+          className='flex h-1.5 w-27.5 overflow-hidden rounded-control bg-line'>
           <i
-            className='block h-full rounded-lg bg-up'
+            className='block h-full rounded-control bg-up'
             style={{ width: `${Math.round((progress.done / progress.of) * 100)}%` }}
           />
         </span>
-        <span className='text-[12px] whitespace-nowrap text-ink-3'>{progress.word}</span>
+        <span className='text-small whitespace-nowrap text-ink-3'>{progress.word}</span>
       </div>
     )}
     {children && (
-      <div className='flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-full [&_button]:px-4 [&_button]:text-[13.5px]'>
+      <div className='flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-full [&_button]:px-4 [&_button]:text-lead'>
         {children}
       </div>
     )}
@@ -83,7 +83,7 @@ const StatusCard = ({
 
 /* a round icon button, the same on every page */
 const SEARCH =
-  'inline-flex h-[42px] flex-none items-center gap-2 rounded-full border-0 bg-pane px-4 text-[13.5px] font-semibold text-accent-ink shadow-card hover:bg-accent-soft'
+  'inline-flex h-control-lg flex-none items-center gap-2 rounded-full border-0 bg-pane px-4 text-lead font-semibold text-accent-ink shadow-card hover:bg-accent-soft'
 
 const PageHead = ({
   tile,
@@ -125,15 +125,15 @@ const PageHead = ({
   const showSearch = searching || searchOpen || Boolean(query)
   return (
     <div className='flex flex-col gap-4 px-7 pt-6 pb-3'>
-      <div className='flex items-center gap-[18px]'>
+      <div className='flex items-center gap-4.5'>
         <span
           className={`grid flex-none place-items-center ${
-            large ? 'size-[56px] rounded-[19px]' : 'size-[48px] rounded-[14px]'
+            large ? 'size-14 rounded-panel' : 'size-12 rounded-card'
           } ${
             'letter' in tile
               ? tile.done
                 ? 'bg-up text-white'
-                : 'bg-[linear-gradient(135deg,#0e7a8f,#5cc0cf)] text-white'
+                : 'bg-(image:--gradient-avatar-1) text-white'
               : 'up' in tile && tile.up
                 ? 'bg-up-soft text-up'
                 : 'bg-accent-soft text-accent-ink'
@@ -150,19 +150,19 @@ const PageHead = ({
               weight={2.6}
             />
           ) : (
-            <b className='font-display text-[24px] font-semibold'>{tile.letter}</b>
+            <b className='font-display text-heading font-semibold'>{tile.letter}</b>
           )}
         </span>
         <div className='min-w-0 flex-1'>
           <h1
-            className={`m-0 truncate font-display leading-[1.1] font-semibold tracking-[-0.035em] text-ink ${large ? 'text-[32px]' : 'text-[28px]'}`}>
+            className={`m-0 truncate font-display leading-title font-semibold tracking-display text-ink ${large ? 'text-display' : 'text-display'}`}>
             {title}
           </h1>
           <p className='m-0 truncate text-ink-3'>{sub}</p>
         </div>
         {onQuery &&
           (showSearch ? (
-            <label className='flex h-[42px] w-[240px] items-center gap-2.5 rounded-full bg-well px-4 text-ink-3 focus-within:shadow-[0_0_0_1.5px_var(--color-accent)]'>
+            <label className='flex h-control-lg w-60 items-center gap-2.5 rounded-full bg-well px-4 text-ink-3 focus-within:shadow-focus'>
               <Icon
                 name='search'
                 size={16}
@@ -175,7 +175,7 @@ const PageHead = ({
                 onBlur={() => !query && setSearching(false)}
                 placeholder={findLabel ?? t`Narrow by name`}
                 aria-label={findLabel ?? t`Find a file`}
-                className='min-w-0 flex-1 border-0 bg-transparent text-[13.5px] font-medium text-ink outline-none placeholder:text-ink-3'
+                className='bare-input'
               />
             </label>
           ) : (

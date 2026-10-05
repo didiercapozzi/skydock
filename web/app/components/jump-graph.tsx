@@ -193,7 +193,7 @@ const JumpGraph = ({
 
   if (waiting)
     return (
-      <div className='font-mono text-[11px] text-ink-3'>{t`Reading what the camera measured…`}</div>
+      <div className='font-mono text-micro text-ink-3'>{t`Reading what the camera measured…`}</div>
     )
   if (!track) return null
 
@@ -267,7 +267,7 @@ const JumpGraph = ({
         onPointerMove={handleMove}
         onPointerUp={handleUp}
         onPointerCancel={handleUp}
-        className={`relative cursor-ew-resize touch-none overflow-hidden bg-well ${joined ? 'rounded-b-[12px] border-t border-line-2' : 'rounded-[12px]'}`}
+        className={`relative cursor-ew-resize touch-none overflow-hidden bg-well ${joined ? 'rounded-b-control border-t border-line-2' : 'rounded-control'}`}
         style={{ height: HEIGHT }}>
         <svg
           width='100%'
@@ -315,18 +315,18 @@ const JumpGraph = ({
         />
       </div>
       <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
-        <b className='font-display text-[12.5px] font-medium'>{t`What the camera felt`}</b>
+        <b className='font-display text-body font-medium'>{t`What the camera felt`}</b>
         {lowest !== null && highest !== null && (
           <span
             data-graph-extremes='true'
             title={t`The least and the most the camera felt in this clip, in gravities`}
-            className='inline-flex h-[22px] items-center gap-1 rounded-full bg-tile-1 px-2.5 font-mono text-[11.5px] font-semibold text-accent-ink'>
+            className='inline-flex h-chip items-center gap-1 rounded-full bg-tile-1 px-2.5 font-mono text-micro font-semibold text-accent-ink'>
             {t`min`} <b className='font-semibold'>{lowest.toFixed(2)} g</b> · {t`max`}{' '}
             <b className='font-semibold'>{highest.toFixed(2)} g</b>
           </span>
         )}
         <span className='flex-1' />
-        <span className='inline-flex items-center gap-3 text-[11.5px]'>
+        <span className='inline-flex items-center gap-3 text-micro'>
           <span className='text-sky-500'>{t`— force`}</span>
           {track.altitude ? (
             <>
@@ -338,7 +338,7 @@ const JumpGraph = ({
           )}
         </span>
       </div>
-      <div className='flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-[11px] text-ink-3'>
+      <div className='flex flex-wrap items-center gap-x-3 gap-y-0.5 font-mono text-micro text-ink-3'>
         <span
           data-graph-readout='true'
           className='text-ink-2'>

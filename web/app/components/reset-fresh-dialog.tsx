@@ -18,12 +18,12 @@ const Choice = ({
   <button
     type='button'
     onClick={onChoose}
-    className='flex flex-col gap-1 rounded-[10px] border border-line-2 bg-pane px-3 py-2.5 text-left hover:border-accent hover:bg-accent-soft'>
-    <b className='text-[13px] font-semibold text-ink'>{title}</b>
-    <span className='text-[12px] text-ink-2'>
+    className='flex flex-col gap-1 rounded-control border border-line-2 bg-pane px-3 py-2.5 text-left hover:border-accent hover:bg-accent-soft'>
+    <b className='text-body font-semibold text-ink'>{title}</b>
+    <span className='text-small text-ink-2'>
       <span className='text-changed'>✕</span> {forgets}
     </span>
-    <span className='text-[12px] text-ink-2'>
+    <span className='text-small text-ink-2'>
       <span className='text-up'>✓</span> {keeps}
     </span>
   </button>

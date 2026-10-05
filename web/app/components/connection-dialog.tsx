@@ -137,11 +137,11 @@ const ConnectionDialog = ({ onConnect, onCancel, error, codeAsked }: ConnectionD
                   maxLength={6}
                   placeholder='123456'
                   autoFocus
-                  className={`w-full font-mono tracking-[0.3em] ${INPUT}`}
+                  className={`w-full font-mono tracking-spaced ${INPUT}`}
                 />
                 <span
                   role='status'
-                  className='mt-1 block text-[12px] text-ink-2'>
+                  className='mt-1 block text-small text-ink-2'>
                   {codeAsked}
                 </span>
               </>

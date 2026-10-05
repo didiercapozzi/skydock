@@ -54,7 +54,7 @@ const TakeBackDialog = ({
           <Danger onClick={onConfirm}>{reset ? t`Reset` : t`Delete`}</Danger>
         </>
       }>
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>{t`Deleted from this machine`}</p>
+      <p className='m-0 text-body font-semibold text-ink'>{t`Deleted from this machine`}</p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>
         <Line mark='✕'>{t`${processed}, and the working copies made for the editor`}</Line>
         {project && (
@@ -68,7 +68,7 @@ const TakeBackDialog = ({
         {uploaded && <Line mark='✕'>{t`the archives, and the record of what was uploaded`}</Line>}
       </ul>
 
-      <p className='m-0 text-[12.5px] font-semibold text-ink'>
+      <p className='m-0 text-body font-semibold text-ink'>
         {reset ? t`Kept, ready to process again` : t`Back to Fresh files, loose`}
       </p>
       <ul className='m-0 flex list-none flex-col gap-1 p-0'>

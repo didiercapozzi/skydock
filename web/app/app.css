@@ -37,6 +37,51 @@
   --font-weight-semibold: 500;
   --font-weight-bold: 540;
 
+  /* The type: seven sizes and no others, named for what they are used for. `text-micro` is a badge, a
+     hint, a caption; `text-small` a secondary line; `text-body` what is read; `text-lead` a row's name;
+     `text-title` a panel's or a card's title; `text-subhead` and `text-heading` the page's own words;
+     `text-display` a number said big. A size is never written in pixels in a component. */
+  --text-micro: 11px;
+  --text-small: 12px;
+  --text-body: 13px;
+  --text-lead: 14px;
+  --text-title: 16px;
+  --text-subhead: 18px;
+  --text-heading: 22px;
+  --text-display: 28px;
+
+  --tracking-title: -0.02em;
+  --tracking-display: -0.03em;
+  --tracking-eyebrow: 0.08em;
+  --tracking-spaced: 0.3em;
+
+  --leading-title: 1.15;
+  --leading-text: 1.3;
+  --leading-prose: 1.5;
+
+  /* The shapes: five corners and no others. A bar's track, a chip, a control — a button, a field, a row —,
+     a card, and a panel. Only a pill is round. */
+  --radius-bar: 2px;
+  --radius-chip: 6px;
+  --radius-control: 10px;
+  --radius-card: 14px;
+  --radius-panel: 18px;
+
+  /* The sizes things are drawn at: a chip, a small and a usual control, a large one, and a mark — an icon's
+     box, a check. Everything else is on the 4 px scale (`p-3`, `gap-2.5`), never written in pixels. */
+  /* where the layout changes: `desk:` from 781 px, when the places stand beside the work instead of on
+     top of it; `roomy:` from 901; `wide:` from 1101, when the details dock beside the work. Their
+     `max-` forms are the widths below each. */
+  --breakpoint-desk: 781px;
+  --breakpoint-roomy: 901px;
+  --breakpoint-wide: 1101px;
+
+  --spacing-chip: 22px;
+  --spacing-mark: 18px;
+  --spacing-control-sm: 30px;
+  --spacing-control: 34px;
+  --spacing-control-lg: 42px;
+
   --color-ground: #e3edf1;
   --color-pane: #ffffff;
   --color-rail: #ffffff;
@@ -70,6 +115,43 @@
   --color-bin-soft: #fdecec;
 
   --color-here: #ffffff;
+  /* the ink on a solid accent or a red fill, and on what is laid over a picture */
+  --color-on-accent: #ffffff;
+  --color-on-bin: #ffffff;
+  --color-stage: #141311;
+  /* the sheet an email is shown on, which is paper whatever the theme */
+  --color-paper: #eef1f4;
+  --color-stage-ink: #10131a;
+  --color-scrim: rgba(16, 19, 26, 0.42);
+  --color-veil: #080c16;
+  /* a file's state as the small dot in a corner of its picture */
+  --color-dot-local: #f08a24;
+  --color-dot-proc: #e05ab6;
+  --color-dot-up: #23b877;
+
+  /* the gradients, named for what they colour: each name's own colour in a list of names, the logo's tile,
+     a page head's card by its tone, a picture's empty ground, the marker on a graph, and what darkens a
+     picture's edge so white writing reads on it */
+  --gradient-avatar-1: linear-gradient(135deg, #0e7a8f, #5cc0cf);
+  --gradient-avatar-2: linear-gradient(135deg, #7a5ad2, #b3a0ef);
+  --gradient-avatar-3: linear-gradient(135deg, #d98a3a, #f0b877);
+  --gradient-avatar-4: linear-gradient(135deg, #1f8a5a, #6fcf9f);
+  --gradient-paper-todo: linear-gradient(135deg, #fff6e8, #fffaf2);
+  --gradient-paper-done: linear-gradient(135deg, #eaf8f0, #f4fbf7);
+  --gradient-paper-plain: linear-gradient(90deg, #e8f3fb, #f5faff);
+  --gradient-picture: linear-gradient(135deg, #c9e1f3, #e4f1fc);
+  --gradient-marker: linear-gradient(90deg, #7fb0ff, #9a8cff);
+  --gradient-veil-bottom: linear-gradient(
+    180deg,
+    rgba(8, 12, 22, 0) 55%,
+    rgba(8, 12, 22, 0.7) 100%
+  );
+  --gradient-veil-side: linear-gradient(
+    90deg,
+    rgba(8, 12, 22, 0.86) 0%,
+    rgba(8, 12, 22, 0.6) 48%,
+    rgba(8, 12, 22, 0) 78%
+  );
   --color-tile-1: #e1f2fd;
   --color-tile-2: #e8eefb;
   --color-tile-3: #e3f5ef;
@@ -79,6 +161,31 @@
      of the blue, never grey. */
   --shadow-card: 0 2px 8px rgba(10, 110, 180, 0.16);
   --shadow-soft: 0 1px 4px rgba(10, 100, 170, 0.08);
+  /* a line drawn as a shadow, so it takes no room: round a picture or a chip */
+  --shadow-hairline: 0 0 0 1px var(--color-line);
+  /* where the keyboard is, and what is picked */
+  --shadow-focus: 0 0 0 1.5px var(--color-accent);
+  --shadow-ring-current: inset 0 0 0 2px currentColor;
+  --shadow-inset: inset 0 1px 2px rgba(10, 100, 170, 0.1);
+  --shadow-lift: 0 8px 18px rgba(11, 127, 214, 0.32);
+  --shadow-glow: 0 0 8px rgba(11, 127, 214, 0.35);
+  --shadow-overlay: 0 10px 30px rgba(0, 0, 0, 0.25);
+  --shadow-chip: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow-edge-left: -5px 0 10px rgba(15, 45, 100, 0.38);
+  --shadow-divider: 1px 0 0 var(--color-line-2);
+  /* what says "this one": a ring round it, in the accent, the ink or the pick colour */
+  --shadow-ring: 0 0 0 1px var(--color-accent);
+  --shadow-ring-2: 0 0 0 2px var(--color-accent);
+  --shadow-ring-pick: 0 0 0 3px var(--color-pick);
+  --shadow-ring-white: 0 0 0 2px rgba(255, 255, 255, 0.85);
+  --shadow-ring-dark: 0 0 0 1.5px rgba(0, 0, 0, 0.45);
+  --shadow-ring-stage: 0 0 0 1px rgba(20, 19, 17, 0.25);
+  --shadow-picked: 0 0 0 3px var(--color-pane), 0 0 0 5px var(--color-accent);
+  --shadow-looked: 0 0 0 3px var(--color-pane), 0 0 0 5px var(--color-ink-3);
+  --shadow-halo: 0 0 0 4px var(--color-accent-soft);
+  --shadow-inset-ring: inset 0 0 0 2px var(--color-line-strong);
+  --shadow-inset-ring-accent: inset 0 0 0 3px var(--color-accent);
+  --shadow-inset-bar: inset 2px 0 0 var(--color-accent);
   --shadow-float:
     0 0 0 1px rgba(16, 19, 26, 0.08), 0 30px 80px rgba(16, 19, 26, 0.3),
     0 4px 12px rgba(16, 19, 26, 0.1);
@@ -90,11 +197,11 @@
   --color-destructive: var(--color-bin);
 }
 
-/* Dark is the same design on deep navy: the same tokens redefined, so every utility
-   follows. Two ways in, and `data-theme` wins over the machine's own setting — the selector
-   carrying it is more specific than a bare `:root`. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+/* Dark is the same design on deep navy: the same tokens redefined once, so every utility follows. It
+   applies when the app is set to dark, and — only while the app is left on automatic — when the machine
+   is (see the `dark` variant above). */
+:root {
+  @variant dark {
     --color-ground: #0b0e15;
     --color-pane: #141922;
     --color-rail: #141922;
@@ -124,57 +231,18 @@
     --color-changed-soft: #0c3340;
     --color-bin: #ff8a90;
     --color-bin-soft: #3a171b;
-    --color-here: #0c3340;
-    --color-here: #0c3340;
     --color-tile-1: #12303b;
     --color-tile-2: #172a52;
     --color-tile-3: #123227;
     --color-tile-4: #24262c;
+    --color-on-accent: #03222b;
+    --color-on-bin: #2a0a0c;
+    --color-scrim: rgba(3, 5, 10, 0.62);
     --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
     --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px rgba(0, 0, 0, 0.6);
 
     color-scheme: dark;
   }
-}
-
-:root[data-theme='dark'] {
-  --color-ground: #0b0e15;
-  --color-pane: #141922;
-  --color-rail: #141922;
-  --color-well: #17303a;
-  --color-check: #4fb3cc;
-  --color-ink: #e1edf2;
-  --color-ink-2: #b3ccd6;
-  --color-ink-3: #86a9b6;
-  --color-line: #22363f;
-  --color-line-2: #1b2b33;
-  --color-line-strong: #2b4a57;
-  --color-edge: #1b2b33;
-  --color-accent: #38bdd8;
-  --color-accent-ink: #86dcee;
-  --color-accent-soft: #0c3340;
-  --color-pick: #38bdd8;
-  --color-pick-soft: #0c3340;
-  --color-local: #f5b25a;
-  --color-local-soft: #3a2a10;
-  --color-proc: #8db4ff;
-  --color-proc-soft: #16264f;
-  --color-up: #4fd6a0;
-  --color-up-soft: #0e3325;
-  --color-lock: #b6bece;
-  --color-lock-soft: #1b212d;
-  --color-changed: #86dcee;
-  --color-changed-soft: #0c3340;
-  --color-bin: #ff8a90;
-  --color-bin-soft: #3a171b;
-  --color-tile-1: #12303b;
-  --color-tile-2: #172a52;
-  --color-tile-3: #123227;
-  --color-tile-4: #24262c;
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-float: 0 0 0 1px rgba(255, 255, 255, 0.1), 0 30px 80px rgba(0, 0, 0, 0.6);
-
-  color-scheme: dark;
 }
 
 /* The interface's own type: the size everything inherits, the leading that sits with it, and
@@ -202,9 +270,7 @@
       left bottom / 100% auto no-repeat,
     linear-gradient(180deg, #f0f8fa 0%, #f6fbfc 45%, #ffffff 100%);
   --go-fill: linear-gradient(135deg, #1a8be0 0%, #0b72c8 100%);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
+  @variant dark {
     --ground-bg:
       radial-gradient(50rem 32rem at 4% -8%, #0f3550 0%, transparent 64%),
       radial-gradient(44rem 30rem at 100% 0%, #112c52 0%, transparent 62%),
@@ -224,26 +290,6 @@
       linear-gradient(180deg, #15252f 0%, #131d27 45%, #141922 100%);
     --go-fill: linear-gradient(135deg, #48c9e0 0%, #3aa0d8 100%);
   }
-}
-:root[data-theme='dark'] {
-  --ground-bg:
-    radial-gradient(50rem 32rem at 4% -8%, #0f3550 0%, transparent 64%),
-    radial-gradient(44rem 30rem at 100% 0%, #112c52 0%, transparent 62%),
-    radial-gradient(50rem 32rem at 96% 108%, #0e3347 0%, transparent 62%), #0a1119;
-  --rail-bg:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 830' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.13'%3E%3Ccircle cx='260' cy='20' r='70'/%3E%3Ccircle cx='260' cy='20' r='110'/%3E%3Ccircle cx='260' cy='20' r='150'/%3E%3C/g%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Cpath d='M0 720c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 746c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 772c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 798c44-22 88 22 132 0s88-22 132 0'/%3E%3C/g%3E%3C/svg%3E")
-      center / cover no-repeat,
-    linear-gradient(180deg, #142a33 0%, #111f28 100%);
-  --head-tint: linear-gradient(90deg, #142530 0%, #131f2b 100%);
-  --pane-shapes:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Ccircle cx='500' cy='230' r='70'/%3E%3Ccircle cx='500' cy='230' r='112'/%3E%3Ccircle cx='500' cy='230' r='154'/%3E%3Ccircle cx='500' cy='230' r='196'/%3E%3C/g%3E%3C/svg%3E")
-      right top / 560px 240px no-repeat,
-    linear-gradient(180deg, #14232d 0, #141922 240px);
-  --side-wash:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 338 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.12'%3E%3Cpath d='M0 150c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 174c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 198c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 222c56-28 112 28 169 0s113-28 169 0'/%3E%3C/g%3E%3C/svg%3E")
-      left bottom / 100% auto no-repeat,
-    linear-gradient(180deg, #15252f 0%, #131d27 45%, #141922 100%);
-  --go-fill: linear-gradient(135deg, #48c9e0 0%, #3aa0d8 100%);
 }
 
 @layer components {
@@ -293,6 +339,21 @@
   }
   .go-fill {
     background: var(--go-fill);
+  }
+
+  /* the quiet capital line over a part: what it is about, in the quietest ink */
+  .eyebrow {
+    @apply text-micro font-bold tracking-eyebrow text-ink-3 uppercase;
+  }
+
+  /* a small square button in a panel's head: fold it, open it out, close it */
+  .tool-button {
+    @apply grid size-7 flex-none place-items-center rounded-control border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink;
+  }
+
+  /* a field with no box of its own, writing straight onto the surface it sits on */
+  .bare-input {
+    @apply min-w-0 flex-1 border-0 bg-transparent text-lead font-medium text-ink outline-none placeholder:text-ink-3;
   }
 }
 

@@ -66,9 +66,9 @@ const JumpSpan = ({
         disabled={disabled}
         onClick={open}
         title={`${tip}\n${t`This jump runs from ${start} to ${end}`}`}
-        className='flex items-center gap-2.5 rounded-[10px] border border-line-2 bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-well disabled:opacity-60'>
-        <b className='text-[20px] font-semibold tracking-[-0.02em] tabular-nums'>{hhmm(from)}</b>
-        <span className='text-[11.5px] leading-normal text-ink-3'>
+        className='flex items-center gap-2.5 rounded-control border border-line-2 bg-transparent px-2.5 py-1.5 text-left text-ink hover:border-line-strong hover:bg-well disabled:opacity-60'>
+        <b className='text-heading font-semibold tracking-title tabular-nums'>{hhmm(from)}</b>
+        <span className='text-micro leading-normal text-ink-3'>
           {dateLabel(from)}
           <br />
           {t`click to correct`}
@@ -85,7 +85,7 @@ const JumpSpan = ({
           disabled={disabled}
           onClick={open}
           title={tip}
-          className='cursor-text border-0 bg-transparent p-0 text-[12.5px] font-medium text-ink underline decoration-dotted underline-offset-[3px] tabular-nums hover:text-accent disabled:opacity-60'>
+          className='cursor-text border-0 bg-transparent p-0 text-body font-medium text-ink underline decoration-dotted underline-offset-3 tabular-nums hover:text-accent disabled:opacity-60'>
           {start}
         </button>
       </span>
@@ -106,7 +106,7 @@ const JumpSpan = ({
     if (e.key === 'Escape') setDraft(null)
   }
   const field =
-    'h-[30px] min-w-0 rounded-[10px] border border-accent bg-pane px-2 text-[12.5px] text-ink tabular-nums'
+    'h-control-sm min-w-0 rounded-control border border-accent bg-pane px-2 text-body text-ink tabular-nums'
   return (
     <span
       onClick={(e) => e.stopPropagation()}
@@ -118,7 +118,7 @@ const JumpSpan = ({
         value={day}
         onChange={(e) => setDraft(`${e.target.value}T${time}`)}
         onKeyDown={key}
-        className={`${field} min-w-[9.5rem] flex-1`}
+        className={`${field} min-w-38 flex-1`}
       />
       <input
         type='time'
@@ -127,18 +127,18 @@ const JumpSpan = ({
         value={time}
         onChange={(e) => setDraft(`${day}T${e.target.value}`)}
         onKeyDown={key}
-        className={`${field} min-w-[8rem] flex-1`}
+        className={`${field} min-w-32 flex-1`}
       />
       <span className='flex basis-full items-center gap-2'>
         <Go onClick={commit}>{t`Set`}</Go>
         <button
           type='button'
           onClick={() => setDraft(null)}
-          className='border-0 bg-transparent p-0 text-[11.5px] text-ink-3 underline hover:text-ink'>
+          className='border-0 bg-transparent p-0 text-micro text-ink-3 underline hover:text-ink'>
           {t`cancel`}
         </button>
       </span>
-      <span className='basis-full text-[11.5px] leading-normal text-ink-3'>{hint}</span>
+      <span className='basis-full text-micro leading-normal text-ink-3'>{hint}</span>
     </span>
   )
 }
