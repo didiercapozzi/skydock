@@ -15,7 +15,7 @@ const CARD: Record<Tone, string> = {
   todo: 'bg-[linear-gradient(135deg,#fff6e8,#fffaf2)] shadow-card dark:bg-none dark:bg-local-soft dark:shadow-none',
   done: 'bg-[linear-gradient(135deg,#eaf8f0,#f4fbf7)] shadow-card dark:bg-none dark:bg-up-soft dark:shadow-none',
   plain:
-    'bg-[linear-gradient(90deg,#e0f4ff,#f1faff)] shadow-card dark:bg-none dark:bg-accent-soft dark:shadow-none'
+    'bg-[linear-gradient(90deg,#e8f3fb,#f5faff)] shadow-card dark:bg-none dark:bg-accent-soft dark:shadow-none'
 }
 
 const BADGE: Record<Tone, string> = {

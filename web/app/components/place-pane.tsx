@@ -48,7 +48,7 @@ const KindSeg = ({
     <span
       role='group'
       aria-label={t`Videos or photos`}
-      className='inline-flex gap-0.5 rounded-xl bg-well p-[3px]'>
+      className='inline-flex gap-0.5 rounded-full bg-well p-1 shadow-[inset_0_1px_2px_rgba(10,100,170,0.1)]'>
       {options.map(([value, label, count, title]) => (
         <button
           key={value}
@@ -57,10 +57,10 @@ const KindSeg = ({
           disabled={count === 0 && kind !== value}
           title={title}
           onClick={() => onPick(value)}
-          className={`inline-flex h-[30px] items-center justify-center gap-1.5 rounded-[9px] px-[13px] text-[13.5px] font-semibold whitespace-nowrap disabled:cursor-default disabled:opacity-45 ${
+          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-4 text-[13.5px] font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-default disabled:opacity-45 ${
             kind === value
-              ? 'bg-pane text-ink shadow-[0_0_0_1px_var(--color-line),0_1px_2px_rgba(16,19,26,0.06)]'
-              : 'text-ink-2 hover:text-ink'
+              ? 'bg-pane text-accent-ink shadow-card'
+              : 'text-ink-2 hover:bg-pane/60 hover:text-accent-ink'
           }`}>
           {label}
           <Count n={count} />

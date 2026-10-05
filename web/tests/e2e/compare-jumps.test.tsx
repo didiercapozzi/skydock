@@ -290,15 +290,29 @@ describe('resetting Fresh files', () => {
   })
 
   test('is offered apart from gathering the loose files into jumps, which asks nothing', async () => {
-    await renderWithRequests({ ...board, looseFiles: [file('solo', AT + 9000)] })
+    await renderWithRequests({
+      ...board,
+      looseFiles: [file('solo', AT + 9000), file('twin', AT + 9060)]
+    })
 
     await userEvent.click(page.getByRole('button', { name: 'More' }))
     await expect.element(page.getByRole('button', { name: 'Reset Fresh files…' })).toBeVisible()
     await userEvent.keyboard('{Escape}')
-    await userEvent.click(page.getByRole('button', { name: 'Group 1 loose file' }))
+    await userEvent.click(page.getByRole('button', { name: 'Group 2 loose files' }))
 
     await vi.waitFor(() => expect(asked).toContainEqual({ intent: 'regroup-loose' }))
     await expect.element(dialog()).not.toBeInTheDocument()
+  })
+
+  /* grouping lone files would change nothing, so it is not offered */
+  test('does not offer to group loose files that are each alone', async () => {
+    await renderWithRequests({
+      ...board,
+      looseFiles: [file('solo', AT + 9000), file('far', AT + 9000 + 3 * 3600)]
+    })
+
+    await expect.element(page.getByText(/jumps? (is|are) waiting for a home/)).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /^Group \d+ loose file/ })).not.toBeInTheDocument()
   })
 
   test('does nothing when the dialog is closed', async () => {

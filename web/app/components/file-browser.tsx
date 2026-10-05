@@ -402,7 +402,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
         {chosen && !(chosen.kind === 'jump' && chosen.group.freed) && (
           <section
             aria-label={chosen.kind === 'jump' ? chosen.label : t`Loose files`}
-            className='flex max-w-[900px] flex-col gap-2'>
+            className='flex flex-col gap-2'>
             <div className='flex items-center gap-3 font-bold'>
               {chosen.kind === 'jump' ? chosen.label : t`Loose files`}
               <span className='inline-flex h-[26px] items-center rounded-full bg-well px-3 text-[12.5px] text-ink-2'>

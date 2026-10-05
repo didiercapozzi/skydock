@@ -109,7 +109,7 @@ const PICTURE = 'sticky top-0 z-20 h-[206px] flex-none'
 const Hero = ({ children }: { children: React.ReactNode }) => (
   <div
     data-picture=''
-    className={`${PICTURE} overflow-hidden bg-[linear-gradient(135deg,#a6d8f6,#d3ecff)] dark:bg-well`}>
+    className={`${PICTURE} overflow-hidden bg-[linear-gradient(135deg,#c9e1f3,#e4f1fc)] dark:bg-well`}>
     {children}
   </div>
 )
@@ -325,7 +325,7 @@ const SettingRow = ({
   children?: React.ReactNode
 }) => (
   <div className='flex items-center gap-3 border-t border-line-2 py-3 first:border-t-0'>
-    <span className='grid size-[38px] flex-none place-items-center rounded-[12px] bg-well text-ink-2'>
+    <span className='grid size-[38px] flex-none place-items-center rounded-[12px] bg-accent-soft text-accent'>
       <Icon
         name={icon}
         size={18}

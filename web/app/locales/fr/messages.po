@@ -378,6 +378,10 @@ msgstr "{finished} sur {count, plural, one {# élément} other {# éléments}} s
 msgid "{firstname} can take the link with a phone, before the email has even gone."
 msgstr "{firstname} peut prendre le lien avec un téléphone, avant même que l’e-mail soit parti."
 
+#: app/routes/place.tsx
+msgid "{groupable, plural, one {Group # loose file} other {Group # loose files}}"
+msgstr "{groupable, plural, one {Grouper # fichier isolé} other {Grouper # fichiers isolés}}"
+
 #: app/components/take-back-dialog.tsx
 msgid "{jumpCount, plural, one {# jump} other {# jumps}}, {fileCount, plural, one {# file} other {# files}}, still under Montages"
 msgstr "{jumpCount, plural, one {# saut} other {# sauts}}, {fileCount, plural, one {# fichier} other {# fichiers}}, toujours sous Montages"
@@ -455,10 +459,6 @@ msgstr "{loose, plural, one {# fichier isolé attend sa destination} other {# fi
 #: app/components/remove-place-dialog.tsx
 msgid "{loose, plural, one {# loose file} other {# loose files}}"
 msgstr "{loose, plural, one {# fichier en vrac} other {# fichiers en vrac}}"
-
-#: app/routes/place.tsx
-msgid "{loose, plural, one {Group # loose file} other {Group # loose files}}"
-msgstr "{loose, plural, one {Grouper # fichier isolé} other {Grouper # fichiers isolés}}"
 
 #: app/components/folder-owed.tsx
 msgid "{looseCount, plural, one {# loose file} other {# loose files}}"

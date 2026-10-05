@@ -1,5 +1,6 @@
 import {
   EDIT_LOCKED,
+  groupableCount,
   hasCompletePassenger,
   isMontage,
   lastSegment,
@@ -472,6 +473,7 @@ const Place = () => {
                           <FreshCard
                             jumps={folder.groups.length}
                             loose={folder.loose.length}
+                            groupable={groupableCount(folder.loose)}
                             busy={busy !== null}
                             onRegroup={() => send('regroup', { intent: 'regroup-loose' })}
                           />
@@ -819,11 +821,14 @@ const DropzoneCard = ({ name }: { name: string }) => {
 const FreshCard = ({
   jumps,
   loose,
+  groupable,
   busy,
   onRegroup
 }: {
   jumps: number
   loose: number
+  /* how many of the loose files could go into a jump; the button is offered only when some could */
+  groupable: number
   busy: boolean
   onRegroup: () => void
 }) =>
@@ -850,12 +855,12 @@ const FreshCard = ({
             })
       }
       text={t`Drag one onto a destination in the sidebar — or open it and press Move to…`}>
-      {loose > 0 && (
+      {groupable > 0 && (
         <Mini
           disabled={busy}
           title={t`Gather the loose files here into jumps, by the gap rule — nothing is forgotten`}
           onClick={onRegroup}>
-          {plural(loose, { one: 'Group # loose file', other: 'Group # loose files' })}
+          {plural(groupable, { one: 'Group # loose file', other: 'Group # loose files' })}
         </Mini>
       )}
     </StatusCard>

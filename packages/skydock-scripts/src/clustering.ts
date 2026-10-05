@@ -197,6 +197,14 @@ const regroupLooseFiles = (manifest: Manifest) => {
   return batches.length
 }
 
+/* How many of the files regrouping could put into a jump: those with another file within the gap
+   rule. A file alone is not a jump and stays loose, so a regroup of nothing but such files changes
+   nothing and is not offered. */
+const groupableCount = (files: ManifestFile[]) =>
+  splitByGap(files)
+    .filter((run) => run.length > 1)
+    .reduce((n, run) => n + run.length, 0)
+
 /* Moves the given files in time by the same amount, so their order inside the jump is untouched.
    A file is reachable both from the registry and from its jump, hence the seen set. */
 const shiftFiles = (manifest: Manifest, ids: Set<string>, offsetSeconds: number) => {
@@ -243,6 +251,7 @@ export {
   dayOfFiles,
   freshIds,
   groupFromFiles,
+  groupableCount,
   groupNewFiles,
   looseFiles,
   offGap,

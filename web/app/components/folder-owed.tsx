@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { hasCompletePassenger } from '@skydock/scripts'
+import { groupableCount, hasCompletePassenger } from '@skydock/scripts'
 import type { MontageFact } from '@skydock/scripts'
 import type { Place } from '../helpers/places'
 import { Mini } from './buttons'
@@ -46,15 +46,19 @@ const FolderOwed = ({
               one: '# loose file',
               other: '# loose files'
             })}
-            {' · '}
-            <button
-              type='button'
-              disabled={busy}
-              title={t`Gather the loose files here into jumps, by the gap rule — nothing is forgotten`}
-              onClick={onRegroup}
-              className='border-0 bg-transparent p-0 text-[12.5px] font-medium text-accent hover:underline disabled:opacity-40'>
-              {t`Group loose files into jumps`}
-            </button>
+            {groupableCount(loose) > 0 && (
+              <>
+                {' · '}
+                <button
+                  type='button'
+                  disabled={busy}
+                  title={t`Gather the loose files here into jumps, by the gap rule — nothing is forgotten`}
+                  onClick={onRegroup}
+                  className='border-0 bg-transparent p-0 text-[12.5px] font-medium text-accent hover:underline disabled:opacity-40'>
+                  {t`Group loose files into jumps`}
+                </button>
+              </>
+            )}
           </Owed>
         )}
         {(groups.length > 0 || loose.length > 0) && (

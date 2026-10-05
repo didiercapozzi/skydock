@@ -126,7 +126,7 @@ const Seg = <T extends string>({
   <span
     role='group'
     aria-label={label}
-    className={`h-9 gap-0.5 rounded-full bg-well p-[3px] ${wide ? 'flex w-full' : 'inline-flex'}`}>
+    className={`h-10 gap-0.5 rounded-full bg-well p-1 shadow-[inset_0_1px_2px_rgba(10,100,170,0.1)] ${wide ? 'flex w-full' : 'inline-flex'}`}>
     {options.map(([option, name, mark]) => (
       <button
         key={option}
@@ -135,8 +135,10 @@ const Seg = <T extends string>({
         aria-label={mark ? name : undefined}
         title={mark ? name : undefined}
         onClick={() => onPick(option)}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-full text-[13.5px] font-semibold whitespace-nowrap ${wide ? 'flex-1' : mark ? 'w-[30px]' : 'px-[13px]'} ${
-          value === option ? 'bg-accent-soft text-accent-ink' : 'text-ink-2 hover:text-ink'
+        className={`inline-flex items-center justify-center gap-1.5 rounded-full text-[13.5px] font-semibold whitespace-nowrap transition-colors duration-150 ${wide ? 'flex-1' : mark ? 'w-8' : 'px-4'} ${
+          value === option
+            ? 'bg-pane text-accent-ink shadow-card'
+            : 'text-ink-2 hover:bg-pane/60 hover:text-accent-ink'
         }`}>
         {mark ?? name}
       </button>
