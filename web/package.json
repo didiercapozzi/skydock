@@ -12,7 +12,7 @@
     "test": "npm run test:node && npm run test:browser && npm run test:journey",
     "test:browser": "vitest --config=vitest.browser.config.ts",
     "test:e2e": "npm run test:browser",
-    "test:journey": "npm run build:journey && vitest run --config=vitest.journey.config.ts tests/journey/journey.test.ts && vitest run --config=vitest.journey.config.ts --exclude tests/journey/journey.test.ts",
+    "test:journey": "npm run build:journey && vitest run --config=vitest.journey.config.ts tests/journey/journey.test.ts tests/journey/i2-a-ready.test.ts && JOURNEY_PARALLEL=1 vitest run --config=vitest.journey.config.ts --exclude tests/journey/journey.test.ts --exclude tests/journey/i2-a-ready.test.ts --exclude tests/journey/d-screen.test.ts --exclude tests/journey/e-preparing.test.ts --exclude tests/journey/b-footage.test.ts --exclude tests/journey/c1-board.test.ts && vitest run --config=vitest.journey.config.ts tests/journey/d-screen.test.ts tests/journey/e-preparing.test.ts tests/journey/b-footage.test.ts tests/journey/c1-board.test.ts",
     "test:journey:window": "vitest run --config=vitest.window.config.ts",
     "test:node": "vitest --config=vitest.node.config.ts",
     "test:server": "npm run test:node",
