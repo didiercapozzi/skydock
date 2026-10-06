@@ -338,7 +338,8 @@ const useDesk = (name: string) => {
   const preview = () => pageWhere('the file window', isPreview)
 
   /* where a page's element is on the screen: the window it is in, found by its size, and the element's place
-     in it, at the size the window draws it */
+     in it, at the size the window draws it. The page is a little smaller than its window — the thin border the
+     desktop gives it — and sits in the middle of it. */
   const screenBox = async (page: Page, target: Locator) => {
     await target.waitFor({ state: 'visible', timeout: 30_000 })
     const where = await target.evaluate((el) => {
@@ -349,11 +350,12 @@ const useDesk = (name: string) => {
         width: r.width,
         height: r.height,
         scale: window.devicePixelRatio,
-        inner: [window.innerWidth, window.innerHeight]
+        inner: [window.innerWidth, window.innerHeight],
+        outer: [window.outerWidth, window.outerHeight]
       }
     })
-    const wide = Math.round(where.inner[0]! * where.scale)
-    const high = Math.round(where.inner[1]! * where.scale)
+    const wide = Math.round(where.outer[0]! * where.scale)
+    const high = Math.round(where.outer[1]! * where.scale)
     const frame = windows().find(
       (w) => Math.abs(w.width - wide) <= 2 && Math.abs(w.height - high) <= 2
     )
@@ -361,9 +363,13 @@ const useDesk = (name: string) => {
       throw new Error(
         `no window on the screen is ${wide}x${high}, the size of the page asked about`
       )
+    const border = {
+      x: ((where.outer[0]! - where.inner[0]!) / 2) * where.scale,
+      y: ((where.outer[1]! - where.inner[1]!) / 2) * where.scale
+    }
     return {
-      x: frame.x + where.x * where.scale,
-      y: frame.y + where.y * where.scale,
+      x: frame.x + border.x + where.x * where.scale,
+      y: frame.y + border.y + where.y * where.scale,
       width: where.width * where.scale,
       height: where.height * where.scale
     }

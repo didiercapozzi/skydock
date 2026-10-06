@@ -44,7 +44,14 @@ windowDescribe('a file in a window of its own, and the machine own player', () =
 
   test('hands the clip, as it was shot, to the machine own player from the file window, copying nothing', async () => {
     const file = await desk.preview()
-    const before = fs.readdirSync(desk.world.output, { recursive: true }).map(String).sort()
+    /* what the work folder holds, bar the pictures the board draws as it is looked at */
+    const held = () =>
+      fs
+        .readdirSync(desk.world.output, { recursive: true })
+        .map(String)
+        .filter((name) => !name.startsWith('.thumbs'))
+        .sort()
+    const before = held()
     await desk.click(file, file.getByRole('button', { name: /In the machine.s player/ }))
     const asked = await waitFor('the player to be asked', () =>
       fs.existsSync(played()) ? fs.readFileSync(played(), 'utf8') : undefined
@@ -53,16 +60,15 @@ windowDescribe('a file in a window of its own, and the machine own player', () =
     expect(fs.existsSync(asked)).toBe(true)
     expect(asked.startsWith(desk.world.output)).toBe(true)
     /* nothing was converted or copied to make it playable */
-    expect(fs.readdirSync(desk.world.output, { recursive: true }).map(String).sort()).toEqual(
-      before
-    )
+    expect(held()).toEqual(before)
     desk.silent()
   })
 
   test('brings the file window back to the front when it is under the board and another file is asked for, and closes it with Escape and not the board', async () => {
     const board = await desk.board()
     const file = await desk.preview()
-    const window = desk.windows().find((w) => w.width === 1360)
+    /* the file's window is drawn 1360 wide, and the desktop gives each window a thin border on top of that */
+    const window = desk.windows().find((w) => Math.abs(w.width - 1360) <= 16)
     const boardWindow = desk.windows().find((w) => w.width === 1440)
     if (!window || !boardWindow) throw new Error('both windows should be on the screen')
 
