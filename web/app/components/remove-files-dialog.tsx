@@ -8,12 +8,14 @@ import type { ManifestFile } from './types'
 /* Removing files asks the one question every time, wherever they are (RULES, Putting files in the
    bin): loose in Fresh files, to be filed again — or into the bin, off the board and out of the
    originals, to be brought back from the Bin page if they were wanted after all. Files already loose
-   in Fresh files have only the bin left. A copy is a jump's own hold on a file that stays where it
-   is, so it cannot go to the bin. */
+   in Fresh files have only the bin left, and so do files the storage holds too: they cannot be unfiled,
+   and the bin takes only what is here. A copy is a jump's own hold on a file that stays where it is, so
+   it cannot go to the bin. */
 const RemoveFilesDialog = ({
   from,
   files,
   canLoose,
+  onStorage,
   onClose,
   onChoose
 }: {
@@ -22,6 +24,8 @@ const RemoveFilesDialog = ({
   files: ManifestFile[]
   /* whether they have somewhere to go back to — not when already loose in Fresh files */
   canLoose: boolean
+  /* how many of them the storage holds as well */
+  onStorage: number
   onClose: () => void
   onChoose: (to: 'fresh' | 'bin') => void
 }) => {
@@ -81,6 +85,15 @@ const RemoveFilesDialog = ({
           {t`off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy.`}
         </li>
       </ul>
+      {onStorage > 0 && (
+        <p className='m-0 text-small text-ink-3'>
+          {plural(onStorage, {
+            one: '# of these is on the storage as well, which keeps its own copy — the bin takes only the one here.',
+            other:
+              '# of these are on the storage as well, which keeps its own copy — the bin takes only the ones here.'
+          })}
+        </p>
+      )}
       {copies && (
         <p className='m-0 text-small text-ink-3'>
           {t`Some of these are copies: a copy can only be taken out, and its original stays where it is.`}

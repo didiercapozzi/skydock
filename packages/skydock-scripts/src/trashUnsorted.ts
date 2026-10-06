@@ -11,9 +11,10 @@ import { getTrashDir } from './utils'
 
 /* Files nobody wants — a test shot, footage of the ground — are put in the bin rather than deleted
    (RULES, Putting files in the bin), from wherever they are, once that is the way out chosen for
-   them. Not a file already on the storage: what went up is somebody's, and not the board's to throw
-   away. The file leaves the originals folder, so a scan does not find it again, and nothing is
-   erased: the bin is never emptied by SkyDock, and a file can be brought back out of it. */
+   them — whether or not the storage holds the file too: the bin moves only what is on this machine
+   and the storage keeps what it holds. The file leaves the originals folder, so a scan does not find
+   it again, and nothing is erased: the bin is never emptied by SkyDock, and a file can be brought back
+   out of it. */
 
 /* files taken off the board, and a jump left with none goes with them */
 const dropFromBoard = (manifest: Manifest, ids: Set<string>) => {
@@ -31,11 +32,6 @@ const trashUnsorted = async (
 ) => {
   const going = manifest.files.filter((f) => f.id && ids.has(f.id))
   if (going.length === 0) throw new Error('Those files are no longer on the board.')
-  const sent = going.find((f) => f.uploaded || f.freed)
-  if (sent)
-    throw new Error(
-      `${sent.filename} is on the storage already — it is not the board’s to throw away.`
-    )
   /* a copy is the jump's own hold on a file that stays where it is: it is taken out, never binned */
   const copy = going.find((f) => f.copyOf)
   if (copy)

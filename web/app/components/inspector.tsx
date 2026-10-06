@@ -898,7 +898,8 @@ const FilePanel = ({
           </Acts>
         </Part>
       )}
-      {!locked && (
+      {/* the bin is open to a file the storage holds too: it moves only what is here */}
+      {(!locked || locked === UPLOADED_LOCKED) && (
         <div className='mt-auto px-6 pt-4 pb-6'>
           <BinButton onClick={onSendBack}>{backLabel}</BinButton>
         </div>

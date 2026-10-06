@@ -493,6 +493,10 @@ msgstr "Montage de {name}"
 msgid "{only} only there"
 msgstr "{only} seulement là-bas"
 
+#: app/components/remove-files-dialog.tsx
+msgid "{onStorage, plural, one {# of these is on the storage as well, which keeps its own copy — the bin takes only the one here.} other {# of these are on the storage as well, which keeps its own copy — the bin takes only the ones here.}}"
+msgstr "{onStorage, plural, one {# de ces fichiers est aussi sur le stockage, qui garde sa propre copie — la corbeille ne prend que celui d’ici.} other {# de ces fichiers sont aussi sur le stockage, qui garde sa propre copie — la corbeille ne prend que ceux d’ici.}}"
+
 #: app/routes/place.tsx
 msgid "{onStorage} of {total} on the storage"
 msgstr "{onStorage} sur {total} sur le stockage"

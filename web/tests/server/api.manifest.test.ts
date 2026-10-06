@@ -1008,19 +1008,18 @@ describe('changes made on the board', () => {
       expect(fs.existsSync(path.join(tmpDir, '.trash', bins[0]!, '2026-08-01', 'a.MP4'))).toBe(true)
     })
 
-    /* from a dropzone as from anywhere, once the bin is chosen — but never what went up already */
-    it('refuses a file already on the storage, and leaves it where it is', async () => {
+    /* from a dropzone as from anywhere, once the bin is chosen — what went up already too: the storage keeps its own */
+    it('takes a file already on the storage, and leaves the storage what it holds', async () => {
       const a = {
         ...onDisk('a'),
         uploaded: { remotePath: '/nas/a.mp4', md5: 'x', size: 1, localPath: '/o/a.mp4', at: 1 }
       }
       writeManifest([group({ id: 'g1', destination: 'Yverdon', files: [a] })])
 
-      const res = refusal(await send({ intent: 'trash-unsorted', fileIds: ['a'] }))
+      const res = answer(await send({ intent: 'trash-unsorted', fileIds: ['a'] }))
 
-      expect(res.success).toBe(false)
-      expect(res.globalErrors?.[0]).toContain('storage')
-      expect(fs.existsSync(a.path)).toBe(true)
+      expect(res.groups).toEqual([])
+      expect(fs.existsSync(a.path)).toBe(false)
     })
 
     it('refuses when nothing was picked', async () => {

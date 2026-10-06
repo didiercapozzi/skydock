@@ -184,14 +184,25 @@ describe('putting unsorted files in the bin', () => {
     expect(manifest.files).toEqual([])
   })
 
-  it('refuses a file already on the storage, and moves nothing', async () => {
-    const a = original('a', {
+  /* the bin moves only what is on this machine: the storage keeps what it holds, so a file that went up can go */
+  it('takes a file already on the storage too, whether it is still here or only there', async () => {
+    const here = original('a', {
       destination: 'Yverdon',
       uploaded: { remotePath: '/nas/a.mp4', md5: 'x', size: 10, localPath: '/o/a.mp4', at: 1 }
     })
+    const only = {
+      ...original('b', { destination: 'Yverdon' }),
+      freed: true as const,
+      uploaded: { remotePath: '/nas/b.mp4', md5: 'y', size: 10, localPath: '/o/b.mp4', at: 1 }
+    }
+    fs.rmSync(only.path)
+    const manifest = board([here, only])
 
-    await expect(trashUnsorted(board([a]), new Set(['a']), out, trash)).rejects.toThrow(/storage/)
-    expect(fs.existsSync(a.path)).toBe(true)
+    const { count } = await trashUnsorted(manifest, new Set(['a', 'b']), out, trash)
+
+    expect(count).toBe(2)
+    expect(manifest.files).toEqual([])
+    expect(fs.existsSync(here.path)).toBe(false)
   })
 
   it('deletes the copy and the proxy made from it, which have nothing left to come from', async () => {

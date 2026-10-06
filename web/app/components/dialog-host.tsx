@@ -238,11 +238,14 @@ const DialogHost = ({
           const places = new Set(dialog.files.map(placeOf))
           const loose = (file: ManifestFile) =>
             !file.destination && !groups.some((g) => g.files.some((f) => f.id === file.id))
+          /* how many of them the storage holds too: it keeps its own, and they cannot be unfiled */
+          const onStorage = dialog.files.filter((f) => f.uploaded || f.freed).length
           return (
             <RemoveFilesDialog
               from={places.size === 1 ? [...places][0]! : null}
               files={dialog.files}
-              canLoose={!dialog.files.every(loose)}
+              onStorage={onStorage}
+              canLoose={!dialog.files.every(loose) && onStorage === 0}
               onClose={close}
               onChoose={(to) => onRemoveFiles(to, dialog.files)}
             />

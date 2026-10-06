@@ -5,6 +5,10 @@ What is still to do. What was done is in git, not here.
 ## Open
 
 - Journey, window chapters: `web/tests/journey/window/` was written in a container with no Electron and has never been run — run `npm run test:journey:window` on a machine that has it, fix what the first run shows, and drop the "written without being run" notes. The update-feed chapter ('It keeps itself current') is excused: the packaged app's feed cannot be pointed at a local one.
+- Journey tests, clean-up the house review asked for (docs/journey-tests.md):
+  - Duplicated helpers: many small helpers are written again in several chapter helper files — adding a destination, connecting the storage and choosing its folder, finding a card or a row, reading the record, the montage folder, `dialog`/`panel`/`originals`/`openClip` lambdas in several chapter files. Keep one of each in a shared helper (the form that takes a `Page` is the primary one) and have the chapter helper files stop re-exporting.
+  - Fixed waits: eight `waitForTimeout` calls (about 31 s together) wait for something not to happen — in `i1-edit`, `c1-record`, `g-transfers`, `b-footage`, `h-freeing`, `i2-montage-out` and `shots.ts`. Poll for the app's own signal instead where there is one.
+  - Saved states: only `j-invariants` and the Tier B files use them; every other chapter builds its own footage, plugs its own card and connects its own storage. Build the shared base once with `saveState` and `loadState` it, and time the saving.
 - Found by the journey, each a skipped chapter with a `// BUG:` comment holding the evidence (`grep -rn "BUG:" web/tests/journey`) — fix the app, then unskip the chapter:
   1. (b-footage) `GET /api/thumb/<path on a card>` answers 404 for every file listed on a camera page: web/app/routes/api.thumb.$.tsx joins the splat onto the work folder. Fix idea: if the file is not in the work folder, serve it only when `isOnCamera('/' + splat)` (as web/app/routes/api.camera-file.ts does).
   2. (b-footage, cosmetic) dropping onto "Jump 2" says "… has been added to group_3" (an internal id). Same internal ids ("group_2", "group_3") name the jumps in the compare dialog (c2-merging).
