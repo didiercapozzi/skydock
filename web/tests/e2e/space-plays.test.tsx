@@ -49,6 +49,8 @@ describe('playing a clip in the preview', () => {
   test('space plays it even after another button was pressed', async () => {
     const onRotate = vi.fn()
     await render(createElement(Drawer, { onRotate }))
+    /* the turn buttons are on the Turn tab of the panel */
+    await userEvent.click(page.getByRole('button', { name: 'Turn', exact: true }))
     await userEvent.click(page.getByRole('button', { name: '↻ +90°' }))
     await userEvent.keyboard(' ')
     await expect.poll(() => player().paused).toBe(false)
