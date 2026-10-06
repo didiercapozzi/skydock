@@ -4,20 +4,16 @@ import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
 import {
   editorEnv,
-  filesUnder,
-  groupsOf,
   makeProject,
-  manifestOf,
-  montageFolder,
   nameFile,
   nameJump,
   putEditor,
   putTemplate,
-  renderFilm,
-  seedTrim,
-  SIDE,
-  WHO
+  seedTrim
 } from './i1-helpers'
+import { filesUnder, montageFolder, originalsOf, renderFilm, WHO } from './media'
+import { groupsOf, manifestOf } from './record'
+import { details, dialogNamed, folders } from './steps'
 
 const j = harness({
   name: 'i1-delete',
@@ -31,15 +27,12 @@ const j = harness({
 })
 const { quiet, see } = j
 
-const panel = () => j.page.locator(SIDE)
-const menu = () => j.page.getByRole('navigation', { name: 'Folders' })
-const originals = () => filesUnder(path.join(j.world.output, 'original_files'))
 const montageOf = (first: string) => groupsOf(j.world).find((g) => g.passenger?.firstname === first)
 const kept = (who: string) => filesUnder(path.join(j.world.output, '.projects', who))
 
 const deleteIt = async (who: string) => {
-  await panel().getByRole('button', { name: 'Delete montage…' }).click()
-  const ask = j.page.getByRole('dialog', { name: 'Delete montage' })
+  await details(j.page).getByRole('button', { name: 'Delete montage…' }).click()
+  const ask = dialogNamed(j.page, 'Delete montage')
   await ask.waitFor()
   expect(await ask.innerText()).toContain(`Delete ${who}’s montage`)
   await ask
@@ -55,8 +48,8 @@ describe('deleting a montage that has only been named', () => {
     await see('Jump 2')
     await nameJump(j.page, 'Jump 2', WHO)
     await see('Prepare the files')
-    await panel().getByRole('button', { name: 'Delete montage…' }).click()
-    const ask = j.page.getByRole('dialog', { name: 'Delete montage' })
+    await details(j.page).getByRole('button', { name: 'Delete montage…' }).click()
+    const ask = dialogNamed(j.page, 'Delete montage')
     await ask.waitFor()
     const text = await ask.innerText()
     expect(text).toContain('Delete Luc Favre’s montage')
@@ -70,7 +63,7 @@ describe('deleting a montage that has only been named', () => {
     await expect
       .poll(
         async () =>
-          await menu()
+          await folders(j.page)
             .getByRole('link', { name: /Luc Favre/ })
             .count()
       )
@@ -87,7 +80,7 @@ describe('deleting a montage that has only been named', () => {
 
 describe('deleting a prepared montage', () => {
   test('removes its copies and sends its files back loose, leaving the originals where they are', async () => {
-    const before = originals()
+    const before = originalsOf(j.world)
     await j.page.getByText('Jump 1', { exact: true }).first().click()
     await j.page.getByRole('button', { name: /Make a montage/ }).click()
     await j.page.getByLabel('Name', { exact: true }).fill('Anna Roux')
@@ -99,7 +92,7 @@ describe('deleting a prepared montage', () => {
     await deleteIt('Anna Roux')
     await expect.poll(() => fs.existsSync(montageFolder(j.world, 'Anna Roux'))).toBe(false)
     await expect.poll(() => montageOf('Anna')).toBeUndefined()
-    expect(originals()).toEqual(before)
+    expect(originalsOf(j.world)).toEqual(before)
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await j.page.getByRole('button', { name: /^Pick DJI_20260905143000/ }).waitFor()
     await quiet()
@@ -117,8 +110,8 @@ describe('deleting a montage that has an edit', () => {
     expect(project).toBeDefined()
     const mine = fs.readFileSync(path.join(folder, project!))
 
-    await panel().getByRole('button', { name: 'Delete montage…' }).click()
-    const ask = j.page.getByRole('dialog', { name: 'Delete montage' })
+    await details(j.page).getByRole('button', { name: 'Delete montage…' }).click()
+    const ask = dialogNamed(j.page, 'Delete montage')
     await ask.waitFor()
     expect(await ask.innerText()).toContain('the kdenlive project — the edit itself')
     await ask

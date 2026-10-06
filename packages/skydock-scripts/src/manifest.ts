@@ -101,12 +101,12 @@ const readPair = (manifestPath: string, groupsPath: string) => {
   return manifest
 }
 
-const loadManifest = (manifestPath: string) => {
+const readRecord = (manifestPath: string) => {
   const groupsPath = getGroupsPath(manifestPath)
   let failed: unknown = null
   try {
     const manifest = readPair(manifestPath, groupsPath)
-    if (manifest || !fs.existsSync(manifestPath)) return manifest
+    if (manifest || !fs.existsSync(manifestPath)) return { manifest, kept: false }
   } catch (e) {
     failed = e
   }
@@ -116,12 +116,14 @@ const loadManifest = (manifestPath: string) => {
       : null
     if (kept) {
       console.warn(`[Manifest] ${manifestPath} could not be read — using the last one read whole.`)
-      return kept
+      return { manifest: kept, kept: true }
     }
   } catch {}
   if (failed) throw failed
-  return null
+  return { manifest: null, kept: false }
 }
+
+const loadManifest = (manifestPath: string) => readRecord(manifestPath).manifest
 
 const keepBoardStep = (manifestPath: string) => {
   const groupsPath = getGroupsPath(manifestPath)
@@ -317,6 +319,7 @@ export {
   keepBoardStep,
   getGroupsPath,
   loadManifest,
+  readRecord,
   MANIFEST_VERSION,
   restoreBoard,
   saveManifest,

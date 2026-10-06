@@ -75,7 +75,8 @@ const renderBoard = async (answer: unknown, at = '/', shown: unknown = board) =>
         return answer
       }
     },
-    { path: '/api/storage-folder', loader: () => ({ ok: true, dir: '/SkyDock/Yverdon', files: [] }) }
+    { path: '/api/storage-folder', loader: () => ({ ok: true, dir: '/SkyDock/Yverdon', files: [] }) },
+    { path: '/api/remote-files', loader: () => ({ ok: false, reason: 'test' }) }
   ])
   await render(createElement(Stub, { initialEntries: [at] }))
 }

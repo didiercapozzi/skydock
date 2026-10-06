@@ -6,6 +6,7 @@ import { harness } from './harness'
 import { CLIPS, dayFolder, makeClip } from './media'
 import { loadState } from './saved'
 import { recordProblems, treeOf } from './invariants'
+import { place } from './steps'
 
 const here = path.dirname(url.fileURLToPath(import.meta.url))
 const LISTINGS = path.join(here, 'listings')
@@ -57,10 +58,7 @@ describe('the page while the app works', () => {
       .first()
       .waitFor({ state: 'detached', timeout: 60_000 })
 
-    await j.page
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-      .click()
+    await place(j.page, /Sion/).click()
     await j.page.getByRole('button', { name: /^Process \d+ files?$/ }).click()
     await j.see(/files? (is|are) ready to upload/, 60_000)
 

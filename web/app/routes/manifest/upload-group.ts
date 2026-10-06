@@ -83,12 +83,10 @@ const send = async ({
       onProgress: report.onProgress
     })
     const saved = latest()
-    const byOutput = new Map(
-      saved.files.flatMap((f) => (f.processed ? [[f.processed.path, f] as const] : []))
-    )
-    for (const verdict of result.files) {
-      const file = byOutput.get(verdict.localPath)
-      if (file)
+    const proved = new Map(result.files.map((verdict) => [verdict.localPath, verdict] as const))
+    for (const file of [...saved.files, ...saved.groups.flatMap((g) => g.files)]) {
+      const verdict = file.processed ? proved.get(file.processed.path) : undefined
+      if (verdict)
         file.uploaded = {
           remotePath: verdict.remotePath,
           md5: verdict.md5,

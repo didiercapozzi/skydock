@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
-import { cardOf, drag, jumpsOf, pick, rowOf, timeOf } from './c2-helpers'
+import { drag, jumpsOf, pick, timeOf } from './c2-helpers'
 import { harness } from './harness'
+import { cardOf, dialogNamed, rowOf } from './steps'
 
 const j = harness({ name: 'c2-merging', state: 'sorted', viewport: { width: 1400, height: 1000 } })
 const { see, quiet, open } = j
@@ -30,8 +31,9 @@ describe('merging two jumps', () => {
     await quiet()
   })
 
-  test.skip('dates the jump the merge leaves by its earliest file', async () => {
-    await see(/Sat 5 Sept · 14:30/)
+  test('starts the jump the merge leaves when its longest run does, flagging the files of the other as off the gap', async () => {
+    await see(/Sun 6 Sept · 09:00 · 4 videos, 1 photo/)
+    await see(/2 off the gap/)
   })
 })
 
@@ -66,7 +68,7 @@ describe('making a jump by hand', () => {
 
 describe('two jumps side by side', () => {
   test('are opened next to each other by a ctrl-click on a second jump, and merged onto a time typed in', async () => {
-    const compare = j.page.getByRole('dialog', { name: 'Compare jumps' })
+    const compare = dialogNamed(j.page, 'Compare jumps')
     await cardOf(j.page, 'Jump 1').click({ modifiers: ['Control'] })
     await compare.waitFor()
     for (const name of [FIRST, SECOND, SIXTH, PHOTO, SEVENTH])
@@ -92,9 +94,5 @@ describe('two jumps side by side', () => {
     await expect.poll(() => jumpsOf(j.world).filter((jump) => !jump.destination)).toHaveLength(1)
     expect(gaps(), 'every file moved by the same amount').toEqual(kept)
     await quiet()
-  })
-
-  test.skip('merges onto the start of the jump chosen, not onto the start of the longest run', async () => {
-    await see(/Sat 5 Sept · 14:30/)
   })
 })

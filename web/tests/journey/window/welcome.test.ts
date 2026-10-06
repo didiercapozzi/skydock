@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { expect, test } from 'vitest'
 import { loadState } from '../saved'
 import { gone, sees, useDesk, waitFor, windowDescribe } from './window-helpers'
+import { place } from '../steps'
 
 const PICKER = 'Where should SkyDock keep its work?'
 
@@ -54,10 +55,7 @@ windowDescribe('the first time it is opened', () => {
 
     await desk.click(page, page.locator('#open'))
     const board = await desk.board()
-    await board
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-      .waitFor({ timeout: 60_000 })
+    await place(board, /Sion/).waitFor({ timeout: 60_000 })
     desk.shot('board-opened')
 
     await waitFor('the folder remembered', () => desk.settings().outputDir === earlier())

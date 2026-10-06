@@ -311,6 +311,7 @@ const UploadDialog = ({
   const uploaded = group.uploaded
 
   const toMake = zipItems.filter((item) => placesOf(item.key).length > 0).length
+  const staying = items.filter((item) => placesOf(item.key).length === 0).length
   const toSend = items.reduce((sum, item) => sum + item.size * placesOf(item.key).length, 0)
   const sharing = (name: string) =>
     items.some((item) => item.holds.includes('film') && placesOf(item.key).includes(name))
@@ -695,6 +696,14 @@ const UploadDialog = ({
               plural(used.length, { one: '# destination', other: '# destinations' }),
               ...(toMake > 0
                 ? [plural(toMake, { one: '# zip to make', other: '# zips to make' })]
+                : []),
+              ...(staying > 0
+                ? [
+                    plural(staying, {
+                      one: '# item stays on this machine',
+                      other: '# items stay on this machine'
+                    })
+                  ]
                 : [])
             ].join(' · ')}
             {toSend > 0 && (

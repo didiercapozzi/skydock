@@ -2,9 +2,10 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { z } from 'zod'
-import { identities, lookAtPages, makeBigClip, probe, seenSince } from './e-helpers'
-import { dayFolder } from './media'
+import { identities, lookAtPages, seenSince } from './e-helpers'
 import { harness } from './harness'
+import { dayFolder, makeBigClip, probe } from './media'
+import { place, preview } from './steps'
 
 const CLIPS = [
   ['DJI_20260905100000_0001_D.MP4', '2026-09-05T10:00:00'],
@@ -15,7 +16,12 @@ const CLIPS = [
 const j = harness({
   name: 'e-preparing',
   prepare: (world) => {
-    for (const [name, when] of CLIPS) makeBigClip(path.join(dayFolder(world, when), name), when, 20)
+    for (const [name, when] of CLIPS)
+      makeBigClip(path.join(dayFolder(world, when), name), when, {
+        seconds: 20,
+        size: '1920x1080',
+        fast: true
+      })
   }
 })
 const { see, quiet, open } = j
@@ -31,8 +37,7 @@ const turnedClips = (output: string) => {
     : -1
 }
 const copies = () => path.join(j.world.output, 'processed', 'Sion')
-const sion = () =>
-  j.page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Sion/ })
+const sion = () => place(j.page, /Sion/)
 const processButton = () => j.page.getByRole('button', { name: /^Process \d+ files?$/ })
 
 describe('large footage, first looked at', () => {
@@ -61,7 +66,7 @@ describe('large footage, first looked at', () => {
   test('plays a large clip from its small copy', async () => {
     await j.page.getByText('Jump 1', { exact: true }).click()
     await j.page.getByText(CLIPS[0][0]).first().dblclick()
-    const dialog = j.page.getByRole('dialog', { name: 'Preview' })
+    const dialog = preview(j.page)
     await dialog.waitFor()
     await expect
       .poll(() =>
@@ -87,7 +92,7 @@ describe('preparing a destination whose clips are large', () => {
     await see('3 files need processing')
     await sion().click()
     await j.page.getByText(CLIPS[0][0]).first().dblclick()
-    const dialog = j.page.getByRole('dialog', { name: 'Preview' })
+    const dialog = preview(j.page)
     await dialog.waitFor()
     await dialog
       .getByRole('group', { name: 'What to change' })

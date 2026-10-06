@@ -4,33 +4,21 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { startFakeStorage } from './fake-storage'
 import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
-import {
-  arrangeAsUsual,
-  connectStorage,
-  disabled,
-  FILM,
-  montageFolder,
-  said,
-  stored,
-  renderFilm,
-  titled,
-  uploadDialog,
-  region,
-  STEM
-} from './i2-helpers'
+import { arrangeAsUsual, region, stored, uploadDialog } from './i2-helpers'
+import { FILM, filmFile, montageFolder, renderFilm, STEM } from './media'
+import { connectStorage, disabled, PASSWORD, said, titled } from './steps'
 
 let storage: FakeStorage
 const j = harness({
   name: 'i2-montage-refusals',
   state: 'i2-ready',
   prepare: async () => {
-    storage = await startFakeStorage()
+    storage = await startFakeStorage({ password: PASSWORD })
   }
 })
 afterAll(async () => storage?.stop())
 
-const dialog = () => uploadDialog(j.page)
-const upload = () => dialog().getByRole('button', { name: 'Upload', exact: true })
+const upload = () => uploadDialog(j.page).getByRole('button', { name: 'Upload', exact: true })
 const body = () => j.page.locator('body')
 const dismissCorner = () => j.page.getByText('Dismiss', { exact: true }).click()
 
@@ -63,26 +51,28 @@ describe('uploading a montage is refused', () => {
 
   test('when nothing is put anywhere, and says so', async () => {
     await j.page.getByRole('button', { name: 'Upload…' }).first().click()
-    await dialog().waitFor()
-    await dialog().getByRole('button', { name: 'Leave Backup out of this upload' }).click()
+    await uploadDialog(j.page).waitFor()
+    await uploadDialog(j.page)
+      .getByRole('button', { name: 'Leave Backup out of this upload' })
+      .click()
     await disabled(upload()).toBe(true)
     await titled(upload()).toMatch(/Put at least one thing in a destination/)
     await j.quiet()
   })
 
   test('when a destination has no folder on the storage, and says so', async () => {
-    await dialog().getByLabel('Add a destination').selectOption('Backup')
-    await dialog()
+    await uploadDialog(j.page).getByLabel('Add a destination').selectOption('Backup')
+    await uploadDialog(j.page)
       .getByRole('button', { name: 'Original videos', exact: true })
       .dragTo(region(j.page, 'Backup'))
     await disabled(upload()).toBe(true)
     await titled(upload()).toMatch(/Choose a folder on the storage for every destination used/)
-    await dialog().getByRole('button', { name: 'Cancel' }).click()
+    await uploadDialog(j.page).getByRole('button', { name: 'Cancel' }).click()
     await j.quiet()
   })
 
   test('when a file is still to process, and says how many', async () => {
-    fs.rmSync(path.join(montageFolder(j), 'videos', 'luc_favre_20260906_090300.mp4'))
+    fs.rmSync(path.join(montageFolder(j.world), 'videos', 'luc_favre_20260906_090300.mp4'))
     await j.restart()
     await j.open()
     await j.page.getByRole('link', { name: /Luc Favre/ }).click()
@@ -106,14 +96,14 @@ describe('uploading a montage is refused', () => {
       })
       .toBe(false)
     expect(
-      fs.existsSync(path.join(montageFolder(j), 'videos', 'luc_favre_20260906_090300.mp4'))
+      fs.existsSync(path.join(montageFolder(j.world), 'videos', 'luc_favre_20260906_090300.mp4'))
     ).toBe(true)
     await j.quiet()
   })
 
   test('when there is no film yet, naming the film that was looked for', async () => {
     await arrangeAsUsual(j.page)
-    const film = path.join(montageFolder(j), FILM)
+    const film = filmFile(j.world)
     fs.renameSync(film, `${film}.aside`)
     await upload().click()
     await said(body()).toContain(`nothing named ${FILM}`)
@@ -125,11 +115,11 @@ describe('uploading a montage is refused', () => {
   })
 
   test('while the film is still being written', async () => {
-    const film = path.join(montageFolder(j), FILM)
+    const film = filmFile(j.world)
     const growing = setInterval(() => fs.appendFileSync(film, 'x'), 100)
     try {
       await j.page.getByRole('button', { name: 'Upload…' }).first().click()
-      await dialog().waitFor()
+      await uploadDialog(j.page).waitFor()
       await upload().click()
       await said(body()).toContain('The film is still being written')
     } finally {
@@ -138,7 +128,7 @@ describe('uploading a montage is refused', () => {
     expect(stored(storage)).toEqual([])
     await dismissCorner()
     await j.quiet()
-    renderFilm(j)
+    renderFilm(j.world)
   })
 
   test('while another upload is going, naming it', async () => {
@@ -149,11 +139,11 @@ describe('uploading a montage is refused', () => {
     await storage.admin.latency(1200)
     await j.page.getByRole('link', { name: /Luc Favre/ }).click()
     await j.page.getByRole('button', { name: 'Upload…' }).first().click()
-    await dialog().waitFor()
-    const film = path.join(montageFolder(j), FILM)
-    fs.renameSync(film, path.join(montageFolder(j), 'final-cut.mp4'))
+    await uploadDialog(j.page).waitFor()
+    const film = filmFile(j.world)
+    fs.renameSync(film, path.join(montageFolder(j.world), 'final-cut.mp4'))
     await upload().click()
-    await dialog().waitFor({ state: 'detached' })
+    await uploadDialog(j.page).waitFor({ state: 'detached' })
 
     await j.page.getByRole('link', { name: /^Sion/ }).click()
     const sion = j.page.getByRole('button', { name: /^Upload 3 files|^Uploading/ })
@@ -166,8 +156,8 @@ describe('uploading a montage is refused', () => {
     await expect.poll(() => stored(storage, 'Films'), { timeout: 90_000 }).toHaveLength(2)
     await storage.admin.latency(0)
     expect(stored(storage, 'Films')).toContain(`${STEM}.mp4`)
-    expect(fs.existsSync(path.join(montageFolder(j), FILM))).toBe(true)
-    expect(fs.existsSync(path.join(montageFolder(j), 'final-cut.mp4'))).toBe(false)
+    expect(fs.existsSync(filmFile(j.world))).toBe(true)
+    expect(fs.existsSync(path.join(montageFolder(j.world), 'final-cut.mp4'))).toBe(false)
     await j.quiet()
   })
 })

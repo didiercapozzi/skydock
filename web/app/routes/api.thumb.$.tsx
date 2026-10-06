@@ -4,6 +4,7 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { isOnCamera } from '../../../packages/skydock-scripts/src/cameraWatch'
 import { limited } from '../../../packages/skydock-scripts/src/lib/queue'
 
 const DEFAULT_WIDTH = 80
@@ -92,9 +93,13 @@ const loader = async ({
   request: Request
 }) => {
   const splat = params['*'] ?? ''
-  const filePath = path.join(getOutputDir(), splat)
+  const work = getOutputDir()
+  const inWork = path.join(work, splat)
+  const onCamera = path.join(path.sep, splat)
+  const filePath =
+    inWork.startsWith(`${work}${path.sep}`) && fs.existsSync(inWork) ? inWork : onCamera
 
-  if (!fs.existsSync(filePath)) {
+  if (filePath === onCamera && !(isOnCamera(onCamera) && fs.statSync(onCamera).isFile())) {
     return new Response('Not found', { status: 404 })
   }
 

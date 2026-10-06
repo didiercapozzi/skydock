@@ -3,6 +3,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
 import { parentOf } from './paths'
+import { remoteMatches } from './fileStatus'
+import type { RemoteListing } from './fileStatus'
 import {
   deliveryFolders,
   originsDirOf,
@@ -104,9 +106,13 @@ const goneSent = (
   remote
     ? (record?.sent ?? []).flatMap((item) =>
         item.to
-          .filter(
-            (dir) => remote.dirs.includes(dir) && remote.sizes[`${dir}/${item.name}`] === undefined
-          )
+          .filter((dir) => {
+            const at = `${dir}/${item.name}`
+            return item.name.endsWith('/')
+              ? remote.dirs.includes(at.slice(0, -1)) &&
+                  !Object.keys(remote.sizes).some((key) => key.startsWith(at))
+              : remote.dirs.includes(dir) && remote.sizes[at] === undefined
+          })
           .map((dir) => `${dir}/${item.name}`)
       )
     : []
@@ -177,11 +183,13 @@ const dedupeTargets = (targets: UploadTarget[]) => {
 const resolveUploadTargets = ({
   outputDir,
   manifest,
-  scope
+  scope,
+  remote
 }: {
   outputDir: string
   manifest: Manifest
   scope: UploadScope
+  remote?: RemoteListing | null
 }) => {
   const groups = groupsInScope(manifest, scope).filter((g) => !isNamedMontage(g) && !g.freed)
   const targets = groups.map((g) => targetForGroup(g, outputDir, manifest))
@@ -205,7 +213,8 @@ const resolveUploadTargets = ({
       file.uploaded &&
       file.processed &&
       file.uploaded.localPath === file.processed.path &&
-      file.uploaded.size === file.processed.size
+      file.uploaded.size === file.processed.size &&
+      remoteMatches(file, remote)
         ? [file.processed.path]
         : []
     )
@@ -364,16 +373,18 @@ const uploadScope = async ({
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
   onPlan?: (plan: PlanProgress) => void
-}) =>
-  uploadTargets({
+}) => {
+  const remote = await listRemoteFiles(manifest, session)
+  return uploadTargets({
     session,
-    targets: resolveUploadTargets({ outputDir, manifest, scope }),
+    targets: resolveUploadTargets({ outputDir, manifest, scope, remote }),
     origins: originsOf(manifest),
     folders: deliveryFolders(manifest),
     onProgress,
     onCheck,
     onPlan
   })
+}
 
 export {
   destBaseOf,

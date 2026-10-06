@@ -42,6 +42,7 @@ import {
   flushBoardChanges,
   keepBoardStep,
   loadManifest,
+  readRecord,
   restoreBoard,
   saveManifest,
   statProcessedOutputs
@@ -178,11 +179,11 @@ import {
   buildPassengerFolder,
   hasCompletePassenger,
   mergeGroups,
+  MONTAGES_FOLDER,
   montageCalled,
   passengerFrom,
   passengerName,
-  passengerOf,
-  placeNameProblem
+  passengerOf
 } from './workspace'
 import { isFiled, isMontage } from './filed'
 
@@ -287,6 +288,7 @@ export {
   liveShareLinks,
   listRemoteFiles,
   loadManifest,
+  readRecord,
   boardHistory,
   flushAllBoardChanges,
   flushBoardChanges,
@@ -307,8 +309,8 @@ export {
   parentOf,
   passengerFrom,
   passengerName,
+  MONTAGES_FOLDER,
   passengerOf,
-  placeNameProblem,
   cancelProcessing,
   processingNow,
   processJumps,

@@ -120,9 +120,14 @@ const LinkItems = ({
   )
 }
 
-const useFileActions = (onProblem?: (problem: string) => void) => {
+const useFileActions = (listing: unknown, onProblem?: (problem: string) => void) => {
   const [playing, setPlaying] = useState<StorageFile | null>(null)
   const [linked, setLinked] = useState<Record<string, string | null>>({})
+  const [listed, setListed] = useState(listing)
+  if (listing !== listed) {
+    setListed(listing)
+    setLinked({})
+  }
   const [asking, setAsking] = useState<string | null>(null)
   const setLink = async (file: StorageFile, intent: 'create' | 'remove') => {
     setAsking(file.path)
@@ -229,9 +234,9 @@ const StorageFolder = ({
   onProblem?: (problem: string) => void
 }) => {
   const [again, setAgain] = useState(0)
-  const actions = useFileActions(onProblem)
-  const { playing, setPlaying } = actions
   const folder = useStorageFolder(where, `${String(stamp)}:${again}`)
+  const actions = useFileActions(folder, onProblem)
+  const { playing, setPlaying } = actions
   const held = folder?.ok ? folder.files : []
   const files = held
   const only = hereToo ? held.filter((f) => !hereToo.has(f.name)).length : 0
@@ -377,8 +382,8 @@ const StorageCards = ({
   onProblem?: (problem: string) => void
   children: (itemActions: (dir: string, name: string) => React.ReactNode) => React.ReactNode
 }) => {
-  const actions = useFileActions(onProblem)
   const folder = useStorageFolder(where, String(stamp))
+  const actions = useFileActions(folder, onProblem)
   const byPath = new Map((folder?.ok ? folder.files : []).map((file) => [file.path, file]))
   const itemActions = (dir: string, name: string) => {
     const file = byPath.get(`${dir}/${name}`)
@@ -419,7 +424,7 @@ const FolderCard = ({
   onBringBack?: (file: StorageFile) => void
   onProblem?: (problem: string) => void
 }) => {
-  const actions = useFileActions(onProblem)
+  const actions = useFileActions(listing, onProblem)
   const byPath = new Map((listing?.ok ? listing.files : []).map((file) => [file.path, file]))
   const itemActions = (dir: string, name: string) => {
     const file = byPath.get(`${dir}/${name}`)

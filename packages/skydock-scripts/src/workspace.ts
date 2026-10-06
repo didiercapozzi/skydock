@@ -4,16 +4,6 @@ import type { ManifestGroup, ManifestPassenger } from './types'
 
 const MONTAGES_FOLDER = 'Montages'
 
-const placeNameProblem = (name: string) => {
-  const trimmed = name.trim()
-  if (!trimmed) return 'A dropzone needs a name.'
-  if (trimmed === '.' || trimmed === '..' || /[\\/]/.test(trimmed))
-    return `“${trimmed}” cannot be a dropzone’s name — it is not a folder name.`
-  if (trimmed.toLowerCase() === MONTAGES_FOLDER.toLowerCase())
-    return `“${trimmed}” is where the montages are kept — give the dropzone another name.`
-  return null
-}
-
 const hasCompletePassenger = (passenger: ManifestPassenger | null | undefined) =>
   passengerName(passenger) !== ''
 
@@ -147,7 +137,6 @@ export {
   passengerOf,
   isMontage,
   MONTAGES_FOLDER,
-  placeNameProblem,
   resolveDestinationPath,
   toFileStem
 }

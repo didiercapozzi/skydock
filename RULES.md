@@ -514,7 +514,7 @@ _Elsewhere_ come what is not worked on here: each camera this machine has met, p
 _Montages done_, with how many montages are in it, once there is one; and the _Bin_. There is no page of what the storage holds as a whole: each destination and each
 montage shows its own folder up there, on its own _On the storage_ tab. The place you
 are on is drawn as a white card. Each place is one line, its name and, at the right, what is left there in
-a few words: the jumps still to file in Fresh files, the files still to do at a destination ("all up" when
+a few words: the jumps still to file in Fresh files, counting the loose files as one more thing to file, the files still to do at a destination ("all up" when
 none is, and nothing at all when it holds nothing); a montage shows a segment per step with the next one named under it. Every place of work takes files dropped on it,
 and every one but Fresh files a whole jump; the cameras take nothing. A montage
 is listed once, however many jumps it has.
@@ -543,7 +543,7 @@ off what is there — the name, the copies, the project, the film, the upload, t
 freed montage went through every step up to the upload, with nothing left here to show for it. A
 montage with several jumps is where the one furthest behind is, since one name is one folder.
 
-**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made. Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — open it in kdenlive, process it again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
+**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — open it in kdenlive, process it again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
 
 **Montages done** lists the freed montages as a table — who it was for, the day, when its link was emailed (a dash while it has not been), how much is on the storage, whether its link still works — each with buttons for its storage cards and its page. With no montage left to do the Montages heading says so.
 
@@ -562,8 +562,7 @@ is kept through a scan. A jump that already had one keeps it, and making it a mo
 
 Arranged by jump, every jump is a card, in a grid of equal cells — so many jumps line up in columns
 and rows, the loose files' card among them — newest first, so the numbers count down to Jump 1,
-the first of all. A card carries its name and how big it is, its day and the span of times its files cover to the
-minute — never one file's time, since a jump is a gathering of files — how many
+the first of all. A card carries its name, its day and the time the jump started — the jump's own start, which can be corrected, never one file's time — how many
 videos and photos it holds, how far it has got, and a strip of pictures of its files, so jumps are told apart at a
 glance. The loose files get one card of their own, always first: drawn dashed and flat so it never
 passes for a jump, and carrying no date, since loose files share no one moment.
@@ -593,13 +592,14 @@ rest at once; what is scrolled out of sight is not drawn, so a whole card costs 
 through than a page. Thumbnails can be drawn smaller or bigger, from a
 wall of small ones to see a whole card at once to large ones to tell two near-identical shots apart:
 with a slider on the toolbar while thumbnails are shown, or with Ctrl or ⌘ and the mouse wheel over
-them; the size is remembered on this machine, and a bigger thumbnail asks for a sharper picture. Every day and every jump says how many videos and photos
-it holds. The pane's heading carries badges for the place — how many videos and photos — that show one
+them; the size is remembered on this machine, and a bigger thumbnail asks for a sharper picture. Every jump says how many videos and photos
+it holds, and every day how many files. Where a page keeps the plain heading (a montage's, a camera's),
+the heading carries badges for the place — how many videos and photos — that show one
 kind, the other, or all, the choice holding across the board; all is both side by side, videos in one
 column and photos in the other, stacked on a narrow screen; as rows, each column leaves out the size
 when it is too narrow for it, and putting the details away is often
 what makes the room for two. A badge for a kind with nothing in it is
-shown but cannot be chosen.
+shown but cannot be chosen. Fresh files and a destination's page are calm and offer no such choice.
 
 **The board follows its record.** The board's record — `manifest.json` and the groups kept beside it — is
 written by more than the page that has it open: another tab, a script, a hand edit, work done outside
@@ -612,9 +612,10 @@ history — and it waits for anything the page is saving or answering, so an edi
 shown reverted; a look that finds the board as it is changes nothing on screen. A record that cannot be
 read whole is never shown as an older one.
 
-**Arranging and finding.** The pane's heading has one button per way of arranging the place — by jump,
+**Arranging and finding.** Where a page keeps the plain heading (a montage's, a camera's), the pane's heading has one button per way of arranging the place — by jump,
 by day, or as one list, whichever that place offers — so every choice is in sight and a single press
-away. Each kind of place opens arranged its own way — Fresh files and a montage by jump, a dropzone
+away. Fresh files and a destination's page are calm and have no such buttons: each opens arranged its own way, and
+another way can be asked for by its address. Each kind of place opens arranged its own way — Fresh files and a montage by jump, a dropzone
 by day — and a choice made there is part of the folder's address, so it holds until another folder is
 opened. Every list of files runs
 newest first, the latest shot at the top — on the board, in what a place's folder on the storage holds,
@@ -628,8 +629,8 @@ being looked at, and nothing is picked — however many files are picked already
 its tick or by ctrl- or cmd-click, each of which also takes it back off; shift-click
 takes a range, and with no range started it picks that file and starts one. ⌘- or ctrl-A picks every
 file on screen that can move. Up and down move the preview, and with shift add to the picks. Escape
-clears. A row's tick is always there; a thumbnail's
-appears under the pointer until something is picked, then on every thumbnail. Picked thumbnails get a
+clears. A tick is always there, on a row and on a thumbnail alike,
+so what can be picked is seen at once. Picked thumbnails get a
 green ring with a tick; picked rows a green tick and background. Picking is choosing what to move, so a
 file that cannot move — on the storage, freed, or in a montage with an edit — has no tick and is never
 picked, whichever way picking is asked for; one that stops being movable while picked, as when its
@@ -746,7 +747,7 @@ stays in the bin, and is named — bringing it back would make two of it.
 
 **Merging and making jumps by hand.** Two jumps that are really one are merged by picking the files of
 one — its panel selects them all in one press — and dropping them on the other's card; the jump left
-empty disappears. The files keep their own times, so the merged jump is dated by its earliest file.
+empty disappears. The files keep their own times, so the merged jump starts when its longest run does, as any jump does; the files of the other, held against the gap, are flagged and move nothing.
 Two jumps can also be put side by side first: with one jump open, ⌘- or ctrl-clicking a second
 opens the two next to each other, each playing its own clips, and from there they can be merged onto
 the start of either, or onto a time typed in — for two cameras on one jump, one of them on the wrong
@@ -990,13 +991,10 @@ need it are prepared: a day with one file still to prepare and another already o
 the one, and leaves the other — and its record of having gone up — as it is, so the upload that follows
 is of that one file.
 
-**A destination's page is headed in three parts.** First, who it is: its name, the folder on the storage it
-goes to — pressing it changes it — and how many files it holds, with a menu of three dots for what is set
-once and left alone: changing the folder and taking the destination off the board. Second, the way its
-files travel, as three stations in a row — to process, to upload, on the storage — the first with
-something in it lifted, and the step that moves them on, and freeing space, at the end of the same row.
-Third, the ways of finding and arranging its files: narrowing by name, and videos or
-photos. Its shared link is made and taken away by hand in its right panel, and only there. Like a montage's, its page has two tabs under that head, _Local_ and _On the storage_, one at a time: _Local_ lists the files kept on this machine, and _On the storage_ shows its folder up there as the same card a montage's handed-over folder is — its path and every file it holds with what kind it is and whether it is here too or only up there — with, on each row, a play button for a film and a ⋯ menu holding the file's own link and, on a file that is only up there, **Bring back**, which fetches it onto this machine again; a row whose file has a link out says so with a small link icon, which copies the link when it is pressed, and the words of every row stand in the same columns whether or not it has one. Bringing back is offered here and nowhere else, and only for a file this machine sent.
+**A destination's page is headed as every calm page is** (see _A destination's page and Fresh files are calm_): its name and how many files it holds, a search icon, and a menu of three dots for what is set
+once and left alone: changing the folder on the storage and taking the destination off the board. Under
+the head, one card says where the files stand — what needs processing, what is ready to upload, what is on the storage — and which folder on the storage they go
+into, with the step that moves them on, and freeing space, beside it. Its shared link is made and taken away by hand in its right panel, and only there. Like a montage's, its page has two tabs under that head, _Local_ and _On the storage_, one at a time: _Local_ lists the files kept on this machine, and _On the storage_ shows its folder up there as the same card a montage's handed-over folder is — its path and every file it holds with what kind it is and whether it is here too or only up there — with, on each row, a play button for a film and a ⋯ menu holding the file's own link and, on a file that is only up there, **Bring back**, which fetches it onto this machine again; a row whose file has a link out says so with a small link icon, which copies the link when it is pressed, and the words of every row stand in the same columns whether or not it has one. Bringing back is offered here and nowhere else, and only for a file this machine sent.
 
 **Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
 and the board stays usable meanwhile. A page opened while processing runs says so and updates itself
@@ -1009,9 +1007,8 @@ kept, and a jump changed while its copies were being written is not marked proce
 **Nothing is uploaded until everything in it is processed**, and what is waiting is said plainly.
 An upload's progress is shown once, in its panel in the bottom-right corner of the board, whatever page is open.
 
-**A montage's files are listed as a destination's are.** Under its steps, a montage's files are headed
-by its day — the day, how many files, videos and photos on one line, and how far they have got — and
-listed in the same table: picture, name, shot, size, state.
+**A montage's files are listed as a destination's are.** Under its steps, a montage's files are one
+card headed _Its files_, listed in the same table as a destination's: picture, name, shot, size, state.
 
 **The film.** Once rendered, the film shows above its montage: its name, how long it runs, its size, and
 when it was rendered. It can be watched there, so the render is checked before it goes to anyone. A film rendered again is the one that plays. Once the montage is uploaded, what went up
@@ -1371,7 +1368,7 @@ can apply is worse.
 
 ## Taking a montage back
 
-A montage can be **reset** or **deleted** from its page — from the foot of the panel at the right, and nowhere else on the page. Either applies to the whole montage, because
+A montage can be **reset** or **deleted** from its page — from the foot of the panel at the right while it is still being worked on, and, whatever step it has reached, from the ⋯ menu of its page. Either applies to the whole montage, because
 one name is one folder, and each asks first, saying what goes and what stays, naming the edit on
 its own when there is one.
 
@@ -1652,7 +1649,7 @@ which finds it gone.
 
 The board is written whole or not at all, and the last good record is kept beside it: a board that
 cannot be read — cut off half written by a crash or a power cut — is read from that one instead, and
-said so, rather than lost.
+said so in a line on the board when it opens, rather than lost.
 
 ## Not built
 

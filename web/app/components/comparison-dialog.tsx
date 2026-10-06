@@ -32,12 +32,14 @@ const runOf = (files: ManifestGroup['files']) => {
 
 const ComparisonDialog = ({
   groups,
+  labels,
   leftGroupId,
   rightGroupId,
   onClose,
   onMerge
 }: {
   groups: ManifestGroup[]
+  labels: Map<string, string>
   leftGroupId: string
   rightGroupId: string
   onClose: () => void
@@ -202,6 +204,7 @@ const ComparisonDialog = ({
       <div className='flex-1 flex overflow-hidden'>
         <ComparePanel
           group={leftGroup}
+          label={labels.get(leftGroup.id) ?? leftGroup.label}
           groups={groups}
           fileIndex={leftFileIndex}
           onFileIndexChange={setLeftFileIndex}
@@ -251,6 +254,7 @@ const ComparisonDialog = ({
 
         <ComparePanel
           group={rightGroup}
+          label={labels.get(rightGroup.id) ?? rightGroup.label}
           groups={groups}
           fileIndex={rightFileIndex}
           onFileIndexChange={setRightFileIndex}
@@ -319,7 +323,7 @@ const ComparisonDialog = ({
                     onChange={() => setDateChoice('left')}
                   />
                   <span className='text-body text-ink'>
-                    {leftGroup.label} — {getGroupDate(leftGroup)}
+                    {labels.get(leftGroup.id) ?? leftGroup.label} — {getGroupDate(leftGroup)}
                   </span>
                 </label>
                 <label className='flex cursor-pointer flex-row items-center gap-2 rounded-control border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
@@ -331,7 +335,7 @@ const ComparisonDialog = ({
                     onChange={() => setDateChoice('right')}
                   />
                   <span className='text-body text-ink'>
-                    {rightGroup.label} — {getGroupDate(rightGroup)}
+                    {labels.get(rightGroup.id) ?? rightGroup.label} — {getGroupDate(rightGroup)}
                   </span>
                 </label>
                 <label className='flex cursor-pointer flex-row items-center gap-2 rounded-control border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
@@ -381,6 +385,7 @@ const ComparisonDialog = ({
 
 const ComparePanel = ({
   group,
+  label,
   groups,
   fileIndex,
   onFileIndexChange,
@@ -397,6 +402,7 @@ const ComparePanel = ({
   renderPreview
 }: {
   group: ManifestGroup
+  label: string
   groups: ManifestGroup[]
   fileIndex: number
   onFileIndexChange: (i: number) => void
@@ -424,7 +430,7 @@ const ComparePanel = ({
   const file = group.files[fileIndex]
   const groupIndex = groups.findIndex((j) => j.id === group.id)
   const list = useRef<HTMLDivElement | null>(null)
-  const jump = group.label
+  const jump = label
   const fileCount = group.files.length
   const run = runOf(group.files)
   const position = fileIndex + 1
@@ -464,7 +470,7 @@ const ComparePanel = ({
                 size={15}
               />
             </button>
-            <h3 className='min-w-0 truncate text-body font-semibold'>{group.label}</h3>
+            <h3 className='min-w-0 truncate text-body font-semibold'>{label}</h3>
             <button
               type='button'
               data-action={`group-next-${side}`}

@@ -302,12 +302,14 @@ const StepLine = ({
 const NextStep = ({
   progress,
   who,
+  linked = true,
   film,
   mini = false,
   children
 }: {
   progress: MontageProgress
   who?: string
+  linked?: boolean
   mini?: boolean
   film?: React.ReactNode
   children: React.ReactNode
@@ -336,7 +338,7 @@ const NextStep = ({
             <div className='flex flex-wrap items-baseline gap-x-2'>
               <b className='font-display text-title font-semibold'>
                 {step
-                  ? step.name === 'Emailed' && who
+                  ? step.name === 'Emailed' && who && linked
                     ? t`Send ${who} the link`
                     : i18n._(STEP_TITLE[step.name])
                   : t`Every step done`}
@@ -349,7 +351,9 @@ const NextStep = ({
             </div>
             <p className={`m-0 text-body text-ink-2 ${explained ? '' : 'truncate'}`}>
               {step
-                ? i18n._(STEP_ABOUT[step.name])
+                ? step.name === 'Emailed' && !linked
+                  ? t`The film is on the storage, but it has no link to send — make one from the panel.`
+                  : i18n._(STEP_ABOUT[step.name])
                 : t`Every step done — whoever it is for has their film.`}
             </p>
           </div>

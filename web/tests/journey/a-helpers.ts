@@ -5,7 +5,7 @@ import type { Page } from 'playwright'
 import { expect } from 'vitest'
 import { z } from 'zod'
 import type { World } from './app'
-import { makeClip } from './media'
+import { makeClip, makeOwnPhoto } from './media'
 import { watch } from './page'
 
 const CARDS = (world: World) => path.join(world.root, 'cameras')
@@ -40,32 +40,14 @@ const fillCard = (card: string, clips: readonly CardFile[], photos: readonly Car
   fs.mkdirSync(folder, { recursive: true })
   for (const { name, when, seconds } of clips) makeClip(path.join(folder, name), when, seconds ?? 2)
   for (const [n, { name, when }] of photos.entries())
-    makeOtherPhoto(path.join(folder, name), when, 50 + n)
+    makeOwnPhoto(path.join(folder, name), when, 50 + n)
   for (const { name } of clips) {
     fs.writeFileSync(path.join(folder, name.replace(/\.MP4$/, '.LRF')), 'a small preview copy')
     fs.writeFileSync(path.join(folder, `._${name}`), 'what a Mac leaves')
   }
 }
 
-const makeOtherPhoto = (file: string, when: string, n: number) => {
-  fs.mkdirSync(path.dirname(file), { recursive: true })
-  execFileSync(process.env.SKYDOCK_FFMPEG_PATH ?? 'ffmpeg', [
-    '-y',
-    '-v',
-    'error',
-    '-f',
-    'lavfi',
-    '-i',
-    `testsrc2=size=${200 + n}x150:rate=1`,
-    '-frames:v',
-    '1',
-    file
-  ])
-  const at = new Date(when)
-  fs.utimesSync(file, at, at)
-}
-
-const cardOf = (world: World, name: string) => path.join(CARDS(world), name)
+const cardFolder = (world: World, name: string) => path.join(CARDS(world), name)
 
 const plugIn = (folder: string) => execFileSync('mount', ['--bind', folder, folder])
 
@@ -77,7 +59,7 @@ const unplug = (folder: string) => {
 
 const unplugAll = (world: World) => {
   for (const name of fs.existsSync(CARDS(world)) ? fs.readdirSync(CARDS(world)) : [])
-    unplug(cardOf(world, name))
+    unplug(cardFolder(world, name))
   unplug(HANDED(world))
 }
 
@@ -195,10 +177,9 @@ export {
   cardQuiet,
   cameraEnvironment,
   canMount,
-  cardOf,
+  cardFolder,
   dropFolder,
   fillCard,
-  makeOtherPhoto,
   HANDED,
   panelsSeen,
   plugIn,

@@ -21,13 +21,11 @@ const maskTimes = (page: Page) =>
     }
   })
 
-const settle = async (page: Page) => {
-  await page.addStyleTag({ content: 'div[style*="2147483647"] { display: none !important }' })
-  await page.evaluate(async () => {
+const picturesDrawn = (page: Page) =>
+  page.evaluate(async () => {
     await document.fonts.ready
-    const pictures = [...document.images]
     await Promise.all(
-      pictures.map((image) =>
+      [...document.images].map((image) =>
         image.complete
           ? null
           : new Promise((done) => {
@@ -38,8 +36,39 @@ const settle = async (page: Page) => {
       )
     )
   })
+
+const settle = async (page: Page) => {
+  await page.addStyleTag({ content: 'div[style*="2147483647"] { display: none !important }' })
+  await picturesDrawn(page)
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined)
-  await page.waitForTimeout(500)
+  await page.evaluate(
+    () =>
+      new Promise<void>((still) => {
+        let timer = setTimeout(() => finish(), 250)
+        const watcher = new MutationObserver(() => {
+          clearTimeout(timer)
+          timer = setTimeout(() => finish(), 250)
+        })
+        const finish = () => {
+          watcher.disconnect()
+          still()
+        }
+        watcher.observe(document.body, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          characterData: true
+        })
+      })
+  )
+  await picturesDrawn(page)
+  await page.evaluate(async () => {
+    const ending = document
+      .getAnimations()
+      .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+    await Promise.all(ending.map((animation) => animation.finished.catch(() => undefined)))
+    await new Promise((drawn) => requestAnimationFrame(() => requestAnimationFrame(drawn)))
+  })
 }
 
 const pinTheme = async (page: Page, theme: 'light' | 'dark') => {

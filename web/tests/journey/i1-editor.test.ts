@@ -2,14 +2,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import {
-  editorCalls,
-  makeAndPrepare,
-  montageFolder,
-  PROJECT,
-  putEditor,
-  putTemplate
-} from './i1-helpers'
+import { editorCalls, makeAndPrepare, putEditor, putTemplate, templatesDialog } from './i1-helpers'
+import { montageFolder, PROJECT } from './media'
 
 let editor = '/nowhere/kdenlive'
 const j = harness({
@@ -35,7 +29,7 @@ describe('opening the editor', () => {
     await j.context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await makeAndPrepare(j)
     await j.page.getByRole('button', { name: 'Make the project' }).click()
-    const dialog = j.page.getByRole('dialog', { name: 'Editing templates' })
+    const dialog = templatesDialog(j.page)
     await dialog.waitFor()
     const chooser = j.page.waitForEvent('filechooser')
     await dialog.getByRole('button', { name: 'Choose the folder…' }).click()

@@ -1,5 +1,5 @@
 import { publish } from './live'
-import { loadManifest, pairStamp, writtenHere } from './manifest'
+import { pairStamp, readRecord, writtenHere } from './manifest'
 import { getManifestPath } from './utils'
 
 const EVERY_MS = 2000
@@ -46,7 +46,8 @@ const lookAtBoard = (outputDir: string) => {
     return
   }
   try {
-    if (!loadManifest(manifestPath)) return
+    const record = readRecord(manifestPath)
+    if (!record.manifest || record.kept) return
   } catch {
     return
   }

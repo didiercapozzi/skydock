@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import { boardAnswerSchema, isVideoFile, ORIGINAL_MISSING } from '@skydock/scripts'
+import { boardAnswerSchema, isVideoFile, lostOf, ORIGINAL_MISSING } from '@skydock/scripts'
 import type {
   JumpMoments,
   OutputFact,
@@ -28,6 +28,7 @@ import {
   uploadedNote
 } from '../helpers/notes'
 import { useSafeFetcher } from '../helpers/routing'
+import { folderOnStorage } from '../helpers/jumps'
 import { sameJson } from '../helpers/sameJson'
 import type { actionArgs as manifestArgs } from '../routes/api.manifest'
 import { useGroups } from './useJumps'
@@ -44,6 +45,13 @@ type Storage = {
   problem: string | null
 } | null
 
+const withoutDeadLink = (group: ManifestGroup, storage: Storage) => {
+  const folder = folderOnStorage(group)
+  return folder && group.uploaded && lostOf(storage?.lost, folder) === 'link'
+    ? { ...group, uploaded: { ...group.uploaded, shareUrl: undefined }, publish: undefined }
+    : group
+}
+
 type Loaded = {
   groups: ManifestGroup[]
   looseFiles: ManifestFile[]
@@ -53,6 +61,7 @@ type Loaded = {
   montages: Record<string, MontageFact>
   storage: Storage
   hasManifest: boolean
+  readFromKept?: boolean
   processing: { groupIds: string[] } | null
   uploading: { key: string; label: string } | null
 }
@@ -76,7 +85,12 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [spoken, setSpoken] = useState<{ text: string; problem: boolean } | null>(
     running
       ? { text: t`Still processing — the board updates itself when it is done`, problem: false }
-      : null
+      : loaded.readFromKept
+        ? {
+            text: t`The board could not be read — it is shown from the last good record kept beside it.`,
+            problem: true
+          }
+        : null
   )
   const setNote = (text: string | null) => setSpoken(text ? { text, problem: false } : null)
   const setProblem = (text: string) => setSpoken({ text, problem: true })
@@ -342,7 +356,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   }
 
   return {
-    groups,
+    groups: groups.map((group) => withoutDeadLink(group, storage)),
     setGroups,
     updateGroups,
     saving,

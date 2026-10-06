@@ -62,6 +62,14 @@ msgstr ", kept as they sat on the card, and stay there until it is emptied by ha
 msgid "?"
 msgstr "?"
 
+#: app/helpers/places.ts
+msgid "“{trimmed}” cannot be a dropzone’s name — it is not a folder name."
+msgstr "“{trimmed}” cannot be a dropzone’s name — it is not a folder name."
+
+#: app/helpers/places.ts
+msgid "“{trimmed}” is where the montages are kept — give the dropzone another name."
+msgstr "“{trimmed}” is where the montages are kept — give the dropzone another name."
+
 #. placeholder {0}: gone.length
 #: app/components/montage-card.tsx
 msgid "{0, plural, one {— upload again to put it back.} other {— upload again to put them back.}}"
@@ -579,6 +587,10 @@ msgstr "{skipped} already here"
 msgid "{skipped} already on the storage"
 msgstr "{skipped} already on the storage"
 
+#: app/components/upload-dialog.tsx
+msgid "{staying, plural, one {# item stays on this machine} other {# items stay on this machine}}"
+msgstr "{staying, plural, one {# item stays on this machine} other {# items stay on this machine}}"
+
 #: app/components/disconnect-dialog.tsx
 msgid "{storage} is connected."
 msgstr "{storage} is connected."
@@ -798,6 +810,10 @@ msgstr "A copy cannot go to the bin — its original stays where it is"
 #: app/helpers/parcels.ts
 msgid "a copy of the film"
 msgstr "a copy of the film"
+
+#: app/helpers/places.ts
+msgid "A dropzone needs a name."
+msgstr "A dropzone needs a name."
 
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
@@ -4365,6 +4381,10 @@ msgid "The board as it was after each of the last changes — go back to one"
 msgstr "The board as it was after each of the last changes — go back to one"
 
 #: app/hooks/useBoardState.ts
+msgid "The board could not be read — it is shown from the last good record kept beside it."
+msgstr "The board could not be read — it is shown from the last good record kept beside it."
+
+#: app/hooks/useBoardState.ts
 msgid "The board is back as it was — Settings › History can undo this too."
 msgstr "The board is back as it was — Settings › History can undo this too."
 
@@ -4448,6 +4468,10 @@ msgstr "the film and the zips"
 #: app/components/montage-steps.tsx
 msgid "The film is on the storage and the link works. The email is written already."
 msgstr "The film is on the storage and the link works. The email is written already."
+
+#: app/components/montage-steps.tsx
+msgid "The film is on the storage, but it has no link to send — make one from the panel."
+msgstr "The film is on the storage, but it has no link to send — make one from the panel."
 
 #: app/components/montage-steps.tsx
 msgid "The film is rendered. Send it, the photos and the originals where you choose."

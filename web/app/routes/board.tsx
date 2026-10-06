@@ -8,6 +8,7 @@ import {
   learnStorage,
   listRemoteFiles,
   loadManifest,
+  readRecord,
   processingNow,
   uploadingNow,
   saveManifest,
@@ -110,16 +111,31 @@ const lookAtStorage = async (outputDir: string) => {
   return { nas, remote, storage }
 }
 
+const STORAGE_PATIENCE_MS = 4000
+
+const unreachable: StorageLook = {
+  nas: { connected: false, hostname: null, username: null },
+  remote: null,
+  storage: null
+}
+
+const lookAtStorageSoon = (outputDir: string) =>
+  Promise.race([
+    lookAtStorage(outputDir),
+    new Promise<StorageLook>((resolve) =>
+      setTimeout(() => resolve(unreachable), STORAGE_PATIENCE_MS)
+    )
+  ])
+
 const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = getOutputDir()
   const manifestPath = getManifestPath(outputDir)
   flushBoardChanges(manifestPath)
-  let manifest = null
+  let record: ReturnType<typeof readRecord> = { manifest: null, kept: false }
   try {
-    manifest = loadManifest(manifestPath)
-  } catch {
-    manifest = null
-  }
+    record = readRecord(manifestPath)
+  } catch {}
+  const { manifest } = record
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
   )
@@ -136,8 +152,9 @@ const loader = async (_args: Route.LoaderArgs) => {
     nas: { connected: false, hostname: null, username: null } as NasState,
     remote: null,
     storage: null,
-    storageLook: lookAtStorage(outputDir),
+    storageLook: lookAtStorageSoon(outputDir),
     hasManifest: manifest !== null,
+    readFromKept: record.kept,
     processing: processingNow(),
     uploading: uploadingNow()
   }
@@ -150,9 +167,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const asking = loaderData.storageLook
   useEffect(() => {
     let current = true
-    void Promise.resolve(asking).then((answer) => {
-      if (current && answer) setLooked(answer)
-    })
+    void Promise.resolve(asking)
+      .catch(() => unreachable)
+      .then((answer) => {
+        if (current && answer) setLooked(answer)
+      })
     return () => {
       current = false
     }

@@ -5,14 +5,16 @@ import { z } from 'zod'
 import { startFakeStorage } from './fake-storage'
 import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
-import { connectStorage, said, sendAsUsual, stored, STEM } from './i2-helpers'
+import { sendAsUsual, stored } from './i2-helpers'
+import { STEM } from './media'
+import { connectStorage, PASSWORD, said } from './steps'
 
 let storage: FakeStorage
 const j = harness({
   name: 'i2-montage-list',
   state: 'i2-ready',
   prepare: async () => {
-    storage = await startFakeStorage()
+    storage = await startFakeStorage({ password: PASSWORD })
   }
 })
 afterAll(async () => storage?.stop())
@@ -80,18 +82,6 @@ describe("the storage's list of montages", () => {
     await j.quiet()
   })
 
-  test.skip('is asked whether the link still works: a link revoked on the storage is shown as no link, and nothing offers it', async () => {
-    const [link] = await storage.admin.shareLinks()
-    await storage.admin.revokeLink(link!.id)
-    await reopen()
-    await said(main()).toContain('No link')
-    await said(main()).toContain('Create link')
-    await said(main()).not.toContain('Copy link')
-    await said(main()).not.toContain('Email Luc')
-    expect(readList().montages).toHaveLength(1)
-    await j.quiet()
-  })
-
   test('is asked whether the folder is still there: a montage whose folder is gone is shown as no longer on the storage, and stays on the list', async () => {
     const films = path.join(storage.root, 'club', 'Films')
     const aside = path.join(storage.root, 'Films.aside')
@@ -109,6 +99,18 @@ describe("the storage's list of montages", () => {
     await storage.admin.unreachable(false)
     await reopen()
     await said(main()).toContain('Send Luc the link')
+    await j.quiet()
+  })
+
+  test('is asked whether the link still works: a link revoked on the storage is shown as no link, and nothing offers it', async () => {
+    const [link] = await storage.admin.shareLinks()
+    await storage.admin.revokeLink(link!.id)
+    await reopen()
+    await said(main()).toContain('No link')
+    await said(main()).toContain('Create link')
+    await said(main()).not.toContain('Copy link')
+    await said(main()).not.toContain('Email Luc')
+    expect(readList().montages).toHaveLength(1)
     await j.quiet()
   })
 })

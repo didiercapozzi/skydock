@@ -1,8 +1,10 @@
 import * as path from 'node:path'
 import { beforeAll, describe, expect, test } from 'vitest'
-import { gone, isCopyOf, makeJumpClip, probe, recorded, said } from './d-helpers'
+import { gone, isCopyOf, makeJumpClip } from './d-helpers'
 import { harness } from './harness'
-import { dayFolder, makeClip } from './media'
+import { dayFolder, makeClip, originalsDir, probe } from './media'
+import { recorded } from './record'
+import { closeClip, openClip, place, preview, said } from './steps'
 
 const j = harness({
   name: 'd-jump',
@@ -27,21 +29,7 @@ const copyOf = (name: string) =>
     `sion_${name.slice(4, 12)}_${name.slice(12, 18)}.mp4`
   )
 
-const dialog = () => j.page.getByRole('dialog', { name: 'Preview' })
-const save = () => dialog().getByRole('button', { name: 'Save', exact: true })
-const rowOf = (name: string) => j.page.getByText(name, { exact: true }).first()
-
-const openClip = async (name: string) => {
-  await rowOf(name).dblclick()
-  await dialog().waitFor()
-  await dialog()
-    .getByText(/\d of \d$/)
-    .waitFor()
-}
-const closeClip = async () => {
-  await j.page.keyboard.press('Escape')
-  await dialog().waitFor({ state: 'detached' })
-}
+const save = () => preview(j.page).getByRole('button', { name: 'Save', exact: true })
 
 const barAt = async (seconds: number) => {
   const box = (await j.page.locator('[data-crop-bar]').boundingBox())!
@@ -81,51 +69,51 @@ describe('finding the jump in a clip', () => {
   })
 
   test('shows the marks on the clip’s timeline and as rows that go to each, the exit a second early on a fun jump', async () => {
-    await openClip(JUMPED)
+    await openClip(j.page, JUMPED)
     for (const which of ['exit', 'opening', 'canopy', 'landing'])
-      await dialog().locator(`[data-moment=${which}]`).waitFor()
-    const row = (moment: string) => dialog().getByTitle(`Go to the ${moment}`)
-    await said(row('exit'), '0:05')
-    await said(row('opening'), '0:14')
-    await said(row('canopy'), '0:17')
-    await said(row('ground'), '0:28')
+      await preview(j.page).locator(`[data-moment=${which}]`).waitFor()
+    const row = (moment: string) => preview(j.page).getByTitle(`Go to the ${moment}`)
+    await said(row('exit')).toContain('0:05')
+    await said(row('opening')).toContain('0:14')
+    await said(row('canopy')).toContain('0:17')
+    await said(row('ground')).toContain('0:28')
 
     await row('opening').click()
     await expect.poll(playhead).toBeGreaterThan(14)
     await expect.poll(playhead).toBeLessThan(15)
-    await dialog().getByText('the opening').first().waitFor()
+    await preview(j.page).getByText('the opening').first().waitFor()
     await quiet()
   })
 
   test('says plainly that a clip off a camera that measures nothing has no exit to hang a cut on', async () => {
-    await closeClip()
-    await openClip(PLAIN)
-    await dialog().getByText('No exit found — nothing to hang a cut on.').waitFor()
-    await gone(dialog().getByRole('button', { name: 'Trim to the jump' }))
-    await closeClip()
+    await closeClip(j.page)
+    await openClip(j.page, PLAIN)
+    await preview(j.page).getByText('No exit found — nothing to hang a cut on.').waitFor()
+    await gone(preview(j.page).getByRole('button', { name: 'Trim to the jump' }))
+    await closeClip(j.page)
     await quiet()
   })
 })
 
 describe('the jump on a graph', () => {
   test('draws what the camera felt under the timeline, with the least and the most in g', async () => {
-    await openClip(JUMPED)
-    await dialog().locator('[data-jump-graph]').waitFor()
-    await dialog().getByText('What the camera felt').waitFor()
-    await said(dialog().locator('[data-graph-extremes]'), '0.30 g')
-    await said(dialog().locator('[data-graph-extremes]'), '2.00 g')
-    await dialog().getByText('no height or speed — this camera wrote none').waitFor()
-    await dialog()
+    await openClip(j.page, JUMPED)
+    await preview(j.page).locator('[data-jump-graph]').waitFor()
+    await preview(j.page).getByText('What the camera felt').waitFor()
+    await said(preview(j.page).locator('[data-graph-extremes]')).toContain('0.30 g')
+    await said(preview(j.page).locator('[data-graph-extremes]')).toContain('2.00 g')
+    await preview(j.page).getByText('no height or speed — this camera wrote none').waitFor()
+    await preview(j.page)
       .getByRole('group', { name: 'What to change' })
       .getByRole('button', { name: 'Info' })
       .click()
-    await dialog().getByText('Felt, least').waitFor()
-    await dialog().getByText('0.30 g').first().waitFor()
+    await preview(j.page).getByText('Felt, least').waitFor()
+    await preview(j.page).getByText('0.30 g').first().waitFor()
     await quiet()
   })
 
   test('moves the footage to the instant a point on the graph is dragged to, and reads out what it weighed', async () => {
-    const graph = dialog().locator('[data-jump-graph]')
+    const graph = preview(j.page).locator('[data-jump-graph]')
     const box = (await graph.boundingBox())!
     await j.page.mouse.move(box.x + box.width * 0.1, box.y + box.height / 2)
     await j.page.mouse.down()
@@ -133,42 +121,49 @@ describe('the jump on a graph', () => {
     await j.page.mouse.up()
     await expect.poll(playhead).toBeGreaterThan(6)
     await expect.poll(playhead).toBeLessThan(10)
-    await said(dialog().locator('[data-graph-readout]'), ' g · ')
-    await said(dialog().locator('[data-graph-readout]'), 'freefall')
+    await said(preview(j.page).locator('[data-graph-readout]')).toContain(' g · ')
+    await said(preview(j.page).locator('[data-graph-readout]')).toContain('freefall')
 
     const bar = await barAt(8)
     await j.page.mouse.move(bar.x, bar.y)
     await j.page.mouse.wheel(0, -400)
-    await expect.poll(() => dialog().locator('[data-zoom-display]').innerText()).not.toBe('1.00x')
+    await expect
+      .poll(() => preview(j.page).locator('[data-zoom-display]').innerText())
+      .not.toBe('1.00x')
     await quiet()
   })
 })
 
 describe('correcting the marks', () => {
   test('moves the exit by dragging it, and offers to put every mark back where the camera measured them', async () => {
-    await dialog()
+    await preview(j.page)
       .getByRole('group', { name: 'What to change' })
       .getByRole('button', { name: 'Cut' })
       .click()
-    await dialog().locator('[data-action=reset-zoom]').click()
-    await expect.poll(() => dialog().locator('[data-zoom-display]').innerText()).toBe('1.00x')
+    await preview(j.page).locator('[data-action=reset-zoom]').click()
+    await expect
+      .poll(() => preview(j.page).locator('[data-zoom-display]').innerText())
+      .toBe('1.00x')
     const from = await barAt(5)
     const to = await barAt(10)
     await dragMark(from, to)
     await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBeGreaterThan(10)
-    await said(dialog().getByTitle('Go to the exit'), '0:10')
+    await said(preview(j.page).getByTitle('Go to the exit')).toContain('0:10')
     expect(recorded(j.world, JUMPED).foundMoments?.exit, 'what the camera measured is kept').toBe(6)
 
-    await dialog().getByRole('button', { name: 'Back to the measured marks' }).click()
+    await preview(j.page).getByRole('button', { name: 'Back to the measured marks' }).click()
     await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBe(6)
-    await gone(dialog().getByRole('button', { name: 'Back to the measured marks' }))
+    await gone(preview(j.page).getByRole('button', { name: 'Back to the measured marks' }))
     await quiet()
   })
 
-  test.skip('moves the exit by dragging it slowly along the timeline without anything breaking in the console', async () => {
+  test('moves the exit by dragging it slowly along the timeline without anything breaking in the console', async () => {
     const from = await barAt(5)
     const to = await barAt(10)
     await dragMark(from, to, 8)
+    await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBeGreaterThan(9)
+    await preview(j.page).getByRole('button', { name: 'Back to the measured marks' }).click()
+    await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBe(6)
     await quiet()
   })
 
@@ -183,29 +178,33 @@ describe('correcting the marks', () => {
     const moments = recorded(j.world, JUMPED).moments!
     expect(moments.exit, 'the door stays before the opening').toBeLessThan(moments.opening!)
     expect(moments.exit, 'nothing was moved').toBe(6)
-    await gone(dialog().getByRole('button', { name: 'Back to the measured marks' }))
+    await gone(preview(j.page).getByRole('button', { name: 'Back to the measured marks' }))
     await quiet()
   })
 })
 
 describe('trimming to the jump', () => {
   test('trims a clip to its jump in one press: from the exit, a second early, to eight seconds after the ground', async () => {
-    await dialog()
+    await preview(j.page)
       .getByRole('group', { name: 'What to change' })
       .getByRole('button', { name: 'Cut' })
       .click()
-    await dialog().getByRole('button', { name: 'Trim to the jump' }).click()
-    await dialog().getByText('Unsaved changes').waitFor()
-    await said(dialog().getByText('Start', { exact: true }).locator('xpath=..'), '0:05')
-    await said(dialog().getByText('End', { exact: true }).locator('xpath=..'), '0:36')
+    await preview(j.page).getByRole('button', { name: 'Trim to the jump' }).click()
+    await preview(j.page).getByText('Unsaved changes').waitFor()
+    await said(preview(j.page).getByText('Start', { exact: true }).locator('xpath=..')).toContain(
+      '0:05'
+    )
+    await said(preview(j.page).getByText('End', { exact: true }).locator('xpath=..')).toContain(
+      '0:36'
+    )
     await save().click()
-    await dialog().waitFor({ state: 'detached' })
-    expect(recorded(j.world, JUMPED).cropStart).toBeCloseTo(5, 0)
-    expect(recorded(j.world, JUMPED).cropEnd).toBeCloseTo(36, 0)
+    await preview(j.page).waitFor({ state: 'detached' })
+    await expect.poll(() => recorded(j.world, JUMPED).cropStart).toBeCloseTo(5, 0)
+    await expect.poll(() => recorded(j.world, JUMPED).cropEnd).toBeCloseTo(36, 0)
     await quiet()
   })
 
-  test.skip('trims every clip of a jump at once from the jump’s panel, and says how many had no exit found', async () => {
+  test('trims every clip of a jump at once from the jump’s panel, and says how many had no exit found', async () => {
     await j.page.getByText('Jump 3', { exact: true }).click()
     await j.page.getByRole('button', { name: 'Trim every clip to the jump' }).click()
     await see('1 clip trimmed to the jump — 1 clip has no exit found, and kept its trim.')
@@ -217,10 +216,8 @@ describe('trimming to the jump', () => {
   })
 
   test('files the jump into Sion and makes the copy of the trimmed clip from the exit to the end of the jump, a clip with no exit whole', async () => {
-    const sion = j.page
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-    await j.page.getByText('Jump 3', { exact: true }).dragTo(sion)
+    const sion = place(j.page, /Sion/)
+    await j.page.getByRole('button', { name: /^Jump 3,/ }).dragTo(sion)
     await sion.click()
     await see('2 files need processing')
     await j.page.getByRole('button', { name: 'Process 2 files' }).click()
@@ -228,9 +225,7 @@ describe('trimming to the jump', () => {
     const copy = copyOf(JUMPED)
     expect(probe(copy).seconds).toBeGreaterThan(30)
     expect(probe(copy).seconds).toBeLessThan(32.5)
-    expect(isCopyOf(copy, path.join(j.world.output, 'original_files', '2026-09-07', JUMPED))).toBe(
-      true
-    )
+    expect(isCopyOf(copy, path.join(originalsDir(j.world), '2026-09-07', JUMPED))).toBe(true)
     expect(probe(copyOf(PLAIN)).seconds).toBeGreaterThan(3.5)
     await quiet()
   })

@@ -24,6 +24,7 @@ const showIntent = (e: React.DragEvent) => {
 
 const useDragAndDrop = ({
   groups,
+  labels,
   frozen,
   moveFiles,
   assign,
@@ -33,6 +34,7 @@ const useDragAndDrop = ({
   onFiled
 }: {
   groups: ManifestGroup[]
+  labels: Map<string, string>
   frozen: Set<string>
   moveFiles: (ids: string[], where: Move) => void
   assign: (ids: string[], destination: string | null) => void
@@ -52,8 +54,7 @@ const useDragAndDrop = ({
   }
 
   const startJumpDrag = (groupId: string, e?: React.DragEvent) => {
-    const jump = groups.find((g) => g.id === groupId)
-    carrying(e, (jump && passengerOf(jump)) || jump?.label || t`a jump`)
+    carrying(e, labels.get(groupId) ?? t`a jump`)
     setDraggedFiles([])
     setDragged([groupId])
   }
@@ -97,12 +98,7 @@ const useDragAndDrop = ({
         if (carried.length > 0) {
           e.preventDefault()
           e.stopPropagation()
-          const group = groups.find((g) => g.id === groupId)
-          void importDropped(
-            carried,
-            `group:${groupId}`,
-            (group && passengerOf(group)) || group?.label || t`this jump`
-          )
+          void importDropped(carried, `group:${groupId}`, labels.get(groupId) ?? t`this jump`)
           return
         }
         if (draggedFiles.length === 0) return

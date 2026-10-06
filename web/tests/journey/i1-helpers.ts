@@ -3,18 +3,10 @@ import * as path from 'node:path'
 import { z } from 'zod'
 import type { Page } from 'playwright'
 import type { World } from './app'
-import type { harness } from './harness'
-import { filesUnder, makeBigClip, makeClip } from './media'
-
-type Journey = ReturnType<typeof harness>
-
-const WHO = 'Luc Favre'
-const FILM = 'luc_favre_20260906.mp4'
-const PROJECT = 'luc_favre_20260906.kdenlive'
-const SIDE = 'aside[aria-label=Details]'
-
-const montageFolder = (world: World, who = WHO) =>
-  path.join(world.output, 'processed', 'Montages', who)
+import type { Journey } from './harness'
+import { WHO } from './media'
+import { readJson } from './record'
+import { details, dialogNamed, place } from './steps'
 
 const editorEnv = (world: World) => ({
   SKYDOCK_EDITOR_COMMAND: path.join(world.root, 'bin', 'editor.sh')
@@ -55,49 +47,11 @@ const putTemplate = (world: World, name: string, options: { music?: boolean } = 
   return folder
 }
 
-const recordSchema = z.object({
-  groups: z.array(
-    z.looseObject({
-      id: z.string(),
-      files: z.array(
-        z.looseObject({
-          id: z.string(),
-          cropStart: z.number().nullable().optional(),
-          cropEnd: z.number().nullable().optional()
-        })
-      ),
-      destination: z.string().optional(),
-      passenger: z.object({ firstname: z.string(), lastname: z.string() }).optional(),
-      processed: z.boolean().optional(),
-      day: z.string().optional()
-    })
-  )
-})
-
-const readJson = (file: string): unknown => JSON.parse(fs.readFileSync(file, 'utf8'))
-
-const groupsOf = (world: World) =>
-  recordSchema.parse(readJson(path.join(world.output, 'groups.json'))).groups
-
-const manifestSchema = z.object({
-  files: z.array(
-    z.looseObject({
-      id: z.string(),
-      filename: z.string(),
-      path: z.string(),
-      cropStart: z.number().nullable().optional()
-    })
-  )
-})
-
-const manifestOf = (world: World) =>
-  manifestSchema.parse(readJson(path.join(world.output, 'manifest.json')))
-
 const seedMoments = (world: World) => {
   const file = path.join(world.output, 'manifest.json')
   const record = z
     .looseObject({ files: z.array(z.looseObject({ filename: z.string() })) })
-    .parse(readJson(file))
+    .parse(readJson(world, 'manifest.json'))
   for (const clip of record.files)
     if (/^DJI_2026090609(00|03)00_000[67]_D\.MP4$/.test(clip.filename))
       clip.moments = { exit: 1, opening: 2, landing: 3 }
@@ -110,7 +64,7 @@ const seedTrim = (world: World, groupId = 'group_1') => {
     .object({
       groups: z.array(z.looseObject({ id: z.string(), files: z.array(z.looseObject({})) }))
     })
-    .parse(readJson(file))
+    .parse(readJson(world, 'groups.json'))
   const first = record.groups.find((g) => g.id === groupId)?.files[0]
   if (first) first.cropStart = 1
   fs.writeFileSync(file, JSON.stringify(record))
@@ -121,16 +75,12 @@ const nameFile = async (page: Page, filename: string, name: string) => {
     .getByRole('button', { name: new RegExp(`^Pick ${filename}`) })
     .getByRole('button', { name: 'Pick' })
     .click()
-  await page
-    .locator(SIDE)
+  await details(page)
     .getByRole('button', { name: /Make a montage/ })
     .click()
   await page.getByLabel('Name', { exact: true }).fill(name)
   await page.keyboard.press('Enter')
-  await page
-    .getByRole('navigation', { name: 'Folders' })
-    .getByRole('link', { name: new RegExp(name) })
-    .click()
+  await place(page, name).click()
   await page.getByRole('heading', { name, level: 1 }).waitFor()
 }
 
@@ -154,8 +104,10 @@ const makeAndPrepare = async (j: Journey) => {
   await takeStep(j.page, 'Process', 'Make the editing project')
 }
 
+const templatesDialog = (page: Page) => dialogNamed(page, 'Editing templates')
+
 const bringTemplate = async (page: Page, folder: string) => {
-  const dialog = page.getByRole('dialog', { name: 'Editing templates' })
+  const dialog = templatesDialog(page)
   const chooser = page.waitForEvent('filechooser')
   await dialog.getByRole('button', { name: 'Choose the folder…' }).click()
   await (await chooser).setFiles(folder)
@@ -164,16 +116,13 @@ const bringTemplate = async (page: Page, folder: string) => {
 
 const makeProject = async (page: Page, folder: string) => {
   await page.getByRole('button', { name: 'Make the project' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Editing templates' })
+  const dialog = templatesDialog(page)
   await dialog.waitFor()
   await bringTemplate(page, folder)
   await dialog.getByText('every file here').waitFor()
   await dialog.getByRole('button', { name: 'Make the montage' }).click()
   await page.getByRole('button', { name: 'Open in kdenlive' }).first().waitFor({ timeout: 30_000 })
 }
-
-const renderFilm = (world: World, who = WHO, name = FILM, seconds = 3) =>
-  makeClip(path.join(montageFolder(world, who), name), '2026-09-06T09:00:00', seconds)
 
 const putSlowFfmpeg = (world: World) => {
   const bin = path.join(world.root, 'bin')
@@ -204,26 +153,16 @@ export {
   bringTemplate,
   editorCalls,
   editorEnv,
-  filesUnder,
-  FILM,
-  groupsOf,
   makeAndPrepare,
-  makeBigClip,
   makeProject,
-  manifestOf,
-  montageFolder,
   nameFile,
   nameJump,
-  PROJECT,
   putEditor,
   putSlowFfmpeg,
   putTemplate,
-  renderFilm,
   seedMoments,
   seedTrim,
-  SIDE,
   slowFfmpegEnv,
   takeStep,
-  WHO
+  templatesDialog
 }
-export type { Journey }

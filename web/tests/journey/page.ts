@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as url from 'node:url'
 import type { Page } from 'playwright'
+import { z } from 'zod'
 
 const dropFiles = async (page: Page, files: string[], onto = 'section[aria-label]') => {
   const payload = files.map((file) => ({
@@ -43,6 +44,25 @@ const watch = (page: Page) => {
   return { take }
 }
 
+const listenToEvents = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<void>((listening) => {
+        const w = window as unknown as { __heard?: string[] }
+        w.__heard = []
+        const stream = new EventSource('/api/events')
+        stream.onmessage = (e) => w.__heard?.push(String(e.data))
+        stream.onopen = () => listening()
+      })
+  )
+
+const eventSchema = z.looseObject({ kind: z.string(), mounted: z.array(z.unknown()).optional() })
+
+const eventsHeard = async (page: Page) =>
+  (await page.evaluate(() => (window as unknown as { __heard?: string[] }).__heard ?? [])).map(
+    (heard) => eventSchema.parse(JSON.parse(heard))
+  )
+
 const VIDEOS = path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'videos')
 
 const pointerDot = () => {
@@ -61,4 +81,4 @@ const pointerDot = () => {
   })
 }
 
-export { dropFiles, pointerDot, VIDEOS, watch }
+export { dropFiles, eventsHeard, listenToEvents, pointerDot, VIDEOS, watch }

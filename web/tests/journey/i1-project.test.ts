@@ -7,15 +7,14 @@ import { harness } from './harness'
 import {
   editorCalls,
   editorEnv,
-  FILM,
-  filesUnder,
   makeAndPrepare,
-  montageFolder,
-  PROJECT,
   putEditor,
   putTemplate,
-  seedMoments
+  seedMoments,
+  templatesDialog
 } from './i1-helpers'
+import { filesUnder, filmFile, montageFolder, projectFile } from './media'
+import { place } from './steps'
 
 const j = harness({
   name: 'i1-project',
@@ -30,7 +29,6 @@ const j = harness({
 const { quiet } = j
 
 let stale: Page | undefined
-const projectFile = () => path.join(montageFolder(j.world), PROJECT)
 const markersSchema = z.array(
   z.object({ comment: z.string(), pos: z.number(), duration: z.number(), type: z.number() })
 )
@@ -41,10 +39,7 @@ describe('the editing project', () => {
     stale = await (await j.context.browser()!.newContext()).newPage()
     await stale.route('**/api/events*', (route) => route.abort())
     await stale.goto(`${j.app.url}/fresh`)
-    await stale
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Luc Favre/ })
-      .click()
+    await place(stale, /Luc Favre/).click()
     await stale.getByRole('button', { name: 'Make the project' }).waitFor()
     let asked = false
     await stale.route('**/*.data*', (route) => {
@@ -52,16 +47,16 @@ describe('the editing project', () => {
       return route.request().method() === 'GET' && !asked ? route.abort() : route.continue()
     })
     await j.page.getByRole('button', { name: 'Make the project' }).click()
-    const dialog = j.page.getByRole('dialog', { name: 'Editing templates' })
+    const dialog = templatesDialog(j.page)
     await dialog.getByText('No template yet — bring one in below.').waitFor()
     await dialog.getByText('Bring a template in').waitFor()
-    expect(fs.existsSync(projectFile())).toBe(false)
+    expect(fs.existsSync(projectFile(j.world))).toBe(false)
     expect(editorCalls(j.world)).toEqual([])
     await quiet()
   })
 
   test('makes the project from the template brought in, and opens the editor on it', async () => {
-    const dialog = j.page.getByRole('dialog', { name: 'Editing templates' })
+    const dialog = templatesDialog(j.page)
     const chooser = j.page.waitForEvent('filechooser')
     await dialog.getByRole('button', { name: 'Choose the folder…' }).click()
     await (await chooser).setFiles(path.join(j.world.computer, 'club'))
@@ -72,14 +67,14 @@ describe('the editing project', () => {
       .first()
       .waitFor({ timeout: 30_000 })
 
-    expect(fs.existsSync(projectFile())).toBe(true)
-    await expect.poll(() => editorCalls(j.world)).toEqual([projectFile()])
+    expect(fs.existsSync(projectFile(j.world))).toBe(true)
+    await expect.poll(() => editorCalls(j.world)).toEqual([projectFile(j.world)])
     await j.page.getByText(/Montage ready — 2 clips in the bin/).waitFor()
     await quiet()
   })
 
   test('lays the clips whole in the bin in the order shot, each playing from its proxy, and leaves the template’s timeline as it was', async () => {
-    const xml = fs.readFileSync(projectFile(), 'utf8')
+    const xml = fs.readFileSync(projectFile(j.world), 'utf8')
     const chains = [...xml.matchAll(/<chain id="(chain_skydock_\d)">([\s\S]*?)<\/chain>/g)]
     expect(chains.map((c) => c[1])).toEqual(['chain_skydock_0', 'chain_skydock_1'])
     const property = (body: string, name: string) =>
@@ -108,7 +103,7 @@ describe('the editing project', () => {
     ).toBe(true)
     expect(xml).toContain(path.join(j.world.output, 'templates', 'club', 'sounds', 'song.mp3'))
     expect(xml).toContain(
-      `<property name="kdenlive:docproperties.renderurl">${path.join(montageFolder(j.world), FILM)}</property>`
+      `<property name="kdenlive:docproperties.renderurl">${filmFile(j.world)}</property>`
     )
     expect(xml).toContain(
       '<property name="kdenlive:docproperties.renderprofile">MP4-H264/AAC</property>'
@@ -117,7 +112,7 @@ describe('the editing project', () => {
   })
 
   test('marks the jump on each clip as markers of its own, and lays none along the timeline', async () => {
-    const xml = fs.readFileSync(projectFile(), 'utf8')
+    const xml = fs.readFileSync(projectFile(j.world), 'utf8')
     const marks = [
       ...xml.matchAll(/<property name="kdenlive:markers">([\s\S]*?)<\/property>/g)
     ].map((m) => markersSchema.parse(JSON.parse(m[1]!.replaceAll('&quot;', '"'))))
@@ -135,33 +130,29 @@ describe('the editing project', () => {
 
   test('says its step is the film now, and offers the way back into the project', async () => {
     await expect
-      .poll(
-        async () =>
-          await j.page
-            .getByRole('navigation', { name: 'Folders' })
-            .getByRole('link', { name: /Luc Favre/ })
-            .innerText()
-      )
+      .poll(async () => await place(j.page, /Luc Favre/).innerText())
       .toContain('to render')
     await j.page
       .getByRole('img', { name: /3 of 6 steps done/ })
       .first()
       .waitFor()
     await j.page.getByRole('button', { name: 'Open in kdenlive' }).first().click()
-    await expect.poll(() => editorCalls(j.world)).toEqual([projectFile(), projectFile()])
+    await expect
+      .poll(() => editorCalls(j.world))
+      .toEqual([projectFile(j.world), projectFile(j.world)])
     await quiet()
   })
 })
 
 describe('the project is made once', () => {
   test('refuses to make a second project for a montage that has one, and the edit is left as it was', async () => {
-    const before = fs.readFileSync(projectFile(), 'utf8')
+    const before = fs.readFileSync(projectFile(j.world), 'utf8')
     await stale!.getByRole('button', { name: 'Make the project' }).click()
     await stale!
       .getByText(/already has a project/)
       .first()
       .waitFor()
-    expect(fs.readFileSync(projectFile(), 'utf8')).toBe(before)
+    expect(fs.readFileSync(projectFile(j.world), 'utf8')).toBe(before)
     expect(editorCalls(j.world)).toHaveLength(2)
     await stale!.close()
     await quiet()

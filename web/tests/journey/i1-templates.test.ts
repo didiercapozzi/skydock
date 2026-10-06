@@ -3,18 +3,18 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
+import type { World } from './app'
 import {
   bringTemplate,
   editorCalls,
   editorEnv,
-  filesUnder,
-  nameJump,
-  montageFolder,
   nameFile,
+  nameJump,
   putEditor,
-  putTemplate
+  putTemplate,
+  templatesDialog
 } from './i1-helpers'
-import type { World } from './app'
+import { filesUnder, montageFolder } from './media'
 
 const HOST_USER = 1000
 
@@ -69,18 +69,17 @@ const j = harness({
 const { quiet, see } = j
 
 const templates = () => path.join(j.world.output, 'templates')
-const dialog = () => j.page.getByRole('dialog', { name: 'Editing templates' })
 const read = (...parts: string[]) => fs.readFileSync(path.join(templates(), ...parts), 'utf8')
 
 const openTemplates = async () => {
   await j.page.getByRole('button', { name: 'Settings' }).click()
   await j.page.getByRole('button', { name: 'Templates…' }).click()
-  await dialog().waitFor()
+  await templatesDialog(j.page).waitFor()
 }
 
 const closeDialog = async () => {
-  await dialog().getByRole('button', { name: 'Close' }).click()
-  await dialog().waitFor({ state: 'detached' })
+  await templatesDialog(j.page).getByRole('button', { name: 'Close' }).click()
+  await templatesDialog(j.page).waitFor({ state: 'detached' })
 }
 
 const prepareAnna = async () => {
@@ -98,7 +97,7 @@ describe('templates', () => {
     await j.open()
     await see('Jump 2')
     await openTemplates()
-    await dialog().getByText('No template yet — bring one in below.').waitFor()
+    await templatesDialog(j.page).getByText('No template yet — bring one in below.').waitFor()
     expect(fs.existsSync(templates())).toBe(false)
     await closeDialog()
     await quiet()
@@ -108,14 +107,14 @@ describe('templates', () => {
     await prepareAnna()
     await openTemplates()
     await bringTemplate(j.page, path.join(j.world.computer, 'zeta'))
-    await dialog()
+    await templatesDialog(j.page)
       .getByText(/1 file it uses is not here: song\.mp3/)
       .waitFor()
     expect(read('zeta', 'zeta.kdenlive')).toContain('/home/them/club/song.mp3')
     await closeDialog()
 
     await j.page.getByRole('button', { name: 'Make the project' }).click()
-    await dialog()
+    await templatesDialog(j.page)
       .getByText(/1 file it uses is not here: song\.mp3/)
       .waitFor()
     expect(projectOf('Anna Roux')).toBeUndefined()
@@ -126,8 +125,8 @@ describe('templates', () => {
   test('brings in the whole folder the editor left, and points the project at the music that came with it', async () => {
     await openTemplates()
     await bringTemplate(j.page, path.join(j.world.computer, 'club'))
-    await dialog().getByText('every file here').waitFor()
-    expect(await dialog().innerText()).toContain('kdenlive 24.08.1')
+    await templatesDialog(j.page).getByText('every file here').waitFor()
+    expect(await templatesDialog(j.page).innerText()).toContain('kdenlive 24.08.1')
     const project = read('club', 'club.kdenlive')
     expect(project).toContain('<property name="resource">sounds/song.mp3</property>')
     expect(project).not.toContain('/home/them')
@@ -141,7 +140,7 @@ describe('templates', () => {
     await quiet()
   })
 
-  test.skip('leaves what the archive brought owned by the owner of the output folder', async () => {
+  test('leaves what the archive brought owned by the owner of the output folder', async () => {
     for (const file of ['club', 'club/club.kdenlive', 'club/sounds', 'club/sounds/song.mp3'])
       expect(fs.statSync(path.join(templates(), file)).uid, file).toBe(HOST_USER)
   })
@@ -160,7 +159,7 @@ describe('templates', () => {
 
   test('takes a template packed as one archive, or the project and its files picked one by one, named after what it was', async () => {
     const chooser = j.page.waitForEvent('filechooser')
-    await dialog().getByRole('button', { name: 'Choose files instead…' }).click()
+    await templatesDialog(j.page).getByRole('button', { name: 'Choose files instead…' }).click()
     await (await chooser).setFiles(path.join(j.world.computer, 'packed.tar.gz'))
     await expect
       .poll(() => fs.existsSync(path.join(templates(), 'packed', 'packed.kdenlive')))
@@ -168,7 +167,7 @@ describe('templates', () => {
     expect(read('packed', 'packed.kdenlive')).toContain('audio/jingle.mp3')
 
     const second = j.page.waitForEvent('filechooser')
-    await dialog().getByRole('button', { name: 'Choose files instead…' }).click()
+    await templatesDialog(j.page).getByRole('button', { name: 'Choose files instead…' }).click()
     await (
       await second
     ).setFiles([
@@ -187,10 +186,10 @@ describe('templates', () => {
   test('refuses an archive that names its way out of the folder, and leaves nothing half-arrived', async () => {
     const before = fs.readdirSync(templates()).sort()
     const chooser = j.page.waitForEvent('filechooser')
-    await dialog().getByRole('button', { name: 'Choose files instead…' }).click()
+    await templatesDialog(j.page).getByRole('button', { name: 'Choose files instead…' }).click()
     await (await chooser).setFiles(path.join(j.world.computer, 'evil.tar.gz'))
-    await dialog().getByRole('alert').waitFor()
-    expect(await dialog().getByRole('alert').innerText()).toMatch(/outside/)
+    await templatesDialog(j.page).getByRole('alert').waitFor()
+    expect(await templatesDialog(j.page).getByRole('alert').innerText()).toMatch(/outside/)
     expect(fs.readdirSync(templates()).sort()).toEqual(before)
     await closeDialog()
     await quiet()
@@ -200,14 +199,14 @@ describe('templates', () => {
 describe('choosing a template', () => {
   test('never decides which one a project is made from while several are there: nothing is made until one is picked', async () => {
     await j.page.getByRole('button', { name: 'Make the project' }).click()
-    await dialog().waitFor()
-    const make = dialog().getByRole('button', { name: 'Make the montage' })
-    expect(await dialog().getByRole('radio').count()).toBe(4)
-    expect(await dialog().getByRole('radio', { checked: true }).count()).toBe(0)
+    await templatesDialog(j.page).waitFor()
+    const make = templatesDialog(j.page).getByRole('button', { name: 'Make the montage' })
+    expect(await templatesDialog(j.page).getByRole('radio').count()).toBe(4)
+    expect(await templatesDialog(j.page).getByRole('radio', { checked: true }).count()).toBe(0)
     expect(await make.isDisabled()).toBe(true)
     expect(projectOf('Anna Roux')).toBeUndefined()
 
-    await dialog().getByRole('radio', { name: /^club/ }).check()
+    await templatesDialog(j.page).getByRole('radio', { name: /^club/ }).check()
     await make.click()
     await j.page
       .getByRole('button', { name: 'Open in kdenlive' })
@@ -229,32 +228,32 @@ describe('choosing a template', () => {
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
     await j.page.getByRole('button', { name: 'Make the project' }).click()
-    await dialog().waitFor()
-    await dialog().getByRole('radio', { name: /^club/, checked: true }).waitFor()
+    await templatesDialog(j.page).waitFor()
+    await templatesDialog(j.page).getByRole('radio', { name: /^club/, checked: true }).waitFor()
     expect(projectOf('Eva Roux')).toBeUndefined()
     await quiet()
   })
 
   test('marks a template as the usual one, and takes the mark off the same way', async () => {
-    await dialog().getByRole('button', { name: 'Use by default' }).first().click()
-    await dialog().getByText('the usual one').waitFor()
+    await templatesDialog(j.page).getByRole('button', { name: 'Use by default' }).first().click()
+    await templatesDialog(j.page).getByText('the usual one').waitFor()
     expect(fs.readFileSync(path.join(templates(), '.default'), 'utf8').trim()).toBe('club')
-    await dialog().getByRole('button', { name: 'Stop using by default' }).click()
+    await templatesDialog(j.page).getByRole('button', { name: 'Stop using by default' }).click()
     await expect.poll(() => fs.existsSync(path.join(templates(), '.default'))).toBe(false)
-    await dialog().getByRole('button', { name: 'Use by default' }).first().click()
-    await dialog().getByText('the usual one').waitFor()
+    await templatesDialog(j.page).getByRole('button', { name: 'Use by default' }).first().click()
+    await templatesDialog(j.page).getByText('the usual one').waitFor()
     await closeDialog()
     expect(projectOf('Eva Roux')).toBeUndefined()
     await quiet()
   })
 
-  test.skip('makes a project from the usual one without asking anybody, however many templates there are', async () => {
+  test('makes a project from the usual one without asking anybody, however many templates there are', async () => {
     await j.page.getByRole('button', { name: 'Make the project' }).click()
     await j.page
       .getByRole('button', { name: 'Open in kdenlive' })
       .first()
       .waitFor({ timeout: 30_000 })
-    expect(await dialog().count()).toBe(0)
+    expect(await templatesDialog(j.page).count()).toBe(0)
     expect(projectOf('Eva Roux')).toBeDefined()
   })
 })

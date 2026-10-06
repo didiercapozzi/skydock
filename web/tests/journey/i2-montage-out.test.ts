@@ -5,40 +5,40 @@ import { startFakeStorage } from './fake-storage'
 import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
 import {
-  chooseStorageFolder,
-  connectStorage,
-  counted,
-  disabled,
   dragPart,
   emptySpace,
-  FILM,
-  montageFolder,
   openUpload,
   region,
-  said,
   sendTo,
-  STEM,
   stored,
-  titled,
-  typed,
   uploadDialog,
   zipEntries
 } from './i2-helpers'
+import { filmFile, STEM } from './media'
+import {
+  connectStorage,
+  counted,
+  disabled,
+  PASSWORD,
+  pickInDialog,
+  said,
+  titled,
+  typed
+} from './steps'
 
 let storage: FakeStorage
 const j = harness({
   name: 'i2-montage-out',
   state: 'i2-ready',
   prepare: async () => {
-    storage = await startFakeStorage()
+    storage = await startFakeStorage({ password: PASSWORD })
   }
 })
 afterAll(async () => storage?.stop())
 
-const dialog = () => uploadDialog(j.page)
-const zips = () => dialog().getByRole('region', { name: /\.zip$/ })
-const upload = () => dialog().getByRole('button', { name: 'Upload', exact: true })
-const part = (name: string) => dialog().getByRole('button', { name, exact: true })
+const zips = () => uploadDialog(j.page).getByRole('region', { name: /\.zip$/ })
+const upload = () => uploadDialog(j.page).getByRole('button', { name: 'Upload', exact: true })
+const part = (name: string) => uploadDialog(j.page).getByRole('button', { name, exact: true })
 const FULL = `${STEM}.full.zip`
 const PHOTOS = `${STEM}.photos.zip`
 
@@ -90,22 +90,22 @@ describe('uploading a montage: make the zips', () => {
   })
 
   test('takes a part out of a zip, drops a zip left empty, and removes a zip', async () => {
-    await dialog()
+    await uploadDialog(j.page)
       .getByRole('button', { name: `Take Original photos out of ${PHOTOS}` })
       .click()
     await counted(zips()).toBe(1)
     await said(part('Original photos')).not.toContain('zips')
 
     await dragPart(j.page, 'Original photos', emptySpace(j.page))
-    await dialog()
+    await uploadDialog(j.page)
       .getByRole('button', { name: `Remove ${PHOTOS}` })
       .click()
     await counted(zips()).toBe(1)
-    await dialog()
+    await uploadDialog(j.page)
       .getByRole('button', { name: `Remove ${FULL}` })
       .click()
     await counted(zips()).toBe(0)
-    await dialog().getByText('Drop here: it makes a zip').waitFor()
+    await uploadDialog(j.page).getByText('Drop here: it makes a zip').waitFor()
     await j.quiet()
   })
 
@@ -125,12 +125,12 @@ describe('uploading a montage: make the zips', () => {
     await region(j.page, `${STEM}.zip`).waitFor()
 
     await ending(1).fill('boogie-2026')
-    await dialog().getByText('Two zips end the same way').waitFor()
+    await uploadDialog(j.page).getByText('Two zips end the same way').waitFor()
     await disabled(upload()).toBe(true)
     await ending(1).fill('photos')
     await ending(0).fill('full')
     await ending(0).blur()
-    await counted(dialog().getByText('Two zips end the same way')).toBe(0)
+    await counted(uploadDialog(j.page).getByText('Two zips end the same way')).toBe(0)
     await said(region(j.page, FULL)).toContain('videos/')
     await said(region(j.page, PHOTOS)).toContain('photos/')
     await j.quiet()
@@ -142,17 +142,20 @@ describe('uploading a montage: where it goes', () => {
     await dragPart(j.page, 'The kdenlive project', region(j.page, FULL))
     await dragPart(j.page, 'The montage', region(j.page, FULL))
     await said(region(j.page, FULL)).toContain(`${STEM}.kdenlive`)
-    await dialog().getByLabel(`Send ${FULL}`).dragTo(region(j.page, 'Backup'))
-    await dialog().getByLabel(`Send ${PHOTOS}`).dragTo(region(j.page, 'Backup'))
+    await uploadDialog(j.page).getByLabel(`Send ${FULL}`).dragTo(region(j.page, 'Backup'))
+    await uploadDialog(j.page).getByLabel(`Send ${PHOTOS}`).dragTo(region(j.page, 'Backup'))
     await said(region(j.page, 'Backup')).toContain(FULL)
     await said(region(j.page, 'Backup')).toContain(PHOTOS)
-    const options = await dialog().getByLabel('Add a destination').locator('option').allInnerTexts()
+    const options = await uploadDialog(j.page)
+      .getByLabel('Add a destination')
+      .locator('option')
+      .allInnerTexts()
     expect(options).toEqual(['Add a destination', 'Sion', 'Club'])
     await j.quiet()
   })
 
   test('adds any other destination, drags a part onto it as it is, and takes what is in it out again', async () => {
-    await dialog().getByLabel('Add a destination').selectOption('Club')
+    await uploadDialog(j.page).getByLabel('Add a destination').selectOption('Club')
     await region(j.page, 'Club').waitFor()
     await dragPart(j.page, 'The montage', region(j.page, 'Club'))
     await dragPart(j.page, 'Original photos', region(j.page, 'Club'))
@@ -160,7 +163,7 @@ describe('uploading a montage: where it goes', () => {
     await said(region(j.page, 'Club')).toContain('photos/')
     await said(region(j.page, 'Club')).toContain('share link')
 
-    await dialog().getByRole('button', { name: 'Take photos/ out of Club' }).click()
+    await uploadDialog(j.page).getByRole('button', { name: 'Take photos/ out of Club' }).click()
     await said(region(j.page, 'Club')).not.toContain('photos/')
     await dragPart(j.page, 'Original photos', region(j.page, 'Club'))
     await said(region(j.page, 'Club')).toContain('photos/')
@@ -168,7 +171,7 @@ describe('uploading a montage: where it goes', () => {
   })
 
   test('puts what lands in a destination straight in its folder or in the project folder, and makes what is typed into one name', async () => {
-    const folder = dialog().getByLabel('Project folder')
+    const folder = uploadDialog(j.page).getByLabel('Project folder')
     await typed(folder).toBe('luc-favre')
     await folder.fill('Boogie 2026')
     await folder.blur()
@@ -189,10 +192,12 @@ describe('uploading a montage: where it goes', () => {
     await disabled(upload()).toBe(true)
     await titled(upload()).toMatch(/Choose a folder on the storage/)
 
-    await dialog().getByLabel('Add a destination').selectOption('Sion')
+    await uploadDialog(j.page).getByLabel('Add a destination').selectOption('Sion')
     await dragPart(j.page, 'The kdenlive project', region(j.page, 'Sion'))
     await said(region(j.page, 'Sion')).toContain(`${STEM}.kdenlive`)
-    await dialog().getByRole('button', { name: 'Leave Sion out of this upload' }).click()
+    await uploadDialog(j.page)
+      .getByRole('button', { name: 'Leave Sion out of this upload' })
+      .click()
     await counted(region(j.page, 'Sion')).toBe(0)
     await j.quiet()
   })
@@ -201,7 +206,7 @@ describe('uploading a montage: where it goes', () => {
     await region(j.page, 'Backup')
       .getByRole('button', { name: 'choose its folder on the storage' })
       .click()
-    await chooseStorageFolder(j.page, ['club', 'Backup'])
+    await pickInDialog(j.page, ['club', 'Backup'])
     await sendTo(j.page, 'Club', [], ['club', 'Films'], true)
     await said(region(j.page, 'Backup')).toContain('/club/Backup/')
     await said(region(j.page, 'Backup')).toContain('luc-favre/')
@@ -215,7 +220,7 @@ describe('uploading a montage: what stays here', () => {
   test.skip('says an item put nowhere stays on this machine', async () => {
     await openUpload(j.page)
     await region(j.page, 'Club').waitFor()
-    await said(dialog()).toMatch(/stays? on this machine/)
+    await said(uploadDialog(j.page)).toMatch(/stays? on this machine/)
   })
 })
 
@@ -224,7 +229,7 @@ describe('uploading a montage: what went up', () => {
     expect(fs.existsSync(path.join(storage.root, 'club', 'Backup'))).toBe(true)
     expect(stored(storage)).toEqual([])
     await upload().click()
-    await dialog().waitFor({ state: 'detached' })
+    await uploadDialog(j.page).waitFor({ state: 'detached' })
     await expect.poll(() => stored(storage, 'Films'), { timeout: 60_000 }).toHaveLength(2)
 
     expect(stored(storage, 'Backup')).toEqual([`luc-favre/${FULL}`, `luc-favre/${PHOTOS}`])
@@ -244,7 +249,7 @@ describe('uploading a montage: what went up', () => {
     expect(
       fs
         .readFileSync(path.join(storage.root, 'club', 'Films', `${STEM}.mp4`))
-        .equals(fs.readFileSync(path.join(montageFolder(j), FILM)))
+        .equals(fs.readFileSync(filmFile(j.world)))
     ).toBe(true)
     await j.quiet()
   })
@@ -281,9 +286,11 @@ describe('uploading a montage: what was handed over, shown afterwards', () => {
     await j.quiet()
   })
 
-  test.skip('does not say the photos folder is gone from the storage while the storage holds it', async () => {
+  test('does not say the photos folder is gone from the storage while the storage holds it', async () => {
+    const answered = j.page.waitForResponse((r) => r.url().includes('/api/remote-files'))
     await j.page.getByRole('button', { name: 'Check the storage again' }).click()
-    await j.page.waitForTimeout(2500)
+    await answered
+    await j.page.getByRole('button', { name: 'Check the storage again' }).waitFor()
     expect(stored(storage, 'Films')).toContain('photos/luc_favre_20260906_090130.jpg')
     await said(j.page.locator('main')).not.toContain('no longer on the storage')
     await j.quiet()

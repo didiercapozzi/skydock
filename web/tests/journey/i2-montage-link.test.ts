@@ -4,20 +4,21 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { startFakeStorage } from './fake-storage'
 import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
-import { connectStorage, counted, said, sendAsUsual, typed } from './i2-helpers'
+import { sendAsUsual } from './i2-helpers'
+import { connectStorage, counted, dialogNamed, PASSWORD, said, typed } from './steps'
 
 let storage: FakeStorage
 const j = harness({
   name: 'i2-montage-link',
   state: 'i2-ready',
   prepare: async () => {
-    storage = await startFakeStorage()
+    storage = await startFakeStorage({ password: PASSWORD })
   }
 })
 afterAll(async () => storage?.stop())
 
 const main = () => j.page.locator('main')
-const email = () => j.page.getByRole('dialog', { name: 'Email the link' })
+const email = () => dialogNamed(j.page, 'Email the link')
 const preview = () => email().getByLabel('Email preview')
 const subject = () => email().getByRole('textbox', { name: 'Subject', exact: true })
 const language = (name: string) => email().getByRole('button', { name, exact: true })
@@ -188,7 +189,7 @@ describe('sending the link', () => {
   })
 
   test("asks whether the email was sent in a dialog that cannot be put away, and records Yes on the board and on the storage's list", async () => {
-    const asking = j.page.getByRole('dialog', { name: 'Was the email sent?' })
+    const asking = dialogNamed(j.page, 'Was the email sent?')
     await asking.waitFor()
     await j.page.keyboard.press('Escape')
     await j.page.mouse.click(4, 4)
@@ -219,7 +220,7 @@ describe('sending the link', () => {
   })
 
   test('asks nothing more when the montage is marked already, and when it is not, Not sent leaves the montage to email', async () => {
-    const asking = j.page.getByRole('dialog', { name: 'Was the email sent?' })
+    const asking = dialogNamed(j.page, 'Was the email sent?')
     await j.page.getByRole('button', { name: 'More' }).click()
     await j.page.getByRole('button', { name: /Emailed · again/ }).click()
     await email().waitFor()
