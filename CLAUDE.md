@@ -26,6 +26,8 @@ Each rule has exactly one owner. Never restate a rule from another file here —
 - A bug fix starts with a test, written in RULES.md's words and clicked through the way a person does it, that **fails before the fix**. The fix changes or deletes existing code rather than adding beside it, and no existing test is edited to make it pass.
 - Before reporting a change done: run the tests of the area it touches (the full node and browser suites beyond a one-file change), the journey files of the area for anything a person could see or do end to end (`npx vitest run --config=vitest.journey.config.ts <files>` after `npm run build:journey`; docs/journey-tests.md says what each covers) — the whole `npm run test:journey` is for a release or a very large change, and nothing else runs on the machine while it does, and the `house-review` agent on the diff, and apply what it finds. A bug fix adds or tightens the journey chapter that guards the RULES.md sentence it broke, failing first. The report states files touched, net lines added/removed, and any existing test that had to change.
 
+- **Finding a failing test:** run the one file that is suspected, with `--bail=1`, read its first failure (the message, then the screenshot the journey keeps), and fix that before anything else. Never run a whole suite, or the whole journey, to find out what fails or to time it; never run two suites at once. A failure that shows only when nothing slows the run down (no film, no probe) is a race — find it in the logs of that file, not by running more.
+
 ### TODO.md Directives
 
 - Do NOT execute tasks from `TODO.md` unless directly requested by the user

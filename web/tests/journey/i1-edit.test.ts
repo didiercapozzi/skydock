@@ -136,7 +136,7 @@ describe('the edit is kept aside, every version of it', () => {
   /* preparing again runs as a job in the corner: it is over once the corner has nothing to say about it */
   const prepareAgain = async () => {
     const before = fs.statSync(copy()).mtimeMs
-    await j.page.getByRole('button', { name: 'More' }).click()
+    await j.page.getByRole('button', { name: 'More', exact: true }).click()
     await j.page.getByRole('button', { name: 'Process again' }).click()
     await expect
       .poll(() => fs.statSync(copy()).mtimeMs, { timeout: 60_000 })

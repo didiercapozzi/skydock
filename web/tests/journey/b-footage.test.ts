@@ -607,17 +607,20 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
   })
 
   test('a camera’s page draws a small picture of each file it lists', async () => {
+    /* the card was taken out by a chapter before: a camera that is not there has no files to draw */
+    plug('Osmo Action')
+    await camera('Osmo Action')
+      .getByText('not connected')
+      .waitFor({ state: 'detached', timeout: 20_000 })
     await openCamera('Osmo Action')
     /* a picture beside a name is decoration for a screen reader, so it is found by what it shows */
-    await expect
-      .poll(() =>
-        j.page.evaluate(() =>
-          [...document.querySelectorAll<HTMLImageElement>('img[src^="/api/thumb/"]')].some(
-            (img) => img.naturalWidth > 0
-          )
+    await eventually(() =>
+      j.page.evaluate(() =>
+        [...document.querySelectorAll<HTMLImageElement>('img[src^="/api/thumb/"]')].some(
+          (img) => img.naturalWidth > 0
         )
       )
-      .toBe(true)
+    ).toBe(true)
     await j.quiet()
   })
 })
