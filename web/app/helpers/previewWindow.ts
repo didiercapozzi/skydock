@@ -3,8 +3,6 @@ import { fileHref } from './places'
 import type { Place } from './places'
 import type { BoardView } from './view'
 
-const PREVIEW_WINDOW = 'skydock-preview'
-
 const hasOwnWindows = () => typeof window !== 'undefined' && 'skydock' in window
 
 const openFile = (goTo: NavigateFunction, place: Place, fileId: string, view: BoardView = {}) => {
@@ -13,8 +11,7 @@ const openFile = (goTo: NavigateFunction, place: Place, fileId: string, view: Bo
     return
   }
   const href = fileHref(place, fileId, { ...view, window: 'preview' })
-  const opened = window.open(new URL(href, window.location.href).toString(), PREVIEW_WINDOW)
-  opened?.focus()
+  window.open(new URL(href, window.location.href).toString())
 }
 
 export { hasOwnWindows, openFile }

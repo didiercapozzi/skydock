@@ -316,11 +316,12 @@ const useDesk = (name: string) => {
         width: r.width,
         height: r.height,
         scale: window.devicePixelRatio,
-        inner: [window.innerWidth, window.innerHeight]
+        inner: [window.innerWidth, window.innerHeight],
+        outer: [window.outerWidth, window.outerHeight]
       }
     })
-    const wide = Math.round(where.inner[0]! * where.scale)
-    const high = Math.round(where.inner[1]! * where.scale)
+    const wide = Math.round(where.outer[0]! * where.scale)
+    const high = Math.round(where.outer[1]! * where.scale)
     const frame = windows().find(
       (w) => Math.abs(w.width - wide) <= 2 && Math.abs(w.height - high) <= 2
     )
@@ -328,9 +329,13 @@ const useDesk = (name: string) => {
       throw new Error(
         `no window on the screen is ${wide}x${high}, the size of the page asked about`
       )
+    const border = {
+      x: ((where.outer[0]! - where.inner[0]!) / 2) * where.scale,
+      y: ((where.outer[1]! - where.inner[1]!) / 2) * where.scale
+    }
     return {
-      x: frame.x + where.x * where.scale,
-      y: frame.y + where.y * where.scale,
+      x: frame.x + border.x + where.x * where.scale,
+      y: frame.y + border.y + where.y * where.scale,
       width: where.width * where.scale,
       height: where.height * where.scale
     }
