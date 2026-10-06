@@ -51,7 +51,7 @@ describe('the toolbar and the status bar', () => {
     const settings = j.page.getByRole('group', { name: 'Settings' })
     await settings.getByRole('group', { name: 'Theme' }).waitFor()
     await settings.getByRole('group', { name: 'Language' }).waitFor()
-    for (const name of ['Templates…', 'Work folder…', 'History…'])
+    for (const name of ['Templates…', 'Work folder…'])
       await settings.getByRole('button', { name }).waitFor()
     await j.page.getByRole('button', { name: 'Settings' }).click()
     await j.page.getByText('Connect the storage').waitFor()
@@ -186,8 +186,7 @@ describe('dialogs', () => {
     await quiet()
   })
 
-  test('closes the history, the editing templates and the work folder with Escape and with a click outside', async () => {
-    await closesWithEscapeAndOutsideClick('History', () => fromSettings('History…'))
+  test('closes the editing templates and the work folder with Escape and with a click outside', async () => {
     await closesWithEscapeAndOutsideClick('Editing templates', () => fromSettings('Templates…'))
     await closesWithEscapeAndOutsideClick('Work folder', () => fromSettings('Work folder…'))
     await quiet()

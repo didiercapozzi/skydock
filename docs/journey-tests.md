@@ -122,7 +122,7 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | share link: create, copy, remove; a revoked link is shown as such                         | A    | done |
 | a file deleted on the storage is noticed and no longer counted                            | A    | done |
 
-### H. Freeing space and bringing back (Freeing space, Going back)
+### H. Freeing space and bringing back (Freeing space)
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |

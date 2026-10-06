@@ -66,8 +66,8 @@ type Loaded = {
   montages: Record<string, MontageFact>
   storage: Storage
   hasManifest: boolean
-  /* the record was cut off, and the last good one is what the board was drawn from */
-  readFromKept?: boolean
+  /* the record is there and could not be read, so there is no board to draw from it */
+  unreadable: boolean
   processing: { groupIds: string[] } | null
   uploading: { key: string; label: string } | null
 }
@@ -101,9 +101,9 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const [spoken, setSpoken] = useState<{ text: string; problem: boolean } | null>(
     running
       ? { text: t`Still processing — the board updates itself when it is done`, problem: false }
-      : loaded.readFromKept
+      : loaded.unreadable
         ? {
-            text: t`The board could not be read — it is shown from the last good record kept beside it.`,
+            text: t`The board’s record could not be read, so nothing is shown from it. Nothing has been changed — mend or put back manifest.json in the work folder.`,
             problem: true
           }
         : null
@@ -180,7 +180,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         copiedBack,
         broughtBack,
         fromBin,
-        wentBack,
         storage: listed,
         storageProblem
       } = answered.data
@@ -230,9 +229,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
                                       ? broughtBackNote(broughtBack)
                                       : fromBin
                                         ? fromBinNote(fromBin)
-                                        : wentBack
-                                          ? t`The board is back as it was — Settings › History can undo this too.`
-                                          : null
+                                        : null
       /* the work stands even when the list could not follow it, and that is said alongside */
       if (!quiet && storageProblem) setProblem([said, storageProblem].filter(Boolean).join(' · '))
       else if (!quiet) setNote(said)

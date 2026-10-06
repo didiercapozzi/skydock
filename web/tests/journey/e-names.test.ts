@@ -14,7 +14,7 @@ const j = harness({
   name: 'e-names',
   state: 'sorted',
   prepare: (world) => {
-    for (const name of ['manifest.json', 'manifest.json.bak', 'groups.json', 'groups.json.bak']) {
+    for (const name of ['manifest.json', 'groups.json']) {
       const file = path.join(world.output, name)
       fs.writeFileSync(file, fs.readFileSync(file, 'utf8').split(world.output).join(OTHER))
     }

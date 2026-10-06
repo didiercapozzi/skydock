@@ -100,7 +100,7 @@ const Menu = ({
 }
 
 /* What is set once and then left alone — how the board looks, the language it speaks, where it keeps
-   its work, the editing templates, its history, the keys it knows — gathered behind one button, so
+   its work, the editing templates, the keys it knows — gathered behind one button, so
    the top of the board keeps only what is used every day (RULES, The board). */
 const SettingsMenu = ({ children }: { children: (close: () => void) => React.ReactNode }) => (
   <Menu

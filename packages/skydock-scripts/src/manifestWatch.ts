@@ -6,7 +6,7 @@ import { getManifestPath } from './utils'
    edit, work done outside the page. So while a board is listening the pair — manifest.json and its
    groups — is looked at every couple of seconds, and once it has changed and then stopped changing the
    board is told to look again. Only those two names are looked at: the temporary files an atomic
-   write passes through, the copies kept beside them and the history are not the record.
+   write passes through are not the record.
 
    Looked at rather than watched, for the reason the montages' folders are: a write lands as two
    files, one after the other, and what matters is the moment it is whole; and the folder may be on a
@@ -40,8 +40,8 @@ const watch = () =>
 
 /* One look. The first look only learns what is there — the board was drawn from the record a moment
    before, and what it holds is what it shows. After that, a change that has stayed for a whole look is
-   told once, unless this process made it. A pair that cannot be read whole is not told: the board
-   would be given the older copy kept beside it, and a refresh must never show an older board. */
+   told once, unless this process made it. A pair that cannot be read whole is not told, and is looked at
+   again at the next look: a refresh must never show a board that is half of one. */
 const lookAtBoard = (outputDir: string) => {
   const state = watch()
   const manifestPath = getManifestPath(outputDir)
@@ -64,7 +64,7 @@ const lookAtBoard = (outputDir: string) => {
   }
   try {
     const record = readRecord(manifestPath)
-    if (!record.manifest || record.kept) return
+    if (!record.manifest) return
   } catch {
     return
   }

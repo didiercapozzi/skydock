@@ -161,11 +161,6 @@ msgstr "{0, plural, one {in # ZIP} other {in # ZIPs}}"
 msgid "{0, plural, one {Nothing was done: # was there already.} other {Nothing was done: # were there already.}}"
 msgstr "{0, plural, one {Nichts wurde getan: # war schon da.} other {Nichts wurde getan: # waren schon da.}}"
 
-#. placeholder {0}: change.processed
-#: app/components/history-dialog.tsx
-msgid "{0, plural, one {Processed # file} other {Processed # files}}"
-msgstr "{0, plural, one {# Datei aufbereitet} other {# Dateien aufbereitet}}"
-
 #. placeholder {0}: count ?? 0
 #: app/components/name-montage-dialog.tsx
 msgid "{0, plural, one {This file becomes a montage once it has a name.} other {These # files become a montage once it has a name.}}"
@@ -175,11 +170,6 @@ msgstr "{0, plural, one {Diese Datei wird zur Montage, sobald sie einen Namen ha
 #: app/components/montage-card.tsx
 msgid "{0, plural, one {this is no longer on the storage:} other {these are no longer on the storage:}}"
 msgstr "{0, plural, one {das ist nicht mehr auf dem Speicher:} other {diese sind nicht mehr auf dem Speicher:}}"
-
-#. placeholder {0}: change.uploaded
-#: app/components/history-dialog.tsx
-msgid "{0, plural, one {Uploaded # file} other {Uploaded # files}}"
-msgstr "{0, plural, one {# Datei hochgeladen} other {# Dateien hochgeladen}}"
 
 #. placeholder {0}: job.label
 #. placeholder {1}: job.done
@@ -209,11 +199,6 @@ msgstr "{0} von {1} Schritten"
 #: app/components/montage-view.tsx
 msgid "{0} on the storage"
 msgstr "{0} auf dem Speicher"
-
-#. placeholder {0}: to.name
-#: app/components/history-dialog.tsx
-msgid "{0}’s montage"
-msgstr "Montage von {0}"
 
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
@@ -367,18 +352,6 @@ msgstr "{filename} ist wieder auf diesem Rechner, so wie es aufgenommen wurde."
 msgid "{files, plural, one {Copied # file into the jump — it stays where it was as well} other {Copied # files into the jump — they stay where they were as well}}"
 msgstr "{files, plural, one {# Datei in den Sprung kopiert — sie bleibt auch, wo sie war} other {# Dateien in den Sprung kopiert — sie bleiben auch, wo sie waren}}"
 
-#: app/components/history-dialog.tsx
-msgid "{files, plural, one {Moved # file to {where}} other {Moved # files to {where}}}"
-msgstr "{files, plural, one {# Datei nach {where} verschoben} other {# Dateien nach {where} verschoben}}"
-
-#: app/components/history-dialog.tsx
-msgid "{filesAdded, plural, one {# new file} other {# new files}}"
-msgstr "{filesAdded, plural, one {# neue Datei} other {# neue Dateien}}"
-
-#: app/components/history-dialog.tsx
-msgid "{filesGone, plural, one {# file left the board} other {# files left the board}}"
-msgstr "{filesGone, plural, one {# Datei hat die Übersicht verlassen} other {# Dateien haben die Übersicht verlassen}}"
-
 #: app/components/jobs-panel.tsx
 msgid "{finished} of {count, plural, one {# item} other {# items}} on the storage — {bytes} in all"
 msgstr "{finished} von {count, plural, one {# Element} other {# Elementen}} auf dem Speicher — {bytes} insgesamt"
@@ -411,18 +384,6 @@ msgstr "{jumps, plural, one {# Sprung} other {# Sprünge}}"
 #: app/components/folder-owed.tsx
 msgid "{jumps, plural, one {# jump} other {# jumps}} to file"
 msgstr "{jumps, plural, one {# Sprung} other {# Sprünge}} einzuordnen"
-
-#: app/components/history-dialog.tsx
-msgid "{jumpsGone, plural, one {Removed # jump} other {Removed # jumps}}"
-msgstr "{jumpsGone, plural, one {# Sprung entfernt} other {# Sprünge entfernt}}"
-
-#: app/components/history-dialog.tsx
-msgid "{jumpsMade, plural, one {Made # jump} other {Made # jumps}}"
-msgstr "{jumpsMade, plural, one {# Sprung erstellt} other {# Sprünge erstellt}}"
-
-#: app/components/history-dialog.tsx
-msgid "{jumpsRenamed, plural, one {Renamed # jump} other {Renamed # jumps}}"
-msgstr "{jumpsRenamed, plural, one {# Sprung umbenannt} other {# Sprünge umbenannt}}"
 
 #: app/components/free-place-dialog.tsx
 msgid "{kept, plural, one {# jump or loose file not all uploaded yet, left here as they are} other {# jump or loose files not all uploaded yet, left here as they are}}"
@@ -571,10 +532,6 @@ msgstr "{ready} von {total} Clips haben ihre kleine Kopie. Sie entstehen im Hint
 msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
 msgstr "{reshaped, plural, one {# Datei wurde} other {# Dateien wurden}} gekürzt, zugeschnitten oder gedreht hochgeladen. Nur der hochgeladene Teil bleibt erhalten, auf dem Speicher: Was abgeschnitten wurde, wird mit dem Original endgültig gelöscht."
 
-#: app/components/history-dialog.tsx
-msgid "{retimed, plural, one {Changed the time of # file} other {Changed the time of # files}}"
-msgstr "{retimed, plural, one {Zeit von # Datei geändert} other {Zeit von # Dateien geändert}}"
-
 #: app/components/jobs-panel.tsx
 msgid "{skipped, plural, one {# already here} other {# already here}}"
 msgstr "{skipped, plural, one {# schon hier} other {# schon hier}}"
@@ -642,10 +599,6 @@ msgstr "{trimmed, plural, one {# Clip} other {# Clips}} auf den Sprung gekürzt 
 #: app/hooks/useBoardModel.ts
 msgid "{trimmed, plural, one {# clip} other {# clips}} trimmed to the jump."
 msgstr "{trimmed, plural, one {# Clip} other {# Clips}} auf den Sprung gekürzt."
-
-#: app/components/history-dialog.tsx
-msgid "{trimmed, plural, one {Trimmed, framed or turned # file} other {Trimmed, framed or turned # files}}"
-msgstr "{trimmed, plural, one {# Datei gekürzt, zugeschnitten oder gedreht} other {# Dateien gekürzt, zugeschnitten oder gedreht}}"
 
 #: app/components/folder-owed.tsx
 msgid "{unnamed} to name"
@@ -1304,7 +1257,6 @@ msgstr "schließen"
 
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
-#: app/components/history-dialog.tsx
 #: app/components/reset-fresh-dialog.tsx
 #: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
@@ -2257,7 +2209,6 @@ msgid "Freeing {label}"
 msgstr "{label} wird freigegeben"
 
 #: app/components/dialog-host.tsx
-#: app/components/history-dialog.tsx
 #: app/components/move-to.tsx
 #: app/helpers/places.ts
 #: app/hooks/useDragAndDrop.ts
@@ -2389,14 +2340,6 @@ msgstr "Details ausblenden"
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
 msgstr "Liste ausblenden"
-
-#: app/components/history-dialog.tsx
-msgid "History"
-msgstr "Verlauf"
-
-#: app/components/board-header.tsx
-msgid "History…"
-msgstr "Verlauf…"
 
 #: app/hooks/useBoardModel.ts
 msgid "Hold alt while dropping to copy it into the other jump instead."
@@ -2756,7 +2699,6 @@ msgstr "Lose in Neue Dateien"
 msgid "lowercase letters, digits and - only"
 msgstr "nur Kleinbuchstaben, Ziffern und -"
 
-#: app/components/history-dialog.tsx
 #: app/hooks/useBoardModel.ts
 msgid "Made {who}’s montage"
 msgstr "Montage von {who} erstellt"
@@ -3221,10 +3163,6 @@ msgstr "Nichts ausgewählt"
 #: app/components/upload-dialog.tsx
 msgid "nothing this montage has"
 msgstr "nichts, was diese Montage hat"
-
-#: app/components/history-dialog.tsx
-msgid "Nothing to go back to yet."
-msgstr "Noch nichts, wohin man zurückkehren kann."
 
 #: app/components/storage-folder.tsx
 msgid "Nothing up there yet — what is uploaded from here is listed once it is."
@@ -3723,10 +3661,6 @@ msgstr "Zu diesem Zeitpunkt auf den Speicher gelegt — sein Name verrät nicht,
 msgid "Put the template back as SkyDock first wrote it"
 msgstr "Die Vorlage so wiederherstellen, wie SkyDock sie ursprünglich geschrieben hat"
 
-#: app/components/history-dialog.tsx
-msgid "Puts the board back as it was just before this change"
-msgstr "Setzt die Übersicht auf den Stand direkt vor dieser Änderung zurück"
-
 #: app/components/jobs-panel.tsx
 msgid "Putting files in the bin"
 msgstr "Dateien werden in den Papierkorb gelegt"
@@ -3766,10 +3700,6 @@ msgstr "wird gelesen…"
 #: app/components/camera-files.tsx
 msgid "Reading the camera…"
 msgstr "Kamera wird gelesen…"
-
-#: app/components/history-dialog.tsx
-msgid "Reading the history…"
-msgstr "Verlauf wird gelesen…"
 
 #: app/components/templates-dialog.tsx
 msgid "Reading the templates…"
@@ -4376,18 +4306,6 @@ msgstr "Der Papierkorb ist leer."
 msgid "The board"
 msgstr "Die Übersicht"
 
-#: app/components/board-header.tsx
-msgid "The board as it was after each of the last changes — go back to one"
-msgstr "Die Übersicht, wie sie nach jeder der letzten Änderungen war — kehre zu einem Stand zurück"
-
-#: app/hooks/useBoardState.ts
-msgid "The board could not be read — it is shown from the last good record kept beside it."
-msgstr "Das Board konnte nicht gelesen werden — es wird nach der letzten guten Aufzeichnung daneben gezeigt."
-
-#: app/hooks/useBoardState.ts
-msgid "The board is back as it was — Settings › History can undo this too."
-msgstr "Die Übersicht ist wieder wie vorher — Einstellungen › Verlauf kann auch das rückgängig machen."
-
 #: app/routes/board.tsx
 msgid "The board is busy"
 msgstr "Die Übersicht ist beschäftigt"
@@ -4396,9 +4314,9 @@ msgstr "Die Übersicht ist beschäftigt"
 msgid "the board opens on what that folder holds — empty, or the work already kept there"
 msgstr "die Übersicht öffnet sich mit dem, was dieser Ordner enthält — leer oder die dort schon abgelegte Arbeit"
 
-#: app/components/history-dialog.tsx
-msgid "The board’s history could not be read."
-msgstr "Der Verlauf der Übersicht konnte nicht gelesen werden."
+#: app/hooks/useBoardState.ts
+msgid "The board’s record could not be read, so nothing is shown from it. Nothing has been changed — mend or put back manifest.json in the work folder."
+msgstr "Die Aufzeichnung des Boards konnte nicht gelesen werden, daher wird nichts daraus angezeigt. Es wurde nichts geändert — manifest.json im Arbeitsordner reparieren oder zurücklegen."
 
 #: app/components/preview-drawer.tsx
 msgid "The browser cannot show this clip’s picture — it is in a format only the editor reads, such as 4K HEVC. Its proxy is being made, and the preview plays it as soon as it is ready."
@@ -4521,10 +4439,6 @@ msgstr "das kdenlive-Projekt — der Schnitt selbst, was nicht rückgängig zu m
 #: app/components/free-dialog.tsx
 msgid "the kdenlive project, and the record of what went where"
 msgstr "das kdenlive-Projekt und der Vermerk, was wohin ging"
-
-#: app/components/history-dialog.tsx
-msgid "The last changes made on the board, the latest first. Going back to before one undoes it and every change after it — the jumps, names and trims; no file on the disk or on the storage is touched."
-msgstr "Die letzten Änderungen an der Übersicht, die neueste zuerst. Zurück vor eine davon macht sie und alle späteren rückgängig — die Sprünge, Namen und Kürzungen; keine Datei auf der Festplatte oder im Speicher wird angefasst."
 
 #: app/components/jump-graph.tsx
 msgid "The least and the most the camera felt in this clip, in gravities"
@@ -4803,10 +4717,6 @@ msgstr "einzusortieren"
 msgid "to send"
 msgstr "zu senden"
 
-#: app/components/history-dialog.tsx
-msgid "Took {who}’s montage apart"
-msgstr "Montage von {who} aufgelöst"
-
 #: app/components/inspector.tsx
 msgid "Total size"
 msgstr "Gesamtgröße"
@@ -4922,10 +4832,6 @@ msgstr "läuft"
 #: app/components/email-dialog.tsx
 msgid "Undo"
 msgstr "Rückgängig"
-
-#: app/components/history-dialog.tsx
-msgid "Undo from here"
-msgstr "Ab hier rückgängig"
 
 #: app/components/montage-panel.tsx
 #: app/components/montage-view.tsx
@@ -5106,10 +5012,6 @@ msgstr "Wege zurück"
 #: app/routes/place.tsx
 msgid "What came off the cameras, waiting to be sorted"
 msgstr "Was von den Kameras kam und auf das Einsortieren wartet"
-
-#: app/components/history-dialog.tsx
-msgid "What changed on the board"
-msgstr "Was sich an der Übersicht geändert hat"
 
 #: app/components/disconnect-dialog.tsx
 #: app/components/remove-place-dialog.tsx

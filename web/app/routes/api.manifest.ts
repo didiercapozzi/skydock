@@ -2,8 +2,8 @@ import {
   flushBoardChanges,
   getManifestPath,
   getOutputDir,
-  keepBoardStep,
-  loadManifest
+  readRecord,
+  RECORD_UNREADABLE
 } from '@skydock/scripts'
 import type { Route } from './+types/api.manifest'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
@@ -29,7 +29,6 @@ import { moveFilesIntent } from './manifest/move-files'
 import { openMontage } from './manifest/open-montage'
 import { copyBackIntent } from './manifest/copy-back'
 import { fromBinIntent } from './manifest/from-bin'
-import { goBack } from './manifest/go-back'
 import { bringBackIntent } from './manifest/from-storage'
 import { playFile } from './manifest/play-file'
 import { cancelProcess, processIntent, processWait } from './manifest/process'
@@ -55,7 +54,6 @@ const intents: Record<ActionData['intent'], Intent> = {
   'copy-back': copyBackIntent,
   'bring-back': bringBackIntent,
   'from-bin': fromBinIntent,
-  'go-back': goBack,
   process: processIntent,
   'process-wait': processWait,
   'cancel-process': cancelProcess,
@@ -89,18 +87,6 @@ const intents: Record<ActionData['intent'], Intent> = {
   'look-at-board': lookAtBoard
 }
 
-/* what only waits, looks or stops, and changes nothing a person would want to go back from */
-const ONLY_ASKING = new Set<string>([
-  'upload-wait',
-  'process-wait',
-  'play-file',
-  'cancel-upload',
-  'cancel-process',
-  'camera-copied',
-  'look-at-board',
-  'go-back'
-])
-
 const action = createValidatedFormAction<Route.ActionArgs>()({
   schema: actionArgs,
   handler: async ({ data, errors }) => {
@@ -111,10 +97,9 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     const manifestPath = getManifestPath(getOutputDir())
     /* what the board recorded by itself a moment ago is written first, so this change is made on it */
     flushBoardChanges(manifestPath)
-    const manifest = loadManifest(manifestPath)
-    if (!manifest) return refuse('No manifest found. Run a scan first.')
-    /* a change asked for on the board is one step of its history, to go back to (RULES, Going back) */
-    if (!ONLY_ASKING.has(data.intent)) keepBoardStep(manifestPath)
+    const { manifest, unreadable } = readRecord(manifestPath)
+    if (!manifest)
+      return refuse(unreadable ? RECORD_UNREADABLE : 'No manifest found. Run a scan first.')
     return intents[data.intent](changeOn(manifest, data, refuse))
   }
 })

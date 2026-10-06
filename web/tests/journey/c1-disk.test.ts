@@ -52,10 +52,10 @@ describe('the work folder', () => {
       'sion_20260905_100520.mp4'
     ])
 
-    /* the record, its last whole copy beside it, and the board's states to go back to */
+    /* the record, written whole, and nothing kept beside it */
     expect(fs.existsSync(at('manifest.json'))).toBe(true)
-    expect(fs.existsSync(at('manifest.json.bak'))).toBe(true)
-    expect(fs.existsSync(at('.history'))).toBe(true)
+    expect(fs.existsSync(at('manifest.json.bak'))).toBe(false)
+    expect(fs.existsSync(at('.history'))).toBe(false)
     await quiet()
   })
 

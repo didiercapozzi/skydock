@@ -1203,7 +1203,7 @@ describe('changes made on the board', () => {
 
   /* the record changed outside the page: the board looks at it again, and the look only reads */
   describe('a look at the board', () => {
-    it('answers with the record as it is now, writes nothing and makes no step of the history', async () => {
+    it('answers with the record as it is now and writes nothing', async () => {
       writeManifest([group({ id: 'g1', files: [file({ id: 'a' })] })])
       const manifestPath = path.join(tmpDir, 'manifest.json')
       const before = fs.statSync(manifestPath).mtimeMs
@@ -1212,7 +1212,6 @@ describe('changes made on the board', () => {
 
       expect(res.groups.map((g) => g.id)).toEqual(['g1'])
       expect(fs.statSync(manifestPath).mtimeMs).toBe(before)
-      expect(fs.existsSync(path.join(tmpDir, '.history'))).toBe(false)
     })
 
     it('shows what somebody else changed in the record', async () => {

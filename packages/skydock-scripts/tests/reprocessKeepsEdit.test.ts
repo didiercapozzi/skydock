@@ -83,12 +83,11 @@ const groupDir = () => path.join(outputDir, 'processed', 'Montages', 'Luc Favre'
 const inside = (dir: string) => (fs.existsSync(dir) ? fs.readdirSync(dir).sort() : [])
 
 /* everything under the output directory, so a copy moved somewhere out of the way still shows up */
-/* every file of the work, leaving out the board's own record of its earlier states */
+/* every file of the work */
 const everything = () => {
   const walk = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const full = path.join(dir, e.name)
-      if (e.name === '.history' || e.name.endsWith('.bak')) return []
       return e.isDirectory() ? walk(full) : [path.relative(outputDir, full)]
     })
   return walk(outputDir).sort()

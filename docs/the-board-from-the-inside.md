@@ -72,7 +72,7 @@ flowchart LR
 
 ## Every way in, in detail
 
-The arrows above are the ones worth remembering. These are all of them — **39**,
+The arrows above are the ones worth remembering. These are all of them — **38**,
 of which **24** write the board's own record — grouped by the rule each one serves, in its own
 words. Worth reading when you are in one of them, not before.
 
@@ -132,21 +132,6 @@ The rule itself is in [RULES.md](../RULES.md), under _Freeing space_.
 - Nothing was asked for.
 - _whatever went wrong underneath, in its own words_
 - Connect the storage first.
-
-</details>
-
-### Going back
-
-The rule itself is in [RULES.md](../RULES.md), under _Going back_.
-
-| asked for | what it does | what it reaches |
-| --- | --- | --- |
-| `go-back` | The board put back as it was at an earlier step (RULES, Going back): its jumps, names and trims. | answers, and changes nothing |
-
-<details><summary><code>go-back</code> refuses</summary>
-
-- Say which earlier board to go back to.
-- _whatever went wrong underneath, in its own words_
 
 </details>
 

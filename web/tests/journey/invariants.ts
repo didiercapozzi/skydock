@@ -35,8 +35,7 @@ const recordProblems = (world: World) => {
 
 /* what the work folder holds, as the paths under it, sorted — without what is only cache, or the
    snapshots of the record, whose names are the moment they were made */
-const IGNORED =
-  /(^|\/)(\.cache|\.thumbs|\.proxies|thumbs|\.status)(\/|$)|(^|\/)\.history\/.|\.bak$|\.tmp$|\.lock$/
+const IGNORED = /(^|\/)(\.cache|\.thumbs|\.proxies|thumbs|\.status)(\/|$)|\.tmp$|\.lock$/
 
 const treeOf = (folder: string, base = folder): string[] =>
   fs

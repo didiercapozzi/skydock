@@ -55,12 +55,6 @@ const covers: Record<string, string[]> = {
   'The email template': [
     "is drafted from the club's template, whose variables are shown as such while it is written and can be put in from a list that says what each would be here",
     'keeps the template on this machine, once per language, and a change to one email never changes it'
-  ],
-  'Going back': [
-    'lists the changes made on the board, the latest first, each said in words with the time it was made',
-    'puts the board back as it was just before a change, touching no file on the disk',
-    'is itself a change, so it can be gone back from in the same way',
-    'reads the last good record kept beside it when the board is cut off half written, rather than losing it'
   ]
 }
 

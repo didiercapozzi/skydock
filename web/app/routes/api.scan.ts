@@ -1,8 +1,9 @@
 import {
   getManifestPath,
   getOutputDir,
-  keepBoardStep,
   loadManifest,
+  readRecord,
+  RECORD_UNREADABLE,
   scanMedia
 } from '@skydock/scripts'
 import { z } from 'zod'
@@ -24,11 +25,14 @@ const actionArgs = z.object({ cameras: z.boolean().optional() })
    as a camera being plugged in is, and scans what it brought when it ends. */
 const action = createValidatedFormAction()({
   schema: actionArgs,
-  handler: async ({ data }) => {
+  handler: async ({ data, errors }) => {
     const outputDir = getOutputDir()
+    /* a record that cannot be read is left as it is: a scan would build it again from the files */
+    if (readRecord(getManifestPath(outputDir)).unreadable) {
+      errors.addGlobalError(RECORD_UNREADABLE)
+      return errors.toResponse(422)
+    }
     if (data.cameras !== false) copyAgain(outputDir)
-    /* a scan can regroup what was not filed: one more step to go back to */
-    keepBoardStep(getManifestPath(outputDir))
     const result = await scanMedia({ outputDir })
     /* Proxies are built behind the answer, not inside it: transcoding a card of clips takes
        minutes, and everything works without them meanwhile — the crop bar falls back to the clip

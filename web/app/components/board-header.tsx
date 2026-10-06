@@ -74,7 +74,6 @@ const BoardHeader = ({
   onScan,
   onTemplates,
   onWorkFolder,
-  onHistory,
   onShortcuts,
   find
 }: {
@@ -84,8 +83,6 @@ const BoardHeader = ({
   onTemplates: () => void
   /* the folder SkyDock works in, and another one to work in */
   onWorkFolder: () => void
-  /* the board's earlier states, to go back to one */
-  onHistory: () => void
   /* every key the board knows */
   onShortcuts: () => void
   /* anything on the board, by a piece of its name */
@@ -205,14 +202,6 @@ const BoardHeader = ({
                   onWorkFolder()
                 }}>
                 {t`Work folder…`}
-              </MenuItem>
-              <MenuItem
-                title={t`The board as it was after each of the last changes — go back to one`}
-                onClick={() => {
-                  close()
-                  onHistory()
-                }}>
-                {t`History…`}
               </MenuItem>
               <MenuItem
                 onClick={() => {

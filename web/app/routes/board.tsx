@@ -159,13 +159,13 @@ const loader = async (_args: Route.LoaderArgs) => {
   const manifestPath = getManifestPath(outputDir)
   /* what the board recorded by itself a moment ago is on the page too */
   flushBoardChanges(manifestPath)
-  let record: ReturnType<typeof readRecord> = { manifest: null, kept: false }
+  let record: ReturnType<typeof readRecord> = { manifest: null, unreadable: true }
   try {
     record = readRecord(manifestPath)
   } catch {
-    /* a record that cannot be read at all is no board */
+    /* jumps that cannot be read are a record that cannot be read: said, and not drawn as no board */
   }
-  const { manifest } = record
+  const { manifest, unreadable } = record
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
   )
@@ -193,9 +193,10 @@ const loader = async (_args: Route.LoaderArgs) => {
     storage: null,
     /* what the storage says, sent after the board, once it has answered */
     storageLook: lookAtStorageSoon(outputDir),
-    hasManifest: manifest !== null,
-    /* the record could not be read whole, so the last good one is what is shown, and said */
-    readFromKept: record.kept,
+    /* a record that is there and cannot be read is not a board nobody has started: that would offer a
+       scan, which throws away the sorting it still holds */
+    hasManifest: manifest !== null || unreadable,
+    unreadable,
     /* what is being processed right now, if anything — a page loaded in the middle of it has to
        show it still running rather than offer to start it again */
     processing: processingNow(),
@@ -369,7 +370,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onScan={board.scan}
           onTemplates={() => setDialog({ kind: 'templates' })}
           onWorkFolder={() => setDialog({ kind: 'work-folder' })}
-          onHistory={() => setDialog({ kind: 'history' })}
           onShortcuts={() => setDialog({ kind: 'shortcuts' })}
           find={model.findAnything}
         />
@@ -464,7 +464,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
         onRemoveFiles={(to, files) => closeThen(() => model.removeTo(to, files))}
-        onGoBack={(step) => closeThen(() => send('go-back', { intent: 'go-back', step }))}
         workFolder={{
           folder: loaderData.outputDir,
           /* the folder is not left while something is being written into it */

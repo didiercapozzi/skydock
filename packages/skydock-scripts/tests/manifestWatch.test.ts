@@ -84,9 +84,8 @@ describe('the board’s record changing outside the page', () => {
     expect(told()).toEqual([])
   })
 
-  it('does not take the copies and temporary files kept beside the record for a change', () => {
+  it('does not take the temporary files beside the record for a change', () => {
     lookAtBoard(outputDir)
-    fs.writeFileSync(`${manifestPath}.bak`, 'x')
     fs.writeFileSync(`${manifestPath}.123.abc.tmp`, 'x')
     fs.writeFileSync(path.join(outputDir, 'manifest.json.before-moments'), 'x')
 
@@ -99,8 +98,6 @@ describe('the board’s record changing outside the page', () => {
     lookAtBoard(outputDir)
     writtenElsewhere('second')
     fs.writeFileSync(manifestPath, '{ not json')
-    fs.rmSync(`${manifestPath}.bak`, { force: true })
-    fs.rmSync(`${getGroupsPath(manifestPath)}.bak`, { force: true })
 
     for (let i = 0; i < 4; i++) lookAtBoard(outputDir)
 

@@ -77,7 +77,7 @@ const covers: Record<string, string[]> = {
     'shows its first frame, so no picture is missing'
   ],
   'The board follows its record': [
-    'shows what a hand edit changed by itself, with nothing reloaded and no note said, and takes no step of the history'
+    'shows what a hand edit changed by itself, with nothing reloaded and no note said'
   ],
   'Arranging and finding': [
     'runs every list newest first, the latest shot at the top, and a jump has its own files the same way',

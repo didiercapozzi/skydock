@@ -422,13 +422,15 @@ output/
 ├── proxies/                  the small copies, and for each montage a set cut to match its processed clips
 ├── templates/                one editing template per folder, with the music and logos it uses
 ├── .thumbs/                  the frames the board draws, cut once and kept
-├── .projects/                every version of each montage's editing project, kept and never deleted
-└── .history/                 the board's last thirty states, to go back to
+└── .projects/                every version of each montage's editing project, kept and never deleted
 ```
 
-The board's own record of the work sits at the top of the output folder, with the last copy of it
-read whole kept beside it, and what each original was found to be last time (so a Rescan reads
-through only what is new).
+The board's own record of the work sits at the top of the output folder, with what each original was
+found to be last time (so a Rescan reads through only what is new). It is written whole or not at all: a
+temporary file is written and made the record in one step, so a crash or a power cut leaves the record as it
+was. One that cannot be read anyway — mended by hand and broken — is said so in a line on the board, and a scan
+or a change asked for on it is refused with the same words, since a scan would build the record again from the
+files and throw away the sorting it still holds; nothing is changed until it is mended or put back.
 
 The output folder may be reached under two names — inside the container and on the host — and the record
 is the same for both: a file it names is found wherever the folder is opened from.
@@ -601,14 +603,13 @@ when it is too narrow for it, and putting the details away is often
 what makes the room for two. A badge for a kind with nothing in it is
 shown but cannot be chosen. Fresh files and a destination's page are calm and offer no such choice.
 
-**The board follows its record.** The board's record — `manifest.json` and the groups kept beside it — is
+**The board follows its record.** The board's record — `manifest.json` and the groups beside it — is
 written by more than the page that has it open: another tab, a script, a hand edit, work done outside
 the page. While a board is open the record is looked at every couple of seconds, and when it has changed
 and then stopped changing the board looks at it again by itself and shows what changed, with nothing
-reloaded and no note said. Only the record's own two files count; the copies, temporary files and
-history beside them are not changes. What this machine's own server wrote itself is not told again:
-whoever asked was answered with it. A look only reads — it writes nothing and is no step of the
-history — and it waits for anything the page is saving or answering, so an edit just made is never
+reloaded and no note said. Only the record's own two files count; the temporary files beside them are
+not changes. What this machine's own server wrote itself is not told again:
+whoever asked was answered with it. A look only reads — it writes nothing — and it waits for anything the page is saving or answering, so an edit just made is never
 shown reverted; a look that finds the board as it is changes nothing on screen. A record that cannot be
 read whole is never shown as an older one.
 
@@ -1633,28 +1634,12 @@ the montage is not marked already, a dialog of its own asks _Was the email sent?
 click beside it — until one of the two answers is given: _Yes_ records it, _Not
 sent_ leaves the montage to email. So a montage does not stay "to email" long after its email went.
 
-## Going back
-
-Every change made on the board — filing, naming, trimming, a scan — keeps what the board was just
-before, the last thirty of them; what the board records by itself as it goes, a file landing off a
-camera or a proxy made, keeps none, so a card copied in does not push the changes
-made by hand out of reach. _History…_ under Settings lists them, the latest first, each
-said in words — "Moved 3 files to Yverdon", "Made Luc Favre's montage", "Trimmed, framed or turned 2
-files" — with the time it was made, and the day too when it was not today; a change that changed
-nothing is not listed. _Undo from here_ puts the board back as it was just before that change,
-undoing it and every change after it: the jumps, their names and trims, what was filed where. It is itself a change, so it can be gone back from
-in the same way. No file is touched by it — nothing on the disk, nothing on the storage — only the
-board's record of them: a file put in the bin since shows on the board again until the next scan,
-which finds it gone.
-
-The board is written whole or not at all, and the last good record is kept beside it: a board that
-cannot be read — cut off half written by a crash or a power cut — is read from that one instead, and
-said so in a line on the board when it opens, rather than lost.
-
 ## Not built
 
 Worth knowing, so nobody goes looking:
 
+- **No history of the board, and no undo of it.** What was filed, named or merged by hand is changed by hand again;
+  the record keeps no earlier states and no copy beside it.
 - **SkyDock never sends email.** A person sends it from their own mail.
 - **Every photo is handed over.** There is no choosing which photos go into the archive; the
   montage takes the videos only.

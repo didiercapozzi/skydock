@@ -25,7 +25,6 @@ const header = (over: Partial<Frame> = {}) => {
     onScan: () => {},
     onTemplates: () => {},
     onWorkFolder: () => {},
-    onHistory: () => {},
     onShortcuts: () => {},
     find: () => [],
     proxies: { ready: 48, waiting: 2, total: 50 },
@@ -126,7 +125,7 @@ describe('the top of the board', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
 
-    for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Work folder…', 'History…'])
+    for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Work folder…'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     await userEvent.keyboard('{Escape}')
     await expect.element(page.getByRole('group', { name: 'Settings' })).not.toBeInTheDocument()

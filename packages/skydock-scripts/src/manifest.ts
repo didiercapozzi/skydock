@@ -1,9 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { changedNothing, describeChange } from './boardChange'
 import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
-import { copyOverSync, writeJsonAtomic } from './lib/fs'
+import { writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
 import { groupsFileSchema, manifestSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
@@ -82,15 +81,6 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
 
 const MANIFEST_VERSION = 2
 
-/* The last pair that was read whole, kept beside the pair itself: what the board falls back on when
-   either file is found broken, rather than starting again from nothing. */
-const backupOf = (file: string) => `${file}.bak`
-
-/* Earlier states of the board, one folder each, the latest last: what the board can be put back to
-   by hand (RULES, Going back). A handful is plenty — every change made on the board makes one. */
-const HISTORY_KEPT = 30
-const historyDir = (manifestPath: string) => path.join(path.dirname(manifestPath), '.history')
-
 /* The same work folder is reached by two names when the board is used from two places at once — a
    container and the machine it runs on, the folder being one — and every path the record keeps is
    written whole, so a clip found by one name is lost to the other: it is listed, and nothing can be done
@@ -125,110 +115,19 @@ const readPair = (manifestPath: string, groupsPath: string) => {
   return manifest
 }
 
-/* The registry and its jumps. A pair that cannot be read is not taken for no board: the last pair
-   that was read whole is used instead, and `kept` says it was. Only with neither is it "no manifest" —
-   the registry describes files that are still on the disk, and a scan builds it again. */
+/* The registry and its jumps. A pair that cannot be read is not shown as an older one: it is no manifest,
+   and `unreadable` says it was there — a folder with no record at all is a board nobody has started, which
+   a scan builds from the files still on the disk. */
+/* what is said, wherever a change or a scan is refused because the record cannot be read */
+const RECORD_UNREADABLE =
+  'The board’s record could not be read — nothing was changed. Mend or put back manifest.json in the work folder.'
+
 const readRecord = (manifestPath: string) => {
-  const groupsPath = getGroupsPath(manifestPath)
-  let failed: unknown = null
-  try {
-    const manifest = readPair(manifestPath, groupsPath)
-    if (manifest || !fs.existsSync(manifestPath)) return { manifest, kept: false }
-  } catch (e) {
-    failed = e
-  }
-  try {
-    const kept = fs.existsSync(backupOf(manifestPath))
-      ? readPair(backupOf(manifestPath), backupOf(groupsPath))
-      : null
-    if (kept) {
-      console.warn(`[Manifest] ${manifestPath} could not be read — using the last one read whole.`)
-      return { manifest: kept, kept: true }
-    }
-  } catch {
-    /* the kept pair is broken as well: what was wrong with the first is what is said */
-  }
-  if (failed) throw failed
-  return { manifest: null, kept: false }
+  const manifest = readPair(manifestPath, getGroupsPath(manifestPath))
+  return { manifest, unreadable: manifest === null && fs.existsSync(manifestPath) }
 }
 
 const loadManifest = (manifestPath: string) => readRecord(manifestPath).manifest
-
-/* The board as it is now, when it reads whole, kept as one more step of its history — asked for
-   before a change somebody makes on the board, and only then: a camera copy, a proxy landing or a
-   processing run saves the board file by file, and would push every change made by hand out of
-   the history in minutes. */
-const keepBoardStep = (manifestPath: string) => {
-  const groupsPath = getGroupsPath(manifestPath)
-  /* copied as it is, not read again: whoever asks has just read it, and a step that cannot be read
-     is simply not listed */
-  if (!fs.existsSync(manifestPath)) return
-  const history = historyDir(manifestPath)
-  /* two changes in the same millisecond are still two steps, in the order they were made */
-  const at = new Date().toISOString().replace(/[:.]/g, '-')
-  const taken = fs.existsSync(history)
-    ? fs.readdirSync(history).filter((n) => n.startsWith(at))
-    : []
-  const step = path.join(history, `${at}-${String(taken.length).padStart(3, '0')}`)
-  fs.mkdirSync(step, { recursive: true })
-  fs.copyFileSync(manifestPath, path.join(step, 'manifest.json'))
-  if (fs.existsSync(groupsPath)) fs.copyFileSync(groupsPath, path.join(step, 'groups.json'))
-  const steps = fs.readdirSync(history).sort()
-  for (const old of steps.slice(0, Math.max(0, steps.length - HISTORY_KEPT)))
-    fs.rmSync(path.join(history, old), { recursive: true, force: true })
-}
-
-/* The board's earlier states, the latest first, each with what the change made from it did — read
-   off the board it was and the one that came after, the next step or the board as it is now. A step
-   whose change changed nothing is not listed. */
-const boardHistory = (manifestPath: string) => {
-  const history = historyDir(manifestPath)
-  if (!fs.existsSync(history)) return []
-  const read = (step: string) => {
-    try {
-      return readPair(
-        path.join(history, step, 'manifest.json'),
-        path.join(history, step, 'groups.json')
-      )
-    } catch {
-      return null
-    }
-  }
-  const steps = fs
-    .readdirSync(history)
-    .sort()
-    .flatMap((step) => {
-      const board = read(step)
-      if (!board) return []
-      const at = fs.statSync(path.join(history, step, 'manifest.json')).mtimeMs
-      return [{ step, at: Math.floor(at / 1000), board }]
-    })
-  let now: Manifest | null = null
-  try {
-    now = loadManifest(manifestPath)
-  } catch {
-    now = null
-  }
-  return steps
-    .flatMap(({ step, at, board }, i) => {
-      const after = steps[i + 1]?.board ?? now
-      if (!after) return []
-      const change = describeChange(board, after)
-      return changedNothing(change) ? [] : [{ step, at, change }]
-    })
-    .reverse()
-}
-
-/* The board put back as it was at an earlier step. What it is now becomes a step of its own first,
-   so going back can itself be undone. */
-const restoreBoard = (manifestPath: string, step: string) => {
-  const from = path.join(historyDir(manifestPath), path.basename(step))
-  const was = readPair(path.join(from, 'manifest.json'), path.join(from, 'groups.json'))
-  if (!was) throw new Error('That earlier state of the board can no longer be read.')
-  keepBoardStep(manifestPath)
-  saveManifest(manifestPath, was)
-  return was
-}
 
 /* Changes the board records by itself — a file landing off a camera, a proxy made — come many a
    second, and loading, checking and writing the whole board for each one held the server for all of
@@ -360,9 +259,6 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   }
   manifestSchema.omit({ groups: true }).parse(raw)
   writeJsonAtomic(manifestPath, raw)
-  /* the pair just written whole is the one to fall back on */
-  copyOverSync(manifestPath, backupOf(manifestPath))
-  copyOverSync(getGroupsPath(manifestPath), backupOf(getGroupsPath(manifestPath)))
   writtenHere().set(manifestPath, pairStamp(manifestPath))
 }
 
@@ -372,13 +268,11 @@ export {
   writtenHere,
   flushAllBoardChanges,
   flushBoardChanges,
-  boardHistory,
-  keepBoardStep,
   getGroupsPath,
   loadManifest,
   readRecord,
   MANIFEST_VERSION,
-  restoreBoard,
+  RECORD_UNREADABLE,
   saveManifest,
   statProcessedOutputs
 }

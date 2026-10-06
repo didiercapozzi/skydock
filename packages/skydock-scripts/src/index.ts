@@ -44,13 +44,11 @@ import {
   withRatio
 } from './frameCrop'
 import {
-  boardHistory,
   flushAllBoardChanges,
   flushBoardChanges,
-  keepBoardStep,
   loadManifest,
   readRecord,
-  restoreBoard,
+  RECORD_UNREADABLE,
   saveManifest,
   statProcessedOutputs
 } from './manifest'
@@ -127,8 +125,6 @@ import {
 import type { PartFile, SendItem } from './sending'
 import { watchMontages } from './montageWatch'
 import { watchBoard } from './manifestWatch'
-import { boardChangeSchema } from './boardChange'
-import type { BoardChange } from './boardChange'
 import { furthestBehind, montageSteps } from './montageSteps'
 import type { MontageProgress, MontageStep } from './montageSteps'
 import { folderOfUpload } from './montageIndex'
@@ -241,7 +237,6 @@ export {
   isMontage,
   folderOfUpload,
   montageSteps,
-  boardChangeSchema,
   sendPlanSchema,
   DEFAULT_PLAN,
   itemsFrom,
@@ -296,11 +291,9 @@ export {
   listRemoteFiles,
   loadManifest,
   readRecord,
-  boardHistory,
+  RECORD_UNREADABLE,
   flushAllBoardChanges,
   flushBoardChanges,
-  keepBoardStep,
-  restoreBoard,
   lostOf,
   loadNasSession,
   loginWithSession,
@@ -359,7 +352,6 @@ export type {
   JobRow,
   LiveEvent,
   MontageProgress,
-  BoardChange,
   MontageStep,
   PartFile,
   SendItem,
