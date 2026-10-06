@@ -26,6 +26,7 @@ const harness = (options: Options) => {
   let page: Page
   let seen: ReturnType<typeof watch>
   let failed = false
+  const filming = Boolean(process.env.JOURNEY_FILM)
   const viewport = options.viewport ?? { width: 1280, height: 800 }
   const environment = () => options.env?.(world) ?? {}
 
@@ -37,10 +38,12 @@ const harness = (options: Options) => {
     fs.mkdirSync(VIDEOS, { recursive: true })
     context = await browser.newContext({
       viewport,
-      recordVideo: { dir: VIDEOS, size: viewport }
+      ...(filming ? { recordVideo: { dir: VIDEOS, size: viewport } } : {})
     })
-    await context.addInitScript(pointerDot)
-    await context.tracing.start({ screenshots: true, snapshots: true })
+    if (filming) {
+      await context.addInitScript(pointerDot)
+      await context.tracing.start({ screenshots: true, snapshots: true })
+    }
     page = await context.newPage()
     seen = watch(page)
   })
@@ -57,7 +60,8 @@ const harness = (options: Options) => {
 
   afterAll(async () => {
     const film = page?.video()
-    await context?.tracing.stop(failed ? { path: path.join(world.root, 'trace.zip') } : {})
+    if (filming)
+      await context?.tracing.stop(failed ? { path: path.join(world.root, 'trace.zip') } : {})
     await context?.close()
     const raw = path.join(VIDEOS, `${options.name}.webm`)
     await film?.saveAs(raw)

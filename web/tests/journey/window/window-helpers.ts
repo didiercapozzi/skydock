@@ -229,6 +229,7 @@ const useDesk = (name: string) => {
     run('Xvfb', [display, '-screen', '0', `${SIZE.width}x${SIZE.height}x24`])
     await waitFor('the screen', () => fs.existsSync(`/tmp/.X11-unix/X${display.slice(1)}`))
     run('openbox', [])
+    if (!process.env.JOURNEY_FILM) return
     fs.mkdirSync(VIDEOS, { recursive: true })
     film = run('ffmpeg', [
       '-y',

@@ -17,7 +17,7 @@ RULES.md stays the authority on what the app does; the chapters are named in its
 | [`docs/journey-map.md`](./journey-map.md) | which chapter guards which RULES.md feature, and what it asserts — written by the coverage guard from the claims, so it is never out of date | built |
 | `steps.ts`, `record.ts`                 | what a person does on the page (places, dialogs, the storage connected and a folder chosen, clips opened, waits on what is on screen) and the record as the app's own shape reads it — written once, taking the `Page`, for every chapter | built |
 | silent-break check                     | after every chapter: no console error, no failed request (a failed picture is asked for again before it counts)    | built |
-| films and failure screens              | `videos/journey.mp4` (click it in the editor to watch) with a pointer dot, `JOURNEY_SLOW=250` for a human pace; a screen and text on failure        | built |
+| films and failure screens              | `JOURNEY_FILM=1` films the run to `videos/*.mp4` (click one in the editor to watch) with a pointer dot and keeps a trace; `JOURNEY_SLOW=250` for a human pace; a screen and text on failure        | built |
 | `window/*.test.ts`, `drag-source.py` | Tier B: SkyDock's own Electron window on its own Xvfb, a real pointer (`xdotool`), a real file drop (XDND); `npm run test:journey:window` | written, never run here (no Electron in the container) |
 | `harness.ts`                           | what every file does the same way: a world (or a saved state), the app, the browser, the film, the failure screen | built |
 | saved states                           | the work folder copied after key chapters (`sorted`, `processed`, `i2-ready`), restored with its paths rewritten, so each file starts where the story left off | built |
@@ -192,8 +192,9 @@ footer stuck at 7/8, host and container paths) it fails, naming the RULES.md sen
 ## Running it
 
 ```
-npm run test:journey            # build, the story, then every other file in the order of their names; films in web/tests/journey/videos/
-JOURNEY_SLOW=250 npm run test:journey   # at the pace of a person, for a film worth watching
+npm run test:journey            # build (only if the app changed; JOURNEY_REBUILD=1 forces it), the story, then every other file in the order of their names
+JOURNEY_FILM=1 npm run test:journey     # the same, filmed: web/tests/journey/videos/, and a trace of what failed
+JOURNEY_FILM=1 JOURNEY_SLOW=250 npm run test:journey   # at the pace of a person, for a film worth watching
 npm run test:journey:window     # SkyDock's own window with a real pointer; screens in web/tests/journey/screens/
 ```
 
