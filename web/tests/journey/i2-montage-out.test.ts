@@ -217,9 +217,7 @@ describe('uploading a montage: where it goes', () => {
 })
 
 describe('uploading a montage: what stays here', () => {
-  test.skip('says an item put nowhere stays on this machine', async () => {
-    await openUpload(j.page)
-    await region(j.page, 'Club').waitFor()
+  test('says an item put nowhere stays on this machine', async () => {
     await said(uploadDialog(j.page)).toMatch(/stays? on this machine/)
   })
 })

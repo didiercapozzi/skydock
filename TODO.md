@@ -29,7 +29,6 @@ Each is a skipped chapter with a `// BUG:` comment holding the evidence (`grep -
 - [ ] **11.** (g-transfers) A cancelled upload is kept in Transfers as "failed", not "cancelled".
 - [ ] **12.** (g-transfers) "Look again" keeps the mark of a link the storage has revoked until the page is reopened; (i2) the montage page and panel keep "Copy link / Remove link / Email…" after the storage revoked the link — only the email dialog reads the answer (`dialog-host.tsx`).
 - [ ] **16.** (i2) Photos sent as a folder are shown "no longer on the storage" although they are there — `goneSent` in `packages/skydock-scripts/src/upload.ts` looks a folder up like a file.
-- [ ] **18.** (i2) The upload dialog never says that an item put nowhere stays on this machine (RULES.md 'Uploading a montage 2. Where it goes').
 
 ### Montages and templates
 
@@ -97,6 +96,7 @@ The audit found no feature that the code has and RULES.md never mentions, or the
 
 ## Done
 
+- Bug 18 of the journey's list, the upload dialog not saying that an item put nowhere stays on this machine: it does ("2 items stay on this machine" in the dialog's foot); the chapter that was skipped for it opened the dialog a second time over the one still open from the chapters before, and now looks at that one.
 - Board answer stats synchronously (Optimization): measured, not done. On the real record (1,435 files, warm cache, local disk) a board answer takes about 16 ms and loading the record about 26 ms, so making the stat passes async would change 41 call sites for nothing visible. Reopen it if a much bigger record or a slower disk (the host's mount, a cold cache) shows otherwise.
 - Journey tests cleaned up as the house review asked: one shared module each for the page steps and waits (`steps.ts`), the record readers (`record.ts`) and the tools, footage and montage names (`media.ts`) instead of copies in the chapter helper files; fixed waits replaced by the app's own signal where it has one (the events stream, the answer to the check, "Checking the storage…" going away, animations ended) and the few "nothing happens" waits shortened to what the app's own period needs, each with its reason; saved states measured — footage costs 0.1 to 1.3 s a file and a prepared montage 2.5 s in four files, so a state would save about 4 s of a 10-minute run and none was added.
 - RULES.md brought up to date with the redrawn pages (jump card, calm pages' heads, day header, thumbnail tick, menu count, a montage's files and ways back); their journey chapters now assert the new sentences.
