@@ -895,6 +895,8 @@ the file and what is already on it). A photo has only _Turn_ and _Info_.
 The picture carries a corner tag saying where in the jump the playhead is and what frame it will come out
 in, the play button over its middle, and the time along its foot; under it, step back or forward ten
 seconds, _Start here_, _End here_ and _Trim to the jump_ sit beside the timeline they act on. The
+timeline is drawn with pictures of the clip along it, so a zoomed clip played on brings in only the picture that
+comes into view and not every picture again; none is taken from beyond the end of the clip. The
 graph is joined to the timeline, directly under its bar with no gap, the phases drawn on the same scale
 as the marks above them; under it, headed _What the camera felt_, come the least and the most in g. The
 panel's tabs share its width; _Cut_ shows the start and the end as two tiles, what is kept with the size

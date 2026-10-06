@@ -239,12 +239,17 @@ const VideoCropper = ({
     ...(keptTo !== null && keptTo < 100 ? [['after', keptTo, 100] as const] : [])
   ]
 
+  const step = Math.max(0.5, Math.ceil((vd / THUMB_COUNT) * 2) / 2)
   const thumbs =
     thumbSrc && safeDuration > 0
       ? Array.from({ length: THUMB_COUNT }, (_, i) => {
           const time = offset + ((i + 0.5) / THUMB_COUNT) * vd
-          const rounded = Math.round(time * 2) / 2
-          return { key: i, src: thumbSrc(rounded) }
+          return {
+            key: i,
+            src: thumbSrc(
+              Math.min((Math.round(time / step - 0.5) + 0.5) * step, safeDuration - 0.1)
+            )
+          }
         })
       : []
 
