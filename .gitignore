@@ -44,3 +44,5 @@ playwright-screenshots/
 SkydiveVideo
 /web/tests/journey/screens/
 /web/tests/journey/videos/
+/web/tests/journey/.states/
+/web/tests/journey/baselines/

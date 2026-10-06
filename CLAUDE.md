@@ -24,7 +24,7 @@ Each rule has exactly one owner. Never restate a rule from another file here —
 - After every change, before reporting it done: run `npm run format`, then `npm run check`. All checks (typecheck, format:check, lint) must pass. This is not a decision to weigh or a permission to request — just do it.
 - Note that `npm run check` does **not** run tests. `npx vitest run` is separate, and the scripts package currently has pre-existing failures.
 - A bug fix starts with a test, written in RULES.md's words and clicked through the way a person does it, that **fails before the fix**. The fix changes or deletes existing code rather than adding beside it, and no existing test is edited to make it pass.
-- Before reporting a change done: run the tests of the area it touches (the full node and browser suites beyond a one-file change) and the `house-review` agent on the diff, and apply what it finds. The report states files touched, net lines added/removed, and any existing test that had to change.
+- Before reporting a change done: run the tests of the area it touches (the full node and browser suites beyond a one-file change), `npm run test:journey` for anything a person could see or do end to end (it builds the app and walks it, ~minutes; docs/journey-tests.md says what it covers), and the `house-review` agent on the diff, and apply what it finds. A bug fix adds or tightens the journey chapter that guards the RULES.md sentence it broke, failing first. The report states files touched, net lines added/removed, and any existing test that had to change.
 
 ### TODO.md Directives
 

@@ -68,4 +68,45 @@ const makePhoto = (file: string, when: string) => {
   stamp(file, when)
 }
 
-export { CLIPS, dayFolder, DROPS, makeClip, makePhoto, PHOTOS }
+/* a clip big enough to be given a small copy of itself, which the board then plays from */
+const makeBigClip = (file: string, when: string) => {
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  ffmpeg(
+    '-f',
+    'lavfi',
+    '-i',
+    'testsrc=size=1280x720:rate=25:duration=3',
+    '-f',
+    'lavfi',
+    '-i',
+    'sine=frequency=440:duration=3',
+    '-c:v',
+    'libx264',
+    '-g',
+    '10',
+    '-pix_fmt',
+    'yuv420p',
+    '-c:a',
+    'aac',
+    '-shortest',
+    '-metadata',
+    `creation_time=${when}Z`,
+    file
+  )
+  stamp(file, when)
+}
+
+/* every file under a folder, as the folder's own path to it, sorted; none for a folder that is not there */
+const filesUnder = (folder: string): string[] =>
+  fs.existsSync(folder)
+    ? fs
+        .readdirSync(folder, { withFileTypes: true })
+        .flatMap((entry) =>
+          entry.isDirectory()
+            ? filesUnder(path.join(folder, entry.name)).map((f) => `${entry.name}/${f}`)
+            : [entry.name]
+        )
+        .sort()
+    : []
+
+export { CLIPS, dayFolder, DROPS, filesUnder, makeBigClip, makeClip, makePhoto, PHOTOS }

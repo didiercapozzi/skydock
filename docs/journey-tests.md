@@ -16,10 +16,12 @@ RULES.md stays the authority on what the app does; the chapters are named in its
 | `app.ts`, `media.ts`, `page.ts`        | a temp world (work, config, bin), the built server started with only its own folders, ffmpeg-made DJI-style clips | built |
 | silent-break check                     | after every chapter: no console error, no failed request (a failed picture is asked for again before it counts)    | built |
 | films and failure screens              | `videos/journey.mp4` (click it in the editor to watch) with a pointer dot, `JOURNEY_SLOW=250` for a human pace; a screen and text on failure        | built |
-| `real-input.test.ts`, `drag-source.py` | Tier B: SkyDock's own Electron window on its own Xvfb, a real pointer (`xdotool`), a real file drop (XDND); `npm run test:journey:window` | built, one chapter |
-| saved states                           | the work folder copied after key chapters, restored by feature tests so each starts where the story left off      | to build |
-| fake storage                           | a standalone DSM-like process: Auth (2-step), List, Download, MD5, CopyMove, Rename, CreateFolder, Sharing, upload; can misbehave on request | to build |
-| coverage guard                         | a node test that reads RULES.md's feature names and fails when one has no chapter and is not on the exemptions list | to build |
+| `window/*.test.ts`, `drag-source.py` | Tier B: SkyDock's own Electron window on its own Xvfb, a real pointer (`xdotool`), a real file drop (XDND); `npm run test:journey:window` | written, never run here (no Electron in the container) |
+| `harness.ts`                           | what every file does the same way: a world (or a saved state), the app, the browser, the film, the failure screen | built |
+| saved states                           | the work folder copied after key chapters (`sorted`, `processed`, `i2-ready`), restored with its paths rewritten, so each file starts where the story left off | built |
+| fake storage                           | a standalone DSM-like process: Auth (2-step), List, Download, MD5, CopyMove, Rename, CreateFolder, Sharing, upload; can misbehave on request, proven against the app's own client | built |
+| coverage guard                         | a node test (`tests/server/journey-coverage.test.ts`) that reads RULES.md's feature names and fails when one has no chapter and is not on the exemptions list (`journey/coverage/*.ts`) | built |
+| invariants and screens                 | the record parses with the app's own schema, the output tree matches a stored listing, the page is never held up, one light and one dark picture per page against baselines made on the machine (not kept in git) | built |
 
 **Rules of the journey**
 
@@ -38,18 +40,18 @@ cannot do: a file dropped from outside the window, the window's frame, quit. Tie
 
 ## Chapters
 
-Status: **done** · **todo**. "Saved" = starts from a saved state instead of replaying the story.
+Status: **done** · **written, not run here** (needs Electron) · **todo**. A chapter whose app behaviour is wrong is written, asserts what RULES.md says and is skipped with a `// BUG:` comment holding the evidence; TODO.md lists them.
 
 ### A. Opening and the work folder (RULES: Where it runs, The first time it is opened)
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | an empty board says "Nothing left to sort"                                                | A    | done  |
-| a work folder with no record is looked through at once when the board opens               | A    | todo  |
-| the welcome page the first time: Start, the folder picker, Change, Open the board; closing the picker changes nothing | B | todo |
-| another work folder from Settings, refused while something is being written               | A/B  | todo  |
-| the window's close button; closing or quitting while a job runs asks first                | B    | todo  |
-| no "is ready" notification; update offered once, never installed unasked                  | B    | todo  |
+| a work folder with no record is looked through at once when the board opens               | A    | done |
+| the welcome page the first time: Start, the folder picker, Change, Open the board; closing the picker changes nothing | B | written, not run here |
+| another work folder from Settings, refused while something is being written               | A/B  | done |
+| the window's close button; closing or quitting while a job runs asks first                | B    | written, not run here |
+| no "is ready" notification; update offered once, never installed unasked                  | B    | written, not run here |
 
 ### B. Getting footage in (Workflow 1–2, Adding files, Camera)
 
@@ -58,22 +60,22 @@ Status: **done** · **todo**. "Saved" = starts from a saved state instead of rep
 | a scan groups what a camera copy left into jumps by capture time                          | A    | done  |
 | files dropped on the board stay loose, are copied not moved, say what is coming           | A    | done (simulated drop) |
 | the same drop from another program, by address, with a real pointer                       | B    | done  |
-| a whole folder dropped: every video and photo inside, notes and bookkeeping left          | B    | todo  |
-| footage already on the board is recognised by contents under another name                 | A    | todo  |
-| a card with a `DCIM` appears, is named and remembered, copied only as told, files copied not moved | A (needs a mount) | todo, may stay exempt |
-| a camera's clock corrected; "seeing what is on a camera" and deleting from it (proved by bytes, into the bin) | A | todo |
+| a whole folder dropped: every video and photo inside, notes and bookkeeping left          | B    | written, not run here |
+| footage already on the board is recognised by contents under another name                 | A    | done |
+| a card with a `DCIM` appears, is named and remembered, copied only as told, files copied not moved | A (needs a mount) | done |
+| a camera's clock corrected; "seeing what is on a camera" and deleting from it (proved by bytes, into the bin) | A | done |
 
 ### C. The board and sorting (The board, Places, Jumps)
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | a destination is made and a jump dragged into it                                          | A    | done  |
-| loose files grouped into a jump; two jumps merged; a jump made by hand                    | A    | todo  |
-| selecting, Move to…, filing by drag, alt-drag to copy                                     | A    | todo  |
+| loose files grouped into a jump; two jumps merged; a jump made by hand                    | A    | done |
+| selecting, Move to…, filing by drag, alt-drag to copy                                     | A    | done |
 | a file put in the bin and brought back; the bin never deletes                             | A    | done  |
-| search (Ctrl F), sorting, rows or thumbnails, the folder counts match the lists           | A    | todo  |
-| every address reloads to the same place; Escape closes dialogs                            | A    | todo  |
-| light and dark pinned in the app, not following the machine; zoom; English, French, German | A   | todo  |
+| search (Ctrl F), sorting, rows or thumbnails, the folder counts match the lists           | A    | done |
+| every address reloads to the same place; Escape closes dialogs                            | A    | done |
+| light and dark pinned in the app, not following the machine; zoom; English, French, German | A   | done |
 
 ### D. The preview, trim, frame, turn (Cropping and turning, Where the jump is in a clip)
 
@@ -81,11 +83,11 @@ Status: **done** · **todo**. "Saved" = starts from a saved state instead of rep
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | double-click opens a clip; trim from the middle; the copy is shorter once made again      | A    | done  |
 | Reset then Save puts the clip back whole and closes; the copy is whole again              | A    | done  |
-| leaving with unsaved changes asks first; Cancel puts everything back                      | A    | todo  |
-| Trim to the jump uses the exit mark (marks seeded from a clip with a data stream, or by the redo script) | A | todo |
-| frame (drag a rectangle, shapes), landscape with blurred sides, turn, full screen         | A    | todo |
-| the weight a trim will make is shown; a processed copy goes out of date when trim, frame or turn changes | A | todo |
-| the clip opens in the machine's own player; the preview in a window of its own            | B    | todo |
+| leaving with unsaved changes asks first; Cancel puts everything back                      | A    | done |
+| Trim to the jump uses the exit mark (marks seeded from a clip with a data stream, or by the redo script) | A | done |
+| frame (drag a rectangle, shapes), landscape with blurred sides, turn, full screen         | A    | done |
+| the weight a trim will make is shown; a processed copy goes out of date when trim, frame or turn changes | A | done |
+| the clip opens in the machine's own player; the preview in a window of its own            | B    | written, not run here |
 
 ### E. Preparing (Process, Acting, File status)
 
@@ -93,61 +95,61 @@ Status: **done** · **todo**. "Saved" = starts from a saved state instead of rep
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | the footer stops counting small copies once every clip can be played                      | A    | done  |
 | process writes the copies, only of what needs it; names and folder as RULES says          | A    | done  |
-| the corner shows each file's bar live; Stop; the page is never blocked (long-task probe on every job) | A | todo |
-| proxies made for a clip that is large enough, and the board plays from them               | A    | todo  |
-| nothing is uploaded until everything is processed; "N files need processing" is right     | A    | todo  |
-| processing a file whose record holds the other name of the folder (host and container)    | A    | todo  |
+| the corner shows each file's bar live; Stop; the page is never blocked (long-task probe on every job) | A | done |
+| proxies made for a clip that is large enough, and the board plays from them               | A    | done |
+| nothing is uploaded until everything is processed; "N files need processing" is right     | A    | done |
+| processing a file whose record holds the other name of the folder (host and container)    | A    | done |
 
 ### F. The storage: connect, upload (Network storage — needs the fake storage)
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
-| connect: wrong password said plainly; 2-step code; the folder chosen per destination      | A    | todo  |
-| upload sends what is not there; same bytes passed over, other bytes block and name the file | A  | todo  |
-| files keep their date; one upload at a time; cancel records nothing wrong                 | A    | todo  |
-| the same footage under another name is recognised; the storage's own listing is the truth | A    | todo  |
-| the destination page counts match its list (N of M on the storage)                        | A    | todo  |
-| the storage unreachable or slow: the board stays usable and says so                       | A    | todo  |
+| connect: wrong password said plainly; 2-step code; the folder chosen per destination      | A    | done |
+| upload sends what is not there; same bytes passed over, other bytes block and name the file | A  | done |
+| files keep their date; one upload at a time; cancel records nothing wrong                 | A    | done |
+| the same footage under another name is recognised; the storage's own listing is the truth | A    | done |
+| the destination page counts match its list (N of M on the storage)                        | A    | done |
+| the storage unreachable or slow: the board stays usable and says so                       | A    | done |
 
 ### G. Transfers and links
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
-| the Transfers window lists what happened, kept after restart                              | A    | todo  |
-| "Open in DSM" and a storage-tab link carry the same address, with the file preselected    | A    | todo  |
-| share link: create, copy, remove; a revoked link is shown as such                         | A    | todo  |
-| a file deleted on the storage is noticed and no longer counted                            | A    | todo  |
+| the Transfers window lists what happened, kept after restart                              | A    | done |
+| "Open in DSM" and a storage-tab link carry the same address, with the file preselected    | A    | done |
+| share link: create, copy, remove; a revoked link is shown as such                         | A    | done |
+| a file deleted on the storage is noticed and no longer counted                            | A    | done |
 
 ### H. Freeing space and bringing back (Freeing space, Going back)
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
-| freeing asks first, proves the storage holds each file by bytes, removes the folder, shows live progress | A | todo |
-| freed once, partly back, freed again; a freed file is not listed among local ones         | A    | todo  |
-| bring back from the storage tab, live and kept in Transfers                               | A    | todo  |
-| a dropzone is freed the same way                                                          | A    | todo  |
+| freeing asks first, proves the storage holds each file by bytes, removes the folder, shows live progress | A | done |
+| freed once, partly back, freed again; a freed file is not listed among local ones         | A    | done |
+| bring back from the storage tab, live and kept in Transfers                               | A    | done |
+| a dropzone is freed the same way                                                          | A    | done |
 
 ### I. Montages (Making a montage, The editing project, Uploading a montage, Sending the link)
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
-| make a montage from a jump; copied not moved; the six steps                               | A    | todo  |
-| the project is made once; the editor (a stub that records its arguments) gets the right file | A | todo  |
-| an edit freezes the montage; prepare again; every version kept                            | A    | todo  |
-| a finished film dropped in is noticed                                                     | A    | todo  |
-| upload: zips, where it goes, refusals, what was handed over; the storage's list of montages | A  | todo  |
-| the link, its language, the QR code, the email dialog and "was it sent"                   | A    | todo  |
-| templates: import, owned by the folder's owner, chosen per montage                        | A    | todo  |
-| freeing and taking a montage back; reset and delete at every step                         | A    | todo  |
+| make a montage from a jump; copied not moved; the six steps                               | A    | done |
+| the project is made once; the editor (a stub that records its arguments) gets the right file | A | done |
+| an edit freezes the montage; prepare again; every version kept                            | A    | done |
+| a finished film dropped in is noticed                                                     | A    | done |
+| upload: zips, where it goes, refusals, what was handed over; the storage's list of montages | A  | done |
+| the link, its language, the QR code, the email dialog and "was it sent"                   | A    | done |
+| templates: import, owned by the folder's owner, chosen per montage                        | A    | done |
+| freeing and taking a montage back; reset and delete at every step                         | A    | done |
 
 ### J. Staying true (the whole run)
 
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | stop and reopen: everything as it was, from the record alone                              | A    | done  |
-| the record parses with the app's own schema after every chapter; the output tree matches a stored listing | A | todo |
-| the main thread is never blocked while any job runs                                       | A    | todo  |
-| one screenshot per page in light and dark, times masked, compared to a baseline           | A    | todo  |
+| the record parses with the app's own schema after every chapter; the output tree matches a stored listing | A | done |
+| the main thread is never blocked while any job runs                                       | A    | done |
+| one screenshot per page in light and dark, times masked, compared to a baseline           | A    | done |
 
 ## Not covered, and what covers it
 
@@ -158,7 +160,13 @@ Status: **done** · **todo**. "Saved" = starts from a saved state instead of rep
 | GPU encode, packaged installers, self-update | need the host / a release                          | host smoke by hand; release checklist  |
 | a real camera mount (gvfs, kio, MTP)        | needs a mount; Linux discovers cameras from mounts | unit tests with temp roots; try a bind mount, else exempt |
 
-## Order of work
+## What the journey found
+
+The chapters found real defects and places where RULES.md and the app disagree. Each is a skipped chapter with a
+`// BUG:` comment (`grep -rn "BUG:" web/tests/journey`), listed in TODO.md. A fix unskips its chapter, which is the
+proof.
+
+## Order of work (all of it built; the window chapters are written but have never been run)
 
 1. **Saved states and the guard.** Copy the work folder after "sorted", "processed", "uploaded"; a helper restores one
    and starts the app on it. The guard reads RULES.md's bold lead-ins and `##` headings and fails on any that no
@@ -182,7 +190,7 @@ footer stuck at 7/8, host and container paths) it fails, naming the RULES.md sen
 ## Running it
 
 ```
-npm run test:journey            # the story, in the browser, ~15 s; films in web/tests/journey/videos/
+npm run test:journey            # build, the story, then every other file in the order of their names; films in web/tests/journey/videos/
 JOURNEY_SLOW=250 npm run test:journey   # at the pace of a person, for a film worth watching
 npm run test:journey:window     # SkyDock's own window with a real pointer; screens in web/tests/journey/screens/
 ```
