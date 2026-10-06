@@ -102,6 +102,36 @@ afterEach(() => {
 })
 
 describe('what is on a camera', () => {
+  /* a card of sixteen hundred clips against a board of thousands must not take minutes to list: what the board
+     holds is read once for the card, not once for each of its files — so a big board adds little to listing
+     the same card against an empty one */
+  it('lists a card of four hundred clips as quickly against a board of two thousand files as against none', async () => {
+    const root = card(
+      Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`GX0${1000 + i}.MP4`, i % 250]))
+    )
+    const timed = async () => {
+      const started = Date.now()
+      const [camera] = await listCameras(outputDir, [root], trashDir)
+      expect(camera?.files).toHaveLength(400)
+      return Date.now() - started
+    }
+    const bare = await timed()
+    const filler = (n: number, id: string): ManifestFile => ({
+      id: `${id}${n}`,
+      path: path.join(outputDir, 'original_files', `${id}${n}.MP4`),
+      filename: `${id}${n}.MP4`,
+      size: 10,
+      mtime: DAY.getTime() / 1000 + n
+    })
+    const grouped = Array.from({ length: 1500 }, (_, n) => filler(n, 'g'))
+    const loose = Array.from({ length: 500 }, (_, n) => filler(n, 'l'))
+    const manifest = board([dropzone(grouped)])
+    manifest.files = [...grouped, ...loose]
+    saveManifest(path.join(outputDir, 'manifest.json'), manifest)
+
+    expect((await timed()) - bare).toBeLessThan(1500)
+  })
+
   it('says of each file whether it is on the storage, only copied here, in the bin, or not copied yet', async () => {
     const root = card({ 'GX01.MP4': 1, 'GX02.MP4': 2 })
     await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
