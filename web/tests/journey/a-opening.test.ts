@@ -3,7 +3,9 @@ import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { z } from 'zod'
 import { harness } from './harness'
-import { CLIPS, dayFolder, makeClip } from './media'
+import { CLIPS, dayFolder, makeClip, originalsDir } from './media'
+import { dialogNamed, place } from './steps'
+import { groupsOf, manifestOf } from './record'
 
 /* Opening SkyDock on a work folder: what it does the first time it sees one, before anyone has pressed a
    thing. The welcome page, the window's own buttons and the update belong to SkyDock's own window, not to a
@@ -34,18 +36,6 @@ const watchPage = () => {
 
 const seenSchema = z.array(z.object({ text: z.string(), buttons: z.array(z.string()) }))
 
-/* the record is two files: what is known of each file, and how the jumps group them */
-const filesSchema = z.object({ files: z.array(z.unknown()) })
-const jumpsSchema = z.object({ groups: z.array(z.unknown()) })
-
-const readRecord = (world: { output: string }) => {
-  const read = (name: string) => JSON.parse(fs.readFileSync(path.join(world.output, name), 'utf8'))
-  return {
-    files: filesSchema.parse(read('manifest.json')).files,
-    groups: jumpsSchema.parse(read('groups.json')).groups
-  }
-}
-
 describe('a work folder with no record yet, that holds what a camera copy left', () => {
   const j = harness({
     name: 'a-first-look',
@@ -74,19 +64,16 @@ describe('a work folder with no record yet, that holds what a camera copy left',
       expect(s.buttons.filter(Boolean), 'no button to press').toEqual([])
     }
 
-    const record = readRecord(j.world)
-    expect(record.files, 'the record was written').toHaveLength(3)
-    expect(record.groups, 'one jump found in what the copy left').toHaveLength(1)
-    expect(fs.readdirSync(path.join(j.world.output, 'original_files', '2026-09-05'))).toHaveLength(
-      3
-    )
+    expect(manifestOf(j.world).files, 'the record was written').toHaveLength(3)
+    expect(groupsOf(j.world), 'one jump found in what the copy left').toHaveLength(1)
+    expect(fs.readdirSync(path.join(originalsDir(j.world), '2026-09-05'))).toHaveLength(3)
     await j.quiet()
   })
 
   test('the work folder dialog says where the work is kept, and that another folder is chosen from SkyDock’s own window', async () => {
     await j.page.getByRole('button', { name: 'Settings' }).click()
     await j.page.getByText('Work folder…').click()
-    const dialog = j.page.getByRole('dialog', { name: 'Work folder' })
+    const dialog = dialogNamed(j.page, 'Work folder')
     await dialog.waitFor()
     await dialog.getByText(j.world.output, { exact: true }).waitFor()
     await dialog.getByText(/changed from SkyDock’s own window/).waitFor()
@@ -103,10 +90,9 @@ describe('a work folder nothing has been copied into yet', () => {
   test('a work folder nothing has been copied into yet is settled by its first look: the originals folder made, an empty record written, and a board that says there is nothing to sort', async () => {
     await j.open()
     await j.see('Nothing left to sort')
-    expect(fs.statSync(path.join(j.world.output, 'original_files')).isDirectory()).toBe(true)
-    const record = readRecord(j.world)
-    expect(record.groups).toEqual([])
-    expect(record.files).toEqual([])
+    expect(fs.statSync(originalsDir(j.world)).isDirectory()).toBe(true)
+    expect(groupsOf(j.world)).toEqual([])
+    expect(manifestOf(j.world).files).toEqual([])
     await j.quiet()
   })
 })
@@ -118,10 +104,7 @@ describe('a work folder that already holds the work of an earlier SkyDock', () =
     const before = fs.readFileSync(path.join(j.world.output, 'manifest.json'), 'utf8')
     await j.context.addInitScript(watchPage)
     await j.open()
-    await j.page
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-      .waitFor()
+    await place(j.page, /Sion/).waitFor()
     const shown = seenSchema.parse(
       await j.page.evaluate(() => (window as never as { __seen: unknown }).__seen)
     )

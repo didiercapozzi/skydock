@@ -72,15 +72,19 @@ const runUpload = async <T>(
   const going = globalThis.skydockUpload
   if (going) throw new Error(`Already uploading ${going.label} — wait for it, or cancel it, first.`)
   const job: Upload = { key, label, groupIds, done: Promise.resolve(), stop: new AbortController() }
-  const done = stoppable().run(job.stop.signal, work)
+  /* whatever a cancel cut short — a request dropped, a zip abandoned — is the cancel it is, for the
+     work's own reporting as much as for whoever asked */
+  const done = stoppable().run(job.stop.signal, async () => {
+    try {
+      return await work()
+    } catch (e) {
+      throw job.stop.signal.aborted ? new UploadCancelled() : e
+    }
+  })
   job.done = done
   globalThis.skydockUpload = job
   try {
     return await done
-  } catch (e) {
-    /* whatever a cancel cut short — a request dropped, a zip abandoned — is the cancel it is */
-    if (job.stop.signal.aborted) throw new UploadCancelled()
-    throw e
   } finally {
     if (globalThis.skydockUpload === job) globalThis.skydockUpload = undefined
   }

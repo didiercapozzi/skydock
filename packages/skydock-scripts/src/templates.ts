@@ -183,7 +183,7 @@ const importTemplate = async ({
           )
         const held = path.dirname(inside)
         relinkTemplate(inside)
-        openToHost(held, root)
+        openToHost(held, outputDir)
 
         /* the place is taken in one move, and what was there is kept until the new one is in */
         if (fs.existsSync(home)) fs.renameSync(home, replaced)

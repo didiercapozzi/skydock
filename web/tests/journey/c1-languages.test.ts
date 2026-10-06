@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeAll, describe, expect, test } from 'vitest'
 import { harness } from './harness'
+import { originalsDir } from './media'
 
 /* SkyDock speaks English, French and German (RULES, Languages): the one chosen under Settings, kept on
    this machine, and the page drawn again in it at once, from the server as well. What it writes to the disk
@@ -22,10 +23,7 @@ const speak = async (language: 'English' | 'Français' | 'Deutsch') => {
   await j.page.waitForLoadState('load')
 }
 const originals = () =>
-  fs
-    .readdirSync(path.join(j.world.output, 'original_files'), { recursive: true })
-    .map(String)
-    .sort()
+  fs.readdirSync(originalsDir(j.world), { recursive: true }).map(String).sort()
 
 describe('the language of the app', () => {
   test('is French once chosen under Settings: the page is drawn again in it at once, the places, the cards and the dates with it, and the disk is as it was', async () => {
@@ -69,13 +67,7 @@ describe('the language of the app', () => {
     await quiet()
   })
 
-  // BUG: RULES.md (Languages) says the page is drawn again in the language "from the server as well, so what
-  // the server says comes back in it too", and that every sentence the app shows is there in each language.
-  // With German (and French) spoken, adding a destination named "montages" is refused with the English
-  // sentence "“montages” is where the montages are kept — give the dropzone another name." Suspect:
-  // packages/skydock-scripts/src/workspace.ts, placeNameProblem (the sentences are plain English
-  // strings, untranslated).
-  test.skip('says what the server says in the language too, a name refused for a destination among it', async () => {
+  test('says what the server says in the language too, a name refused for a destination among it', async () => {
     await j.page.getByRole('button', { name: 'Ziel hinzufügen…' }).click()
     await j.page.getByPlaceholder(/./).last().fill('montages')
     await j.page.keyboard.press('Enter')

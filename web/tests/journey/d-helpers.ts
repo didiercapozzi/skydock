@@ -3,46 +3,15 @@ import * as fs from 'node:fs'
 import type { Locator } from 'playwright'
 import { expect } from 'vitest'
 import { z } from 'zod'
-import { makeBigClip, makeClip } from './media'
-import type { World } from './app'
+import { ffprobe, makeClip, tool } from './media'
 
-/* What the preview chapters share: asking the tools what a copy turned out to be, reading what the board
-   wrote down about a file, and a clip off a camera that records what it felt. */
-
-const tool = (name: 'ffmpeg' | 'ffprobe') =>
-  process.env[name === 'ffmpeg' ? 'SKYDOCK_FFMPEG_PATH' : 'SKYDOCK_FFPROBE_PATH'] ?? name
-
-const ask = (...args: string[]) => String(execFileSync(tool('ffprobe'), ['-v', 'error', ...args]))
-
-const probeSchema = z.object({
-  streams: z.array(z.object({ width: z.number(), height: z.number() }).passthrough())
-})
-
-/* what a video file is: how long, how many pixels across and down */
-const probe = (file: string) => {
-  const parsed = probeSchema.parse(
-    JSON.parse(
-      ask(
-        '-select_streams',
-        'v:0',
-        '-show_entries',
-        'stream=width,height:format=duration',
-        '-of',
-        'json',
-        file
-      )
-    )
-  )
-  const seconds = Number(
-    ask('-show_entries', 'format=duration', '-of', 'csv=p=0', file).trim().split('\n')[0]
-  )
-  return { seconds, width: parsed.streams[0]!.width, height: parsed.streams[0]!.height }
-}
+/* What the preview chapters share: asking the tools what a copy turned out to be, and a clip off a camera that
+   records what it felt. */
 
 /* the size in bytes of every picture a video file holds, in order: a copy that only cut the ends holds the
    very same pictures as the original, an encode again holds others */
 const pictureSizes = (file: string) =>
-  ask('-select_streams', 'v:0', '-show_entries', 'packet=size', '-of', 'csv=p=0', file)
+  ffprobe('-select_streams', 'v:0', '-show_entries', 'packet=size', '-of', 'csv=p=0', file)
     .trim()
     .split('\n')
     .join(',')
@@ -50,44 +19,6 @@ const pictureSizes = (file: string) =>
 /* the copy kept the original's pictures untouched, only the ends cut off */
 const isCopyOf = (copy: string, original: string) =>
   `,${pictureSizes(original)},`.includes(`,${pictureSizes(copy)},`)
-
-const fileSchema = z.object({
-  id: z.string().optional(),
-  filename: z.string().optional(),
-  size: z.number().optional(),
-  cropStart: z.number().nullish(),
-  cropEnd: z.number().nullish(),
-  rotation: z.number().nullish(),
-  frame: z.object({ width: z.number(), height: z.number() }).passthrough().nullish(),
-  moments: z
-    .object({
-      exit: z.number(),
-      opening: z.number().optional(),
-      canopy: z.number().optional(),
-      landing: z.number().optional()
-    })
-    .nullish(),
-  foundMoments: z.object({ exit: z.number() }).passthrough().nullish(),
-  processed: z.object({ size: z.number() }).passthrough().nullish()
-})
-
-const manifestSchema = z.object({ files: z.array(fileSchema) })
-const groupsSchema = z.object({ groups: z.array(z.object({ files: z.array(fileSchema) })) })
-
-/* What the board has written down about a file, found by its name, as the record has it on disk: what is known
-   of the file itself, and over it what its jump says of it — the trim, the frame and the turn live there. */
-const recorded = (world: World, filename: string) => {
-  const read = (name: string) => JSON.parse(fs.readFileSync(`${world.output}/${name}`, 'utf8'))
-  const file = manifestSchema
-    .parse(read('manifest.json'))
-    .files.find((one) => one.filename === filename)
-  if (!file) throw new Error(`${filename} is not in the record`)
-  const inJump = groupsSchema
-    .parse(read('groups.json'))
-    .groups.flatMap((group) => group.files)
-    .find((one) => one.id === file.id)
-  return { ...file, ...inJump }
-}
 
 /* The seconds of a jump, in the order they happen, as what a camera felt each second of the clip:
    a gravity aboard the aeroplane, almost nothing for the three seconds after the door, a gravity in
@@ -202,33 +133,13 @@ const makeJumpClip = (file: string, when: string) => {
   fs.utimesSync(file, new Date(when), new Date(when))
 }
 
-/* what a person sees on a control, waited for as they would: pressed or not, shown or gone, saying
-   something, switched off */
+/* what a person sees on a control, waited for as they would: pressed or not, shown or gone, switched off */
 const pressed = (what: Locator, on: boolean) =>
   expect.poll(() => what.getAttribute('aria-pressed')).toBe(String(on))
 
 const gone = (what: Locator) => expect.poll(() => what.count()).toBe(0)
 
-const said = (what: Locator, text: string) => expect.poll(() => what.innerText()).toContain(text)
-
 const switchedOff = (what: Locator, off: boolean) => expect.poll(() => what.isDisabled()).toBe(off)
-
-/* a photo that is none of the other photos' twin: the same bytes under another name are the same file to the board */
-const makeOwnPhoto = (file: string, when: string) => {
-  execFileSync(tool('ffmpeg'), [
-    '-y',
-    '-v',
-    'error',
-    '-f',
-    'lavfi',
-    '-i',
-    'testsrc2=size=320x240:rate=1',
-    '-frames:v',
-    '1',
-    file
-  ])
-  fs.utimesSync(file, new Date(when), new Date(when))
-}
 
 /* what a photo carries about how to be shown: the way it is to be turned, and how many pixels it has */
 const photoFacts = (file: string) =>
@@ -237,7 +148,7 @@ const photoFacts = (file: string) =>
     .parse(
       JSON.parse(
         String(
-          execFileSync(process.env.SKYDOCK_EXIFTOOL_PATH ?? 'exiftool', [
+          execFileSync(tool('exiftool'), [
             '-json',
             '-n',
             '-Orientation',
@@ -249,16 +160,4 @@ const photoFacts = (file: string) =>
       )
     )[0]!
 
-export {
-  gone,
-  isCopyOf,
-  makeBigClip,
-  makeJumpClip,
-  makeOwnPhoto,
-  photoFacts,
-  pressed,
-  probe,
-  recorded,
-  said,
-  switchedOff
-}
+export { gone, isCopyOf, makeJumpClip, photoFacts, pressed, switchedOff }

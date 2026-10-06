@@ -3,6 +3,7 @@ import * as path from 'node:path'
 import { expect, test } from 'vitest'
 import { loadState } from '../saved'
 import { gone, sees, useDesk, waitFor, windowDescribe } from './window-helpers'
+import { place } from '../steps'
 
 /* The first time SkyDock is opened: a welcome page of its own, before any server, asking where the work is
    kept (RULES.md, Where SkyDock runs). The machine's own folder picker is the real one, answered by the
@@ -60,10 +61,7 @@ windowDescribe('the first time it is opened', () => {
 
     await desk.click(page, page.locator('#open'))
     const board = await desk.board()
-    await board
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-      .waitFor({ timeout: 60_000 })
+    await place(board, /Sion/).waitFor({ timeout: 60_000 })
     desk.shot('board-opened')
 
     /* the answer is remembered, the folder not chosen was never touched, and the only window is the board */

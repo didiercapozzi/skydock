@@ -1,8 +1,8 @@
-import * as path from 'node:path'
 import { afterEach, beforeAll, describe, test } from 'vitest'
-import { cardsOf, eventually, minutesAfter, photosAt } from './c1-helpers'
+import { cardsOf, minutesAfter, photosAt } from './c1-helpers'
 import { harness } from './harness'
-import { makeClip } from './media'
+import { makeClip, originalFile } from './media'
+import { eventually } from './steps'
 
 /* A long card is drawn a page at a time — forty rows or a hundred and twenty thumbnails — the next page by
    itself as the end of the last comes near, and a clip shorter than the moment its thumbnail is taken at
@@ -19,12 +19,7 @@ const j = harness({
     photosAt(world, PHOTOS)
     for (const [i, when] of SHORT.entries())
       makeClip(
-        path.join(
-          world.output,
-          'original_files',
-          DAY,
-          `DJI_${when.replace(/\D/g, '')}_${900 + i}_D.MP4`
-        ),
+        originalFile(world, DAY, `DJI_${when.replace(/\D/g, '')}_${900 + i}_D.MP4`),
         when,
         0.3 + i / 10
       )
@@ -78,7 +73,7 @@ describe('a long card', () => {
 describe('a clip shorter than the moment its thumbnail is taken at', () => {
   test('shows its first frame, so no picture is missing', async () => {
     await j.page.getByRole('button', { name: 'Thumbnails' }).click()
-    await eventually(() => cardsOf(j).then((cards) => cards.length)).toBe(2)
+    await eventually(() => cardsOf(j.page).then((cards) => cards.length)).toBe(2)
     await j.page.getByRole('button', { name: /^Jump 2, / }).click()
     const tiles = files('section[aria-label="Jump 2"]')
     await eventually(() => tiles.count()).toBe(2)

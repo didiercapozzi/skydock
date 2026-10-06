@@ -5,12 +5,11 @@ import { z } from 'zod'
 import {
   cameraEnvironment,
   canMount,
+  cardFolder,
   cardQuiet,
-  cardOf,
   dropFolder,
   fillCard,
   HANDED,
-  makeOtherPhoto,
   panelsSeen,
   plugIn,
   recordPanels,
@@ -18,8 +17,9 @@ import {
   unplugAll
 } from './a-helpers'
 import { harness } from './harness'
-import { filesUnder, makeClip } from './media'
-import { dropFiles } from './page'
+import { filesUnder, makeClip, makeOwnPhoto, originalFile, originalsDir } from './media'
+import { dropFiles, eventsHeard, listenToEvents } from './page'
+import { dialogNamed, eventually, place } from './steps'
 
 /* How footage gets on the board: dropped from the computer, and copied off a camera that is plugged in. The
    files of the computer are made before the app starts; the cameras are cards of the run, plugged in and
@@ -35,7 +35,7 @@ const snapshot = (folder: string) =>
     return `${file} ${stat.size} ${stat.mtimeMs}`
   })
 
-const originalsOf = (world: { output: string }) => landed(path.join(world.output, 'original_files'))
+const landedOriginals = (world: { output: string }) => landed(originalsDir(world))
 
 const camerasSchema = z.object({
   cameras: z.array(z.object({ key: z.string(), name: z.string(), auto: z.boolean() })).optional()
@@ -59,12 +59,12 @@ describe('footage dropped on the board', () => {
       }
       made(path.join(world.computer, 'GX010002.MP4'), '2026-09-07T08:00:00')
       made(path.join(world.computer, 'GX010003.MP4'), '2026-09-07T08:01:00')
-      makeOtherPhoto(path.join(world.computer, 'IMG_0001.JPG'), '2026-09-07T08:02:00', 1)
+      makeOwnPhoto(path.join(world.computer, 'IMG_0001.JPG'), '2026-09-07T08:02:00', 1)
       fs.mkdirSync(path.join(world.computer, 'rushes', 'cam2'), { recursive: true })
       const rushes = path.join(world.computer, 'rushes')
       made(path.join(rushes, 'cam1', 'GX010010.MP4'), '2026-09-08T08:00:00')
       made(path.join(rushes, 'cam1', 'deep', 'er', 'GX010011.MP4'), '2026-09-08T08:01:00')
-      makeOtherPhoto(path.join(rushes, 'cam2', 'IMG_0010.JPG'), '2026-09-08T08:02:00', 2)
+      makeOwnPhoto(path.join(rushes, 'cam2', 'IMG_0010.JPG'), '2026-09-08T08:02:00', 2)
       fs.writeFileSync(path.join(rushes, 'notes.txt'), 'the rushes of the day')
       fs.writeFileSync(path.join(rushes, 'cam1', 'cut.kdenlive'), '<mlt/>')
       fs.writeFileSync(path.join(rushes, 'cam1', '.DS_Store'), 'bookkeeping')
@@ -72,12 +72,7 @@ describe('footage dropped on the board', () => {
       made(path.join(world.computer, 'GX010004.MP4'), '2026-09-09T08:00:00')
       made(path.join(world.computer, 'GX010005.MP4'), '2026-09-09T08:01:00')
       /* the fourth clip of the afternoon jump, as it has come off a card the board has already read */
-      const known = path.join(
-        world.output,
-        'original_files',
-        '2026-09-05',
-        'DJI_20260905143000_0004_D.MP4'
-      )
+      const known = originalFile(world, '2026-09-05', 'DJI_20260905143000_0004_D.MP4')
       const again = path.join(world.computer, 'briefing.MP4')
       fs.copyFileSync(known, again)
       fs.utimesSync(again, fs.statSync(known).atime, fs.statSync(known).mtime)
@@ -85,12 +80,12 @@ describe('footage dropped on the board', () => {
     }
   })
   const computer = (...names: string[]) => names.map((name) => path.join(j.world.computer, name))
-  const day = (name: string) => path.join(j.world.output, 'original_files', name)
+  const day = (name: string) => path.join(originalsDir(j.world), name)
 
   test('several files dropped together are copied, not moved, into the originals under the day they were shot, and wait loose in Fresh files', async () => {
     await j.open()
     await j.see(/2 jumps are waiting for a home/)
-    const before = originalsOf(j.world)
+    const before = landedOriginals(j.world)
     await dropFiles(j.page, computer('GX010002.MP4', 'GX010003.MP4', 'IMG_0001.JPG'))
     await j.see('3 files have been added to Fresh files', 60_000)
 
@@ -110,7 +105,7 @@ describe('footage dropped on the board', () => {
     expect(fs.readdirSync(j.world.computer), 'copied, not moved').toEqual(
       expect.arrayContaining(['GX010002.MP4', 'GX010003.MP4', 'IMG_0001.JPG'])
     )
-    expect(originalsOf(j.world).filter((f) => !before.includes(f))).toHaveLength(3)
+    expect(landedOriginals(j.world).filter((f) => !before.includes(f))).toHaveLength(3)
     /* loose, not a jump: each is listed among the loose files of Fresh files */
     await j.see(/in no jump · 4/)
     await j.quiet()
@@ -127,7 +122,9 @@ describe('footage dropped on the board', () => {
       'GX010011.MP4',
       'IMG_0010.JPG'
     ])
-    expect(originalsOf(j.world).filter((f) => /notes|kdenlive|DS_Store|\._/.test(f))).toEqual([])
+    expect(landedOriginals(j.world).filter((f) => /notes|kdenlive|DS_Store|\._/.test(f))).toEqual(
+      []
+    )
     expect(snapshot(rushes), 'the folder itself is not touched').toEqual(before)
     await j.quiet()
   })
@@ -157,23 +154,24 @@ describe('footage dropped on the board', () => {
   })
 
   test('a drop holding nothing SkyDock can show says so and copies nothing', async () => {
-    const before = originalsOf(j.world)
+    const before = landedOriginals(j.world)
     await dropFiles(j.page, computer('notes-alone.txt'))
     await j.see(/is a video or a photo SkyDock can show/)
-    expect(originalsOf(j.world)).toEqual(before)
+    expect(landedOriginals(j.world)).toEqual(before)
     await j.quiet()
   })
 
   test('footage already on the board is recognised by its contents under another name: dropped on a jump it joins that jump and stays in the other, on a destination it moves there, and nothing new is copied', async () => {
-    const before = originalsOf(j.world)
+    const before = landedOriginals(j.world)
     await j.page.getByText('Jump 1', { exact: true }).first().waitFor()
     await j.see(/Sat 5 Sept · 14:30 · 2 videos/)
 
     /* onto the other jump of the day: it joins it, and the first one still holds it */
     await dropFiles(j.page, computer('briefing.MP4'), 'text="Jump 2"')
+    await j.see(/has been added to Jump 2/)
     await j.see(/Sun 6 Sept · 09:00 · 3 videos, 1 photo/)
     await j.see(/Sat 5 Sept · 14:30 · 2 videos/)
-    expect(originalsOf(j.world), 'one original on the disk, held by both').toEqual(before)
+    expect(landedOriginals(j.world), 'one original on the disk, held by both').toEqual(before)
 
     /* on a destination: a file on its own, moved there as a drag would have moved it */
     await dropFiles(
@@ -182,12 +180,12 @@ describe('footage dropped on the board', () => {
       'nav[aria-label="Folders"] a:has-text("Sion")'
     )
     await j.see(/Moved DJI_20260905143000_0004_D\.MP4 from Fresh files to Sion/)
-    expect(originalsOf(j.world), 'still no new file in the originals').toEqual(before)
+    expect(landedOriginals(j.world), 'still no new file in the originals').toEqual(before)
     await j.quiet()
   })
 
   test('a file let go where nothing takes it is left where it was, and the board says where it could have gone', async () => {
-    const before = originalsOf(j.world)
+    const before = landedOriginals(j.world)
     await j.page.evaluate(() => {
       const w = window as unknown as { __kept?: boolean[] }
       w.__kept = []
@@ -199,7 +197,7 @@ describe('footage dropped on the board', () => {
       await j.page.evaluate(() => (window as unknown as { __kept: boolean[] }).__kept),
       'the drop is taken, so the page never opens the file over the board'
     ).toEqual([true])
-    expect(originalsOf(j.world)).toEqual(before)
+    expect(landedOriginals(j.world)).toEqual(before)
     await j.quiet()
   })
 })
@@ -213,7 +211,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     env: cameraEnvironment,
     prepare: (world) => {
       fillCard(
-        cardOf(world, 'Osmo Action'),
+        cardFolder(world, 'Osmo Action'),
         [
           clip('DJI_20260905100000_0001_D.MP4', '2026-09-05T10:00:00'),
           clip('DJI_20260905100240_0002_D.MP4', '2026-09-05T10:02:40')
@@ -221,21 +219,21 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
         [clip('DJI_20260905100130_0003_D.JPG', '2026-09-05T10:01:30')]
       )
       /* three clips an hour apart: each is loose on the board once copied */
-      fillCard(cardOf(world, 'Choose Cam'), [
+      fillCard(cardFolder(world, 'Choose Cam'), [
         clip('GX010001.MP4', '2026-09-06T09:00:00'),
         clip('GX010002.MP4', '2026-09-06T10:00:00'),
         clip('GX010003.MP4', '2026-09-06T11:00:00')
       ])
-      fillCard(cardOf(world, 'Auto Cam'), [
+      fillCard(cardFolder(world, 'Auto Cam'), [
         clip('GX020001.MP4', '2026-09-07T09:00:00'),
         clip('GX020002.MP4', '2026-09-07T10:00:00')
       ])
       /* the same clip name as Choose Cam's — the name two cameras of one make both start at — with other bytes */
-      fillCard(cardOf(world, 'Twin Cam'), [clip('GX010002.MP4', '2026-09-06T10:00:00', 3)])
+      fillCard(cardFolder(world, 'Twin Cam'), [clip('GX010002.MP4', '2026-09-06T10:00:00', 3)])
       /* a drive that is not a camera: no DCIM at its top */
-      fs.mkdirSync(path.join(cardOf(world, 'Backup Drive'), 'Documents'), { recursive: true })
+      fs.mkdirSync(path.join(cardFolder(world, 'Backup Drive'), 'Documents'), { recursive: true })
       fs.writeFileSync(
-        path.join(cardOf(world, 'Backup Drive'), 'Documents', 'a.txt'),
+        path.join(cardFolder(world, 'Backup Drive'), 'Documents', 'a.txt'),
         'not footage'
       )
       /* a camera that hands its files over: a folder of the desktop's, with its stores inside, the pictures in one */
@@ -252,18 +250,17 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     quiet = cardQuiet(j.page, j.world)
   })
 
-  const folders = () => j.page.getByRole('navigation', { name: 'Folders' })
-  const camera = (name: string) => folders().getByRole('link', { name: new RegExp(name) })
+  const camera = (name: string) => place(j.page, name)
   /* a camera's page is opened from the menu, and its address is that of the camera */
   const openCamera = async (name: string) => {
     await camera(name).click()
     await j.page.waitForURL(/\/camera\//)
   }
-  const asking = () => j.page.getByRole('dialog', { name: 'A new camera' })
-  const plug = (name: string) => plugIn(cardOf(j.world, name))
-  const unplugCard = (name: string) => unplug(cardOf(j.world, name))
-  const card = (name: string) => path.join(cardOf(j.world, name), 'DCIM')
-  const day = (name: string) => path.join(j.world.output, 'original_files', name)
+  const asking = () => dialogNamed(j.page, 'A new camera')
+  const plug = (name: string) => plugIn(cardFolder(j.world, name))
+  const unplugCard = (name: string) => unplug(cardFolder(j.world, name))
+  const card = (name: string) => path.join(cardFolder(j.world, name), 'DCIM')
+  const day = (name: string) => path.join(originalsDir(j.world), name)
 
   test('a drive without a DCIM folder is not a camera, and a card with one that nobody has met asks first, saying its name and how many files on it are not here yet', async () => {
     await j.open()
@@ -278,9 +275,10 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     expect(await j.page.getByText('Backup Drive').count(), 'never listed, never asked about').toBe(
       0
     )
-    expect(originalsOf(j.world), 'nothing is copied from a camera nobody has answered for').toEqual(
-      []
-    )
+    expect(
+      landedOriginals(j.world),
+      'nothing is copied from a camera nobody has answered for'
+    ).toEqual([])
     await quiet()
   })
 
@@ -298,7 +296,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
       fs.existsSync(path.join(j.world.output, 'settings.json')),
       'not in the work folder'
     ).toBe(false)
-    expect(originalsOf(j.world), 'and still nothing copied').toEqual([])
+    expect(landedOriginals(j.world), 'and still nothing copied').toEqual([])
     await quiet()
   })
 
@@ -322,7 +320,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     const first = seen.find((panel) => panel.rows.length > 0)!
     expect(first.rows, 'all three on the card named before the first lands').toHaveLength(3)
     expect(first.summary).toContain('0 new files copied')
-    expect(originalsOf(j.world).sort()).toEqual([
+    expect(landedOriginals(j.world).sort()).toEqual([
       path.join('2026-09-05', 'DJI_20260905100000_0001_D.MP4'),
       path.join('2026-09-05', 'DJI_20260905100130_0003_D.JPG'),
       path.join('2026-09-05', 'DJI_20260905100240_0002_D.MP4')
@@ -333,7 +331,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
       expect(
         fs
           .readFileSync(path.join(card('Osmo Action'), '100MEDIA', file))
-          .equals(fs.readFileSync(path.join(j.world.output, 'original_files', '2026-09-05', file))),
+          .equals(fs.readFileSync(path.join(originalsDir(j.world), '2026-09-05', file))),
         `${file} copied byte for byte`
       ).toBe(true)
     expect(
@@ -349,7 +347,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
   })
 
   test('a camera put in again is not asked about twice and costs nothing, and one that is out is listed as not connected', async () => {
-    const before = snapshot(path.join(j.world.output, 'original_files'))
+    const before = snapshot(originalsDir(j.world))
     unplugCard('Osmo Action')
     await camera('Osmo Action').getByText('not connected').waitFor({ timeout: 20_000 })
     plug('Osmo Action')
@@ -357,18 +355,16 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
       .getByText('not connected')
       .waitFor({ state: 'detached', timeout: 20_000 })
     expect(await asking().count(), 'a camera met once is not asked again').toBe(0)
-    expect(snapshot(path.join(j.world.output, 'original_files')), 'nothing copied again').toEqual(
-      before
-    )
+    expect(snapshot(originalsDir(j.world)), 'nothing copied again').toEqual(before)
     await quiet()
   })
 
   test('a camera can be forgotten from its page, which asks first and touches no file, and is new again the next time it is plugged in', async () => {
-    const before = snapshot(path.join(j.world.output, 'original_files'))
+    const before = snapshot(originalsDir(j.world))
     await openCamera('Osmo Action')
     await j.page.getByRole('button', { name: 'More' }).click()
     await j.page.getByText('Forget this camera…').click()
-    const dialog = j.page.getByRole('dialog', { name: 'Forget this camera' })
+    const dialog = dialogNamed(j.page, 'Forget this camera')
     await dialog.waitFor()
     await dialog.getByRole('button', { name: 'Keep it' }).click()
     await dialog.waitFor({ state: 'detached' })
@@ -379,10 +375,15 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     await j.page.getByRole('button', { name: 'Forget it' }).click()
     await camera('Osmo Action').waitFor({ state: 'detached' })
     expect(remembered(j.world)).toEqual([])
-    expect(snapshot(path.join(j.world.output, 'original_files')), 'no file touched').toEqual(before)
+    expect(snapshot(originalsDir(j.world)), 'no file touched').toEqual(before)
 
+    /* the app looks at what is plugged in every couple of seconds: plugged in again before it has seen the card
+       go, the card would never have been out */
+    await listenToEvents(j.page)
     unplugCard('Osmo Action')
-    await j.page.waitForTimeout(2500)
+    await eventually(async () =>
+      (await eventsHeard(j.page)).some((e) => e.kind === 'cameras' && e.mounted?.length === 0)
+    ).toBe(true)
     plug('Osmo Action')
     await asking().waitFor({ timeout: 20_000 })
     await asking().getByRole('button', { name: 'Just remember it' }).click()
@@ -406,7 +407,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
         .map((c) => c.name)
         .sort()
     ).toEqual(['Choose Cam', 'Osmo Action'])
-    expect(originalsOf(j.world).filter((f) => f.includes('GX0100'))).toEqual([])
+    expect(landedOriginals(j.world).filter((f) => f.includes('GX0100'))).toEqual([])
 
     await j.page.getByRole('button', { name: 'Pick 100MEDIA/GX010001.MP4' }).click()
     await j.page.getByRole('button', { name: 'Pick 100MEDIA/GX010002.MP4' }).click()
@@ -437,15 +438,15 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
   })
 
   test('a file on a camera is looked at from the card without copying it, and only what lies under its DCIM folder can be asked for', async () => {
-    const before = originalsOf(j.world)
+    const before = landedOriginals(j.world)
     await j.page.getByRole('button', { name: 'Preview 100MEDIA/GX010003.MP4' }).click()
-    const dialog = j.page.getByRole('dialog', { name: 'Preview from the camera' })
+    const dialog = dialogNamed(j.page, 'Preview from the camera')
     await dialog.waitFor()
     await dialog.locator('video').waitFor()
     await dialog.getByRole('button', { name: 'Copy this file' }).waitFor()
     await j.page.keyboard.press('Escape')
     await dialog.waitFor({ state: 'detached' })
-    expect(originalsOf(j.world), 'looked at, not copied').toEqual(before)
+    expect(landedOriginals(j.world), 'looked at, not copied').toEqual(before)
 
     /* an address outside the card is answered with nothing, however it is spelled */
     const outside = path.join(j.world.root, 'outside.txt')
@@ -478,7 +479,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     await j.page.getByText('in the bin', { exact: true }).first().waitFor({ timeout: 30_000 })
     await j.page.getByRole('button', { name: 'Pick 100MEDIA/GX010001.MP4' }).click()
     await j.page.getByRole('button', { name: 'Delete 1 file from the camera…' }).click()
-    const dialog = j.page.getByRole('dialog', { name: 'Delete from the camera' })
+    const dialog = dialogNamed(j.page, 'Delete from the camera')
     await dialog.waitFor()
     await dialog.getByText(/they go to the bin/i).waitFor()
     await dialog.getByRole('button', { name: 'Check and delete 1 file from the camera' }).click()
@@ -605,16 +606,18 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     await quiet()
   })
 
-  /* BUG: the page of a camera draws a picture for each file it lists, and every one is asked for at an address the
-     server cannot answer. What I did: plugged a card in, opened its page. What I saw: each file's picture is a
-     404 on /api/thumb/<the card's own path>. What RULES.md says: a camera's page lists every photo and video on its
-     card in the one look a file is listed in everywhere (CODING.md, FileRow). Suspect: the thumbnail route joins the
-     path it is given onto the work folder, so a file outside it — a card — is never found. */
-  test.skip('a camera’s page draws a small picture of each file it lists', async () => {
+  test('a camera’s page draws a small picture of each file it lists', async () => {
     await openCamera('Osmo Action')
-    const picture = j.page.getByRole('img').first()
-    await picture.waitFor()
-    expect(await picture.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0)
+    /* a picture beside a name is decoration for a screen reader, so it is found by what it shows */
+    await expect
+      .poll(() =>
+        j.page.evaluate(() =>
+          [...document.querySelectorAll<HTMLImageElement>('img[src^="/api/thumb/"]')].some(
+            (img) => img.naturalWidth > 0
+          )
+        )
+      )
+      .toBe(true)
     await j.quiet()
   })
 })

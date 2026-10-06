@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
 import { checkScreen, pinTheme } from './shots'
+import { place } from './steps'
 
 /* One picture of each page, in light and in dark, against the one kept when it was last known to be right:
    the places, a jump chosen with its panel, a destination with its files ready, the bin, the keyboard
@@ -29,10 +30,7 @@ const walk = async (j: typeof light, theme: 'light' | 'dark') => {
   await j.see('Or make it a film')
   await take('a-jump-chosen')
 
-  await j.page
-    .getByRole('navigation', { name: 'Folders' })
-    .getByRole('link', { name: /Sion/ })
-    .click()
+  await place(j.page, /Sion/).click()
   await j.see(/files? (is|are) ready to upload/)
   await take('a-destination')
 

@@ -2,20 +2,20 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import { counted, filesUnder, montageFolder, said } from './i2-helpers'
+import { filesUnder, montageFolder } from './media'
+import { counted, dialogNamed, folders, said } from './steps'
 
 /* Going back: what the board was just before each change is kept, and any of them can be put back — the board's
    record only, never a file on the disk. */
 
 const j = harness({ name: 'i2-montage-back', state: 'i2-ready' })
-const history = () => j.page.getByRole('dialog', { name: 'History' })
+const history = () => dialogNamed(j.page, 'History')
 const entry = (words: RegExp) => history().getByRole('listitem').filter({ hasText: words })
 const openHistory = async () => {
   await j.page.getByRole('button', { name: 'Settings' }).click()
   await j.page.getByRole('button', { name: 'History…' }).click()
   await history().waitFor()
 }
-const sidebar = () => j.page.getByRole('navigation', { name: 'Folders' })
 
 describe('going back', () => {
   test('lists the changes made on the board, the latest first, each said in words with the time it was made', async () => {
@@ -34,16 +34,16 @@ describe('going back', () => {
   })
 
   test('puts the board back as it was just before a change, touching no file on the disk', async () => {
-    const before = filesUnder(montageFolder(j))
+    const before = filesUnder(montageFolder(j.world))
     expect(before.length).toBeGreaterThan(0)
     await entry(/Made Luc Favre’s montage/)
       .getByRole('button', { name: 'Undo from here' })
       .click()
-    await counted(sidebar().getByRole('link', { name: /Luc Favre/ })).toBe(0)
+    await counted(folders(j.page).getByRole('link', { name: /Luc Favre/ })).toBe(0)
     await history().waitFor({ state: 'detached' })
     await j.page.getByRole('link', { name: /Fresh files/ }).click()
     await j.see('Jump 2')
-    expect(filesUnder(montageFolder(j))).toEqual(before)
+    expect(filesUnder(montageFolder(j.world))).toEqual(before)
     await j.quiet()
   })
 
@@ -56,7 +56,7 @@ describe('going back', () => {
       .first()
       .getByRole('button', { name: 'Undo from here' })
       .click()
-    await said(sidebar()).toContain('Luc Favre')
+    await said(folders(j.page)).toContain('Luc Favre')
     await history().waitFor({ state: 'detached' })
     await j.quiet()
   })
@@ -68,15 +68,12 @@ describe('going back', () => {
     fs.writeFileSync(record, whole.slice(0, Math.floor(whole.length / 2)))
     await j.restart()
     await j.open()
-    await said(sidebar()).toContain('Luc Favre')
-    await said(sidebar()).toContain('Sion')
+    await said(folders(j.page)).toContain('Luc Favre')
+    await said(folders(j.page)).toContain('Sion')
     await j.quiet()
   })
 
-  /* BUG: with manifest.json cut off half written and manifest.json.bak whole, the board opens on the kept record but
-     nothing on the page says so (the only trace is a console.warn of the server in loadManifest). RULES (Going
-     back): a board that cannot be read is read from the last good record "and said so". */
-  test.skip('says so when the board was read from the last good record', async () => {
+  test('says so when the board was read from the last good record', async () => {
     await said(j.page.locator('body')).toMatch(/could not be read|last good record|earlier record/i)
   })
 })

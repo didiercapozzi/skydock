@@ -11,6 +11,7 @@ import {
   waitFor,
   windowDescribe
 } from './window-helpers'
+import { dialogNamed, place } from '../steps'
 
 /* Another work folder, and what must not be cut off (RULES.md, Where SkyDock runs): the folder is chosen from
    Settings in SkyDock's own window, never while something is being written, and closing the window while a
@@ -38,13 +39,10 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
   const openWorkFolder = async (page: Page) => {
     await desk.click(page, page.getByRole('button', { name: 'Settings' }))
     await desk.click(page, page.getByRole('button', { name: /Work folder…/ }))
-    await page.getByRole('dialog', { name: 'Work folder' }).waitFor()
+    await dialogNamed(page, 'Work folder').waitFor()
   }
   const closeWork = (page: Page) =>
-    desk.click(
-      page,
-      page.getByRole('dialog', { name: 'Work folder' }).getByRole('button', { name: 'Close' })
-    )
+    desk.click(page, dialogNamed(page, 'Work folder').getByRole('button', { name: 'Close' }))
   /* the window's own three buttons, at the end of the toolbar */
   const windowButton = (page: Page, name: string) =>
     page
@@ -57,14 +55,11 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
     const behind = desk.world.output
     const before = listing(behind)
     const page = await desk.board()
-    await page
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-      .waitFor({ timeout: 60_000 })
+    await place(page, /Sion/).waitFor({ timeout: 60_000 })
 
     await openWorkFolder(page)
     await waitFor('the dialog to say where the work is', async () =>
-      (await page.getByRole('dialog', { name: 'Work folder' }).innerText()).includes(behind)
+      (await dialogNamed(page, 'Work folder').innerText()).includes(behind)
     )
     await desk.click(page, page.getByRole('button', { name: 'Choose another folder…' }))
     await desk.chooseFolder(PICKER, other())
@@ -79,10 +74,7 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
     await openWorkFolder(page)
     await desk.click(page, page.getByRole('button', { name: 'Choose another folder…' }))
     await desk.chooseFolder(PICKER, behind)
-    await page
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-      .waitFor({ timeout: 60_000 })
+    await place(page, /Sion/).waitFor({ timeout: 60_000 })
     await waitFor('the first folder remembered again', () => desk.settings().outputDir === behind)
     desk.silent()
   })
@@ -92,10 +84,7 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
     /* long clips, so that processing is still going when the person gets to Settings */
     await desk.launch({ state: 'sorted', prepare: (world) => lengthenFootage(world) })
     const page = await desk.board()
-    await desk.click(
-      page,
-      page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Sion/ })
-    )
+    await desk.click(page, place(page, /Sion/))
     await desk.click(page, page.getByRole('button', { name: /Process 3 files/ }))
     const busy = () =>
       page.evaluate(
@@ -108,7 +97,7 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
     await openWorkFolder(page)
     const choose = page.getByRole('button', { name: 'Choose another folder…' })
     await disabled(choose)
-    await sees(page.getByRole('dialog', { name: 'Work folder' }), /wait until it is done/)
+    await sees(dialogNamed(page, 'Work folder'), /wait until it is done/)
     desk.shot('folder-refused-while-processing')
     await closeWork(page)
 

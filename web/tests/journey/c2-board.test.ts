@@ -1,10 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import { jumpsOf, menuOf, scan } from './c2-helpers'
+import { jumpsOf, scan } from './c2-helpers'
 import { harness } from './harness'
 import { dayFolder, makeClip } from './media'
 import { dropFiles } from './page'
+import { dialogNamed, folders, place, preview } from './steps'
 
 /* The board's own furniture: the toolbar and the status bar, light and dark, the one line it says after anything,
    its dialogs and the box that finds anything. It starts from the footage found, a destination made and a jump
@@ -12,7 +13,6 @@ import { dropFiles } from './page'
 
 const j = harness({ name: 'c2-board', state: 'sorted', viewport: { width: 1400, height: 1000 } })
 const { see, quiet, open } = j
-const place = (name: string | RegExp) => menuOf(j.page).getByRole('link', { name })
 const hint = (name: string | RegExp) => j.page.getByRole('button', { name })
 
 describe('the toolbar and the status bar', () => {
@@ -37,7 +37,7 @@ describe('the toolbar and the status bar', () => {
     await thumbnails.click()
     expect(await thumbnails.getAttribute('aria-pressed')).toBe('true')
     await j.page.getByRole('slider', { name: 'Thumbnail size' }).waitFor()
-    await place(/Sion/).click()
+    await place(j.page, /Sion/).click()
     expect(await thumbnails.getAttribute('aria-pressed'), 'the choice holds in another place').toBe(
       'true'
     )
@@ -108,7 +108,7 @@ describe('light and dark', () => {
     await j.page.waitForFunction(() => document.documentElement.hasAttribute('data-theme'))
     expect(await theme()).toBe('dark')
     expect(await lightness()).toBeLessThan(60)
-    await menuOf(j.page).waitFor()
+    await folders(j.page).waitFor()
     await pin('Auto')
     expect(await theme()).toBeNull()
     expect(await lightness(), 'back to what the machine says').toBeGreaterThan(180)
@@ -121,7 +121,7 @@ describe('what the board says', () => {
 
   test('says a refusal as an alert, in the colour of something still owed, and it can be dismissed', async () => {
     fs.writeFileSync(notes(), 'not footage')
-    await place(/Fresh files/).click()
+    await place(j.page, /Fresh files/).click()
     await dropFiles(j.page, [notes()])
     const alert = j.page.getByRole('alert')
     await alert.getByText('Nothing in that drop is a video or a photo SkyDock can show.').waitFor()
@@ -153,9 +153,8 @@ describe('what the board says', () => {
 })
 
 describe('dialogs', () => {
-  const dialog = (name: string) => j.page.getByRole('dialog', { name })
   const inside = (name: string) =>
-    dialog(name).evaluate((box) => box.contains(document.activeElement))
+    dialogNamed(j.page, name).evaluate((box) => box.contains(document.activeElement))
   const focused = (opener: ReturnType<typeof hint>) =>
     opener.evaluate((el) => el === document.activeElement)
   const fromSettings = async (name: string) => {
@@ -166,18 +165,18 @@ describe('dialogs', () => {
   /* Escape closes it, as a click beside it does, and the keyboard stays inside while it is open */
   const closesWithEscapeAndOutsideClick = async (name: string, open: () => Promise<void>) => {
     await open()
-    await dialog(name).waitFor()
+    await dialogNamed(j.page, name).waitFor()
     expect(await inside(name), 'focus goes into it').toBe(true)
     for (let key = 0; key < 14; key++) {
       await j.page.keyboard.press('Tab')
       expect(await inside(name), 'Tab stays inside').toBe(true)
     }
     await j.page.keyboard.press('Escape')
-    await dialog(name).waitFor({ state: 'detached' })
+    await dialogNamed(j.page, name).waitFor({ state: 'detached' })
     await open()
-    await dialog(name).waitFor()
+    await dialogNamed(j.page, name).waitFor()
     await j.page.mouse.click(4, 4)
-    await dialog(name).waitFor({ state: 'detached' })
+    await dialogNamed(j.page, name).waitFor({ state: 'detached' })
   }
 
   test('closes the keyboard shortcuts with Escape and with a click outside, and focus goes back to the button that opened it', async () => {
@@ -202,7 +201,7 @@ describe('dialogs', () => {
   })
 
   test('closes the question about putting files in the bin with Escape and with a click outside, Cancel first and what it does last', async () => {
-    await place(/Fresh files/).click()
+    await place(j.page, /Fresh files/).click()
     await j.page.getByRole('button', { name: /^Loose files,/ }).click()
     await j.page.getByRole('button', { name: 'Pick', exact: true }).first().click()
     const remove = hint(/Remove…/)
@@ -211,23 +210,27 @@ describe('dialogs', () => {
 
     await remove.click()
     expect(
-      await dialog('Remove files').getByRole('button').allInnerTexts(),
+      await dialogNamed(j.page, 'Remove files').getByRole('button').allInnerTexts(),
       'files already loose have only the bin left'
     ).toEqual(['Cancel', 'Put in the bin'])
-    const bin = dialog('Remove files').getByRole('button', { name: 'Put in the bin' })
+    const bin = dialogNamed(j.page, 'Remove files').getByRole('button', { name: 'Put in the bin' })
     expect(await bin.locator('svg').count(), 'the bin carries its icon').toBe(1)
     await j.page.keyboard.press('Escape')
     await quiet()
   })
 
   test('closes the question about taking a destination off the board with Escape and with a click outside, the red button without an icon', async () => {
-    await place(/Sion/).click()
+    await place(j.page, /Sion/).click()
     const remove = hint('Remove destination…')
     await closesWithEscapeAndOutsideClick('Remove a destination', () => remove.click())
     await remove.click()
-    const names = await dialog('Remove a destination').getByRole('button').allInnerTexts()
+    const names = await dialogNamed(j.page, 'Remove a destination')
+      .getByRole('button')
+      .allInnerTexts()
     expect(names).toEqual(['Cancel', 'Remove Sion'])
-    const last = dialog('Remove a destination').getByRole('button', { name: 'Remove Sion' })
+    const last = dialogNamed(j.page, 'Remove a destination').getByRole('button', {
+      name: 'Remove Sion'
+    })
     expect(await last.locator('svg').count()).toBe(0)
     const [red, green, blue] = (await last.evaluate((el) => getComputedStyle(el).color))
       .match(/\d+/g)!
@@ -238,7 +241,7 @@ describe('dialogs', () => {
   })
 
   test('closes the question about resetting Fresh files and the one asking a montage’s name with Escape and with a click outside', async () => {
-    await place(/Fresh files/).click()
+    await place(j.page, /Fresh files/).click()
     await closesWithEscapeAndOutsideClick('Reset Fresh files', async () => {
       await hint('More').click()
       await hint('Reset Fresh files…').click()
@@ -310,10 +313,10 @@ describe('finding anything', () => {
     await found()
       .getByRole('button', { name: /GX010001/ })
       .click()
-    const preview = j.page.getByRole('dialog', { name: 'Preview' })
-    await preview.getByText('GX010001.MP4').first().waitFor()
+    const shown = preview(j.page)
+    await shown.getByText('GX010001.MP4').first().waitFor()
     await j.page.keyboard.press('Escape')
-    await preview.waitFor({ state: 'detached' })
+    await shown.waitFor({ state: 'detached' })
     await quiet()
   })
 })

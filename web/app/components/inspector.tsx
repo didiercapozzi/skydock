@@ -523,9 +523,19 @@ const JumpPanel = ({
           </Part>
         )}
         <div className='mt-auto flex items-center justify-between gap-2 px-6 pt-4 pb-6'>
-          <Mini onClick={onSelectFiles}>
-            {t`Select its ${plural(fileCount, { one: '# file', other: '# files' })}`}
-          </Mini>
+          <div className='flex flex-wrap items-center gap-2'>
+            <Mini onClick={onSelectFiles}>
+              {t`Select its ${plural(fileCount, { one: '# file', other: '# files' })}`}
+            </Mini>
+            {onTrimToJump && (
+              <Mini
+                title={t`Each clip from its exit to a few seconds after its landing`}
+                onClick={onTrimToJump}>
+                <Icon name='scissors' />
+                {t`Trim every clip to the jump`}
+              </Mini>
+            )}
+          </div>
           {onDelete && (
             <Danger
               size='mini'

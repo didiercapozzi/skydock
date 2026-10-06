@@ -5,7 +5,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { ensureShareLink } from '../src/nas'
 import { planUpload } from '../src/publish'
-import { goneFromStorage, resolveUploadTargets, targetForGroup } from '../src/upload'
+import { goneFromStorage, goneSent, resolveUploadTargets, targetForGroup } from '../src/upload'
 import type { Manifest, ManifestGroup } from '../src/types'
 import { createTmpDir, jsonResponse, nasStubs, seen, stubFetch } from './fixtures'
 
@@ -241,6 +241,15 @@ describe('where an upload goes', () => {
     })
 
     expect(target?.files?.map((f) => path.basename(f))).toEqual(['new.mp4'])
+
+    /* a file somebody deleted up there by hand is sent again, though it was sent once */
+    const [again] = resolveUploadTargets({
+      outputDir: out,
+      manifest,
+      scope: { destination: 'sion' },
+      remote: { dirs: ['/nas/Sion'], sizes: {} }
+    })
+    expect(again?.files?.map((f) => path.basename(f)).sort()).toEqual(['new.mp4', 'sent.mp4'])
     fs.rmSync(out, { recursive: true, force: true })
   })
 
@@ -391,5 +400,28 @@ describe('what of an upload the storage no longer has', () => {
     }
     expect(goneFromStorage(record, remote)).toEqual([])
     expect(goneFromStorage(record, null)).toEqual([])
+  })
+})
+
+describe('what of the items handed over the storage no longer has', () => {
+  const record = {
+    at: 1,
+    sent: [
+      { name: 'photos/', holds: ['photos' as const], to: ['/Films'] },
+      { name: 'luc.mp4', holds: ['film' as const], to: ['/Films'] }
+    ]
+  }
+
+  it('does not say a folder of photos is gone while the storage lists photos inside it', () => {
+    const remote = {
+      dirs: ['/Films', '/Films/photos'],
+      sizes: { '/Films/photos/a.jpg': 5, '/Films/luc.mp4': 9 }
+    }
+    expect(goneSent(record, remote)).toEqual([])
+  })
+
+  it('says a folder of photos is gone when its listing came back empty', () => {
+    const remote = { dirs: ['/Films', '/Films/photos'], sizes: { '/Films/luc.mp4': 9 } }
+    expect(goneSent(record, remote)).toEqual(['/Films/photos/'])
   })
 })

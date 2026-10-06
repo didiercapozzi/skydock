@@ -1,46 +1,9 @@
-import * as fs from 'node:fs'
-import * as path from 'node:path'
-import { z } from 'zod'
 import type { Locator, Page } from 'playwright'
 import type { World } from './app'
+import { groupsOf, manifestOf } from './record'
 
-/* What the sorting chapters share: reading where the jumps are as the record on disk has them, the places a
-   person clicks, and a drag with a key held, as a person drags with alt. */
-
-const groupSchema = z.object({
-  groups: z.array(
-    z
-      .object({
-        destination: z.string().optional(),
-        passenger: z.object({ firstname: z.string(), lastname: z.string() }).optional(),
-        files: z.array(
-          z
-            .object({
-              id: z.string(),
-              cropStart: z.number().nullish(),
-              cropEnd: z.number().nullish()
-            })
-            .passthrough()
-        )
-      })
-      .passthrough()
-  )
-})
-const filesSchema = z.object({
-  files: z.array(
-    z
-      .object({
-        id: z.string().optional(),
-        filename: z.string(),
-        mtime: z.number(),
-        destination: z.string().optional()
-      })
-      .passthrough()
-  )
-})
-const readJson = (world: World, name: string) =>
-  JSON.parse(fs.readFileSync(path.join(world.output, name), 'utf8'))
-const manifestOf = (world: World) => filesSchema.parse(readJson(world, 'manifest.json'))
+/* What the sorting chapters share: reading where the jumps are as the record on disk has them, and a drag with
+   a key held, as a person drags with alt. */
 
 /* what the record says of every jump, the name of each file found as a person would read it — a copy has the
    name of its original */
@@ -48,7 +11,7 @@ const recordOf = (world: World) => {
   const names = new Map(
     manifestOf(world).files.flatMap((f) => (f.id ? [[f.id, f.filename] as const] : []))
   )
-  return groupSchema.parse(readJson(world, 'groups.json')).groups.map((g) => ({
+  return groupsOf(world).map((g) => ({
     destination: g.destination,
     montage: g.passenger ? `${g.passenger.firstname} ${g.passenger.lastname}` : undefined,
     files: g.files.map((f) => ({
@@ -95,28 +58,6 @@ const holds = (world: World, destination: string) =>
     ])
   ].sort()
 
-/* every file kept under a folder, as a path below it */
-const listing = (folder: string): string[] =>
-  !fs.existsSync(folder)
-    ? []
-    : fs
-        .readdirSync(folder, { withFileTypes: true })
-        .flatMap((entry) =>
-          entry.isDirectory()
-            ? listing(path.join(folder, entry.name)).map((one) => path.join(entry.name, one))
-            : [entry.name]
-        )
-        .sort()
-
-/* the menu of places down the left */
-const menuOf = (page: Page) => page.getByRole('navigation', { name: 'Folders' })
-
-/* a file's row, found by its name */
-const rowOf = (page: Page, filename: string) => page.locator('[data-file]', { hasText: filename })
-
-/* a jump's card, found by its name */
-const cardOf = (page: Page, name: string) => page.getByRole('button', { name: `${name},` })
-
 /* picked by its tick */
 const pick = (row: Locator) => row.getByRole('button', { name: 'Pick', exact: true }).click()
 
@@ -135,17 +76,4 @@ const drag = async (page: Page, source: Locator, target: Locator, key?: 'Alt') =
   if (key) await page.keyboard.up(key)
 }
 
-export {
-  cardOf,
-  drag,
-  holds,
-  jumpHolding,
-  jumpsOf,
-  listing,
-  menuOf,
-  pick,
-  recordsOf,
-  rowOf,
-  scan,
-  timeOf
-}
+export { drag, holds, jumpHolding, jumpsOf, pick, recordsOf, scan, timeOf }

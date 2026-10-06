@@ -111,5 +111,5 @@ const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => Sta
    because a copy shares its original's path and each of the two has a processed copy of its own. */
 const outputKeyOf = (file: { id?: string; path: string }) => file.id ?? file.path
 
-export { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED }
+export { fileChanged, fileStatus, outputKeyOf, remoteMatches, uploadGate, UPLOADED_LOCKED }
 export type { FileStatus, RemoteListing, StatusContext }

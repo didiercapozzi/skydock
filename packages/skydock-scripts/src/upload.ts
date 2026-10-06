@@ -3,6 +3,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
 import { parentOf } from './paths'
+import { remoteMatches } from './fileStatus'
+import type { RemoteListing } from './fileStatus'
 import {
   deliveryFolders,
   originsDirOf,
@@ -120,7 +122,8 @@ const goneFromStorage = (
     : []
 
 /* What an upload handed over that the storage no longer has, by where it was: an item of what was sent,
-   in a folder that answered and no longer lists it. Only a folder that answered counts, as above. */
+   in a folder that answered and no longer lists it. A folder item (`photos/`) is looked up as a folder,
+   by what is listed inside it. Only a folder that answered counts, as above. */
 const goneSent = (
   record: ManifestGroup['uploaded'],
   remote: { dirs: string[]; sizes: Record<string, number | null> } | null
@@ -128,9 +131,13 @@ const goneSent = (
   remote
     ? (record?.sent ?? []).flatMap((item) =>
         item.to
-          .filter(
-            (dir) => remote.dirs.includes(dir) && remote.sizes[`${dir}/${item.name}`] === undefined
-          )
+          .filter((dir) => {
+            const at = `${dir}/${item.name}`
+            return item.name.endsWith('/')
+              ? remote.dirs.includes(at.slice(0, -1)) &&
+                  !Object.keys(remote.sizes).some((key) => key.startsWith(at))
+              : remote.dirs.includes(dir) && remote.sizes[at] === undefined
+          })
           .map((dir) => `${dir}/${item.name}`)
       )
     : []
@@ -214,11 +221,14 @@ const dedupeTargets = (targets: UploadTarget[]) => {
 const resolveUploadTargets = ({
   outputDir,
   manifest,
-  scope
+  scope,
+  remote
 }: {
   outputDir: string
   manifest: Manifest
   scope: UploadScope
+  /* what the storage holds right now: a file it no longer holds is not "sent" */
+  remote?: RemoteListing | null
 }) => {
   /* A montage's files go to the storage by uploading the montage (RULES, Network storage). Not because they
      are not uploaded — they are — but because they do not all go to the same place: the film and
@@ -248,13 +258,15 @@ const resolveUploadTargets = ({
   }
   /* What went up already is not looked at again: the record says it is there, with the very bytes this
      copy holds, so only what is not up there is checked and sent — a destination uploaded again carries
-     on from where it was, whatever its folder still holds of what it sent before. */
+     on from where it was, whatever its folder still holds of what it sent before. A file the storage
+     was just seen to have lost is not counted: it is sent again (RULES, Network storage). */
   const sent = new Set(
     [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].flatMap((file) =>
       file.uploaded &&
       file.processed &&
       file.uploaded.localPath === file.processed.path &&
-      file.uploaded.size === file.processed.size
+      file.uploaded.size === file.processed.size &&
+      remoteMatches(file, remote)
         ? [file.processed.path]
         : []
     )
@@ -431,16 +443,18 @@ const uploadScope = async ({
   onProgress?: (progress: UploadProgress & { groupIds: string[] }) => void
   onCheck?: (progress: CheckProgress) => void
   onPlan?: (plan: PlanProgress) => void
-}) =>
-  uploadTargets({
+}) => {
+  const remote = await listRemoteFiles(manifest, session)
+  return uploadTargets({
     session,
-    targets: resolveUploadTargets({ outputDir, manifest, scope }),
+    targets: resolveUploadTargets({ outputDir, manifest, scope, remote }),
     origins: originsOf(manifest),
     folders: deliveryFolders(manifest),
     onProgress,
     onCheck,
     onPlan
   })
+}
 
 export {
   destBaseOf,

@@ -1,5 +1,11 @@
 import { t } from '@lingui/core/macro'
-import { hasCompletePassenger, isFiled, isMontage, passengerOf } from '@skydock/scripts'
+import {
+  hasCompletePassenger,
+  isFiled,
+  isMontage,
+  MONTAGES_FOLDER,
+  passengerOf
+} from '@skydock/scripts'
 import { z } from 'zod'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { routingEngine } from './routing'
@@ -180,6 +186,20 @@ const fileHref = (place: Place, fileId: string, view: BoardView = {}) =>
     searchParamsArgs: carried(view)
   })
 
+/* A name a dropzone cannot have, and why — a dropzone is a folder, beside the montages' own. A name
+   that is a folder's own words ('.', '..'), a path, or the montages' folder whatever its case, would
+   put its files somewhere else, or among every montage's. Nothing else is refused. The sentences are
+   said in the language the app speaks now, on the board and in the server's refusal alike. */
+const placeNameProblem = (name: string) => {
+  const trimmed = name.trim()
+  if (!trimmed) return t`A dropzone needs a name.`
+  if (trimmed === '.' || trimmed === '..' || /[\\/]/.test(trimmed))
+    return t`“${trimmed}” cannot be a dropzone’s name — it is not a folder name.`
+  if (trimmed.toLowerCase() === MONTAGES_FOLDER.toLowerCase())
+    return t`“${trimmed}” is where the montages are kept — give the dropzone another name.`
+  return null
+}
+
 export {
   placeOfGroup,
   placeOfLoose,
@@ -194,6 +214,7 @@ export {
   placeHref,
   placeKey,
   placeLabel,
+  placeNameProblem,
   stillHere
 }
 export type { Place }

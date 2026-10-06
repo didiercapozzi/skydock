@@ -727,6 +727,7 @@ const Place = () => {
       {selection.comparing && (
         <ComparisonDialog
           groups={groups}
+          labels={model.labels}
           leftGroupId={selection.comparing[0]}
           rightGroupId={selection.comparing[1]}
           onClose={() => selection.setComparing(null)}

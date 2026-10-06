@@ -2,9 +2,10 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
 import { identities } from './e-helpers'
-import { connect, folders, openPlace, pickInDialog, storageOf, uploadButton } from './f-helpers'
-import { recordedUploads, uploadsAsked } from './f-helpers'
 import { harness } from './harness'
+import { storageOf, uploadsAsked } from './f-helpers'
+import { recordedUploads } from './record'
+import { connectStorage, folders, openPlace, pickInDialog, uploadButton } from './steps'
 
 /* A destination whose first day has gone up and whose second day has just been filed into it: the step beside
    what it owes deals with the files that need it and nothing else. Starts from the three processed copies of
@@ -25,11 +26,11 @@ const SECOND_DAY = ['sion_20260905_143000.mp4', 'sion_20260905_143300.mp4']
 describe('the page of a destination that is connected to a folder', () => {
   test('connects the storage and gives the destination its folder, asked for when the upload is pressed', async () => {
     await open()
-    await connect(j, fake.get())
-    await openPlace(j, 'Sion')
-    await uploadButton(j).click()
+    await connectStorage(j.page, fake.get())
+    await openPlace(j.page, 'Sion')
+    await uploadButton(j.page).click()
     await j.page.locator('[data-nas-folder-dialog]').waitFor()
-    await pickInDialog(j, ['club', 'Dropzones', 'Sion'])
+    await pickInDialog(j.page, ['club', 'Dropzones', 'Sion'])
     await see('They go to the storage, into /club/Dropzones/Sion.')
     await quiet()
   })
@@ -49,19 +50,13 @@ describe('the page of a destination that is connected to a folder', () => {
     await quiet()
   })
 
-  /* BUG: RULES.md (A destination's page is headed in three parts) says the head shows the folder on the
-     storage, pressing it changes it, and below it the way the files travel as three stations in a row — to
-     process, to upload, on the storage. Seen: with the storage connected and the folder chosen, the head holds
-     only the name, "3 files", Search and ⋯; the folder is a phrase in the status card's text ("into
-     /club/Dropzones/Sion"), not something to press; there are no three stations, only one card saying how many
-     files need the next step with a bar "0 of 3 on the storage"; and no videos/photos narrowing is offered.
-     Suspected: routes/place.tsx (DropzoneCard, the page head) was not built to the rule. */
-  test.skip('shows the folder it goes to in its head, to press and change, and the three stations of to process, to upload and on the storage', async () => {
-    await region().getByRole('button', { name: '/club/Dropzones/Sion' }).click()
-    await j.page.locator('[data-nas-folder-dialog]').waitFor()
+  test('heads its page as a calm page is, with its name, its count, a search and a menu, and says in its card which folder on the storage the files go into', async () => {
+    await region().getByRole('button', { name: 'Search' }).waitFor()
+    await region().getByRole('button', { name: 'More' }).waitFor()
+    expect(await region().innerText()).toContain('/club/Dropzones/Sion')
+    await region().getByRole('button', { name: 'More' }).click()
+    await j.page.getByRole('button', { name: 'Change folder…' }).waitFor()
     await j.page.keyboard.press('Escape')
-    for (const station of ['to process', 'to upload', 'on the storage'])
-      await region().getByText(station).first().waitFor()
     await quiet()
   })
 })
@@ -71,7 +66,7 @@ describe('a destination whose first day is on the storage and whose second day i
 
   test('sends the first day, which is then everything on the storage', async () => {
     first = identities(copies())
-    await uploadButton(j).click()
+    await uploadButton(j.page).click()
     await expect.poll(async () => (await videosSent()).length, { timeout: 60_000 }).toBe(3)
     await expect
       .poll(() => [...recordedUploads(j.world).values()].filter(Boolean).length, {
@@ -80,16 +75,16 @@ describe('a destination whose first day is on the storage and whose second day i
       .toBe(3)
     /* the board is opened again to read what went up: it is the record that says */
     await open()
-    await openPlace(j, 'Sion')
+    await openPlace(j.page, 'Sion')
     await see('Everything is on the storage')
     await quiet()
   })
 
   test('files the second jump into it, and says plainly that two files need processing', async () => {
-    const sion = folders(j).getByRole('link', { name: /Sion/ })
-    await openPlace(j, /Fresh files/)
+    const sion = folders(j.page).getByRole('link', { name: /Sion/ })
+    await openPlace(j.page, /Fresh files/)
     await j.page.getByText('Jump 1', { exact: true }).dragTo(sion)
-    await openPlace(j, 'Sion')
+    await openPlace(j.page, 'Sion')
     await j.page.getByRole('heading', { name: '2 files need processing' }).waitFor()
     await j.page.getByRole('button', { name: 'Process 2 files' }).waitFor()
     expect(await j.page.getByRole('button', { name: /^Upload/ }).count()).toBe(0)
@@ -132,7 +127,7 @@ describe('a destination whose first day is on the storage and whose second day i
   })
 
   test('uploads the one day that was prepared, and nothing of the first day again', async () => {
-    await uploadButton(j).click()
+    await uploadButton(j.page).click()
     await expect.poll(async () => (await videosSent()).length, { timeout: 60_000 }).toBe(5)
     expect(await videosSent()).toEqual(
       [

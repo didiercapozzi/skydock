@@ -1,18 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { beforeAll, describe, expect, test } from 'vitest'
-import {
-  gone,
-  makeBigClip,
-  makeOwnPhoto,
-  photoFacts,
-  pressed,
-  probe,
-  recorded,
-  said
-} from './d-helpers'
+import { gone, photoFacts, pressed } from './d-helpers'
 import { harness } from './harness'
-import { dayFolder, makeClip } from './media'
+import { dayFolder, makeBigClip, makeClip, makeOwnPhoto, originalFile, probe } from './media'
+import { recorded } from './record'
+import { closeClip, openClip, place, preview, said } from './steps'
 
 /* The picture on its own: full screen, the machine's own player, and a photo turned. A jump of a big clip —
    the kind that is given a small copy to play —, a small one that is its own small copy, and a photo, on the
@@ -42,9 +35,8 @@ const { see, quiet } = j
 
 beforeAll(() => j.page.setDefaultTimeout(15_000))
 
-const original = (name: string) => path.join(j.world.output, 'original_files', '2026-09-08', name)
-const dialog = () => j.page.getByRole('dialog', { name: 'Preview' })
-const button = (name: string) => dialog().getByRole('button', { name, exact: true })
+const original = (name: string) => originalFile(j.world, '2026-09-08', name)
+const button = (name: string) => preview(j.page).getByRole('button', { name, exact: true })
 const fullScreen = () => button('✕ Leave full screen')
 /* the browser's own full screen, which is the browser's to give: it is waited for as it comes and goes */
 const takesScreen = (yes: boolean) =>
@@ -56,18 +48,12 @@ const leaveFullScreen = async () => {
   await gone(fullScreen())
   await takesScreen(false)
 }
-const quality = () => dialog().getByRole('group', { name: 'Quality' })
+const quality = () => preview(j.page).getByRole('group', { name: 'Quality' })
 const tab = (name: string) =>
-  dialog().getByRole('group', { name: 'What to change' }).getByRole('button', { name, exact: true })
+  preview(j.page)
+    .getByRole('group', { name: 'What to change' })
+    .getByRole('button', { name, exact: true })
 
-const openClip = async (name: string) => {
-  await j.page.getByText(name, { exact: true }).first().dblclick()
-  await dialog().waitFor()
-}
-const closeClip = async () => {
-  await j.page.keyboard.press('Escape')
-  await dialog().waitFor({ state: 'detached' })
-}
 const playing = () => j.page.evaluate(() => document.querySelector('video')?.currentSrc ?? '')
 
 describe('the picture full screen', () => {
@@ -78,8 +64,8 @@ describe('the picture full screen', () => {
     await j.page.getByText('Jump 3', { exact: true }).click()
     /* the big clip is given its small copy; the small one is its own */
     await j.page.getByText('▶ proxy').first().waitFor({ timeout: 60_000 })
-    await openClip(BIG)
-    await dialog()
+    await openClip(j.page, BIG)
+    await preview(j.page)
       .getByText(/\d of \d$/)
       .waitFor()
     await quiet()
@@ -91,7 +77,7 @@ describe('the picture full screen', () => {
     /* the window's own player is under the clip, to be watched rather than dragged */
     await expect.poll(() => j.page.locator('video').getAttribute('controls')).not.toBeNull()
     await leaveFullScreen()
-    await dialog().waitFor()
+    await preview(j.page).waitFor()
 
     await j.page.keyboard.press('f')
     await fullScreen().waitFor()
@@ -103,7 +89,7 @@ describe('the picture full screen', () => {
     await j.page.locator('video').dblclick({ position: { x: 40, y: 40 } })
     await fullScreen().waitFor()
     await leaveFullScreen()
-    await dialog().waitFor()
+    await preview(j.page).waitFor()
     await quiet()
   })
 
@@ -130,18 +116,18 @@ describe('the picture full screen', () => {
   })
 
   test('gives a clip that is its own small copy no choice to make full screen', async () => {
-    await closeClip()
-    await openClip(SMALL)
+    await closeClip(j.page)
+    await openClip(j.page, SMALL)
     await button('⛶ Full screen').click()
     await fullScreen().waitFor()
     await gone(quality())
     await leaveFullScreen()
-    await closeClip()
+    await closeClip(j.page)
     await quiet()
   })
 
   test('shows a photo full screen at its own size, with no small copy to choose', async () => {
-    await openClip(PHOTO)
+    await openClip(j.page, PHOTO)
     await j.page.keyboard.press('f')
     await fullScreen().waitFor()
     await gone(quality())
@@ -158,8 +144,8 @@ describe('the picture full screen', () => {
 
 describe('turning a photo', () => {
   test('offers a photo only the turn and what is known of it', async () => {
-    await said(dialog().getByRole('group', { name: 'What to change' }), 'Turn')
-    await said(dialog().getByRole('group', { name: 'What to change' }), 'Info')
+    await said(preview(j.page).getByRole('group', { name: 'What to change' })).toContain('Turn')
+    await said(preview(j.page).getByRole('group', { name: 'What to change' })).toContain('Info')
     await gone(tab('Cut'))
     await gone(tab('Frame'))
     await quiet()
@@ -170,12 +156,10 @@ describe('turning a photo', () => {
     await j.page.keyboard.press('r')
     await pressed(button('↻ +90°'), true)
     await button('Save').click()
-    await dialog().waitFor({ state: 'detached' })
+    await preview(j.page).waitFor({ state: 'detached' })
     await expect.poll(() => recorded(j.world, PHOTO).rotation).toBe(90)
 
-    const sion = j.page
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
+    const sion = place(j.page, /Sion/)
     await j.page.getByText('Jump 3', { exact: true }).first().dragTo(sion)
     await sion.click()
     await see('3 files need processing')
@@ -202,13 +186,13 @@ describe('turning a photo', () => {
 describe('in the machine’s own player', () => {
   test('hands the clip itself to whatever plays videos, nothing copied or converted first', async () => {
     await j.page.getByText(BIG, { exact: true }).first().dblclick()
-    await dialog().waitFor()
+    await preview(j.page).waitFor()
     await button("In the machine's player").click()
     const played = path.join(j.world.root, 'played.txt')
     await expect.poll(() => fs.existsSync(played)).toBe(true)
     expect(fs.readFileSync(played, 'utf8').trim().split('\n')).toEqual([original(BIG)])
-    await dialog().waitFor()
-    await closeClip()
+    await preview(j.page).waitFor()
+    await closeClip(j.page)
     await quiet()
   })
 })

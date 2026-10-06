@@ -18,10 +18,7 @@ const covers: Record<string, string[]> = {
   'Work shown as it happens': [SHOWN, PROXIES, 'plays a large clip from its small copy'],
   Acting: [PLAIN, ONLY],
   "A dropzone's step stands beside what it deals with": [STEP, ONLY],
-  "A destination's page is headed in three parts": [
-    HEAD,
-    'shows the folder it goes to in its head, to press and change, and the three stations of to process, to upload and on the storage'
-  ],
+  "A destination's page is headed as every calm page is": [HEAD],
   Processing: [SHOWN, STOP],
   'Nothing is uploaded until everything in it is processed': [PLAIN, STOP],
   'File status': [

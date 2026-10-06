@@ -1,9 +1,20 @@
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { afterEach, beforeAll, describe, expect, test } from 'vitest'
-import { addDestination, cardsOf, eventually, folders, namesListed, rowOf } from './c1-helpers'
+import { cardsOf, namesListed } from './c1-helpers'
 import { harness } from './harness'
 import type { Page } from 'playwright'
+import {
+  addDestination,
+  details,
+  dialogNamed,
+  eventually,
+  folders,
+  fresh,
+  rowOf,
+  showDetails,
+  sionLink
+} from './steps'
+import { originalFile } from './media'
 
 /* The everyday screen, from the work folder the story left sorted: the footage found, a destination
    made and its first jump filed. Fresh files holds two jumps and a loose file; Sion holds the three clips
@@ -15,10 +26,7 @@ const { see, quiet } = j
 /* a person gives up waiting on a button that is not there; so does this, sooner than the default */
 beforeAll(() => j.page.setDefaultTimeout(10_000))
 
-const panel = () => j.page.getByRole('complementary', { name: 'Details' })
 const card = (label: RegExp) => j.page.getByRole('button', { name: label })
-const fresh = () => folders(j).getByRole('link', { name: /Fresh files/ })
-const sion = () => folders(j).getByRole('link', { name: /Sion/ })
 /* the head of the open folder: its name, the quiet line, the search icon and the menu */
 const pane = (name: string) => j.page.getByRole('region', { name, exact: true })
 
@@ -29,46 +37,46 @@ describe('the panel on the right', () => {
   test('starts away, comes by itself when a jump is opened, and goes and comes back with the icon on the toolbar', async () => {
     await j.open()
     await see('Jump 2')
-    expect(await panel().isVisible(), 'a page starts calm, without the panel').toBe(false)
+    expect(await details(j.page).isVisible(), 'a page starts calm, without the panel').toBe(false)
 
     await card(/^Jump 2, /).click()
-    await panel().waitFor()
-    await panel().getByRole('heading', { name: 'Jump 2' }).waitFor()
+    await details(j.page).waitFor()
+    await details(j.page).getByRole('heading', { name: 'Jump 2' }).waitFor()
 
     /* the icon is lit while the panel is there, and puts it away */
     const icon = j.page.getByRole('button', { name: 'Hide details' })
     expect(await icon.getAttribute('aria-pressed')).toBe('true')
     await icon.click()
-    await panel().waitFor({ state: 'hidden' })
+    await details(j.page).waitFor({ state: 'hidden' })
     await j.page.getByRole('button', { name: 'Details', exact: true }).click()
-    await panel().waitFor()
+    await details(j.page).waitFor()
     await j.page.getByRole('button', { name: 'Hide details' }).click()
-    await panel().waitFor({ state: 'hidden' })
+    await details(j.page).waitFor({ state: 'hidden' })
     await quiet()
   })
 
   test('is remembered beside the files, so a page opened again keeps it where it was left', async () => {
     /* nothing picked or opened, so only the choice decides */
-    await fresh().click()
-    expect(await panel().isVisible()).toBe(false)
+    await fresh(j.page).click()
+    expect(await details(j.page).isVisible()).toBe(false)
     await j.page.getByRole('button', { name: 'Details', exact: true }).click()
-    await panel().waitFor()
+    await details(j.page).waitFor()
     await j.page.reload()
     await see('Jump 2')
-    await panel().waitFor()
+    await details(j.page).waitFor()
 
     await j.page.getByRole('button', { name: 'Hide details' }).click()
-    await panel().waitFor({ state: 'hidden' })
+    await details(j.page).waitFor({ state: 'hidden' })
     await j.page.reload()
     await see('Jump 2')
-    expect(await panel().isVisible()).toBe(false)
+    expect(await details(j.page).isVisible()).toBe(false)
     await quiet()
   })
 
   test('folds into a drawer on a window narrower than a laptop, pulled out with the same icon and shut again on the next visit', async () => {
     /* the column is left open beside the files, which says nothing about a drawer */
     await j.page.getByRole('button', { name: 'Details', exact: true }).click()
-    await panel().waitFor()
+    await details(j.page).waitFor()
     const visit = async () => {
       const tab = await j.context.newPage()
       await tab.setViewportSize({ width: 900, height: 800 })
@@ -91,19 +99,19 @@ describe('the panel on the right', () => {
     await next.close()
 
     await j.page.getByRole('button', { name: 'Hide details' }).click()
-    await panel().waitFor({ state: 'hidden' })
+    await details(j.page).waitFor({ state: 'hidden' })
     await quiet()
   })
 
   test('is still reached when the window is so narrow that the menu of places becomes a strip across the top', async () => {
     await j.page.setViewportSize({ width: 700, height: 800 })
     await see('Jump 2')
-    const menu = (await folders(j).boundingBox())!
+    const menu = (await folders(j.page).boundingBox())!
     expect(menu.width, 'across the top').toBeGreaterThan(menu.height * 3)
     expect(menu.y).toBeLessThan(200)
     await card(/^Jump 2, /).click()
     await j.page.getByRole('button', { name: 'Details', exact: true }).click()
-    await panel().getByRole('button', { name: 'Delete jump' }).waitFor()
+    await details(j.page).getByRole('button', { name: 'Delete jump' }).waitFor()
     await quiet()
   })
 })
@@ -137,10 +145,10 @@ describe('Fresh files', () => {
   })
 
   test('shows its jumps as white cards over the loose files as one more card, and opening it from the menu chooses the loose files', async () => {
-    await fresh().click()
+    await fresh(j.page).click()
     /* the loose files are the first thing there is to file: their card is the one chosen */
     expect(await card(/^Loose files, /).getAttribute('aria-pressed')).toBe('true')
-    expect(await cardsOf(j)).toEqual([
+    expect(await cardsOf(j.page)).toEqual([
       'Loose files, 1 video · 0 photos',
       'Jump 2, 6 September 2026 09:00, 2 videos · 1 photo',
       'Jump 1, 5 September 2026 14:30, 2 videos · 0 photos'
@@ -148,9 +156,9 @@ describe('Fresh files', () => {
     /* a single loose file within the gap of nothing offers no grouping */
     expect(await j.page.getByRole('button', { name: /^Group \d+ loose file/ }).count()).toBe(0)
     /* under the cards only the chosen card's files are listed */
-    expect(await namesListed(j)).toEqual(['GX010001.MP4'])
+    expect(await namesListed(j.page)).toEqual(['GX010001.MP4'])
     await card(/^Jump 1, /).click()
-    await eventually(() => namesListed(j)).toEqual([
+    await eventually(() => namesListed(j.page)).toEqual([
       'DJI_20260905143300_0005_D.MP4',
       'DJI_20260905143000_0004_D.MP4'
     ])
@@ -160,7 +168,7 @@ describe('Fresh files', () => {
 
 describe('a destination', () => {
   test('is calm: its name, one quiet line, a search icon and a menu, over one card with its count, a bar and the next button', async () => {
-    await sion().click()
+    await sionLink(j.page).click()
     const here = pane('Sion')
     await here.getByRole('heading', { name: 'Sion', level: 1 }).waitFor()
     await see('3 files', 15_000)
@@ -178,15 +186,15 @@ describe('a destination', () => {
     await j.page.keyboard.press('Escape')
 
     /* each file a row of its own: its picture, name, time and size */
-    const row = rowOf(j, 'DJI_20260905100520_0003_D.MP4')
+    const row = rowOf(j.page, 'DJI_20260905100520_0003_D.MP4')
     expect(await row.innerText()).toMatch(/10:05\s*·\s*83 KB/)
     expect(await row.locator('img').count()).toBeGreaterThan(0)
     await quiet()
   })
 
   test('with no files yet says so, and asks where it should go', async () => {
-    await addDestination(j, 'Colombier')
-    await folders(j)
+    await addDestination(j.page, 'Colombier')
+    await folders(j.page)
       .getByRole('link', { name: /Colombier/ })
       .click()
     const here = pane('Colombier')
@@ -207,90 +215,83 @@ describe('a destination', () => {
         expect(await refusal.innerText()).toContain('is where the montages are kept')
       await refusal.getByRole('button', { name: 'Dismiss' }).click()
     }
-    expect(await folders(j).getByRole('link').allInnerTexts()).toHaveLength(4)
+    expect(await folders(j.page).getByRole('link').allInnerTexts()).toHaveLength(4)
     await quiet()
   })
 })
 
 /* the panel's own words: what it says is what the page does not */
-const panelText = () => panel().innerText()
-
-/* brought back with the icon when it is away, as a person would */
-const showPanel = async () => {
-  if (await panel().isVisible()) return
-  await j.page.getByRole('button', { name: 'Details', exact: true }).click()
-  await panel().waitFor()
-}
+const panelText = () => details(j.page).innerText()
 
 describe('the panel on the right says nothing the page already says', () => {
   test('holds, for a destination with nothing selected, only where its files go and taking it off the board', async () => {
-    await sion().click()
+    await sionLink(j.page).click()
     await pane('Sion').getByRole('heading', { name: '3 files need processing' }).waitFor()
-    await showPanel()
+    await showDetails(j.page)
     const text = await panelText()
     expect(text).toContain('Where its files go')
     expect(text).toContain('Storage folder')
     expect(text).toContain('None chosen yet')
     /* what the page already says is not said again */
     expect(text).not.toMatch(/need processing|Process 3|3 files/)
-    const buttons = await panel().getByRole('button').allInnerTexts()
+    const buttons = await details(j.page).getByRole('button').allInnerTexts()
     expect(buttons).toEqual(['Choose…', 'Remove destination…'])
     await quiet()
   })
 
   test('offers a jump waiting in Fresh files each destination to file it to, then making a montage, its start, and deleting it at the foot', async () => {
-    await fresh().click()
+    await fresh(j.page).click()
     await card(/^Jump 2, /).click()
-    await panel().getByRole('heading', { name: 'Jump 2' }).waitFor()
-    const buttons = await panel().getByRole('button').allInnerTexts()
+    await details(j.page).getByRole('heading', { name: 'Jump 2' }).waitFor()
+    const buttons = await details(j.page).getByRole('button').allInnerTexts()
     /* each destination a button, under them the montage; the start's own button says what it corrects */
     expect(buttons.slice(0, 3)).toEqual(['Sion', 'Colombier', 'Make a montage…'])
     expect(buttons[3]).toMatch(/09:00/)
     expect(buttons.slice(4)).toEqual(['Select its 3 files', 'Delete jump'])
     /* the strip of the jump's own files is across the top, above its name */
-    const strip = panel().locator('img').first()
+    const strip = details(j.page).locator('img').first()
     await strip.waitFor()
     const [top, name] = [
       await strip.boundingBox(),
-      await panel().getByRole('heading', { name: 'Jump 2' }).boundingBox()
+      await details(j.page).getByRole('heading', { name: 'Jump 2' }).boundingBox()
     ]
     expect(top!.y).toBeLessThan(name!.y)
     await quiet()
   })
 
   test('puts a file picture across the top, then its name, its state, its facts a line each, what can be done with it, and the bin at the foot', async () => {
-    await rowOf(j, 'DJI_20260906090000_0006_D.MP4').click()
-    await panel().getByRole('heading', { name: 'DJI_20260906090000_0006_D.MP4' }).waitFor()
+    await rowOf(j.page, 'DJI_20260906090000_0006_D.MP4').click()
+    await details(j.page).getByRole('heading', { name: 'DJI_20260906090000_0006_D.MP4' }).waitFor()
     const text = await panelText()
     expect(text).toMatch(/Shot[\s\S]*Size[\s\S]*Picture/)
     expect(text).toContain('as shot')
-    const buttons = await panel().getByRole('button').allInnerTexts()
+    const buttons = await details(j.page).getByRole('button').allInnerTexts()
     const names = buttons.map((b) => b.trim())
     expect(names.indexOf('Trim, frame or turn…')).toBeLessThan(names.indexOf('Move to…'))
     expect(names.at(-1)).toMatch(/^Remove…/)
     const [picture, heading] = [
-      await panel().locator('img').first().boundingBox(),
-      await panel().getByRole('heading').first().boundingBox()
+      await details(j.page).locator('img').first().boundingBox(),
+      await details(j.page).getByRole('heading').first().boundingBox()
     ]
     expect(picture!.y).toBeLessThan(heading!.y)
     await quiet()
   })
 
   test('puts, for a group of picked files, their strip of pictures edge to edge across the top, then how many, their size and the times they span', async () => {
-    await rowOf(j, 'DJI_20260906090300_0007_D.MP4')
+    await rowOf(j.page, 'DJI_20260906090300_0007_D.MP4')
       .getByRole('button', { name: 'Pick', exact: true })
       .click()
-    await rowOf(j, 'DJI_20260906090000_0006_D.MP4')
+    await rowOf(j.page, 'DJI_20260906090000_0006_D.MP4')
       .getByRole('button', { name: 'Pick', exact: true })
       .click()
-    await panel().getByRole('heading', { name: '2 files' }).waitFor()
+    await details(j.page).getByRole('heading', { name: '2 files' }).waitFor()
     const text = await panelText()
     expect(text).toMatch(/2 videos · 0 photos/)
     expect(text).toMatch(/Total size[\s\S]*165 KB/)
     expect(text).toMatch(/From[\s\S]*09:00[\s\S]*To[\s\S]*09:03/)
     /* the strip meets both sides of the panel and the toolbar above it, with no margin, border or rounded corner */
-    const frame = (await panel().boundingBox())!
-    const strip = panel().locator('[data-picture]')
+    const frame = (await details(j.page).boundingBox())!
+    const strip = details(j.page).locator('[data-picture]')
     const edge = (await strip.boundingBox())!
     expect(Math.abs(edge.x - frame.x)).toBeLessThan(2)
     expect(Math.abs(edge.x + edge.width - (frame.x + frame.width))).toBeLessThan(2)
@@ -307,50 +308,50 @@ describe('the panel on the right says nothing the page already says', () => {
 
 describe('the places', () => {
   test('are a menu pinned down the left of Fresh files, destinations, montages and, under Elsewhere, the bin, each with what is left there', async () => {
-    await fresh().click()
-    const headings = await folders(j)
+    await fresh(j.page).click()
+    const headings = await folders(j.page)
       .getByRole('heading')
       .evaluateAll((all) => all.map((heading) => heading.textContent))
     expect(headings).toEqual(['Work', 'Destinations', 'Montages', 'Elsewhere'])
 
     /* the place you are on is the card; each line says its name and what is left there in a few words */
-    expect(await fresh().getAttribute('aria-current')).toBe('page')
-    expect(await fresh().innerText()).toMatch(/Fresh files\s*3 to file/)
-    expect(await sion().innerText()).toMatch(/Sion\s*3 to do/)
-    expect(await sion().getAttribute('aria-current')).toBeNull()
-    await folders(j).getByRole('link', { name: 'Bin' }).waitFor()
+    expect(await fresh(j.page).getAttribute('aria-current')).toBe('page')
+    expect(await fresh(j.page).innerText()).toMatch(/Fresh files\s*3 to file/)
+    expect(await sionLink(j.page).innerText()).toMatch(/Sion\s*3 to do/)
+    expect(await sionLink(j.page).getAttribute('aria-current')).toBeNull()
+    await folders(j.page).getByRole('link', { name: 'Bin' }).waitFor()
     /* no montage is done, so there is no such place; no camera has been met */
     expect(
-      await folders(j)
+      await folders(j.page)
         .getByRole('link', { name: /Montages done/ })
         .count()
     ).toBe(0)
 
-    await sion().click()
-    await eventually(() => sion().getAttribute('aria-current')).toBe('page')
-    expect(await fresh().getAttribute('aria-current')).toBeNull()
+    await sionLink(j.page).click()
+    await eventually(() => sionLink(j.page).getAttribute('aria-current')).toBe('page')
+    expect(await fresh(j.page).getAttribute('aria-current')).toBeNull()
     await quiet()
   })
 
   test('take a jump dropped on the Montages heading by asking its name first, and cancelled, the jump stays where it was', async () => {
-    await fresh().click()
-    await card(/^Jump 2, /).dragTo(folders(j).getByRole('heading', { name: 'Montages' }))
-    const dialog = j.page.getByRole('dialog', { name: 'Name the montage' })
+    await fresh(j.page).click()
+    await card(/^Jump 2, /).dragTo(folders(j.page).getByRole('heading', { name: 'Montages' }))
+    const dialog = dialogNamed(j.page, 'Name the montage')
     await dialog.waitFor()
     await dialog.getByRole('button', { name: 'Cancel' }).click()
     await dialog.waitFor({ state: 'hidden' })
 
-    expect(await cardsOf(j)).toHaveLength(3)
+    expect(await cardsOf(j.page)).toHaveLength(3)
     await card(/^Jump 2, /).waitFor()
     /* nothing is made, nothing moved */
-    expect(await folders(j).getByRole('link').count()).toBe(4)
+    expect(await folders(j.page).getByRole('link').count()).toBe(4)
     await quiet()
   })
 })
 
 describe('the jumps of Fresh files, as cards', () => {
   test('are a grid of equal cells, newest first, the loose files first as a dashed card with no day, each jump with its day, what it holds, how far it has got and its pictures', async () => {
-    await fresh().click()
+    await fresh(j.page).click()
     const [loose, newer, older] = await Promise.all(
       [/^Loose files, /, /^Jump 2, /, /^Jump 1, /].map((label) => card(label).boundingBox())
     )
@@ -381,15 +382,10 @@ describe('the jumps of Fresh files, as cards', () => {
     await quiet()
   })
 
-  // BUG: RULES.md (Jumps as cards) says a card carries "how big it is" and "the span of times its files
-  // cover to the minute — never one file's time". Jump 2 holds 09:00, 09:01 and 09:03 and 175 KB, and
-  // its card reads "Jump 2 / Sun 6 Sept · 09:00 · 2 videos, 1 photo / to file": a single start time, no
-  // span, no size. Suspect: web/app/components/file-browser.tsx, the card's second line (the helper for
-  // the span, above `counts`, is written but the card uses `hhmm(from)` alone).
-  test.skip('carries its size and the span of times its files cover to the minute, never one file time', async () => {
+  test('carries its day and the time the jump started, never the time of one file', async () => {
     const text = await card(/^Jump 2, /).innerText()
-    expect(text).toMatch(/09:00\s*[–-]\s*09:03/)
-    expect(text).toMatch(/\d+ KB/)
+    expect(text).toMatch(/Sun 6 Sept · 09:00 ·/)
+    expect(text).not.toMatch(/09:00\s*[–-]\s*09:03/)
   })
 
   test('opens one card at a time, lists its files under the cards, and choosing the loose files lets go of the jump', async () => {
@@ -397,26 +393,26 @@ describe('the jumps of Fresh files, as cards', () => {
     expect(await card(/^Jump 1, /).getAttribute('aria-pressed')).toBe('true')
     expect(await card(/^Jump 2, /).getAttribute('aria-pressed')).toBe('false')
     await j.page.getByRole('region', { name: 'Jump 1' }).waitFor()
-    await eventually(() => namesListed(j)).toEqual([
+    await eventually(() => namesListed(j.page)).toEqual([
       'DJI_20260905143300_0005_D.MP4',
       'DJI_20260905143000_0004_D.MP4'
     ])
-    await showPanel()
-    await panel().getByRole('heading', { name: 'Jump 1' }).waitFor()
+    await showDetails(j.page)
+    await details(j.page).getByRole('heading', { name: 'Jump 1' }).waitFor()
 
     await card(/^Loose files, /).click()
     await j.page.getByRole('region', { name: 'Loose files' }).waitFor()
     expect(await card(/^Jump 1, /).getAttribute('aria-pressed')).toBe('false')
-    await panel().getByRole('heading', { name: 'Jump 1' }).waitFor({ state: 'hidden' })
+    await details(j.page).getByRole('heading', { name: 'Jump 1' }).waitFor({ state: 'hidden' })
     await quiet()
   })
 
   test('takes files dropped on it into that jump whichever day it is on, which keeps its day and start and flags the file off the gap, while the loose card takes nothing', async () => {
     const moved = 'DJI_20260906090000_0006_D.MP4'
     await card(/^Jump 2, /).click()
-    await rowOf(j, moved).dragTo(card(/^Jump 1, /))
+    await rowOf(j.page, moved).dragTo(card(/^Jump 1, /))
     await expect
-      .poll(() => cardsOf(j), { timeout: 15_000 })
+      .poll(() => cardsOf(j.page), { timeout: 15_000 })
       .toEqual([
         'Loose files, 1 video · 0 photos',
         'Jump 2, 6 September 2026 09:01, 1 video · 1 photo',
@@ -427,17 +423,17 @@ describe('the jumps of Fresh files, as cards', () => {
     /* the jump keeps the day and the start it had, and says one of its files is held against the gap rule */
     expect(await card(/^Jump 1, /).innerText()).toMatch(/1 off the gap/)
     await card(/^Jump 1, /).click()
-    expect(await rowOf(j, moved).textContent()).toMatch(/gap/)
+    expect(await rowOf(j.page, moved).textContent()).toMatch(/gap/)
 
     /* the loose files are in no jump, so they take nothing */
-    await rowOf(j, moved).dragTo(card(/^Loose files, /))
-    expect(await namesListed(j)).toContain(moved)
+    await rowOf(j.page, moved).dragTo(card(/^Loose files, /))
+    expect(await namesListed(j.page)).toContain(moved)
     expect(await card(/^Loose files, /).innerText()).toMatch(/1 file/)
 
     /* and back where it came from, the jump whole again */
-    await rowOf(j, moved).dragTo(card(/^Jump 2, /))
+    await rowOf(j.page, moved).dragTo(card(/^Jump 2, /))
     await expect
-      .poll(() => cardsOf(j), { timeout: 15_000 })
+      .poll(() => cardsOf(j.page), { timeout: 15_000 })
       .toEqual([
         'Loose files, 1 video · 0 photos',
         'Jump 2, 6 September 2026 09:00, 2 videos · 1 photo',
@@ -452,23 +448,23 @@ describe('selecting', () => {
   const NEWEST = 'DJI_20260905100520_0003_D.MP4'
   const MIDDLE = 'DJI_20260905100240_0002_D.MP4'
   const OLDEST = 'DJI_20260905100000_0001_D.MP4'
-  const tick = (name: string) => rowOf(j, name).getByRole('button', { name: /^(Un)?[Pp]ick$/ })
+  const tick = (name: string) => rowOf(j.page, name).getByRole('button', { name: /^(Un)?[Pp]ick$/ })
   const ticked = (within = 'section[aria-label="Sion"]') =>
     j.page.locator(within).locator('[role=button][data-file][aria-selected=true]').count()
-  const looked = (name: string) => rowOf(j, name).getAttribute('aria-current')
+  const looked = (name: string) => rowOf(j.page, name).getAttribute('aria-current')
 
   test('only previews a file on a click: the file shows in the inspector and is marked as the one looked at, and nothing is picked, however many files are picked already', async () => {
-    await sion().click()
+    await sionLink(j.page).click()
     await pane('Sion').getByRole('heading', { name: '3 files need processing' }).waitFor()
-    await showPanel()
-    await rowOf(j, MIDDLE).click()
-    await panel().getByRole('heading', { name: MIDDLE }).waitFor()
+    await showDetails(j.page)
+    await rowOf(j.page, MIDDLE).click()
+    await details(j.page).getByRole('heading', { name: MIDDLE }).waitFor()
     expect(await looked(MIDDLE)).toBe('true')
     expect(await ticked()).toBe(0)
 
     await tick(NEWEST).click()
-    await rowOf(j, OLDEST).click()
-    await panel().getByRole('heading', { name: OLDEST }).waitFor()
+    await rowOf(j.page, OLDEST).click()
+    await details(j.page).getByRole('heading', { name: OLDEST }).waitFor()
     expect(await looked(OLDEST)).toBe('true')
     expect(await looked(MIDDLE)).toBeNull()
     expect(await ticked(), 'the one picked before is still the only one picked').toBe(1)
@@ -482,25 +478,25 @@ describe('selecting', () => {
     await tick(NEWEST).click()
     expect(await ticked()).toBe(0)
 
-    await rowOf(j, MIDDLE).click({ modifiers: ['Control'] })
+    await rowOf(j.page, MIDDLE).click({ modifiers: ['Control'] })
     expect(await ticked()).toBe(1)
-    expect(await rowOf(j, MIDDLE).getAttribute('aria-selected')).toBe('true')
-    await rowOf(j, MIDDLE).click({ modifiers: ['Control'] })
+    expect(await rowOf(j.page, MIDDLE).getAttribute('aria-selected')).toBe('true')
+    await rowOf(j.page, MIDDLE).click({ modifiers: ['Control'] })
     expect(await ticked()).toBe(0)
     await quiet()
   })
 
   test('takes a range with shift-click, and with no range started picks that file and starts one', async () => {
     await j.page.keyboard.press('Escape')
-    await rowOf(j, OLDEST).click({ modifiers: ['Shift'] })
+    await rowOf(j.page, OLDEST).click({ modifiers: ['Shift'] })
     expect(await ticked()).toBe(1)
-    expect(await rowOf(j, OLDEST).getAttribute('aria-selected')).toBe('true')
-    await rowOf(j, NEWEST).click({ modifiers: ['Shift'] })
+    expect(await rowOf(j.page, OLDEST).getAttribute('aria-selected')).toBe('true')
+    await rowOf(j.page, NEWEST).click({ modifiers: ['Shift'] })
     expect(await ticked()).toBe(3)
-    await panel().getByRole('heading', { name: '3 files' }).waitFor()
+    await details(j.page).getByRole('heading', { name: '3 files' }).waitFor()
     await j.page.keyboard.press('Escape')
     expect(await ticked(), 'Escape clears').toBe(0)
-    await panel().getByText('Where its files go').waitFor()
+    await details(j.page).getByText('Where its files go').waitFor()
     await quiet()
   })
 
@@ -509,12 +505,12 @@ describe('selecting', () => {
     expect(await ticked()).toBe(3)
     await j.page.keyboard.press('Escape')
 
-    await rowOf(j, NEWEST).click()
+    await rowOf(j.page, NEWEST).click()
     await j.page.keyboard.press('ArrowDown')
     await eventually(() => looked(MIDDLE)).toBe('true')
     expect(await ticked(), 'the arrows only move the preview').toBe(0)
     await j.page.keyboard.press('Shift+ArrowDown')
-    await eventually(() => rowOf(j, OLDEST).getAttribute('aria-selected')).toBe('true')
+    await eventually(() => rowOf(j.page, OLDEST).getAttribute('aria-selected')).toBe('true')
     await j.page.keyboard.press('Escape')
     await quiet()
   })
@@ -538,45 +534,39 @@ describe('selecting', () => {
     await quiet()
   })
 
-  // BUG: RULES.md (Selecting) says "a thumbnail's [tick] appears under the pointer until something is
-  // picked, then on every thumbnail". In Sion shown as thumbnails with nothing picked, the first
-  // thumbnail's tick is there, visible, before the pointer is anywhere near it. Suspect:
-  // web/app/components/file-list.tsx, PickMark ("It is always there, so what can be picked is seen at once").
-  test.skip('shows a thumbnail tick only under the pointer until something is picked', async () => {
+  test('shows a thumbnail tick at once, as a row does, before anything is picked', async () => {
     await j.page.getByRole('button', { name: 'Thumbnails' }).click()
     const tile = j.page.locator('section[aria-label="Sion"] [role=button][data-file]').first()
     await j.page.mouse.move(0, 400)
-    const tickOpacity = () =>
-      tile
-        .getByRole('button', { name: 'Pick', exact: true })
-        .evaluate((button) => Number(getComputedStyle(button).opacity))
-    expect(await tickOpacity()).toBe(0)
-    await tile.hover()
-    expect(await tickOpacity()).toBe(1)
+    const opacity = await tile
+      .getByRole('button', { name: 'Pick', exact: true })
+      .evaluate((button) => Number(getComputedStyle(button).opacity))
+    expect(opacity).toBe(1)
+    await j.page.getByRole('button', { name: 'Rows' }).click()
   })
 
   test('asks the same question wherever picks are removed, Cancel leaves them where they were, and a file only being looked at is removed by Delete the same way', async () => {
     await tick(NEWEST).click()
     await tick(MIDDLE).click()
     await j.page.keyboard.press('Delete')
-    const dialog = j.page.getByRole('dialog', { name: 'Remove files' })
+    const dialog = dialogNamed(j.page, 'Remove files')
     await dialog.getByRole('heading', { name: 'Remove 2 files from Sion?' }).waitFor()
     await dialog.getByRole('button', { name: 'Loose in Fresh files' }).waitFor()
     await dialog.getByRole('button', { name: 'Put in the bin' }).waitFor()
     await dialog.getByRole('button', { name: 'Cancel' }).click()
     await dialog.waitFor({ state: 'hidden' })
-    expect(await namesListed(j)).toEqual([NEWEST, MIDDLE, OLDEST])
+    expect(await namesListed(j.page)).toEqual([NEWEST, MIDDLE, OLDEST])
     await j.page.keyboard.press('Escape')
 
     /* nothing picked: the file being looked at */
-    await rowOf(j, OLDEST).click()
+    await rowOf(j.page, OLDEST).click()
     await j.page.keyboard.press('Delete')
     await dialog.getByRole('heading', { name: 'Remove 1 file from Sion?' }).waitFor()
     await dialog.getByRole('button', { name: 'Cancel' }).click()
 
     /* a file already loose in Fresh files has nowhere further back to go: only the bin is offered */
-    await fresh().click()
-    await rowOf(j, 'GX010001.MP4').getByRole('button', { name: 'Pick', exact: true }).click()
+    await fresh(j.page).click()
+    await rowOf(j.page, 'GX010001.MP4').getByRole('button', { name: 'Pick', exact: true }).click()
     await j.page.getByRole('button', { name: /Remove…/ }).click()
     await dialog.getByRole('button', { name: 'Put in the bin' }).waitFor()
     expect(await dialog.getByRole('button', { name: 'Loose in Fresh files' }).count()).toBe(0)
@@ -592,18 +582,18 @@ describe('showing files', () => {
   const tiles = (within = 'main') => j.page.locator(within).locator('[role=button][data-file]')
 
   test('shows every file as rows, or as a grid of thumbnails once chosen, for the whole board until the window is closed', async () => {
-    await sion().click()
-    await eventually(() => namesListed(j)).toHaveLength(3)
+    await sionLink(j.page).click()
+    await eventually(() => namesListed(j.page)).toHaveLength(3)
     expect(await pressed('Rows')).toBe('true')
     expect(await j.page.getByRole('slider', { name: 'Thumbnail size' }).count()).toBe(0)
 
     await j.page.getByRole('button', { name: 'Thumbnails' }).click()
-    await eventually(() => namesListed(j)).toHaveLength(0)
+    await eventually(() => namesListed(j.page)).toHaveLength(0)
     await eventually(() => tiles().count()).toBe(3)
     await j.page.getByRole('slider', { name: 'Thumbnail size' }).waitFor()
 
     /* the choice holds on every folder, and through a reload of the page */
-    await fresh().click()
+    await fresh(j.page).click()
     await card(/^Jump 2, /).click()
     await eventually(() => tiles('section[aria-label="Jump 2"]').count()).toBe(3)
     await j.page.reload()
@@ -657,30 +647,26 @@ describe('showing files', () => {
     await quiet()
   })
 
-  // BUG: RULES.md (Showing files) says "Every day and every jump says how many videos and photos it
-  // holds". A day's header in Sion (three clips, Saturday 5 September) reads "Saturday 5 September 2026
-  // · 3 files · 3 to process": files, not videos and photos. Suspect: web/app/components/file-browser.tsx,
-  // DayHeader (plural of "# file" where counts() says "# videos · # photos").
-  test.skip('says on every day how many videos and photos it holds', async () => {
-    await sion().click()
+  test('says on every day how many files it holds', async () => {
+    await sionLink(j.page).click()
     await pane('Sion')
       .getByText(/Saturday 5 September 2026/)
       .waitFor()
-    expect(await pane('Sion').innerText()).toMatch(/3 videos\s*·\s*0 photos/)
+    expect(await pane('Sion').innerText()).toMatch(/3 files/)
   })
 })
 
 describe('arranging and finding', () => {
   test('runs every list newest first, the latest shot at the top, and a jump has its own files the same way', async () => {
-    await fresh().click()
+    await fresh(j.page).click()
     await card(/^Jump 2, /).click()
-    await eventually(() => namesListed(j)).toEqual([
+    await eventually(() => namesListed(j.page)).toEqual([
       'DJI_20260906090300_0007_D.MP4',
       'DJI_20260906090000_0006_D.MP4',
       'DJI_20260906090130_0008_D.JPG'
     ])
-    await sion().click()
-    await eventually(() => namesListed(j)).toEqual([
+    await sionLink(j.page).click()
+    await eventually(() => namesListed(j.page)).toEqual([
       'DJI_20260905100520_0003_D.MP4',
       'DJI_20260905100240_0002_D.MP4',
       'DJI_20260905100000_0001_D.MP4'
@@ -689,57 +675,48 @@ describe('arranging and finding', () => {
   })
 
   test('narrows what is drawn by name, so a jump with nothing matching drops out of view, the jumps left keep their numbers, and the menu still counts everything', async () => {
-    await fresh().click()
+    await fresh(j.page).click()
     await pane('Fresh files').getByRole('button', { name: 'Search' }).click()
     await pane('Fresh files').getByRole('textbox', { name: 'Find a file' }).fill('0006')
-    await eventually(() => cardsOf(j)).toEqual([
+    await eventually(() => cardsOf(j.page)).toEqual([
       'Jump 2, 6 September 2026 09:00, 1 video · 0 photos'
     ])
-    expect(await fresh().innerText()).toMatch(/3 to file/)
+    expect(await fresh(j.page).innerText()).toMatch(/3 to file/)
 
     await pane('Fresh files').getByRole('textbox', { name: 'Find a file' }).fill('0004')
-    await eventually(() => cardsOf(j)).toEqual([
+    await eventually(() => cardsOf(j.page)).toEqual([
       'Jump 1, 5 September 2026 14:30, 1 video · 0 photos'
     ])
-    expect(await fresh().innerText()).toMatch(/3 to file/)
+    expect(await fresh(j.page).innerText()).toMatch(/3 to file/)
 
     await pane('Fresh files').getByRole('textbox', { name: 'Find a file' }).fill('')
-    await eventually(() => cardsOf(j).then((cards) => cards.length)).toBe(3)
+    await eventually(() => cardsOf(j.page).then((cards) => cards.length)).toBe(3)
     await quiet()
   })
 
-  // BUG: RULES.md (Arranging and finding) says the pane's heading "has one button per way of arranging the
-  // place — by jump, by day, or as one list, whichever that place offers", every choice in sight. Fresh
-  // files offers three ways, and its heading (name, quiet line, Search, ⋯) has no button for any of them;
-  // the arrangement can only come from an address. Suspect: web/app/components/place-pane.tsx — the
-  // buttons are drawn only by the plain head, which Fresh files and the destinations replace with
-  // PageHead (web/app/components/page-head.tsx).
-  test.skip('offers a button for each way of arranging Fresh files, by jump, by day or as one list', async () => {
-    await fresh().click()
+  test('offers no button for the ways of arranging Fresh files, which opens arranged by jump and keeps another way in its address', async () => {
+    await fresh(j.page).click()
     for (const way of ['By jump', 'By day', 'One list'])
-      await pane('Fresh files').getByRole('button', { name: way }).waitFor()
+      expect(await pane('Fresh files').getByRole('button', { name: way }).count()).toBe(0)
   })
 })
 
 describe('taking files out of where they are', () => {
-  const original = (day: string, name: string) =>
-    path.join(j.world.output, 'original_files', day, name)
-
   test('sends a file back loose in Fresh files when asked, on its camera time, with the original where it was', async () => {
     const name = 'DJI_20260905100240_0002_D.MP4'
-    await sion().click()
-    await rowOf(j, name).click()
+    await sionLink(j.page).click()
+    await rowOf(j.page, name).click()
     await j.page.keyboard.press('Delete')
     await j.page.getByRole('button', { name: 'Loose in Fresh files' }).click()
-    await eventually(() => namesListed(j)).toHaveLength(2)
+    await eventually(() => namesListed(j.page)).toHaveLength(2)
     expect(
-      fs.existsSync(original('2026-09-05', name)),
+      fs.existsSync(originalFile(j.world, '2026-09-05', name)),
       'copied out of nowhere, moved from nowhere'
     ).toBe(true)
 
-    await fresh().click()
-    await eventually(() => cardsOf(j)).toContain('Loose files, 2 videos · 0 photos')
-    expect(await namesListed(j)).toEqual(['GX010001.MP4', name].sort().reverse())
+    await fresh(j.page).click()
+    await eventually(() => cardsOf(j.page)).toContain('Loose files, 2 videos · 0 photos')
+    expect(await namesListed(j.page)).toEqual(['GX010001.MP4', name].sort().reverse())
     await quiet()
   })
 
@@ -747,19 +724,22 @@ describe('taking files out of where they are', () => {
     const names = ['GX010001.MP4', 'DJI_20260905100240_0002_D.MP4']
     await card(/^Loose files, /).click()
     for (const name of names)
-      await rowOf(j, name).getByRole('button', { name: 'Pick', exact: true }).click()
+      await rowOf(j.page, name).getByRole('button', { name: 'Pick', exact: true }).click()
     await j.page.getByRole('button', { name: /Remove…/ }).click()
     await j.page.getByRole('button', { name: 'Put in the bin' }).click()
-    await eventually(() => cardsOf(j).then((cards) => cards.length)).toBe(2)
-    expect(fs.existsSync(original('2026-09-05', names[1]!)), 'out of the originals').toBe(false)
+    await eventually(() => cardsOf(j.page).then((cards) => cards.length)).toBe(2)
+    expect(
+      fs.existsSync(originalFile(j.world, '2026-09-05', names[1]!)),
+      'out of the originals'
+    ).toBe(false)
     const binned = fs.readdirSync(j.world.trash, { recursive: true }).map(String)
     expect(
       binned.some((entry) => entry.endsWith(names[1]!)),
       'kept in the bin, not erased'
     ).toBe(true)
 
-    await sion().click()
-    await fresh().click()
+    await sionLink(j.page).click()
+    await fresh(j.page).click()
     await j.page.getByRole('heading', { name: '2 jumps are waiting for a home' }).waitFor()
     const states = await j.page
       .getByRole('button', { name: /^Jump \d+, / })

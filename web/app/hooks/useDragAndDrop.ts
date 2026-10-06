@@ -31,6 +31,7 @@ const showIntent = (e: React.DragEvent) => {
    under the pointer lights up, and only when it takes what is being carried. */
 const useDragAndDrop = ({
   groups,
+  labels,
   frozen,
   moveFiles,
   assign,
@@ -40,6 +41,8 @@ const useDragAndDrop = ({
   onFiled
 }: {
   groups: ManifestGroup[]
+  /* what each jump is called on the board */
+  labels: Map<string, string>
   frozen: Set<string>
   moveFiles: (ids: string[], where: Move) => void
   assign: (ids: string[], destination: string | null) => void
@@ -67,8 +70,7 @@ const useDragAndDrop = ({
   /* a whole jump, picked up by its line: dropping it on a place files every file in it at once, and
      on the montages it makes the jump a montage (RULES, Jumps) */
   const startJumpDrag = (groupId: string, e?: React.DragEvent) => {
-    const jump = groups.find((g) => g.id === groupId)
-    carrying(e, (jump && passengerOf(jump)) || jump?.label || t`a jump`)
+    carrying(e, labels.get(groupId) ?? t`a jump`)
     setDraggedFiles([])
     setDragged([groupId])
   }
@@ -119,12 +121,7 @@ const useDragAndDrop = ({
         if (carried.length > 0) {
           e.preventDefault()
           e.stopPropagation()
-          const group = groups.find((g) => g.id === groupId)
-          void importDropped(
-            carried,
-            `group:${groupId}`,
-            (group && passengerOf(group)) || group?.label || t`this jump`
-          )
+          void importDropped(carried, `group:${groupId}`, labels.get(groupId) ?? t`this jump`)
           return
         }
         if (draggedFiles.length === 0) return

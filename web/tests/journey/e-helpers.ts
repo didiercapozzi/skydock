@@ -1,70 +1,9 @@
-import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { BrowserContext, Page } from 'playwright'
 
-/* What the chapters of preparing share: footage large enough that a job takes a moment to run, and a look
-   from inside the page at what a person would have seen — every bar that was drawn and every stretch the
-   page was too busy to answer. */
-
-const FFMPEG = () => process.env.SKYDOCK_FFMPEG_PATH ?? 'ffmpeg'
-const FFPROBE = () => process.env.SKYDOCK_FFPROBE_PATH ?? 'ffprobe'
-
-/* a clip of the size a camera shoots, written quickly: the processing of it is what takes the time */
-const makeBigClip = (file: string, when: string, seconds: number, size = '1920x1080') => {
-  fs.mkdirSync(path.dirname(file), { recursive: true })
-  execFileSync(FFMPEG(), [
-    '-y',
-    '-v',
-    'error',
-    '-f',
-    'lavfi',
-    '-i',
-    `testsrc2=size=${size}:rate=25:duration=${seconds}`,
-    '-f',
-    'lavfi',
-    '-i',
-    `sine=frequency=440:duration=${seconds}`,
-    '-c:v',
-    'libx264',
-    '-preset',
-    'ultrafast',
-    '-crf',
-    '30',
-    '-g',
-    '10',
-    '-pix_fmt',
-    'yuv420p',
-    '-c:a',
-    'aac',
-    '-shortest',
-    '-metadata',
-    `creation_time=${when}Z`,
-    file
-  ])
-  const at = new Date(when)
-  fs.utimesSync(file, at, at)
-}
-
-/* what ffprobe says of a file's picture and length */
-const probe = (file: string) => {
-  const [width, height, seconds] = execFileSync(FFPROBE(), [
-    '-v',
-    'error',
-    '-select_streams',
-    'v:0',
-    '-show_entries',
-    'stream=width,height:format=duration',
-    '-of',
-    'csv=p=0:s=,',
-    file
-  ])
-    .toString()
-    .trim()
-    .split(/[,\n]/)
-    .map(Number)
-  return { width: width ?? 0, height: height ?? 0, seconds: seconds ?? 0 }
-}
+/* What the chapters of preparing share: a look from inside the page at what a person would have seen — every
+   bar that was drawn and every stretch the page was too busy to answer. */
 
 /* Written into every page before it runs, and kept in the tab across a reload: each progress bar the page
    drew, with the highest figure it showed, and each stretch of more than 50 ms in which the page could not
@@ -124,4 +63,4 @@ const identities = (folder: string) =>
       })
   )
 
-export { identities, lookAtPages, makeBigClip, probe, seenSince }
+export { identities, lookAtPages, seenSince }

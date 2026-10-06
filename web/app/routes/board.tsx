@@ -8,6 +8,7 @@ import {
   learnStorage,
   listRemoteFiles,
   loadManifest,
+  readRecord,
   processingNow,
   uploadingNow,
   saveManifest,
@@ -135,17 +136,36 @@ const lookAtStorage = async (outputDir: string) => {
   return { nas, remote, storage }
 }
 
+/* how long the board waits for the storage before taking it to be unreachable: less than the time the
+   server gives a streamed answer, so the answer always arrives rather than being cut off */
+const STORAGE_PATIENCE_MS = 4000
+
+const unreachable: StorageLook = {
+  nas: { connected: false, hostname: null, username: null },
+  remote: null,
+  storage: null
+}
+
+const lookAtStorageSoon = (outputDir: string) =>
+  Promise.race([
+    lookAtStorage(outputDir),
+    new Promise<StorageLook>((resolve) =>
+      setTimeout(() => resolve(unreachable), STORAGE_PATIENCE_MS)
+    )
+  ])
+
 const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = getOutputDir()
   const manifestPath = getManifestPath(outputDir)
   /* what the board recorded by itself a moment ago is on the page too */
   flushBoardChanges(manifestPath)
-  let manifest = null
+  let record: ReturnType<typeof readRecord> = { manifest: null, kept: false }
   try {
-    manifest = loadManifest(manifestPath)
+    record = readRecord(manifestPath)
   } catch {
-    manifest = null
+    /* a record that cannot be read at all is no board */
   }
+  const { manifest } = record
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
   )
@@ -172,8 +192,10 @@ const loader = async (_args: Route.LoaderArgs) => {
     remote: null,
     storage: null,
     /* what the storage says, sent after the board, once it has answered */
-    storageLook: lookAtStorage(outputDir),
+    storageLook: lookAtStorageSoon(outputDir),
     hasManifest: manifest !== null,
+    /* the record could not be read whole, so the last good one is what is shown, and said */
+    readFromKept: record.kept,
     /* what is being processed right now, if anything — a page loaded in the middle of it has to
        show it still running rather than offer to start it again */
     processing: processingNow(),
@@ -194,9 +216,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const asking = loaderData.storageLook
   useEffect(() => {
     let current = true
-    void Promise.resolve(asking).then((answer) => {
-      if (current && answer) setLooked(answer)
-    })
+    /* an answer that never came is a storage that could not be reached */
+    void Promise.resolve(asking)
+      .catch(() => unreachable)
+      .then((answer) => {
+        if (current && answer) setLooked(answer)
+      })
     return () => {
       current = false
     }

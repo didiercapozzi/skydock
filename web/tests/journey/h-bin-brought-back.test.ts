@@ -1,8 +1,10 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import { onStorage, storageOf, uploadSion } from './f-helpers'
 import { harness } from './harness'
+import { onStorage, storageOf, uploadSion } from './f-helpers'
+import { originalFile } from './media'
+import { dialogNamed } from './steps'
 
 /* Whatever state a file is in — sent to the storage, freed, fetched back — it can be put in the bin when
    somebody wants it gone: the bin takes this machine's copy, and nothing the storage holds is touched
@@ -18,7 +20,7 @@ const NAME = 'DJI_20260905100240_0002_D.MP4'
 const COPY = 'sion_20260905_100240.mp4'
 const SENT = 'DJI_20260905100520_0003_D.MP4'
 const SENT_COPY = 'sion_20260905_100520.mp4'
-const original = (name: string) => path.join(j.world.output, 'original_files', '2026-09-05', name)
+const original = (name: string) => originalFile(j.world, '2026-09-05', name)
 const sion = (...parts: string[]) => onStorage(fake.get(), 'club', 'Dropzones', 'Sion', ...parts)
 
 /* the file looked at, then Remove… in its panel, then the bin chosen */
@@ -61,8 +63,7 @@ describe('a file that went up and is still here', () => {
 describe('a file brought back from the storage', () => {
   test('is on this machine again after being sent, freed and fetched back on asking', async () => {
     await j.page.getByRole('button', { name: 'Free up space…' }).click()
-    await j.page
-      .getByRole('dialog', { name: 'Free up space' })
+    await dialogNamed(j.page, 'Free up space')
       .getByRole('button', { name: /^Check and free/ })
       .click()
     await see(/Sion: 2 files freed from this machine/, 60_000)

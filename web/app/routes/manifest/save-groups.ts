@@ -1,13 +1,13 @@
 import {
   hasEdit,
   passengerOf,
-  placeNameProblem,
   sameEditedGroup,
   saveManifest,
   UPLOADED_LOCKED,
   idsOf
 } from '@skydock/scripts'
 import { boardAnswer } from '../../helpers/manifest'
+import { placeNameProblem } from '../../helpers/places'
 import type { Intent } from './change'
 
 /* The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a

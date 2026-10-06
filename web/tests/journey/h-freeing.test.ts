@@ -1,19 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
-import {
-  folders,
-  onStorage,
-  openPlace,
-  recordedJumps,
-  recordedRemotePaths,
-  recordedUploads,
-  storageOf,
-  uploadButton,
-  uploadSion,
-  uploadsAsked
-} from './f-helpers'
 import { harness } from './harness'
+import { onStorage, storageOf, uploadsAsked, uploadSion } from './f-helpers'
+import { recordedJumps, recordedRemotePaths, recordedUploads } from './record'
+import { originalFile } from './media'
+import { dialogNamed, folders, openPlace, openSion, uploadButton } from './steps'
 
 /* Giving the room back and fetching a file again: a destination whose files are on the storage is freed,
    asked first, proved by the bytes up there, and what comes back comes back because somebody asked for it.
@@ -39,20 +31,14 @@ const MORNING_COPIES = [
 ]
 const AFTERNOON_COPIES = ['sion_20260905_143000.mp4', 'sion_20260905_143300.mp4']
 const COPIES = [...MORNING_COPIES, ...AFTERNOON_COPIES].sort()
-const original = (name: string) => path.join(j.world.output, 'original_files', '2026-09-05', name)
+const original = (name: string) => originalFile(j.world, '2026-09-05', name)
 const copiesDir = () => path.join(j.world.output, 'processed', 'Sion')
 const sion = (...parts: string[]) => onStorage(fake.get(), 'club', 'Dropzones', 'Sion', ...parts)
-
-const openSion = async () => {
-  await openPlace(j, 'Sion')
-  await j.page.getByRole('region', { name: 'Sion' }).waitFor()
-}
 
 /* asking to free the destination, and confirming in the dialog that asks first */
 const free = async () => {
   await j.page.getByRole('button', { name: 'Free up space…' }).click()
-  await j.page
-    .getByRole('dialog', { name: 'Free up space' })
+  await dialogNamed(j.page, 'Free up space')
     .getByRole('button', { name: /^Check and free/ })
     .click()
 }
@@ -64,17 +50,17 @@ describe('the afternoon so far', () => {
   })
 
   test('has the afternoon’s jump filed into the destination, prepared and sent as well', async () => {
-    await openPlace(j, /Fresh files/)
+    await openPlace(j.page, /Fresh files/)
     await j.page
       .getByText('Jump 1', { exact: true })
-      .dragTo(folders(j).getByRole('link', { name: /Sion/ }))
+      .dragTo(folders(j.page).getByRole('link', { name: /Sion/ }))
     await see('2 files need processing')
     await j.page.getByRole('button', { name: 'Process 2 files' }).click()
     await see('2 files are ready to upload', 60_000)
-    await uploadButton(j).click()
+    await uploadButton(j.page).click()
     await see('Uploaded 2 files', 60_000)
     await open()
-    await openSion()
+    await openSion(j.page)
     await see('5 of 5 on the storage')
     expect(fs.readdirSync(sion()).sort()).toEqual(COPIES)
     await quiet()
@@ -84,7 +70,7 @@ describe('the afternoon so far', () => {
 describe('freeing space', () => {
   test('asks first, saying what is proved, what is deleted and what stays, and deletes nothing when it is turned down', async () => {
     await j.page.getByRole('button', { name: 'Free up space…' }).click()
-    const dialog = j.page.getByRole('dialog', { name: 'Free up space' })
+    const dialog = dialogNamed(j.page, 'Free up space')
     await dialog.getByText('Proved first').waitFor()
     await dialog
       .getByText(/each of the 5 copies that went up is hashed here and by the storage/)
@@ -112,7 +98,7 @@ describe('freeing space', () => {
   test('is refused naming each file the storage does not hold as it was sent, and nothing is deleted', async () => {
     const storage = fake.get()
     await open()
-    await openSion()
+    await openSion(j.page)
     await storage.admin.corrupt('/club/Dropzones/Sion/sion_20260905_100240.mp4')
     await free()
     await see(/sion_20260905_100240\.mp4 on the storage is not the file that was sent/)
@@ -248,7 +234,7 @@ describe('partly back', () => {
     expect(recordedRemotePaths(j.world)).toContain('/club/Dropzones/Sion/sion_20260905_100240.mp4')
 
     await open()
-    await openSion()
+    await openSion(j.page)
     await see('Everything is on the storage')
     /* the file is here as well as up there; the others stayed freed and are only there */
     expect(fs.existsSync(original('DJI_20260905100240_0002_D.MP4'))).toBe(true)
@@ -262,7 +248,8 @@ describe('footage that is nowhere', () => {
     await fake.get().admin.unreachable(true)
     await open()
     await j.page.getByRole('link', { name: /Sion/ }).first().waitFor()
-    await j.page.waitForTimeout(3000)
+    /* the asking of the storage is over when the page stops saying it is asking */
+    await j.page.getByText('Checking the storage…').waitFor({ state: 'detached', timeout: 30_000 })
     await fake.get().admin.unreachable(false)
     for (const name of AFTERNOON) expect(recordedUploads(j.world).has(name), name).toBe(true)
     expect(recordedJumps(j.world)).toContain('group_2')

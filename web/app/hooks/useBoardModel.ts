@@ -12,14 +12,13 @@ import {
   jumpTrim,
   passengerName,
   passengerOf,
-  placeNameProblem,
   startOfFiles,
   montageSteps,
   montageUploadKey
 } from '@skydock/scripts'
 import type { FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate, useOutletContext, useParams } from 'react-router'
+import { useFetchers, useNavigate, useOutletContext, useParams } from 'react-router'
 import { openFile } from '../helpers/previewWindow'
 import type { BoardDialog } from '../components/dialog-host'
 import { lockReason } from '../components/file-list'
@@ -36,6 +35,7 @@ import {
   placeHref,
   placeKey,
   placeLabel,
+  placeNameProblem,
   placeOfGroup,
   placeOfLoose
 } from '../helpers/places'
@@ -492,6 +492,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
      is (RULES, Jumps). */
   const drag = useDragAndDrop({
     groups,
+    labels,
     frozen,
     moveFiles,
     assign,
@@ -532,17 +533,27 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
      refused never appears, and nothing is opened. */
   const [goingTo, setGoingTo] = useState<string | null>(null)
   const montageExists = (who: string) => groups.some((g) => isMontage(g) && passengerOf(g) === who)
-  const arrived = goingTo !== null && busy === null && montageExists(goingTo)
-  if (
-    goingTo !== null &&
-    busy === null &&
-    (!arrived || (place.kind === 'pax' && place.name === goingTo))
-  )
-    setGoingTo(null)
+  const answered = goingTo !== null && busy === null
+  const exists = answered && montageExists(goingTo)
+  if (answered && (!exists || (place.kind === 'pax' && place.name === goingTo))) setGoingTo(null)
+  /* a request still being answered is let finish first: the router takes up the answer of a request
+     that ends while a navigation is under way, and could leave the address changed but the page not */
+  const answering = useFetchers().some((fetcher) => fetcher.state !== 'idle')
+  const arrived = exists && !answering
   /* the page is an address, and the address is the browser's */
   useEffect(() => {
     if (arrived && goingTo) goTo(placeHref({ kind: 'pax', name: goingTo }))
   }, [arrived, goingTo, goTo])
+
+  /* Opening a place looks at the storage again (RULES, Noticing deletions); the board's own look
+     already covers the place it opened on. */
+  const openedKey = placeKey(place)
+  const lookedFor = useRef(openedKey)
+  useEffect(() => {
+    if (lookedFor.current === openedKey) return
+    lookedFor.current = openedKey
+    if (nas.connected) nas.checkRemote()
+  })
 
   /* a montage with an edit takes nothing in: its project names its clips, and new ones are not */
   const editedMontage = (who: string) => {
@@ -667,17 +678,19 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       { intent: 'upload-montage', groupId: group.id, plan }
     )
   }
-  /* A template is somebody's branding, so which one is never decided here. With a single template
-     that is whole there is nothing to decide and the project is made at once; with several, or one
-     with a hole, the person is shown them first. */
+  /* A template is somebody's branding, so which one is never decided here. With the usual one marked,
+     or a single template, and that one whole, there is nothing to decide and the project is made at
+     once; with several, or one with a hole, the person is shown them first. */
   const makeMontage = (groupId: string, template?: string) =>
     send(groupId, { intent: 'montage', groupId, ...(template ? { template } : {}) })
   const askMontage = async (group: ManifestGroup) => {
     const parsed = templatesAnswerSchema.safeParse(
       await routingEngine.loader({ url: '/api/templates' }).catch(() => null)
     )
+    const templates = parsed.success ? parsed.data.templates : []
     const only =
-      parsed.success && parsed.data.templates.length === 1 ? parsed.data.templates[0] : null
+      templates.find((template) => template.byDefault) ??
+      (templates.length === 1 ? templates[0] : null)
     if (only && only.missing.length === 0) makeMontage(group.id, only.name)
     else setDialog({ kind: 'templates', groupId: group.id })
   }

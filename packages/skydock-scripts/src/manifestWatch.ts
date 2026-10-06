@@ -1,5 +1,5 @@
 import { publish } from './live'
-import { loadManifest, pairStamp, writtenHere } from './manifest'
+import { pairStamp, readRecord, writtenHere } from './manifest'
 import { getManifestPath } from './utils'
 
 /* The board's record is written by more than the page that has it open: another tab, a script, a hand
@@ -41,7 +41,7 @@ const watch = () =>
 /* One look. The first look only learns what is there — the board was drawn from the record a moment
    before, and what it holds is what it shows. After that, a change that has stayed for a whole look is
    told once, unless this process made it. A pair that cannot be read whole is not told: the board
-   would be given the older copy to fall back on, and a refresh must never show an older board. */
+   would be given the older copy kept beside it, and a refresh must never show an older board. */
 const lookAtBoard = (outputDir: string) => {
   const state = watch()
   const manifestPath = getManifestPath(outputDir)
@@ -63,7 +63,8 @@ const lookAtBoard = (outputDir: string) => {
     return
   }
   try {
-    if (!loadManifest(manifestPath)) return
+    const record = readRecord(manifestPath)
+    if (!record.manifest || record.kept) return
   } catch {
     return
   }

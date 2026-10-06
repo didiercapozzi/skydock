@@ -2,22 +2,20 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
+import { dropFiles } from './page'
 import {
   editorEnv,
-  groupsOf,
-  makeBigClip,
   makeProject,
-  montageFolder,
   nameFile,
   nameJump,
   putEditor,
   putSlowFfmpeg,
   putTemplate,
-  SIDE,
-  slowFfmpegEnv,
-  WHO
+  slowFfmpegEnv
 } from './i1-helpers'
-import { dropFiles } from './page'
+import { makeBigClip, montageFolder, WHO } from './media'
+import { groupsOf } from './record'
+import { details, dialogNamed } from './steps'
 
 /* The editor opens on small copies of the clips, so the project waits for them. The tool that makes them is
    the real ffmpeg, made slow or unable by the world it runs in: marks in the world's folder say when. */
@@ -38,7 +36,6 @@ const j = harness({
 const { quiet, see } = j
 
 const mark = (name: string) => path.join(j.world.root, name)
-const panel = () => j.page.locator(SIDE)
 /* the corner lists the clips still getting a small copy over the panel on the right: a person folds it away */
 const foldCorner = async () => {
   const fold = j.page.getByRole('button', { name: 'Hide the list' })
@@ -119,12 +116,14 @@ describe('while a montage is being processed', () => {
     await nameJump(j.page, 'Jump 2', WHO)
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Preparing the files').first().waitFor()
-    expect(await panel().getByRole('button', { name: 'Reset…' }).isDisabled()).toBe(true)
-    expect(await panel().getByRole('button', { name: 'Delete montage…' }).isDisabled()).toBe(true)
+    expect(await details(j.page).getByRole('button', { name: 'Reset…' }).isDisabled()).toBe(true)
+    expect(
+      await details(j.page).getByRole('button', { name: 'Delete montage…' }).isDisabled()
+    ).toBe(true)
 
     fs.rmSync(mark('hold-copies'))
     await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
-    expect(await panel().getByRole('button', { name: 'Reset…' }).isDisabled()).toBe(false)
+    expect(await details(j.page).getByRole('button', { name: 'Reset…' }).isDisabled()).toBe(false)
     expect(groupsOf(j.world).find((g) => g.passenger?.lastname === 'Favre')?.processed).toBe(true)
     await quiet()
   })
@@ -137,7 +136,7 @@ describe('the one template there is', () => {
       .getByRole('button', { name: 'Open in kdenlive' })
       .first()
       .waitFor({ timeout: 30_000 })
-    expect(await j.page.getByRole('dialog', { name: 'Editing templates' }).count()).toBe(0)
+    expect(await dialogNamed(j.page, 'Editing templates').count()).toBe(0)
     const folder = montageFolder(j.world, WHO)
     expect(fs.readdirSync(folder).some((f) => f.endsWith('.kdenlive'))).toBe(true)
     await quiet()

@@ -1,9 +1,9 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeAll, describe, expect, test } from 'vitest'
-import { addDestination, eventually, folders, rowOf } from './c1-helpers'
 import { harness } from './harness'
 import { makeClip } from './media'
+import { addDestination, eventually, folders, fresh, rowOf, sionLink } from './steps'
 
 /* What lands on disk (RULES): the work folder's tree, as a person would find it opening the folder — the
    originals one folder a day, what is handed over flat in the destination's folder under names built from
@@ -16,16 +16,14 @@ afterEach(() => j.page.keyboard.press('Escape'))
 
 const at = (...parts: string[]) => path.join(j.world.output, ...parts)
 const listing = (...parts: string[]) => fs.readdirSync(at(...parts)).sort()
-const fresh = () => folders(j).getByRole('link', { name: /Fresh files/ })
-const sion = () => folders(j).getByRole('link', { name: /Sion/ })
 
 describe('the work folder', () => {
   test('keeps every original as it came off the camera in a folder a day, what is handed over flat in the folder of its destination, and the board record at the top', async () => {
     await j.open()
-    await sion().click()
+    await sionLink(j.page).click()
     await j.page.getByRole('heading', { name: '3 files are ready to upload' }).waitFor()
     /* the pictures are drawn once and kept */
-    await rowOf(j, 'DJI_20260905100000_0001_D.MP4').locator('img').first().waitFor()
+    await rowOf(j.page, 'DJI_20260905100000_0001_D.MP4').locator('img').first().waitFor()
     await eventually(() => fs.existsSync(at('.thumbs'))).toBe(true)
 
     expect(listing('original_files')).toEqual(['2026-09-05', '2026-09-06'])
@@ -62,7 +60,7 @@ describe('the work folder', () => {
   })
 
   test('shows the name of the copy that is handed over with the camera name kept beside it, and finds a file by either name', async () => {
-    const copy = rowOf(j, 'sion_20260905_100240.mp4')
+    const copy = rowOf(j.page, 'sion_20260905_100240.mp4')
     await copy.waitFor()
     expect(await copy.textContent()).toContain('DJI_20260905100240_0002_D.MP4')
 
@@ -82,7 +80,7 @@ describe('the work folder', () => {
 
   test('leaves no copy of a file taken out of a jump, so nothing stale is left to hand over, and the original stays where it is', async () => {
     const name = 'DJI_20260905100520_0003_D.MP4'
-    await rowOf(j, name).click()
+    await rowOf(j.page, name).click()
     await j.page.keyboard.press('Delete')
     await j.page.getByRole('button', { name: 'Loose in Fresh files' }).click()
     await eventually(() => listing('processed', 'Sion')).toEqual([
@@ -102,13 +100,13 @@ describe('the names of what is handed over', () => {
       '2026-09-05T14:30:00',
       3
     )
-    await fresh().click()
+    await fresh(j.page).click()
     await j.page.getByRole('button', { name: 'Rescan cameras' }).click()
     await see('Scan: +1 new', 60_000)
-    await addDestination(j, 'Chloé Perret')
+    await addDestination(j.page, 'Chloé Perret')
     await j.page
       .getByRole('button', { name: /^Jump 1, / })
-      .dragTo(folders(j).getByRole('link', { name: /Chloé Perret/ }))
+      .dragTo(folders(j.page).getByRole('link', { name: /Chloé Perret/ }))
     await j.page
       .getByRole('heading', { name: '3 files need processing' })
       .waitFor({ timeout: 30_000 })

@@ -44,6 +44,11 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
   const progress = model.progressOf(group)
   if (!isMontage(group) || group.freed || !progress) return null
   const facts = board.montageFacts[group.id]
+  const linked = Boolean(group.uploaded?.shareUrl ?? group.publish?.shareUrl)
+  /* everything is up but there is no link to send: the next step is making one, from the panel, and the
+     card carries no button of its own — freeing is in the menu, as at every step */
+  const needsLink =
+    Boolean(group.uploaded) && !linked && progress.steps[progress.at]?.name === 'Emailed'
   const actions = (compact: boolean) => (
     <MontageCardActions
       group={group}
@@ -59,14 +64,18 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       onOpenMontage={() => model.takeStep(group, 'Rendered')}
       onUpload={() => model.takeStep(group, 'Uploaded')}
       onEmail={
-        group.uploaded && progress.steps[progress.at]?.name === 'Emailed'
+        group.uploaded && linked && progress.steps[progress.at]?.name === 'Emailed'
           ? {
               name: group.passenger?.firstname ?? '',
               open: () => model.takeStep(group, 'Emailed')
             }
           : undefined
       }
-      onFree={() => model.setDialog({ kind: 'free', groupId: group.id })}
+      onFree={
+        compact && needsLink
+          ? undefined
+          : () => model.setDialog({ kind: 'free', groupId: group.id })
+      }
       compact={compact}
     />
   )
@@ -74,6 +83,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
     <NextStep
       progress={progress}
       who={group.passenger?.firstname}
+      linked={linked}
       mini={Boolean(group.uploaded)}
       film={
         facts?.film && !group.uploaded ? (

@@ -29,15 +29,12 @@ const maskTimes = (page: Page) =>
     }
   })
 
-/* a page is still once its pictures are there and its fonts are drawn, and the pointer drawn for the film
-   is not part of it */
-const settle = async (page: Page) => {
-  await page.addStyleTag({ content: 'div[style*="2147483647"] { display: none !important }' })
-  await page.evaluate(async () => {
+/* every picture of the page drawn, or given up on after ten seconds */
+const picturesDrawn = (page: Page) =>
+  page.evaluate(async () => {
     await document.fonts.ready
-    const pictures = [...document.images]
     await Promise.all(
-      pictures.map((image) =>
+      [...document.images].map((image) =>
         image.complete
           ? null
           : new Promise((done) => {
@@ -48,9 +45,45 @@ const settle = async (page: Page) => {
       )
     )
   })
+
+/* a page is still once its pictures are there, its fonts are drawn, nothing on it is changing any more and
+   nothing moves: the pointer drawn for the film is not part of it */
+const settle = async (page: Page) => {
+  await page.addStyleTag({ content: 'div[style*="2147483647"] { display: none !important }' })
+  await picturesDrawn(page)
   /* thumbnails are made when first asked for: the page is still when nothing more is being fetched */
   await page.waitForLoadState('networkidle', { timeout: 10_000 }).catch(() => undefined)
-  await page.waitForTimeout(500)
+  /* what a late answer draws — a row, a picture — is the page changing: it is still once a quarter of a second
+     passes with no change to it */
+  await page.evaluate(
+    () =>
+      new Promise<void>((still) => {
+        let timer = setTimeout(() => finish(), 250)
+        const watcher = new MutationObserver(() => {
+          clearTimeout(timer)
+          timer = setTimeout(() => finish(), 250)
+        })
+        const finish = () => {
+          watcher.disconnect()
+          still()
+        }
+        watcher.observe(document.body, {
+          subtree: true,
+          childList: true,
+          attributes: true,
+          characterData: true
+        })
+      })
+  )
+  await picturesDrawn(page)
+  /* and nothing moves: every transition and animation that ends has ended, and the frame after it is drawn */
+  await page.evaluate(async () => {
+    const ending = document
+      .getAnimations()
+      .filter((animation) => animation.effect?.getTiming().iterations !== Infinity)
+    await Promise.all(ending.map((animation) => animation.finished.catch(() => undefined)))
+    await new Promise((drawn) => requestAnimationFrame(() => requestAnimationFrame(drawn)))
+  })
 }
 
 /* what the page would have to show for a person who pinned a theme: set where the app reads it, before the

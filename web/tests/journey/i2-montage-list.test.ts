@@ -5,7 +5,9 @@ import { z } from 'zod'
 import { startFakeStorage } from './fake-storage'
 import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
-import { connectStorage, said, sendAsUsual, stored, STEM } from './i2-helpers'
+import { sendAsUsual, stored } from './i2-helpers'
+import { STEM } from './media'
+import { connectStorage, PASSWORD, said } from './steps'
 
 /* The storage keeps a list of every montage uploaded, which says what the storage cannot say for itself; and
    what the storage can say — whether a folder is there, whether a link works — is asked of it. */
@@ -15,7 +17,7 @@ const j = harness({
   name: 'i2-montage-list',
   state: 'i2-ready',
   prepare: async () => {
-    storage = await startFakeStorage()
+    storage = await startFakeStorage({ password: PASSWORD })
   }
 })
 afterAll(async () => storage?.stop())
@@ -84,25 +86,6 @@ describe("the storage's list of montages", () => {
     await j.quiet()
   })
 
-  /* BUG: a link revoked on the storage (the fake's revokeLink) is still shown on the montage page after the board is
-     opened again: "Copy link" and "Remove link" stay, "Email Luc…" stays, no "No link" / "Create link". RULES (What
-     the storage says for itself): a revoked or expired link is shown as having no link, offering nothing to copy or
-     email. Suspect: the board asks the storage (lostOnStorage in packages/skydock-scripts/src/montageIndex.ts) but
-     only the email dialog (web/app/components/dialog-host.tsx) reads the answer; the page and its panel
-     (montage-panel.tsx) show group.uploaded.shareUrl regardless. */
-  test.skip('is asked whether the link still works: a link revoked on the storage is shown as no link, and nothing offers it', async () => {
-    const [link] = await storage.admin.shareLinks()
-    await storage.admin.revokeLink(link!.id)
-    await reopen()
-    await said(main()).toContain('No link')
-    await said(main()).toContain('Create link')
-    await said(main()).not.toContain('Copy link')
-    await said(main()).not.toContain('Email Luc')
-    /* the list is not changed by what the storage says: it stays the place that says what was emailed or freed */
-    expect(readList().montages).toHaveLength(1)
-    await j.quiet()
-  })
-
   test('is asked whether the folder is still there: a montage whose folder is gone is shown as no longer on the storage, and stays on the list', async () => {
     const films = path.join(storage.root, 'club', 'Films')
     const aside = path.join(storage.root, 'Films.aside')
@@ -121,6 +104,19 @@ describe("the storage's list of montages", () => {
     await storage.admin.unreachable(false)
     await reopen()
     await said(main()).toContain('Send Luc the link')
+    await j.quiet()
+  })
+
+  test('is asked whether the link still works: a link revoked on the storage is shown as no link, and nothing offers it', async () => {
+    const [link] = await storage.admin.shareLinks()
+    await storage.admin.revokeLink(link!.id)
+    await reopen()
+    await said(main()).toContain('No link')
+    await said(main()).toContain('Create link')
+    await said(main()).not.toContain('Copy link')
+    await said(main()).not.toContain('Email Luc')
+    /* the list is not changed by what the storage says: it stays the place that says what was emailed or freed */
+    expect(readList().montages).toHaveLength(1)
     await j.quiet()
   })
 })

@@ -4,29 +4,18 @@ import { afterAll, describe, expect, test } from 'vitest'
 import { startFakeStorage } from './fake-storage'
 import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
+import { dragPart, openUpload, region, sendAsUsual, uploadDialog } from './i2-helpers'
+import { filesUnder, montageFolder, renderFilm, WHO } from './media'
 import {
   editorEnv,
-  filesUnder,
-  groupsOf,
   makeAndPrepare,
   makeProject,
-  montageFolder,
   nameJump,
   putEditor,
-  putTemplate,
-  renderFilm,
-  SIDE,
-  WHO
+  putTemplate
 } from './i1-helpers'
-import {
-  addDestination,
-  connectStorage,
-  dragPart,
-  openUpload,
-  region,
-  sendAsUsual,
-  uploadDialog
-} from './i2-helpers'
+import { groupsOf } from './record'
+import { addDestination, connectStorage, details, dialogNamed, folders, PASSWORD } from './steps'
 
 /* Once a montage is on the storage its page changes: the way shrinks to a line, the files give way to what is
    here and what is up there, and once it is freed the page says it lives only on the storage. A montage that
@@ -39,15 +28,13 @@ const j = harness({
   prepare: async (world) => {
     putEditor(world)
     putTemplate(world, 'club')
-    storage = await startFakeStorage()
+    storage = await startFakeStorage({ password: PASSWORD })
   },
   env: editorEnv
 })
 afterAll(async () => storage?.stop())
 const { quiet } = j
 
-const panel = () => j.page.locator(SIDE)
-const menu = () => j.page.getByRole('navigation', { name: 'Folders' })
 const main = () => j.page.getByRole('region', { name: WHO }).last()
 
 describe('a montage that is delivered', () => {
@@ -55,7 +42,7 @@ describe('a montage that is delivered', () => {
     await makeAndPrepare(j)
     await addDestination(j.page, 'Backup')
     await addDestination(j.page, 'Club')
-    await menu()
+    await folders(j.page)
       .getByRole('link', { name: /Luc Favre/ })
       .click()
     await makeProject(j.page, path.join(j.world.computer, 'club'))
@@ -83,7 +70,7 @@ describe('a montage that is delivered', () => {
     expect(text).toContain('/club/Films')
     expect(text).toContain('/club/Backup/luc-favre')
     await main().getByRole('button', { name: 'Watch' }).waitFor()
-    await menu()
+    await folders(j.page)
       .getByRole('img', { name: /5 of 6 steps done/ })
       .waitFor()
     await quiet()
@@ -91,10 +78,10 @@ describe('a montage that is delivered', () => {
 
   test('keeps the link out of those cards, in the panel at the right, with the way to copy it or remove it and where the film and the originals went', async () => {
     expect(await main().innerText()).not.toContain('/sharing/')
-    const side = await panel().innerText()
+    const side = await details(j.page).innerText()
     expect(side).toContain('/sharing/')
-    await panel().getByRole('button', { name: 'Copy link' }).waitFor()
-    await panel().getByRole('button', { name: 'Remove link' }).waitFor()
+    await details(j.page).getByRole('button', { name: 'Copy link' }).waitFor()
+    await details(j.page).getByRole('button', { name: 'Remove link' }).waitFor()
     expect(side.replace(/\s+/g, ' ')).toContain('Film Club Originals Backup')
     await quiet()
   })
@@ -123,14 +110,13 @@ describe('a montage that is delivered', () => {
 
   test('lists the montage among the montages done once it is freed, and says no montage is left to do', async () => {
     await main().getByRole('button', { name: 'Free up space…' }).click()
-    await j.page
-      .getByRole('dialog', { name: /Free up space/ })
+    await dialogNamed(j.page, /Free up space/)
       .getByRole('button', { name: /^Check and free/ })
       .click()
     await j.page
       .getByRole('heading', { name: 'Montages done', level: 1 })
       .waitFor({ timeout: 90_000 })
-    const email = j.page.getByRole('dialog', { name: 'Email the link' })
+    const email = dialogNamed(j.page, 'Email the link')
     if ((await email.count()) > 0) await email.getByRole('button', { name: 'Close' }).click()
 
     const done = j.page.getByRole('region', { name: 'Montages done' })
@@ -142,8 +128,8 @@ describe('a montage that is delivered', () => {
     expect(row.some((cell) => /^\d+ KB$/.test(cell))).toBe(true)
     await done.getByRole('button', { name: 'Storage' }).waitFor()
     await done.getByRole('button', { name: 'Open' }).waitFor()
-    await menu().getByText('Nothing left to do').waitFor()
-    await menu()
+    await folders(j.page).getByText('Nothing left to do').waitFor()
+    await folders(j.page)
       .getByRole('link', { name: /Montages done/ })
       .waitFor()
     await quiet()
@@ -166,7 +152,7 @@ describe('a montage that is delivered', () => {
     expect(filesUnder(montageFolder(j.world)).filter((f) => !f.endsWith('.kdenlive'))).toEqual([])
     /* and no way back from it here: it can be neither reset nor deleted */
     expect(
-      await panel()
+      await details(j.page)
         .getByRole('button', { name: /^(Reset|Delete montage)/ })
         .count()
     ).toBe(0)
@@ -179,7 +165,7 @@ describe('deleting a montage that was uploaded', () => {
   const FILM_OF_ANNA = 'anna_roux_20260905.mp4'
 
   test('is asked first, says the record of what was uploaded goes with it, and leaves everything on the storage where it is', async () => {
-    await menu()
+    await folders(j.page)
       .getByRole('link', { name: /Montages done/ })
       .waitFor()
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
@@ -214,7 +200,7 @@ describe('deleting a montage that was uploaded', () => {
     /* once delivered, the ways back are in the page's menu rather than at the foot of the panel */
     await j.page.getByRole('button', { name: 'More' }).click()
     await j.page.getByRole('button', { name: 'Delete montage…' }).click()
-    const ask = j.page.getByRole('dialog', { name: 'Delete montage' })
+    const ask = dialogNamed(j.page, 'Delete montage')
     await ask.waitFor()
     expect(await ask.innerText()).toMatch(/what was uploaded|nothing is deleted from the storage/i)
     await ask

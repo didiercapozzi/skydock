@@ -63,6 +63,11 @@ describe('a thumbnail', () => {
     expect((await res.arrayBuffer()).byteLength).toBeGreaterThan(0)
   })
 
+  test('of a file on this machine that is not on a camera is not shown', async () => {
+    expect((await thumbnail('etc/hostname', 0.5)).status).toBe(404)
+    expect((await thumbnail('../../../../etc/hostname', 0.5)).status).toBe(404)
+  })
+
   test('of a file that is not there says so', async () => {
     const res = await thumbnail('original_files/nope.mp4', 0.5)
     expect(res.status).toBe(404)

@@ -3,23 +3,14 @@ import * as path from 'node:path'
 import { z } from 'zod'
 import type { Page } from 'playwright'
 import type { World } from './app'
-import type { harness } from './harness'
-import { filesUnder, makeBigClip, makeClip } from './media'
+import type { Journey } from './harness'
+import { WHO } from './media'
+import { readJson } from './record'
+import { details, dialogNamed, place } from './steps'
 
 /* What the chapters about making a montage and its editing project share: the editor that is only a
    program writing down what it was given, a template as the editor leaves it, the montage made and prepared
-   from the saved `sorted` state, and the record read the way the app's own schema reads it. */
-
-type Journey = ReturnType<typeof harness>
-
-const WHO = 'Luc Favre'
-/* what a montage of the second jump of the saved state is called on disk: the day it was shot, and the clips by their time */
-const FILM = 'luc_favre_20260906.mp4'
-const PROJECT = 'luc_favre_20260906.kdenlive'
-const SIDE = 'aside[aria-label=Details]'
-
-const montageFolder = (world: World, who = WHO) =>
-  path.join(world.output, 'processed', 'Montages', who)
+   from the saved `sorted` state, and the record seeded the way an earlier afternoon left it. */
 
 /* The editor SkyDock is told about is a program that writes down the arguments it was given, one line a
    call, beside the work folder. kdenlive itself is not here, and never started. */
@@ -66,52 +57,13 @@ const putTemplate = (world: World, name: string, options: { music?: boolean } = 
   return folder
 }
 
-const recordSchema = z.object({
-  groups: z.array(
-    z.looseObject({
-      id: z.string(),
-      files: z.array(
-        z.looseObject({
-          id: z.string(),
-          cropStart: z.number().nullable().optional(),
-          cropEnd: z.number().nullable().optional()
-        })
-      ),
-      destination: z.string().optional(),
-      passenger: z.object({ firstname: z.string(), lastname: z.string() }).optional(),
-      processed: z.boolean().optional(),
-      day: z.string().optional()
-    })
-  )
-})
-
-const readJson = (file: string): unknown => JSON.parse(fs.readFileSync(file, 'utf8'))
-
-/* the jumps as the record holds them, read with the app's own shape */
-const groupsOf = (world: World) =>
-  recordSchema.parse(readJson(path.join(world.output, 'groups.json'))).groups
-
-const manifestSchema = z.object({
-  files: z.array(
-    z.looseObject({
-      id: z.string(),
-      filename: z.string(),
-      path: z.string(),
-      cropStart: z.number().nullable().optional()
-    })
-  )
-})
-
-const manifestOf = (world: World) =>
-  manifestSchema.parse(readJson(path.join(world.output, 'manifest.json')))
-
 /* Where the jump is in two of the clips of the second jump, as a camera that wrote down what it felt would
    have left it. Put in the record before the app starts, the way a scan of such a card would have. */
 const seedMoments = (world: World) => {
   const file = path.join(world.output, 'manifest.json')
   const record = z
     .looseObject({ files: z.array(z.looseObject({ filename: z.string() })) })
-    .parse(readJson(file))
+    .parse(readJson(world, 'manifest.json'))
   for (const clip of record.files)
     if (/^DJI_2026090609(00|03)00_000[67]_D\.MP4$/.test(clip.filename))
       clip.moments = { exit: 1, opening: 2, landing: 3 }
@@ -126,7 +78,7 @@ const seedTrim = (world: World, groupId = 'group_1') => {
     .object({
       groups: z.array(z.looseObject({ id: z.string(), files: z.array(z.looseObject({})) }))
     })
-    .parse(readJson(file))
+    .parse(readJson(world, 'groups.json'))
   const first = record.groups.find((g) => g.id === groupId)?.files[0]
   if (first) first.cropStart = 1
   fs.writeFileSync(file, JSON.stringify(record))
@@ -138,18 +90,14 @@ const nameFile = async (page: Page, filename: string, name: string) => {
     .getByRole('button', { name: new RegExp(`^Pick ${filename}`) })
     .getByRole('button', { name: 'Pick' })
     .click()
-  await page
-    .locator(SIDE)
+  await details(page)
     .getByRole('button', { name: /Make a montage/ })
     .click()
   await page.getByLabel('Name', { exact: true }).fill(name)
   await page.keyboard.press('Enter')
   /* the board opens the new montage's page by itself, but not every time: the entry in the menu is where a
      person goes next */
-  await page
-    .getByRole('navigation', { name: 'Folders' })
-    .getByRole('link', { name: new RegExp(name) })
-    .click()
+  await place(page, name).click()
   await page.getByRole('heading', { name, level: 1 }).waitFor()
 }
 
@@ -176,9 +124,12 @@ const makeAndPrepare = async (j: Journey) => {
   await takeStep(j.page, 'Process', 'Make the editing project')
 }
 
+/* the dialog of the editing templates */
+const templatesDialog = (page: Page) => dialogNamed(page, 'Editing templates')
+
 /* the template brought in by choosing its folder, the way the dialog asks for it, and the project made from it */
 const bringTemplate = async (page: Page, folder: string) => {
-  const dialog = page.getByRole('dialog', { name: 'Editing templates' })
+  const dialog = templatesDialog(page)
   const chooser = page.waitForEvent('filechooser')
   await dialog.getByRole('button', { name: 'Choose the folder…' }).click()
   await (await chooser).setFiles(folder)
@@ -188,17 +139,13 @@ const bringTemplate = async (page: Page, folder: string) => {
 /* the project made from the one template there is: a folder is brought in, then the project is written and opened */
 const makeProject = async (page: Page, folder: string) => {
   await page.getByRole('button', { name: 'Make the project' }).click()
-  const dialog = page.getByRole('dialog', { name: 'Editing templates' })
+  const dialog = templatesDialog(page)
   await dialog.waitFor()
   await bringTemplate(page, folder)
   await dialog.getByText('every file here').waitFor()
   await dialog.getByRole('button', { name: 'Make the montage' }).click()
   await page.getByRole('button', { name: 'Open in kdenlive' }).first().waitFor({ timeout: 30_000 })
 }
-
-/* The film the editor would have left: an mp4 under the name the project renders to, in the montage's folder. */
-const renderFilm = (world: World, who = WHO, name = FILM, seconds = 3) =>
-  makeClip(path.join(montageFolder(world, who), name), '2026-09-06T09:00:00', seconds)
 
 /* The tool that makes small copies, slowed or broken on request: ffmpeg itself, after waiting while a file
    named `hold-copies` or `hold-proxies` is in the world, or refusing a small copy while `fail-proxies` is. What
@@ -232,26 +179,16 @@ export {
   bringTemplate,
   editorCalls,
   editorEnv,
-  filesUnder,
-  FILM,
-  groupsOf,
   makeAndPrepare,
-  makeBigClip,
   makeProject,
-  manifestOf,
-  montageFolder,
   nameFile,
   nameJump,
-  PROJECT,
   putEditor,
   putSlowFfmpeg,
   putTemplate,
-  renderFilm,
   seedMoments,
   seedTrim,
-  SIDE,
   slowFfmpegEnv,
   takeStep,
-  WHO
+  templatesDialog
 }
-export type { Journey }

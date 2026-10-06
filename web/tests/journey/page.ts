@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as url from 'node:url'
 import type { Page } from 'playwright'
+import { z } from 'zod'
 
 /* What a person does that a test cannot do with a click: let go of files from the computer over the board.
    A headless browser has no desktop to drag from, so the drop is handed the files' real bytes, the way a
@@ -50,6 +51,28 @@ const watch = (page: Page) => {
   return { take }
 }
 
+/* What the server says to every board as it happens, listened to from a stream of the page's own, so a chapter
+   can wait for the app to have noticed something that the page shows nothing of. */
+const listenToEvents = (page: Page) =>
+  page.evaluate(
+    () =>
+      new Promise<void>((listening) => {
+        const w = window as unknown as { __heard?: string[] }
+        w.__heard = []
+        const stream = new EventSource('/api/events')
+        stream.onmessage = (e) => w.__heard?.push(String(e.data))
+        stream.onopen = () => listening()
+      })
+  )
+
+const eventSchema = z.looseObject({ kind: z.string(), mounted: z.array(z.unknown()).optional() })
+
+/* every event that has arrived since the listening began */
+const eventsHeard = async (page: Page) =>
+  (await page.evaluate(() => (window as unknown as { __heard?: string[] }).__heard ?? [])).map(
+    (heard) => eventSchema.parse(JSON.parse(heard))
+  )
+
 /* where the films of a run are kept */
 const VIDEOS = path.join(path.dirname(url.fileURLToPath(import.meta.url)), 'videos')
 
@@ -70,4 +93,4 @@ const pointerDot = () => {
   })
 }
 
-export { dropFiles, pointerDot, VIDEOS, watch }
+export { dropFiles, eventsHeard, listenToEvents, pointerDot, VIDEOS, watch }

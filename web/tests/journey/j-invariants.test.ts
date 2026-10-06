@@ -6,6 +6,7 @@ import { harness } from './harness'
 import { CLIPS, dayFolder, makeClip } from './media'
 import { loadState } from './saved'
 import { recordProblems, treeOf } from './invariants'
+import { place } from './steps'
 
 /* What holds in every chapter, walked on its own: the record is the record its schema describes, the work
    folder holds what RULES.md says it holds, and the page is never held up while the app works. */
@@ -63,10 +64,7 @@ describe('the page while the app works', () => {
       .waitFor({ state: 'detached', timeout: 60_000 })
 
     /* processing a destination */
-    await j.page
-      .getByRole('navigation', { name: 'Folders' })
-      .getByRole('link', { name: /Sion/ })
-      .click()
+    await place(j.page, /Sion/).click()
     await j.page.getByRole('button', { name: /^Process \d+ files?$/ }).click()
     await j.see(/files? (is|are) ready to upload/, 60_000)
 

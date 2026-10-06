@@ -6,6 +6,7 @@ import type { Browser, BrowserContext, Page } from 'playwright'
 import { afterAll, afterEach, beforeAll, expect } from 'vitest'
 import { makeWorld, start } from './app'
 import type { World } from './app'
+import { tool } from './media'
 import { loadState, saveState } from './saved'
 import { pointerDot, VIDEOS, watch } from './page'
 
@@ -76,7 +77,7 @@ const harness = (options: Options) => {
     await film?.saveAs(raw)
     await film?.delete()
     if (film)
-      execFileSync(process.env.SKYDOCK_FFMPEG_PATH ?? 'ffmpeg', [
+      execFileSync(tool('ffmpeg'), [
         '-y',
         '-v',
         'error',
@@ -133,5 +134,7 @@ const harness = (options: Options) => {
   }
 }
 
+type Journey = ReturnType<typeof harness>
+
 export { harness }
-export type { Options }
+export type { Journey, Options }

@@ -3,7 +3,10 @@ import * as path from 'node:path'
 import type { Locator } from 'playwright'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import { filesUnder, groupsOf, montageFolder, seedTrim, SIDE, takeStep, WHO } from './i1-helpers'
+import { seedTrim, takeStep } from './i1-helpers'
+import { filesUnder, montageFolder, originalsDir, originalsOf, WHO } from './media'
+import { groupsOf } from './record'
+import { details, dialogNamed, preview } from './steps'
 
 /* A jump becomes a montage by being named, and the montage then walks six steps, which the board shows
    wherever the montage is shown. The saved `sorted` state has the second jump in Fresh files and the first
@@ -31,7 +34,7 @@ describe('making a montage', () => {
 
     await j.page.getByRole('button', { name: /Make a montage/ }).click()
     await j.page.getByLabel('Name', { exact: true }).fill('Luc Favre')
-    await j.page.locator(SIDE).getByRole('button', { name: 'Cancel' }).click()
+    await details(j.page).getByRole('button', { name: 'Cancel' }).click()
     await gone(j.page.getByLabel('Name', { exact: true }))
 
     expect(groupsOf(j.world).filter((g) => g.passenger)).toEqual([])
@@ -42,7 +45,7 @@ describe('making a montage', () => {
   test('a jump dropped on the Montages heading asks for its name in a dialog of its own, then makes the montage', async () => {
     const heading = j.page.getByRole('heading', { name: /^Montages/ })
     await j.page.getByText('Jump 2', { exact: true }).first().dragTo(heading)
-    const dialog = j.page.getByRole('dialog', { name: 'Name the montage' })
+    const dialog = dialogNamed(j.page, 'Name the montage')
     await dialog.waitFor()
     await dialog.getByLabel('Name', { exact: true }).fill(WHO)
     await dialog.getByRole('button', { name: 'Cancel' }).click()
@@ -66,9 +69,7 @@ describe('making a montage', () => {
     expect(made?.destination).toBeUndefined()
     expect(made?.files).toHaveLength(3)
     expect(
-      fs.existsSync(
-        path.join(j.world.output, 'original_files', '2026-09-06', 'DJI_20260906090000_0006_D.MP4')
-      )
+      fs.existsSync(path.join(originalsDir(j.world), '2026-09-06', 'DJI_20260906090000_0006_D.MP4'))
     ).toBe(true)
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await see('1 jump is waiting for a home')
@@ -196,14 +197,14 @@ describe('joining and copying', () => {
   })
 
   test('files of a destination are copied into a montage, which starts with their trim, and the destination keeps its own', async () => {
-    const before = filesUnder(path.join(j.world.output, 'original_files'))
+    const before = originalsOf(j.world)
     await j.page.getByRole('link', { name: /^Sion/ }).click()
     await see('3 files need processing')
     await j.page
       .getByRole('button', { name: /^Pick DJI_20260905100000/ })
       .getByRole('button', { name: 'Pick' })
       .click()
-    await j.page.locator(SIDE).getByRole('button', { name: 'Copy into a montage…' }).click()
+    await details(j.page).getByRole('button', { name: 'Copy into a montage…' }).click()
     await j.page.getByLabel('Name', { exact: true }).fill('Anna Roux')
     await j.page.getByText('A new montage — copied, Sion keeps its own').waitFor()
     await j.page.keyboard.press('Enter')
@@ -219,25 +220,19 @@ describe('joining and copying', () => {
     /* the copy starts with the file's own trim, and costs no room: no new bytes anywhere */
     expect(anna?.files[0]?.cropStart).toBe(1)
     expect(anna?.destination).toBeUndefined()
-    expect(filesUnder(path.join(j.world.output, 'original_files'))).toEqual(before)
+    expect(originalsOf(j.world)).toEqual(before)
     await j.page.getByRole('link', { name: /^Sion/ }).click()
     await see('3 files need processing')
     await quiet()
   })
 
-  /* BUG: made out of a destination's files the montage is made, but its page does not always open. About one
-     run in four, the board is told the files are copied and still on the destination's page: the note says
-     "Copied 1 file into the jump" in place of "Made Anna Roux’s montage", and the address stays on /dropzone/Sion.
-     RULES.md, Making a montage: "Once made, the montage's page opens and its entry lights up briefly."
-     Suspect web/app/hooks/useBoardModel.ts: goingTo is dropped by the first render where the request is no
-     longer busy and the board's answer has not yet put the montage among the groups. */
-  test.skip('opens the page of a montage made from a destination’s files, every time', async () => {
+  test('opens the page of a montage made from a destination’s files, every time', async () => {
     await j.page.getByRole('link', { name: /^Sion/ }).click()
     await j.page
       .getByRole('button', { name: /^Pick DJI_20260905100240/ })
       .getByRole('button', { name: 'Pick' })
       .click()
-    await j.page.locator(SIDE).getByRole('button', { name: 'Copy into a montage…' }).click()
+    await details(j.page).getByRole('button', { name: 'Copy into a montage…' }).click()
     await j.page.getByLabel('Name', { exact: true }).fill('Marc Roux')
     await j.page.keyboard.press('Enter')
     await j.page.getByRole('heading', { name: 'Marc Roux', level: 1 }).waitFor()
@@ -247,7 +242,7 @@ describe('joining and copying', () => {
     await j.page.getByRole('link', { name: /Anna Roux/ }).click()
     await j.page.getByRole('heading', { name: 'Anna Roux', level: 1 }).waitFor()
     await j.page.getByText('DJI_20260905100000_0001_D.MP4').first().dblclick()
-    const dialog = j.page.getByRole('dialog', { name: 'Preview' })
+    const dialog = preview(j.page)
     await dialog.waitFor()
     const bar = j.page.locator('[data-crop-bar]')
     await bar.click({ position: { x: (await bar.boundingBox())!.width * 0.7, y: 10 } })
@@ -267,7 +262,7 @@ describe('joining and copying', () => {
 })
 
 describe('renaming a montage', () => {
-  const field = () => j.page.locator(SIDE).getByRole('textbox', { name: 'Name' })
+  const field = () => details(j.page).getByRole('textbox', { name: 'Name' })
   const anna = () => groupsOf(j.world).find((g) => g.passenger?.firstname === 'Anna')
 
   test('is saved only by Enter or Save, never by clicking away, and Escape puts the name back', async () => {
@@ -277,7 +272,7 @@ describe('renaming a montage', () => {
     await j.page.keyboard.press('Escape')
     await j.page.getByRole('button', { name: 'Change the name' }).click()
     await field().fill('Marie Roux')
-    await j.page.locator(SIDE).getByRole('heading', { name: 'Who it is for' }).click()
+    await details(j.page).getByRole('heading', { name: 'Who it is for' }).click()
     expect(anna()?.passenger).toEqual({ firstname: 'Anna', lastname: 'Roux' })
     await field().press('Escape')
     await expect.poll(async () => await field().inputValue()).toBe('Anna Roux')
@@ -289,7 +284,7 @@ describe('renaming a montage', () => {
     await field().press('Enter')
     expect(anna()?.passenger).toEqual({ firstname: 'Anna', lastname: 'Roux' })
     await field().fill('luc favre')
-    await j.page.locator(SIDE).getByText('Joins Luc Favre’s montage').waitFor()
+    await details(j.page).getByText('Joins Luc Favre’s montage').waitFor()
     expect(anna()?.passenger).toEqual({ firstname: 'Anna', lastname: 'Roux' })
     await field().press('Escape')
     await expect.poll(async () => await field().inputValue()).toBe('Anna Roux')

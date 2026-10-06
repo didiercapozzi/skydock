@@ -126,14 +126,14 @@ const readPair = (manifestPath: string, groupsPath: string) => {
 }
 
 /* The registry and its jumps. A pair that cannot be read is not taken for no board: the last pair
-   that was read whole is used instead, and said. Only with neither is it "no manifest" — the
-   registry describes files that are still on the disk, and a scan builds it again. */
-const loadManifest = (manifestPath: string) => {
+   that was read whole is used instead, and `kept` says it was. Only with neither is it "no manifest" —
+   the registry describes files that are still on the disk, and a scan builds it again. */
+const readRecord = (manifestPath: string) => {
   const groupsPath = getGroupsPath(manifestPath)
   let failed: unknown = null
   try {
     const manifest = readPair(manifestPath, groupsPath)
-    if (manifest || !fs.existsSync(manifestPath)) return manifest
+    if (manifest || !fs.existsSync(manifestPath)) return { manifest, kept: false }
   } catch (e) {
     failed = e
   }
@@ -143,14 +143,16 @@ const loadManifest = (manifestPath: string) => {
       : null
     if (kept) {
       console.warn(`[Manifest] ${manifestPath} could not be read — using the last one read whole.`)
-      return kept
+      return { manifest: kept, kept: true }
     }
   } catch {
     /* the kept pair is broken as well: what was wrong with the first is what is said */
   }
   if (failed) throw failed
-  return null
+  return { manifest: null, kept: false }
 }
+
+const loadManifest = (manifestPath: string) => readRecord(manifestPath).manifest
 
 /* The board as it is now, when it reads whole, kept as one more step of its history — asked for
    before a change somebody makes on the board, and only then: a camera copy, a proxy landing or a
@@ -374,6 +376,7 @@ export {
   keepBoardStep,
   getGroupsPath,
   loadManifest,
+  readRecord,
   MANIFEST_VERSION,
   restoreBoard,
   saveManifest,

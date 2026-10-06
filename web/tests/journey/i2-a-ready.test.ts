@@ -2,14 +2,9 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import {
-  addDestination,
-  FILM,
-  filesUnder,
-  makeMontageReady,
-  montageFolder,
-  renderFilm
-} from './i2-helpers'
+import { makeMontageReady } from './i2-helpers'
+import { filesUnder, FILM, filmFile, montageFolder, renderFilm } from './media'
+import { addDestination } from './steps'
 
 /* The montage every chapter about sending starts from: made from a jump, prepared, with its project, and its
    film dropped where the editor would have rendered it, since the editor cannot run here. Saved as `i2-ready`. */
@@ -24,7 +19,7 @@ const j = harness({
 describe('a montage ready to be sent', () => {
   test('is made, prepared and given its project, ready for its film to be rendered', async () => {
     await makeMontageReady(j)
-    expect(filesUnder(montageFolder(j))).toEqual([
+    expect(filesUnder(montageFolder(j.world))).toEqual([
       'luc_favre_20260906.kdenlive',
       'photos/luc_favre_20260906_090130.jpg',
       'videos/luc_favre_20260906_090000.mp4',
@@ -34,8 +29,8 @@ describe('a montage ready to be sent', () => {
   })
 
   test('has its film noticed by the board once the editor has written it', async () => {
-    await renderFilm(j)
-    expect(fs.existsSync(path.join(montageFolder(j), FILM))).toBe(true)
+    renderFilm(j.world)
+    expect(fs.existsSync(filmFile(j.world))).toBe(true)
     await j.page.getByRole('button', { name: 'Upload…' }).first().waitFor({ timeout: 30_000 })
     await j.see(`${FILM}`)
     await j.quiet()

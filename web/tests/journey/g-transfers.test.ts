@@ -1,17 +1,19 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { harness } from './harness'
+import { dsmAddress, onStorage, storageOf } from './f-helpers'
 import {
   chooseFolder,
-  connect,
-  dsmAddress,
+  connectStorage,
+  details,
   folders,
-  onStorage,
   openPlace,
-  storageOf,
+  openSion,
+  preview,
+  showDetails,
   uploadButton
-} from './f-helpers'
-import { harness } from './harness'
+} from './steps'
 
 /* What is kept of the afternoon once the files are up there: the Transfers window, the way from a file to
    the storage's own web interface, the links handed out, and what the board does when somebody deletes
@@ -34,20 +36,6 @@ const showTransfers = async () => {
   await transfers().waitFor()
 }
 
-/* the panel on the right, where a file or a folder says what it is */
-const details = () => j.page.getByRole('complementary', { name: 'Details' })
-const showDetails = async () => {
-  if (!(await details().isVisible()))
-    await j.page.getByRole('button', { name: 'Details' }).first().click()
-  await details().waitFor()
-}
-
-/* a destination's page opened from its link; the day section a file sits in is opened as a person does */
-const openSion = async () => {
-  await openPlace(j, 'Sion')
-  await j.page.getByRole('region', { name: 'Sion' }).waitFor()
-}
-
 describe('the small copies of the clips', () => {
   test('are made in view in a window of their own, which goes when every clip has its copy', async () => {
     await open()
@@ -63,13 +51,13 @@ describe('the small copies of the clips', () => {
 describe('everything with a bar is in transfers too', () => {
   test('lists an upload going now at the head of the transfers, with a window of its own in the corner', async () => {
     const storage = fake.get()
-    await openSion()
+    await openSion(j.page)
     await see('3 files are ready to upload')
-    await connect(j, storage)
-    await chooseFolder(j, ['club', 'Dropzones', 'Sion'])
+    await connectStorage(j.page, storage)
+    await chooseFolder(j.page, ['club', 'Dropzones', 'Sion'])
 
     await storage.admin.latency(1200)
-    await uploadButton(j).click()
+    await uploadButton(j.page).click()
     const corner = j.page.getByRole('complementary', { name: 'Uploading Sion' })
     await corner.waitFor()
     await showTransfers()
@@ -78,7 +66,7 @@ describe('everything with a bar is in transfers too', () => {
     await going.getByRole('progressbar').waitFor()
 
     /* the work runs on the server: leaving the page changes nothing about it */
-    await openPlace(j, /Fresh files/)
+    await openPlace(j.page, /Fresh files/)
     await corner.waitFor()
     await going.getByText('Uploading Sion').waitFor()
     await corner.waitFor({ state: 'detached', timeout: 120_000 })
@@ -89,7 +77,7 @@ describe('everything with a bar is in transfers too', () => {
 
   test('has the whole of it up there, reached by opening the board again', async () => {
     await open()
-    await openSion()
+    await openSion(j.page)
     await see('3 of 3 on the storage')
     expect(fs.readdirSync(sion()).sort()).toEqual(FILES)
     await quiet()
@@ -145,12 +133,12 @@ describe('Open in DSM, and the files up there', () => {
   test('carries the same address from a file’s right panel and from its row on the storage tab, with the file preselected', async () => {
     const storage = fake.get()
     await transfers().getByRole('button', { name: 'Close' }).click()
-    await openSion()
+    await openSion(j.page)
     await j.page.getByRole('button', { name: /Saturday 5 September 2026/ }).click()
     await j.page.getByText('sion_20260905_100240.mp4', { exact: true }).first().click()
     const wanted = dsmAddress(storage, '/club/Dropzones/Sion/sion_20260905_100240.mp4')
-    await showDetails()
-    const link = details().getByRole('link', { name: 'Open in DSM' })
+    await showDetails(j.page)
+    const link = details(j.page).getByRole('link', { name: 'Open in DSM' })
     await link.waitFor()
     expect(await link.getAttribute('href')).toBe(wanted)
 
@@ -173,10 +161,10 @@ describe('share links', () => {
   test('makes the folder’s link on asking, shows it with Copy link, and takes it away leaving the folder and its files', async () => {
     const storage = fake.get()
     await j.context.grantPermissions(['clipboard-read', 'clipboard-write'])
-    await openPlace(j, /Fresh files/)
-    await openSion()
-    await showDetails()
-    const panel = details()
+    await openPlace(j.page, /Fresh files/)
+    await openSion(j.page)
+    await showDetails(j.page)
+    const panel = details(j.page)
     await panel.getByRole('button', { name: 'Create link' }).waitFor()
     expect(await storage.admin.shareLinks()).toEqual([])
 
@@ -207,8 +195,8 @@ describe('a link of its own for one file', () => {
 
   test('is made from the row, shown there by a mark that copies it, and taken away from the same place', async () => {
     const storage = fake.get()
-    await openPlace(j, /Fresh files/)
-    await openSion()
+    await openPlace(j.page, /Fresh files/)
+    await openSion(j.page)
     await j.page.getByRole('button', { name: 'On the storage', exact: true }).click()
     await row().waitFor()
 
@@ -239,7 +227,7 @@ describe('a link of its own for one file', () => {
 
     await storage.admin.revokeLink(first?.id ?? '')
     await open()
-    await openSion()
+    await openSion(j.page)
     await j.page.getByRole('button', { name: 'On the storage', exact: true }).click()
     await row().waitFor()
     await mark.waitFor({ state: 'detached' })
@@ -252,13 +240,7 @@ describe('a link of its own for one file', () => {
     await quiet()
   })
 
-  /* BUG: asking the folder again with "Look again" does not make a link the storage has revoked go away: the
-     row keeps its link mark (and its address in the tooltip) and the ⋯ menu keeps offering to remove it,
-     until the page is opened again. RULES: "an expired one is no link at all". Seen: make a link for one
-     file from its row, have the storage revoke it, press Look again. Suspected: the links made and taken away
-     since the folder was listed (`linked` in useFileActions, app/components/storage-folder.tsx) win over the
-     fresh listing for as long as the page lives. */
-  test.skip('drops the mark of a link the storage revoked when the folder is looked at again', async () => {
+  test('drops the mark of a link the storage revoked when the folder is looked at again', async () => {
     const storage = fake.get()
     await menuOf().click()
     await choose('Remove the link')
@@ -276,20 +258,20 @@ describe('a link of its own for one file', () => {
 
 describe('uploaded is the end of editing', () => {
   test('shows a lock with the reason in the preview of a file that is up there, and no way to trim, frame or turn it', async () => {
-    await openPlace(j, /Fresh files/)
-    await openSion()
+    await openPlace(j.page, /Fresh files/)
+    await openSion(j.page)
     await j.page.getByRole('button', { name: 'Local', exact: true }).click()
     await j.page.getByRole('button', { name: /Saturday 5 September 2026/ }).click()
     await j.page.getByText('sion_20260905_100000.mp4').first().dblclick()
-    const preview = j.page.getByRole('dialog', { name: 'Preview' })
-    await preview.waitFor()
-    await preview.getByText(/cropping, re-timing and moving are closed/).waitFor()
-    await expect.poll(() => preview.getByRole('button', { name: 'Start here' }).count()).toBe(0)
+    const shown = preview(j.page)
+    await shown.waitFor()
+    await shown.getByText(/cropping, re-timing and moving are closed/).waitFor()
+    await expect.poll(() => shown.getByRole('button', { name: 'Start here' }).count()).toBe(0)
     await expect
-      .poll(() => preview.getByRole('button', { name: 'Save', exact: true }).count())
+      .poll(() => shown.getByRole('button', { name: 'Save', exact: true }).count())
       .toBe(0)
     await j.page.keyboard.press('Escape')
-    await preview.waitFor({ state: 'detached' })
+    await shown.waitFor({ state: 'detached' })
     await quiet()
   })
 
@@ -297,7 +279,7 @@ describe('uploaded is the end of editing', () => {
     await j.page
       .getByText('sion_20260905_100000.mp4')
       .first()
-      .dragTo(folders(j).getByRole('link', { name: /Fresh files/ }))
+      .dragTo(folders(j.page).getByRole('link', { name: /Fresh files/ }))
     await see(/On the storage already, so it cannot move/)
     await j.page.getByText('sion_20260905_100000.mp4').first().waitFor()
     expect(fs.existsSync(path.join(j.world.output, 'processed', 'Sion', FILES[0]!))).toBe(true)
@@ -308,28 +290,23 @@ describe('uploaded is the end of editing', () => {
 describe('noticing deletions', () => {
   test('goes on saying what it last proved until the board is opened, a place is opened or the check is pressed', async () => {
     fs.rmSync(sion('sion_20260905_100520.mp4'))
-    await j.page.waitForTimeout(2500)
+    /* the storage is never looked at on a timer, so nothing signals that it was not: the board has two seconds,
+       the longest period of anything it does by itself, to say otherwise */
+    await j.page.waitForTimeout(2_000)
     await see('3 of 3 on the storage')
     await quiet()
   })
 
-  /* BUG: opening a place does not make the board notice what was deleted up there: the counts keep saying
-     "3 of 3 on the storage" and "Everything is on the storage" (seen after opening Fresh files and then the
-     destination again); only opening the board again, or the check button, brings the count down. RULES:
-     "SkyDock looks at the storage when the board opens, when a place is opened, right after an upload, and
-     when the check button is pressed". Suspected: opening a place asks for the folder's listing only (the
-     storage tab), while the status of each file is read from the board's own look, taken when it opens
-     (app/hooks/useNas.ts). */
-  test.skip('stops counting a file the storage no longer holds when a place is opened, leaving the local file', async () => {
-    await openPlace(j, /Fresh files/)
-    await openSion()
+  test('stops counting a file the storage no longer holds when a place is opened, leaving the local file', async () => {
+    await openPlace(j.page, /Fresh files/)
+    await openSion(j.page)
     await see('2 of 3 on the storage')
     await quiet()
   })
 
   test('stops counting a file the storage no longer holds when the board is opened, ready to be sent again and the local file left', async () => {
     await open()
-    await openSion()
+    await openSion(j.page)
     await see('2 of 3 on the storage')
     await see('1 file is ready to upload')
     expect(
@@ -350,7 +327,7 @@ describe('being listed can take a claim away, never grant one', () => {
   test('demotes nothing when the storage cannot be reached: what the record says went up still reads as up', async () => {
     await fake.get().admin.unreachable(true)
     await open()
-    await openSion()
+    await openSion(j.page)
     await see('3 of 3 on the storage')
     await see('Everything is on the storage')
     expect(fs.readdirSync(sion()).sort()).toEqual(FILES.filter((name) => name.endsWith('000.mp4')))
@@ -388,25 +365,19 @@ describe('never held', () => {
     const storage = fake.get()
     await storage.admin.latency(60_000)
     const began = Date.now()
-    await open()
-    await folders(j).getByRole('link', { name: /Sion/ }).waitFor()
+    /* the page is looked at as soon as it starts to arrive, not once its last part has */
+    await j.page.goto(j.page.url(), { waitUntil: 'commit' })
     await j.page.getByText('Checking the storage…').waitFor()
-    await openSion()
+    await folders(j.page).getByRole('link', { name: /Sion/ }).waitFor()
+    await openSion(j.page)
     await j.page.getByRole('button', { name: /Saturday 5 September 2026/ }).click()
     await j.page.getByText('sion_20260905_100000.mp4').first().waitFor()
     expect(Date.now() - began, 'the board waited for the storage').toBeLessThan(10_000)
     await storage.admin.latency(0)
-    /* the page error of a storage that is slow is the bug of the chapters below */
-    await quiet().catch(() => undefined)
+    await quiet()
   })
 
-  /* BUG: when the storage answers slower than a few seconds the footer says "Checking the storage…" for as
-     long as the page stays open (seen for over 45 s, with the storage waiting a minute on every call) and
-     never turns to "Connect the storage". RULES: "a storage that does not answer within seconds is taken to
-     be unreachable rather than waited for". Suspected: the board's server cuts the question to the storage
-     off after its streaming timeout and the page, which waits on it without a `catch` (board.tsx, the effect
-     on `storageLook`), neither learns of it nor stops asking. */
-  test.skip('takes a storage that does not answer within seconds for unreachable instead of waiting for it', async () => {
+  test('takes a storage that does not answer within seconds for unreachable instead of waiting for it', async () => {
     await fake.get().admin.latency(60_000)
     await open()
     await j.page.getByText('Checking the storage…').waitFor({ state: 'detached', timeout: 20_000 })
@@ -415,13 +386,11 @@ describe('never held', () => {
     await quiet()
   })
 
-  /* BUG: a page opened on a storage that is slow to answer says "Unexpected Server Error" twice in its
-     console once the server gives the question to the storage up, an error nobody is told of (RULES, What the
-     board says: nothing breaks without being said). Same suspected cause as above. */
-  test.skip('opens on a slow storage without anything breaking unnoticed', async () => {
+  test('opens on a slow storage without anything breaking unnoticed', async () => {
     await fake.get().admin.latency(8_000)
     await open()
-    await j.page.waitForTimeout(8_000)
+    /* the page asks the storage while it draws and says so until the answer, or its giving up, is drawn */
+    await j.page.getByText('Checking the storage…').waitFor({ state: 'detached', timeout: 30_000 })
     await fake.get().admin.latency(0)
     await quiet()
   })

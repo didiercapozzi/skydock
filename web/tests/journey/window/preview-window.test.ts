@@ -2,6 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { expect, test } from 'vitest'
 import { useDesk, waitFor, windowDescribe } from './window-helpers'
+import { place, preview } from '../steps'
 
 /* A file opened in a window of its own, apart from the board, and a clip handed to the machine's own player
    (RULES.md, Cropping and turning). The player is the machine's: here it is a small program, named the way a
@@ -19,15 +20,12 @@ windowDescribe('a file in a window of its own, and the machine own player', () =
     fs.writeFileSync(player, `#!/bin/sh\nprintf '%s' "$1" > '${played()}'\n`, { mode: 0o755 })
     await desk.launch({ state: 'sorted', env: { SKYDOCK_PLAYER_COMMAND: player } })
     const board = await desk.board()
-    await desk.click(
-      board,
-      board.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Sion/ })
-    )
+    await desk.click(board, place(board, /Sion/))
     await board.getByText(FIRST).first().waitFor({ timeout: 60_000 })
 
     await desk.click(board, board.getByText(FIRST).first(), 2)
     const file = await desk.preview()
-    await file.getByRole('dialog', { name: 'Preview' }).waitFor()
+    await preview(file).waitFor()
     desk.shot('file-window')
 
     /* two windows on the screen, and the board behind still answers */
@@ -38,7 +36,7 @@ windowDescribe('a file in a window of its own, and the machine own player', () =
     /* stepping on stays in that window */
     await desk.click(file, file.getByRole('button', { name: 'Next' }))
     await waitFor('the next file in the same window', async () =>
-      (await file.getByRole('dialog', { name: 'Preview' }).innerText()).match(SECOND)
+      (await preview(file).innerText()).match(SECOND)
     )
     expect(desk.pages()).toHaveLength(2)
     desk.silent()
