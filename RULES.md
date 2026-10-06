@@ -717,9 +717,12 @@ since the app and the machine it came off are the same one.
 **Putting files in the bin.** Wherever it is offered, putting files in the bin is a red button with a
 bin on it, so it is never taken for anything else. A test shot or footage of the ground can be got rid
 of from wherever it is — Fresh files, a jump, a dropzone, a montage — when the bin is the way out
-chosen for it on removing it. A file already on the storage is not the board's to throw away and never
-goes. A file copied into a jump cannot go while that jump still needs it; once the jump is uploaded it can, and the jump keeps its copy as a file given back, on the storage only. Nothing goes without a warning first, saying how many files, how many videos and photos
-and how much space, and that these are originals nobody has been given yet — if the camera card has
+chosen for it on removing it. A file the storage holds too can go as well: the bin moves only what is on this machine, and the storage
+keeps what it holds, so the dialog says how many of the files are up there as well and offers only the bin for them.
+Such a file is put in the bin from its own panel, one at a time — it cannot be picked with the others, since
+nothing else can be done to it.
+A file copied into a jump cannot go while that jump still needs it; once the jump is uploaded it can, and the jump keeps its copy as a file given back, on the storage only. Nothing goes without a warning first, saying how many files, how many videos and photos
+and how much space, and that these are originals nobody has been given yet (except what the storage holds too) — if the camera card has
 been wiped, the bin holds the only copy. Once confirmed, the files leave the board and the originals
 folder, so a scan does not bring them back; the copies and proxies made from them are deleted, since
 they have nothing left to come from. The files themselves are moved, not erased, into a folder of the
@@ -1051,7 +1054,7 @@ everything as it was. It happens when the board is opened, silently.
 **Uploaded is the end of editing.** SkyDock cannot take an old copy back from the storage, so a file
 that has gone up cannot be cropped, turned, re-timed, moved or renamed here — the page hides the
 controls, and the app refuses the change. It shows a lock and says why; the way back is to remove it
-from the storage, over there.
+from the storage, over there. Putting it in the bin is not an edit and stays open: the storage keeps its own copy.
 
 **Being listed can take a claim away, never grant one**: only an upload, which compares checksums,
 marks a file uploaded; and a folder that was never listed, a listing that failed or a size the storage

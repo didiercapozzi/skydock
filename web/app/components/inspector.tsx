@@ -822,7 +822,7 @@ const FilePanel = ({
           </Acts>
         </Part>
       )}
-      {!locked && (
+      {(!locked || locked === UPLOADED_LOCKED) && (
         <div className='mt-auto px-6 pt-4 pb-6'>
           <BinButton onClick={onSendBack}>{backLabel}</BinButton>
         </div>

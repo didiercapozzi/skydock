@@ -9,12 +9,14 @@ const RemoveFilesDialog = ({
   from,
   files,
   canLoose,
+  onStorage,
   onClose,
   onChoose
 }: {
   from: string | null
   files: ManifestFile[]
   canLoose: boolean
+  onStorage: number
   onClose: () => void
   onChoose: (to: 'fresh' | 'bin') => void
 }) => {
@@ -74,6 +76,15 @@ const RemoveFilesDialog = ({
           {t`off the board and out of the originals, moved to the bin, not erased. They can be brought back from the Bin page. If the camera card has been wiped, the bin holds the only copy.`}
         </li>
       </ul>
+      {onStorage > 0 && (
+        <p className='m-0 text-small text-ink-3'>
+          {plural(onStorage, {
+            one: '# of these is on the storage as well, which keeps its own copy — the bin takes only the one here.',
+            other:
+              '# of these are on the storage as well, which keeps its own copy — the bin takes only the ones here.'
+          })}
+        </p>
+      )}
       {copies && (
         <p className='m-0 text-small text-ink-3'>
           {t`Some of these are copies: a copy can only be taken out, and its original stays where it is.`}

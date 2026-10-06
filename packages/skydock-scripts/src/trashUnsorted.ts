@@ -24,11 +24,6 @@ const trashUnsorted = async (
 ) => {
   const going = manifest.files.filter((f) => f.id && ids.has(f.id))
   if (going.length === 0) throw new Error('Those files are no longer on the board.')
-  const sent = going.find((f) => f.uploaded || f.freed)
-  if (sent)
-    throw new Error(
-      `${sent.filename} is on the storage already — it is not the board’s to throw away.`
-    )
   const copy = going.find((f) => f.copyOf)
   if (copy)
     throw new Error(
