@@ -264,12 +264,20 @@ const VideoCropper = ({
     ...(keptTo !== null && keptTo < 100 ? [['after', keptTo, 100] as const] : [])
   ]
 
+  /* The pictures are cut at the middles of the cells of a grid the zoom alone sets, a slot wide or half a second
+     if that is more: the stretch following the playhead then brings in the one picture that comes into view,
+     where moments measured from where it starts would ask for every picture again at each step of it. */
+  const step = Math.max(0.5, Math.ceil((vd / THUMB_COUNT) * 2) / 2)
   const thumbs =
     thumbSrc && safeDuration > 0
       ? Array.from({ length: THUMB_COUNT }, (_, i) => {
           const time = offset + ((i + 0.5) / THUMB_COUNT) * vd
-          const rounded = Math.round(time * 2) / 2
-          return { key: i, src: thumbSrc(rounded) }
+          return {
+            key: i,
+            src: thumbSrc(
+              Math.min((Math.round(time / step - 0.5) + 0.5) * step, safeDuration - 0.1)
+            )
+          }
         })
       : []
 
