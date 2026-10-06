@@ -9,7 +9,7 @@ import {
 } from './utils'
 import { readExifMap } from './lib/exif'
 import { job } from './live'
-import { loadManifest, MANIFEST_VERSION, saveManifest } from './manifest'
+import { MANIFEST_VERSION, readRecord, RECORD_UNREADABLE, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
 import { mtimeOf, writeJsonAtomic } from './lib/fs'
 import { z } from 'zod'
@@ -275,7 +275,8 @@ const scanMedia = async (options?: { outputDir?: string }) => {
 
   const diskFiles = await scanFiles(originalDir)
 
-  const existing = loadManifest(manifestPath)
+  const { manifest: existing, unreadable } = readRecord(manifestPath)
+  if (unreadable) throw new Error(RECORD_UNREADABLE)
 
   if (!existing) {
     const createdAt = new Date().toISOString()

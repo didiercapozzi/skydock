@@ -58,7 +58,6 @@ const BoardHeader = ({
   onScan,
   onTemplates,
   onWorkFolder,
-  onHistory,
   onShortcuts,
   find
 }: {
@@ -66,7 +65,6 @@ const BoardHeader = ({
   onScan: () => void
   onTemplates: () => void
   onWorkFolder: () => void
-  onHistory: () => void
   onShortcuts: () => void
   find: (query: string) => Found[]
 }) => {
@@ -180,14 +178,6 @@ const BoardHeader = ({
                   onWorkFolder()
                 }}>
                 {t`Work folder…`}
-              </MenuItem>
-              <MenuItem
-                title={t`The board as it was after each of the last changes — go back to one`}
-                onClick={() => {
-                  close()
-                  onHistory()
-                }}>
-                {t`History…`}
               </MenuItem>
               <MenuItem
                 onClick={() => {

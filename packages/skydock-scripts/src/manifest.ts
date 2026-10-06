@@ -1,9 +1,8 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { changedNothing, describeChange } from './boardChange'
 import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
-import { copyOverSync, writeJsonAtomic } from './lib/fs'
+import { writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
 import { groupsFileSchema, manifestSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
@@ -69,11 +68,6 @@ const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => 
 
 const MANIFEST_VERSION = 2
 
-const backupOf = (file: string) => `${file}.bak`
-
-const HISTORY_KEPT = 30
-const historyDir = (manifestPath: string) => path.join(path.dirname(manifestPath), '.history')
-
 const FOLDERS = /^(.*?)\/(original_files|processed|proxies|\.send|\.trash)\/(.+)$/
 const PATH_KEYS = new Set(['path', 'localPath', 'proxy'])
 
@@ -101,93 +95,15 @@ const readPair = (manifestPath: string, groupsPath: string) => {
   return manifest
 }
 
+const RECORD_UNREADABLE =
+  'The board’s record could not be read — nothing was changed. Mend or put back manifest.json in the work folder.'
+
 const readRecord = (manifestPath: string) => {
-  const groupsPath = getGroupsPath(manifestPath)
-  let failed: unknown = null
-  try {
-    const manifest = readPair(manifestPath, groupsPath)
-    if (manifest || !fs.existsSync(manifestPath)) return { manifest, kept: false }
-  } catch (e) {
-    failed = e
-  }
-  try {
-    const kept = fs.existsSync(backupOf(manifestPath))
-      ? readPair(backupOf(manifestPath), backupOf(groupsPath))
-      : null
-    if (kept) {
-      console.warn(`[Manifest] ${manifestPath} could not be read — using the last one read whole.`)
-      return { manifest: kept, kept: true }
-    }
-  } catch {}
-  if (failed) throw failed
-  return { manifest: null, kept: false }
+  const manifest = readPair(manifestPath, getGroupsPath(manifestPath))
+  return { manifest, unreadable: manifest === null && fs.existsSync(manifestPath) }
 }
 
 const loadManifest = (manifestPath: string) => readRecord(manifestPath).manifest
-
-const keepBoardStep = (manifestPath: string) => {
-  const groupsPath = getGroupsPath(manifestPath)
-  if (!fs.existsSync(manifestPath)) return
-  const history = historyDir(manifestPath)
-  const at = new Date().toISOString().replace(/[:.]/g, '-')
-  const taken = fs.existsSync(history)
-    ? fs.readdirSync(history).filter((n) => n.startsWith(at))
-    : []
-  const step = path.join(history, `${at}-${String(taken.length).padStart(3, '0')}`)
-  fs.mkdirSync(step, { recursive: true })
-  fs.copyFileSync(manifestPath, path.join(step, 'manifest.json'))
-  if (fs.existsSync(groupsPath)) fs.copyFileSync(groupsPath, path.join(step, 'groups.json'))
-  const steps = fs.readdirSync(history).sort()
-  for (const old of steps.slice(0, Math.max(0, steps.length - HISTORY_KEPT)))
-    fs.rmSync(path.join(history, old), { recursive: true, force: true })
-}
-
-const boardHistory = (manifestPath: string) => {
-  const history = historyDir(manifestPath)
-  if (!fs.existsSync(history)) return []
-  const read = (step: string) => {
-    try {
-      return readPair(
-        path.join(history, step, 'manifest.json'),
-        path.join(history, step, 'groups.json')
-      )
-    } catch {
-      return null
-    }
-  }
-  const steps = fs
-    .readdirSync(history)
-    .sort()
-    .flatMap((step) => {
-      const board = read(step)
-      if (!board) return []
-      const at = fs.statSync(path.join(history, step, 'manifest.json')).mtimeMs
-      return [{ step, at: Math.floor(at / 1000), board }]
-    })
-  let now: Manifest | null = null
-  try {
-    now = loadManifest(manifestPath)
-  } catch {
-    now = null
-  }
-  return steps
-    .flatMap(({ step, at, board }, i) => {
-      const after = steps[i + 1]?.board ?? now
-      if (!after) return []
-      const change = describeChange(board, after)
-      return changedNothing(change) ? [] : [{ step, at, change }]
-    })
-    .reverse()
-}
-
-const restoreBoard = (manifestPath: string, step: string) => {
-  const from = path.join(historyDir(manifestPath), path.basename(step))
-  const was = readPair(path.join(from, 'manifest.json'), path.join(from, 'groups.json'))
-  if (!was) throw new Error('That earlier state of the board can no longer be read.')
-  keepBoardStep(manifestPath)
-  saveManifest(manifestPath, was)
-  return was
-}
 
 const BATCH_MS = 500
 
@@ -304,8 +220,6 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
   }
   manifestSchema.omit({ groups: true }).parse(raw)
   writeJsonAtomic(manifestPath, raw)
-  copyOverSync(manifestPath, backupOf(manifestPath))
-  copyOverSync(getGroupsPath(manifestPath), backupOf(getGroupsPath(manifestPath)))
   writtenHere().set(manifestPath, pairStamp(manifestPath))
 }
 
@@ -315,13 +229,11 @@ export {
   writtenHere,
   flushAllBoardChanges,
   flushBoardChanges,
-  boardHistory,
-  keepBoardStep,
   getGroupsPath,
   loadManifest,
   readRecord,
   MANIFEST_VERSION,
-  restoreBoard,
+  RECORD_UNREADABLE,
   saveManifest,
   statProcessedOutputs
 }

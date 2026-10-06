@@ -47,8 +47,8 @@ describe('the work folder', () => {
     ])
 
     expect(fs.existsSync(at('manifest.json'))).toBe(true)
-    expect(fs.existsSync(at('manifest.json.bak'))).toBe(true)
-    expect(fs.existsSync(at('.history'))).toBe(true)
+    expect(fs.existsSync(at('manifest.json.bak'))).toBe(false)
+    expect(fs.existsSync(at('.history'))).toBe(false)
     await quiet()
   })
 

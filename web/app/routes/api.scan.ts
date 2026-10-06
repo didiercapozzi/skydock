@@ -1,8 +1,9 @@
 import {
   getManifestPath,
   getOutputDir,
-  keepBoardStep,
   loadManifest,
+  readRecord,
+  RECORD_UNREADABLE,
   scanMedia
 } from '@skydock/scripts'
 import { z } from 'zod'
@@ -15,10 +16,13 @@ const actionArgs = z.object({ cameras: z.boolean().optional() })
 
 const action = createValidatedFormAction()({
   schema: actionArgs,
-  handler: async ({ data }) => {
+  handler: async ({ data, errors }) => {
     const outputDir = getOutputDir()
+    if (readRecord(getManifestPath(outputDir)).unreadable) {
+      errors.addGlobalError(RECORD_UNREADABLE)
+      return errors.toResponse(422)
+    }
     if (data.cameras !== false) copyAgain(outputDir)
-    keepBoardStep(getManifestPath(outputDir))
     const result = await scanMedia({ outputDir })
     void catchUp(outputDir)
     const manifest = loadManifest(getManifestPath(outputDir))

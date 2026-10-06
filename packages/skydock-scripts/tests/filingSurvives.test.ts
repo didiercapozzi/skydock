@@ -110,14 +110,8 @@ describe('the saved jumps, when they cannot be read', () => {
     expect(back?.groups[0].passenger?.lastname).toBe('Favre')
   })
 
-  const withoutTheLastGoodPair = () => {
-    for (const kept of ['manifest.json.bak', 'groups.json.bak'])
-      fs.rmSync(path.join(outputDir, kept), { force: true })
-  }
-
   it('are never read as jumps when they are shaped like something else', () => {
     saveManifest(manifestPath, filed())
-    withoutTheLastGoodPair()
     fs.writeFileSync(path.join(outputDir, 'groups.json'), JSON.stringify({ groups: 'banana' }))
 
     expect(() => loadManifest(manifestPath)).toThrow(/jumps file/)
@@ -125,7 +119,6 @@ describe('the saved jumps, when they cannot be read', () => {
 
   it('are never read as no jumps at all when the file is unreadable', () => {
     saveManifest(manifestPath, filed())
-    withoutTheLastGoodPair()
     fs.writeFileSync(path.join(outputDir, 'groups.json'), '{ this is not json')
 
     expect(() => loadManifest(manifestPath)).toThrow()

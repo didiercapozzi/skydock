@@ -131,11 +131,11 @@ const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = getOutputDir()
   const manifestPath = getManifestPath(outputDir)
   flushBoardChanges(manifestPath)
-  let record: ReturnType<typeof readRecord> = { manifest: null, kept: false }
+  let record: ReturnType<typeof readRecord> = { manifest: null, unreadable: true }
   try {
     record = readRecord(manifestPath)
   } catch {}
-  const { manifest } = record
+  const { manifest, unreadable } = record
   const grouped = new Set(
     (manifest?.groups ?? []).flatMap((g) => g.files.map((f) => f.id ?? f.path))
   )
@@ -153,8 +153,8 @@ const loader = async (_args: Route.LoaderArgs) => {
     remote: null,
     storage: null,
     storageLook: lookAtStorageSoon(outputDir),
-    hasManifest: manifest !== null,
-    readFromKept: record.kept,
+    hasManifest: manifest !== null || unreadable,
+    unreadable,
     processing: processingNow(),
     uploading: uploadingNow()
   }
@@ -300,7 +300,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onScan={board.scan}
           onTemplates={() => setDialog({ kind: 'templates' })}
           onWorkFolder={() => setDialog({ kind: 'work-folder' })}
-          onHistory={() => setDialog({ kind: 'history' })}
           onShortcuts={() => setDialog({ kind: 'shortcuts' })}
           find={model.findAnything}
         />
@@ -392,7 +391,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
         onRemoveFiles={(to, files) => closeThen(() => model.removeTo(to, files))}
-        onGoBack={(step) => closeThen(() => send('go-back', { intent: 'go-back', step }))}
         workFolder={{
           folder: loaderData.outputDir,
           working: board.uploading

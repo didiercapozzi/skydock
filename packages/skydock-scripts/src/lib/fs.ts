@@ -188,14 +188,7 @@ const moveFile = async (
   }
 }
 
-const copyOverSync = (from: string, to: string) => {
-  const beside = `${to}.${process.pid}.tmp`
-  fs.copyFileSync(from, beside)
-  fs.renameSync(beside, to)
-}
-
 export {
-  copyOverSync,
   DEFAULT_MAX_FIND_DEPTH,
   findMediaFiles,
   hashFile,

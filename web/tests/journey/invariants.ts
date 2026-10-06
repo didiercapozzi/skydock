@@ -28,8 +28,7 @@ const recordProblems = (world: World) => {
   return problems
 }
 
-const IGNORED =
-  /(^|\/)(\.cache|\.thumbs|\.proxies|thumbs|\.status)(\/|$)|(^|\/)\.history\/.|\.bak$|\.tmp$|\.lock$/
+const IGNORED = /(^|\/)(\.cache|\.thumbs|\.proxies|thumbs|\.status)(\/|$)|\.tmp$|\.lock$/
 
 const treeOf = (folder: string, base = folder): string[] =>
   fs

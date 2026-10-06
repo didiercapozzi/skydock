@@ -20,7 +20,6 @@ import { UploadDialog } from './upload-dialog'
 import { ForgetCameraDialog } from './camera-dialogs'
 import { WorkFolderDialog } from './work-folder-dialog'
 import { ShortcutsDialog } from './shortcuts-dialog'
-import { HistoryDialog } from './history-dialog'
 import { folderOnStorage } from '../helpers/jumps'
 import type { Passenger } from './montage-card'
 import type { SendPlan } from '@skydock/scripts'
@@ -46,7 +45,6 @@ type BoardDialog =
   | { kind: 'delete-jump'; groupId: string }
   | { kind: 'forget-camera'; key: string; name: string }
   | { kind: 'shortcuts' }
-  | { kind: 'history' }
 
 const DialogHost = ({
   dialog,
@@ -76,7 +74,6 @@ const DialogHost = ({
   onNameMontage,
   workFolder,
   onRemoveFiles,
-  onGoBack,
   onResetFresh,
   onForgetCamera
 }: {
@@ -114,7 +111,6 @@ const DialogHost = ({
   onNameMontage: (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => void
   workFolder: { folder: string; working: string | null }
   onRemoveFiles: (to: 'fresh' | 'bin', files: ManifestFile[]) => void
-  onGoBack: (step: string) => void
   onResetFresh: (what: 'times' | 'everything') => void
   onForgetCamera: (key: string) => void
 }) => {
@@ -231,13 +227,6 @@ const DialogHost = ({
         })()}
 
       {dialog?.kind === 'shortcuts' && <ShortcutsDialog onClose={close} />}
-
-      {dialog?.kind === 'history' && (
-        <HistoryDialog
-          onGoBack={onGoBack}
-          onClose={close}
-        />
-      )}
 
       {dialog?.kind === 'forget-camera' && (
         <ForgetCameraDialog

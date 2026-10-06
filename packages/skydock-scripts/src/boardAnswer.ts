@@ -98,7 +98,6 @@ const boardAnswerSchema = z.object({
   played: z.object({ filename: z.string() }).optional(),
   copiedBack: z.object({ copied: z.number(), skipped: z.number() }).optional(),
   fromBin: z.object({ back: z.number(), kept: z.array(z.string()) }).optional(),
-  wentBack: z.boolean().optional(),
   broughtBack: z
     .object({ filename: z.string(), original: z.boolean(), size: z.number() })
     .optional()

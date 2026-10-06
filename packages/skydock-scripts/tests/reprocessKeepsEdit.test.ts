@@ -74,7 +74,6 @@ const everything = () => {
   const walk = (dir: string): string[] =>
     fs.readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
       const full = path.join(dir, e.name)
-      if (e.name === '.history' || e.name.endsWith('.bak')) return []
       return e.isDirectory() ? walk(full) : [path.relative(outputDir, full)]
     })
   return walk(outputDir).sort()

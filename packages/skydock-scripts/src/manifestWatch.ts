@@ -47,7 +47,7 @@ const lookAtBoard = (outputDir: string) => {
   }
   try {
     const record = readRecord(manifestPath)
-    if (!record.manifest || record.kept) return
+    if (!record.manifest) return
   } catch {
     return
   }

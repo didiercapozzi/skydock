@@ -83,7 +83,6 @@ describe('the thumbnails', () => {
         onScan: () => {},
         onTemplates: () => {},
         onWorkFolder: () => {},
-        onHistory: () => {},
         onShortcuts: () => {},
         find: () => []
       })

@@ -54,4 +54,21 @@ describe('scanning', () => {
     expect(res.scan.fileCount).toBe(0)
     expect(res.groups).toHaveLength(0)
   })
+
+  it('leaves a record that cannot be read alone, and says so', async () => {
+    const dayDir = path.join(tmpDir, 'original_files', '2026-08-24')
+    fs.mkdirSync(dayDir, { recursive: true })
+    fs.writeFileSync(path.join(dayDir, 'DJI_0001.MP4'), Buffer.from('scan-video-bytes'))
+    const broken = '{"version":2,"files":[{"id":"a"'
+    fs.writeFileSync(path.join(tmpDir, 'manifest.json'), broken)
+
+    const res = (await action({ request: scanRequest() })) as unknown as {
+      status: number
+      globalErrors?: string[]
+    }
+
+    expect(res.status).toBe(422)
+    expect(res.globalErrors?.[0]).toContain('could not be read')
+    expect(fs.readFileSync(path.join(tmpDir, 'manifest.json'), 'utf8')).toBe(broken)
+  })
 })
