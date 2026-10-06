@@ -238,7 +238,7 @@ groups them among themselves — joining a jump still in Fresh files when they f
 leaves every filed jump as it is. The grouping is a guess, and the board exists to correct it. A file is
 known by what is in it, so the first scan reads every file through; after that a file that has not
 been written since keeps what it was found to be, and only what is new or changed is read through.
-When each was shot is still asked of every file, which is quick beside reading them.
+When each was shot is asked likewise only of what is new or changed since it was last asked — by a scan, a copy off a camera or a camera's page — and kept until it changes.
 
 A scan of a work folder nothing has been copied into yet finds nothing, and says so — but it settles
 the folder: the originals folder is made, and an empty record is written. A folder SkyDock has been
