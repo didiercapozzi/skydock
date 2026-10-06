@@ -5,6 +5,9 @@ import { useSafeFetcher } from '../helpers/routing'
 const useGroups = (initialGroups: ManifestGroup[]) => {
   const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
   const { submit, state } = useSafeFetcher()
+  /* how many times the jumps were edited here: an answer to a request sent before the last of them is of
+     the record as it was before it */
+  const [edits, setEdits] = useState(0)
 
   /* `destinations` rides along when an edit also adds a place. Saved separately, the place's answer
      would carry the groups as they were before and the board could take it over the edit it had just
@@ -37,6 +40,7 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
       }
       return g
     })
+    setEdits((n) => n + 1)
     setGroups(withDirty)
     submit({
       url: '/api/manifest',
@@ -49,8 +53,8 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
     })
   }
 
-  /* a save is on its way: an answer about the record taken meanwhile would be of what it was before */
-  return { groups, setGroups, updateGroups, saving: state !== 'idle' }
+  /* `saving`: a save is on its way, and an answer about the record taken meanwhile would be of what it was before */
+  return { groups, setGroups, updateGroups, edits, saving: state !== 'idle' }
 }
 
 export { useGroups }

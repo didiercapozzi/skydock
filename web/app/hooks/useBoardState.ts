@@ -84,7 +84,7 @@ const refusalSchema = z
 const LOOK_EVERY_MS = 2000
 
 const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
-  const { groups, setGroups, updateGroups, saving } = useGroups(loaded.groups)
+  const { groups, setGroups, updateGroups, edits, saving } = useGroups(loaded.groups)
   /* A page loaded mid-processing takes the work up where the server has it: that one montage says it
      is processing, everything else waits, and the board asks to hear when it is done. */
   const running = loaded.processing
@@ -152,7 +152,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
 
   /* a board answer, whichever request it answers */
   /* `quiet`: a look taken for the eyes only — the board as it is, with nothing said about it */
-  const adopt = (data: unknown, quiet = false) => {
+  const adopt = (data: unknown, quiet = false, stale = false) => {
     const answered = boardAnswerSchema.safeParse(data)
     if (answered.success) {
       const {
@@ -183,9 +183,14 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         storage: listed,
         storageProblem
       } = answered.data
-      setGroups(saved)
-      if (looseFiles) setLoose(looseFiles)
-      if (destinations) setPlaces(destinations)
+      /* a jump edited since the request was sent: what this answer says of the jumps, the loose files and the
+         places is the record as it was before that edit, and would show it reverted (RULES, The board follows
+         its record) */
+      if (!stale) {
+        setGroups(saved)
+        if (looseFiles) setLoose(looseFiles)
+        if (destinations) setPlaces(destinations)
+      }
       if (freshOutputs) setOutputs(freshOutputs)
       if (freshProxies) setProxies(freshProxies)
       if (freshMontages) setMontageFacts(freshMontages)
@@ -240,10 +245,17 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   }
 
   const [seenAnswer, setSeenAnswer] = useState<unknown>(null)
+  /* the jumps as they were edited when the request that is being answered went out */
+  const [sentAt, setSentAt] = useState(0)
+  const [fetcherWas, setFetcherWas] = useState(fetcher.state)
+  if (fetcher.state !== fetcherWas) {
+    setFetcherWas(fetcher.state)
+    if (fetcher.state === 'submitting') setSentAt(edits)
+  }
   if (fetcher.data && fetcher.data !== seenAnswer) {
     setSeenAnswer(fetcher.data)
     setBusy(null)
-    adopt(fetcher.data)
+    adopt(fetcher.data, false, edits > sentAt)
   }
   /* only the upload's own answer — sent, refused, cancelled, or waited for — ends it here */
   const [seenJob, setSeenJob] = useState<unknown>(null)

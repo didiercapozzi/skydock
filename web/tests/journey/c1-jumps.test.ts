@@ -60,11 +60,11 @@ describe('the jumps a camera copy leaves', () => {
 
     /* the first jump lasts 42 minutes and the third nearly two hours, each file within the pause of the next */
     await card(/^Jump 1, /).click()
-    expect(await namesListed(j.page)).toEqual(
+    await eventually(() => namesListed(j.page)).toEqual(
       FIRST.map((when, i) => clipName(when, 100 + i)).reverse()
     )
     await card(/^Jump 3, /).click()
-    expect(await namesListed(j.page)).toHaveLength(9)
+    await eventually(async () => (await namesListed(j.page)).length).toBe(9)
 
     /* grouping reads the files and moves none of them */
     expect(originals(DAY)).toHaveLength(16)
@@ -76,7 +76,7 @@ describe('the jumps a camera copy leaves', () => {
     await card(/^Loose files, /).click()
     const loose = j.page.getByRole('region', { name: 'Loose files' })
     await loose.waitFor()
-    expect(await namesListed(j.page, 'section[aria-label="Loose files"]')).toEqual([
+    await eventually(() => namesListed(j.page, 'section[aria-label="Loose files"]')).toEqual([
       'DJI_20260905120000_0300_D.MP4'
     ])
     await eventually(() => cardsOf(j.page).then((cards) => cards.length)).toBe(5)
@@ -114,14 +114,16 @@ describe('the jumps a later scan finds', () => {
         'Jump 1, 5 September 2026 08:00, 4 videos · 0 photos'
       ])
     await card(/^Jump 4, /).click()
-    expect(await namesListed(j.page)).toContain(afterFresh)
+    await eventually(() => namesListed(j.page)).toContain(afterFresh)
 
     /* the filed jump still holds the nine it had, and the clip after it is loose */
     await card(/^Loose files, /).click()
-    expect(await namesListed(j.page, 'section[aria-label="Loose files"]')).toContain(afterFiled)
+    await eventually(() => namesListed(j.page, 'section[aria-label="Loose files"]')).toContain(
+      afterFiled
+    )
     await folders(j.page).getByRole('link', { name: /Sion/ }).click()
     await see('9 files need processing')
-    expect(await namesListed(j.page)).toHaveLength(9)
+    await eventually(async () => (await namesListed(j.page)).length).toBe(9)
     await quiet()
   })
 
