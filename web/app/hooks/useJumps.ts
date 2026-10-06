@@ -5,6 +5,7 @@ import { useSafeFetcher } from '../helpers/routing'
 const useGroups = (initialGroups: ManifestGroup[]) => {
   const [groups, setGroups] = useState<ManifestGroup[]>(initialGroups)
   const { submit, state } = useSafeFetcher()
+  const [edits, setEdits] = useState(0)
 
   const updateGroups = (
     next: ManifestGroup[],
@@ -33,6 +34,7 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
       }
       return g
     })
+    setEdits((n) => n + 1)
     setGroups(withDirty)
     submit({
       url: '/api/manifest',
@@ -45,7 +47,7 @@ const useGroups = (initialGroups: ManifestGroup[]) => {
     })
   }
 
-  return { groups, setGroups, updateGroups, saving: state !== 'idle' }
+  return { groups, setGroups, updateGroups, edits, saving: state !== 'idle' }
 }
 
 export { useGroups }

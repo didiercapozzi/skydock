@@ -73,7 +73,7 @@ const refusalSchema = z
 const LOOK_EVERY_MS = 2000
 
 const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
-  const { groups, setGroups, updateGroups, saving } = useGroups(loaded.groups)
+  const { groups, setGroups, updateGroups, edits, saving } = useGroups(loaded.groups)
   const running = loaded.processing
   const [busy, setBusy] = useState<string | null>(
     running
@@ -121,7 +121,7 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const fetcher = useSafeFetcher()
   const jobs = useSafeFetcher()
 
-  const adopt = (data: unknown, quiet = false) => {
+  const adopt = (data: unknown, quiet = false, stale = false) => {
     const answered = boardAnswerSchema.safeParse(data)
     if (answered.success) {
       const {
@@ -152,9 +152,11 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         storage: listed,
         storageProblem
       } = answered.data
-      setGroups(saved)
-      if (looseFiles) setLoose(looseFiles)
-      if (destinations) setPlaces(destinations)
+      if (!stale) {
+        setGroups(saved)
+        if (looseFiles) setLoose(looseFiles)
+        if (destinations) setPlaces(destinations)
+      }
       if (freshOutputs) setOutputs(freshOutputs)
       if (freshProxies) setProxies(freshProxies)
       if (freshMontages) setMontageFacts(freshMontages)
@@ -206,10 +208,16 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   }
 
   const [seenAnswer, setSeenAnswer] = useState<unknown>(null)
+  const [sentAt, setSentAt] = useState(0)
+  const [fetcherWas, setFetcherWas] = useState(fetcher.state)
+  if (fetcher.state !== fetcherWas) {
+    setFetcherWas(fetcher.state)
+    if (fetcher.state === 'submitting') setSentAt(edits)
+  }
   if (fetcher.data && fetcher.data !== seenAnswer) {
     setSeenAnswer(fetcher.data)
     setBusy(null)
-    adopt(fetcher.data)
+    adopt(fetcher.data, false, edits > sentAt)
   }
   const [seenJob, setSeenJob] = useState<unknown>(null)
   if (jobs.data && jobs.data !== seenJob) {

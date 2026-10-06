@@ -610,7 +610,8 @@ and then stopped changing the board looks at it again by itself and shows what c
 reloaded and no note said. Only the record's own two files count; the temporary files beside them are
 not changes. What this machine's own server wrote itself is not told again:
 whoever asked was answered with it. A look only reads — it writes nothing — and it waits for anything the page is saving or answering, so an edit just made is never
-shown reverted; a look that finds the board as it is changes nothing on screen. A record that cannot be
+shown reverted. Nor does an answer to a request sent before such an edit take the jumps, the loose files or the
+places back to what they were. A look that finds the board as it is changes nothing on screen. A record that cannot be
 read whole is never shown as an older one.
 
 **Arranging and finding.** Where a page keeps the plain heading (a montage's, a camera's), the pane's heading has one button per way of arranging the place — by jump,
