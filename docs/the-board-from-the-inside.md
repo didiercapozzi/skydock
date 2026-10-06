@@ -72,8 +72,8 @@ flowchart LR
 
 ## Every way in, in detail
 
-The arrows above are the ones worth remembering. These are all of them — **31**,
-of which **22** write the board's own record — grouped by the rule each one serves, in its own
+The arrows above are the ones worth remembering. These are all of them — **39**,
+of which **24** write the board's own record — grouped by the rule each one serves, in its own
 words. Worth reading when you are in one of them, not before.
 
 ### Cropping and turning
@@ -101,20 +101,21 @@ The rule itself is in [RULES.md](../RULES.md), under _Freeing space_.
 | `free-montage` | Delete a montage from this machine, once the storage is proved to hold all of it (RULES, Freeing space). | writes the record, needs the storage, writes the storage’s list, works outside the record |
 | `free-dropzone` | Delete what of a dropzone is on the storage from this machine, once the storage is proved to hold it (RULES, Freeing space). | writes the record, needs the storage, works outside the record |
 | `copy-back` | Files this machine gave back, asked for again from the card they are still on. | works outside the record |
+| `bring-back` | One file fetched back off the storage, for footage this machine no longer holds: freeing deleted the original once the storage was proved to have it, and this is the way back (RULES, Freeing space). | writes the record, needs the storage, works outside the record |
 
 <details><summary><code>free-montage</code> refuses</summary>
 
-- Connect the NAS first — freeing needs it to prove it holds the files.
-- Something is being processed — wait for it to finish.
 - _whatever went wrong underneath, in its own words_
+- Connect the storage first — freeing needs it to prove it holds the files.
+- Something is being processed — wait for it to finish.
 
 </details>
 
 <details><summary><code>free-dropzone</code> refuses</summary>
 
-- Connect the NAS first — freeing needs it to prove it holds the files.
-- Something is being processed — wait for it to finish.
 - _whatever went wrong underneath, in its own words_
+- Connect the storage first — freeing needs it to prove it holds the files.
+- Something is being processed — wait for it to finish.
 
 </details>
 
@@ -122,6 +123,29 @@ The rule itself is in [RULES.md](../RULES.md), under _Freeing space_.
 
 - Nothing was asked for.
 - The registry could not be read after copying.
+- _whatever went wrong underneath, in its own words_
+
+</details>
+
+<details><summary><code>bring-back</code> refuses</summary>
+
+- Nothing was asked for.
+- _whatever went wrong underneath, in its own words_
+- Connect the storage first.
+
+</details>
+
+### Going back
+
+The rule itself is in [RULES.md](../RULES.md), under _Going back_.
+
+| asked for | what it does | what it reaches |
+| --- | --- | --- |
+| `go-back` | The board put back as it was at an earlier step (RULES, Going back): its jumps, names and trims. | answers, and changes nothing |
+
+<details><summary><code>go-back</code> refuses</summary>
+
+- Say which earlier board to go back to.
 - _whatever went wrong underneath, in its own words_
 
 </details>
@@ -157,14 +181,15 @@ The rule itself is in [RULES.md](../RULES.md), under _Jumps_.
 - That jump is no longer on the board.
 - This jump is on the storage only — there is nothing here to move.
 - This jump is on the storage — uploaded is the end of editing.
+- It is being uploaded — delete it once the upload is done.
 - Something is being processed — wait for it to finish.
 
 </details>
 
 <details><summary><code>reset-fresh</code> refuses</summary>
 
-- Something is being processed — wait for it to finish.
 - There is nothing in Fresh files to reset.
+- Something is being processed — wait for it to finish.
 
 </details>
 
@@ -190,15 +215,16 @@ The rule itself is in [RULES.md](../RULES.md), under _Network storage_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `upload-group` | A jump, several, or a whole place goes up to its folder on the storage, each file checked against what is already there before a byte moves (RULES, Network storage). | writes the record, needs the storage, says how far it has got |
+| `upload-group` | A jump, several, or a whole place goes up to its folder on the storage, each file checked against what is already there before a byte moves (RULES, Network storage). | needs the storage |
 
 <details><summary><code>upload-group</code> refuses</summary>
 
 - Upload needs a group or a destination.
 - Upload a montage from its own card: its film and photos go to its folder and its original videos to the backup, which an upload of the whole folder cannot do.
-- Not connected to NAS. Please connect first.
+- It is being processed — upload it once that is done.
 - _whatever went wrong underneath, in its own words_
 - _a message naming the file or the jump_
+- Connect the storage first.
 
 </details>
 
@@ -214,9 +240,40 @@ The rule itself is in [RULES.md](../RULES.md), under _Places_.
 
 - Removing a place needs to know which one.
 - That place is no longer on the board.
-- Something is being processed — wait for it to finish.
 - A montage there has an edit — change it in kdenlive first.
 - Something there is on the storage — uploaded is the end of editing.
+- Something is being processed — wait for it to finish.
+
+</details>
+
+### Principles
+
+The rule itself is in [RULES.md](../RULES.md), under _Principles_.
+
+| asked for | what it does | what it reaches |
+| --- | --- | --- |
+| `montage-link` | A montage's folder on the storage, handed out by a link — made, or taken away — and the storage's list told which, so that any machine of the club sees it. | writes the record, needs the storage, writes the storage’s list, works outside the record |
+| `destination-link` | A destination's folder on the storage handed out by a link — made, or taken away — by hand: uploading into a destination gives it none. | writes the record, needs the storage, works outside the record |
+
+<details><summary><code>montage-link</code> refuses</summary>
+
+- That folder is not one SkyDock delivers into.
+- The storage did not say which link that is.
+- The storage would not take that link away.
+- _whatever went wrong underneath, in its own words_
+- This montage is not on the storage’s list — upload it first.
+- Connect the storage first — the list of montages is kept there.
+
+</details>
+
+<details><summary><code>destination-link</code> refuses</summary>
+
+- That is not a destination of this board.
+- That folder is not one SkyDock delivers into.
+- The storage did not say which link that is.
+- The storage would not take that link away.
+- _whatever went wrong underneath, in its own words_
+- Connect the storage first.
 
 </details>
 
@@ -226,12 +283,21 @@ The rule itself is in [RULES.md](../RULES.md), under _Putting files in the bin_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `trash-unsorted` | Unsorted files nobody wants go to the bin (RULES, Putting files in the bin). | writes the record, works outside the record |
+| `trash-unsorted` | Files nobody wants go to the bin, from Fresh files or out of a montage (RULES, Putting files in the bin). | writes the record, works outside the record |
+| `from-bin` | Files taken back out of the bin (RULES, Putting files in the bin): moved into the originals under the day each was shot, and scanned, which puts them in Fresh files as a scan puts any new file. | works outside the record |
 
 <details><summary><code>trash-unsorted</code> refuses</summary>
 
 - Select at least one file to put in the bin.
+- _whatever went wrong underneath, in its own words_
 - Something is being processed — wait for it to finish.
+
+</details>
+
+<details><summary><code>from-bin</code> refuses</summary>
+
+- Pick the files to bring back.
+- The registry could not be read after bringing them back.
 - _whatever went wrong underneath, in its own words_
 
 </details>
@@ -247,14 +313,12 @@ The rule itself is in [RULES.md](../RULES.md), under _Taking a montage back_.
 
 <details><summary><code>reset-montage</code> refuses</summary>
 
-- This montage is being processed — wait for it to finish.
 - _whatever went wrong underneath, in its own words_
 
 </details>
 
 <details><summary><code>delete-montage</code> refuses</summary>
 
-- This montage is being processed — wait for it to finish.
 - _whatever went wrong underneath, in its own words_
 
 </details>
@@ -266,10 +330,12 @@ The rule itself is in [RULES.md](../RULES.md), under _The board_.
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
 | `save-groups` | The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a frozen montage forbids — and answered with what was saved, so the board redraws from the server rather than trusting its own optimistic copy (RULES, The board). | writes the record |
+| `look-at-board` | The board looks at its record again, because the record changed under nobody's hand here — another tab, a script, a hand edit (RULES, The board). | answers, and changes nothing |
 
 <details><summary><code>save-groups</code> refuses</summary>
 
 - Save needs groups.
+- _whatever went wrong underneath, in its own words_
 - On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.
 
 </details>
@@ -291,23 +357,6 @@ The rule itself is in [RULES.md](../RULES.md), under _The editing project_.
 - This montage already has a project — open it in kdenlive.
 - _whatever went wrong underneath, in its own words_
 - _a message naming the file or the jump_
-
-</details>
-
-### The storage's list of montages
-
-The rule itself is in [RULES.md](../RULES.md), under _The storage's list of montages_.
-
-| asked for | what it does | what it reaches |
-| --- | --- | --- |
-| `restore-montages` | Montages the storage's list names are put back on a board that has forgotten them: their files gathered again under the passenger's name, at the times they had (RULES, The storage's list of montages). | writes the record, needs the storage, works outside the record |
-
-<details><summary><code>restore-montages</code> refuses</summary>
-
-- Connect the NAS first — the list of montages is kept there.
-- Choose where montages go on the storage first.
-- _whatever went wrong underneath, in its own words_
-- None of those montages’ files are waiting to be sorted here.
 
 </details>
 
@@ -346,30 +395,13 @@ The rule itself is in [RULES.md](../RULES.md), under _Times and dates_.
 
 </details>
 
-### Uploading a montage
-
-The rule itself is in [RULES.md](../RULES.md), under _Uploading a montage_.
-
-| asked for | what it does | what it reaches |
-| --- | --- | --- |
-| `upload-montage` | A montage goes up as its plan says — each item built once and sent to every destination it was put in — and the storage's own list of montages follows (RULES, Uploading a montage). | writes the record, needs the storage, writes the storage’s list, says how far it has got, works outside the record |
-
-<details><summary><code>upload-montage</code> refuses</summary>
-
-- Group not found.
-- Not connected to NAS. Please connect first.
-- _whatever went wrong underneath, in its own words_
-- _a message naming the file or the jump_
-
-</details>
-
 ### Where the jump is in a clip
 
 The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a clip_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `set-moment` | One of a jump's moments, moved by hand. | writes the record |
+| `set-moment` | One of a jump's moments, moved by hand. | writes the record, works outside the record |
 
 <details><summary><code>set-moment</code> refuses</summary>
 
@@ -384,15 +416,19 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `merge-groups` | Two jumps become one, and the one may be re-timed to an anchor in the same move. | writes the record |
+| `merge-groups` | Two jumps become one, and the one may be re-timed in the same move so that it starts, by its own run, at the anchor. | writes the record |
 | `open-montage` | the project is already there — this is the way back into it | works outside the record |
 | `process` | Process the jumps asked for — by id, by place, or all of them — and answer with the manifest as processing left it. | answers, and changes nothing |
 | `process-wait` | a page that came back while something was being processed waits here for it to finish | answers, and changes nothing |
 | `cancel-process` | Stops what is being processed, and answers once it has stopped, with the board as the run left it: the copies already finished stay on the disk, and nothing of the run counts as processed. | answers, and changes nothing |
+| `upload-wait` | a page that came back while something was being uploaded waits here for it to finish, and gets the board as the upload left it | answers, and changes nothing |
+| `cancel-upload` | Stops what is being uploaded, at any moment, and answers once it has stopped: nothing of it is recorded, and what was already sent is found again by the next upload. | answers, and changes nothing |
+| `upload-montage` |  | works outside the record |
+| `reset-moments` | The marks put back where the camera measured them, whatever was moved by hand since. | writes the record, works outside the record |
+| `redo-moments` | For development only: a clip forgets where its jump is, marks moved by hand and all, and the pass that finds it runs again at once, with its progress shown as ever — for trying the finding out on real footage. | writes the record, works outside the record |
 | `regroup-loose` | the loose files of the sorting area are clustered into jumps again, by time | writes the record |
-| `imported` | files were just added from the computer, one request each: the board looks again, and hears how the whole drop went | answers, and changes nothing |
-| `mark-emailed` | The passenger was emailed — or, taken back, was not — and the storage's list is where that is said, so that any machine of the club can see it. | needs the storage, writes the storage’s list |
-| `bring-back` | one file fetched back off the storage | writes the record, needs the storage, works outside the record |
+| `imported` | files were just added — from the computer, one request each, or off a camera as each lands: the board looks again, and hears how a drop went when there is a drop to hear about | answers, and changes nothing |
+| `mark-emailed` | The passenger was emailed — or, taken back, was not. | writes the record, needs the storage, writes the storage’s list |
 
 <details><summary><code>merge-groups</code> refuses</summary>
 
@@ -409,6 +445,7 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 
 <details><summary><code>process</code> refuses</summary>
 
+- It is being uploaded — process it again once the upload is done.
 - _whatever went wrong underneath, in its own words_
 
 </details>
@@ -416,6 +453,28 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 <details><summary><code>cancel-process</code> refuses</summary>
 
 - Nothing is being processed.
+
+</details>
+
+<details><summary><code>cancel-upload</code> refuses</summary>
+
+- Nothing is being uploaded.
+
+</details>
+
+<details><summary><code>reset-moments</code> refuses</summary>
+
+- Put back one clip at a time.
+- That file is no longer on the board.
+- Its marks are where the camera put them.
+
+</details>
+
+<details><summary><code>redo-moments</code> refuses</summary>
+
+- This is only for development.
+- Redo one clip at a time.
+- That file is no longer on the board.
 
 </details>
 
@@ -427,15 +486,9 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 
 <details><summary><code>mark-emailed</code> refuses</summary>
 
-- Connect the NAS first — the list of montages is kept there.
-- This montage is not on the storage’s list — upload it first.
-
-</details>
-
-<details><summary><code>bring-back</code> refuses</summary>
-
-- Nothing was asked for.
-- _whatever went wrong underneath, in its own words_
+- Say which montage was emailed.
+- This montage is not on the board or on the storage’s list.
+- This montage is not on the board.
 
 </details>
 
@@ -447,26 +500,29 @@ is hard to hold in your head: the same sentence, said by everything that has to 
 **Something is being processed — wait for it to finish.**
 `delete-jump` · `remove-destination` · `reset-fresh` · `trash-unsorted` · `free-montage` · `free-dropzone`
 
-**Group not found.**
-`montage` · `upload-montage` · `shift-group-time`
-
 **That file is no longer on the board.**
-`retime-file` · `set-moment` · `play-file`
+`retime-file` · `set-moment` · `reset-moments` · `redo-moments` · `play-file`
+
+**Connect the storage first.**
+`upload-group` · `destination-link` · `bring-back`
 
 **On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.**
 `save-groups` · `move-files`
 
-**Not connected to NAS. Please connect first.**
-`upload-group` · `upload-montage`
+**Group not found.**
+`montage` · `shift-group-time`
 
-**This montage is being processed — wait for it to finish.**
-`reset-montage` · `delete-montage`
-
-**Connect the NAS first — freeing needs it to prove it holds the files.**
+**Connect the storage first — freeing needs it to prove it holds the files.**
 `free-montage` · `free-dropzone`
 
-**Connect the NAS first — the list of montages is kept there.**
-`mark-emailed` · `restore-montages`
+**That folder is not one SkyDock delivers into.**
+`montage-link` · `destination-link`
+
+**The storage did not say which link that is.**
+`montage-link` · `destination-link`
+
+**The storage would not take that link away.**
+`montage-link` · `destination-link`
 
 **Nothing was asked for.**
 `copy-back` · `bring-back`
