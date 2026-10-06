@@ -56,9 +56,42 @@ const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
 const diskTimes = (paths: string[]) =>
   new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, new Map())]))
 
+const shotsKnown = new Map<string, { size: number; at: number; shot: number }>()
+const SHOTS_KEPT = 20_000
+
 const shotTimes = async (paths: string[]) => {
-  const timeMap = await readExifMap(paths, TIME_TAGS)
-  return new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, timeMap)]))
+  const stamps = await Promise.all(
+    paths.map((filepath) =>
+      fs.promises.stat(filepath).then(
+        (stat) => ({ size: stat.size, at: stat.mtimeMs }),
+        () => null
+      )
+    )
+  )
+  const found = new Map<string, number>()
+  const unread: number[] = []
+  paths.forEach((filepath, i) => {
+    const kept = shotsKnown.get(filepath)
+    const stamp = stamps[i]
+    if (kept && stamp && kept.size === stamp.size && kept.at === stamp.at)
+      found.set(filepath, kept.shot)
+    else unread.push(i)
+  })
+  if (unread.length > 0) {
+    const timeMap = await readExifMap(
+      unread.map((i) => paths[i]!),
+      TIME_TAGS
+    )
+    if (shotsKnown.size > SHOTS_KEPT) shotsKnown.clear()
+    for (const i of unread) {
+      const filepath = paths[i]!
+      const shot = getCaptureEpoch(filepath, timeMap)
+      found.set(filepath, shot)
+      const stamp = stamps[i]
+      if (stamp && timeMap.has(filepath)) shotsKnown.set(filepath, { ...stamp, shot })
+    }
+  }
+  return new Map(paths.map((filepath) => [filepath, found.get(filepath)!]))
 }
 
 const HASH_POOL_SIZE = 4
