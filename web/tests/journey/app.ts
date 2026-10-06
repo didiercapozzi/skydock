@@ -23,7 +23,7 @@ const makeWorld = (): World => {
   }
 }
 
-const start = (world: World) =>
+const start = (world: World, extra: Record<string, string> = {}) =>
   new Promise<{ url: string; stop: () => Promise<void> }>((resolve, reject) => {
     const child = spawn('node', [SERVER], {
       env: {
@@ -43,7 +43,8 @@ const start = (world: World) =>
         SKYDOCK_CONFIG_DIR: world.config,
         SKYDOCK_TRASH_DIR: world.trash,
         SKYDOCK_CAMERA_ROOTS: '',
-        PORT: '0'
+        PORT: '0',
+        ...extra
       }
     })
     const stop = () =>
