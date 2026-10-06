@@ -11,7 +11,7 @@ import {
   seenOnCamera,
   keyOfMount
 } from './cameraWatch'
-import { alreadyThere, dayFoldersOf, freedAlready } from './copy'
+import { alreadyThere, dayFoldersOf, folderIndex, freedAlready } from './copy'
 import { idFromHash } from './fileId'
 import { givenBack } from './kioCamera'
 import { listBin } from './bin'
@@ -73,12 +73,25 @@ const claimsOf = (file: ManifestFile, group: ManifestGroup | undefined): Claim[]
     : []
 }
 
-const entriesOf = (manifest: Manifest) => [
-  ...manifest.groups.flatMap((group) => group.files.map((file) => ({ file, group }))),
-  ...manifest.files
-    .filter((f) => !manifest.groups.some((g) => g.files.some((gf) => gf.id === f.id)))
-    .map((file) => ({ file, group: undefined }))
-]
+const entriesOf = (manifest: Manifest) => {
+  const grouped = new Set(manifest.groups.flatMap((group) => group.files.map((file) => file.id)))
+  return [
+    ...manifest.groups.flatMap((group) => group.files.map((file) => ({ file, group }))),
+    ...manifest.files.filter((f) => !grouped.has(f.id)).map((file) => ({ file, group: undefined }))
+  ]
+}
+
+const boardOf = (manifest: Manifest | null) => {
+  const entries = manifest ? entriesOf(manifest) : []
+  const byPath = new Map<string, typeof entries>()
+  for (const entry of entries) {
+    const held = byPath.get(entry.file.path) ?? []
+    held.push(entry)
+    byPath.set(entry.file.path, held)
+  }
+  const files = entries.map(({ file }) => file)
+  return { files, byPath, inFolder: folderIndex(files) }
+}
 
 const fingerprint = (file: string, onBytes?: (read: number, total: number) => void) =>
   new Promise<{ id: string; md5: string }>((resolve, reject) => {
@@ -147,15 +160,12 @@ const onStorage = (file: ManifestFile, group: ManifestGroup | undefined) =>
   Boolean(file.freed || group?.freed) || claimsOf(file, group).length > 0
 
 const standingOf = (
-  manifest: Manifest | null,
+  board: ReturnType<typeof boardOf>,
   original: string | null,
   given: (files: ManifestFile[]) => boolean
 ) => {
-  const entries = manifest ? entriesOf(manifest) : []
-  if (!original)
-    return given(entries.map(({ file: f }) => f)) ? ('stored' as const) : ('missing' as const)
-  const mine = entries.filter(({ file: f }) => f.path === original)
-  return mine.some(({ file: f, group }) => onStorage(f, group))
+  if (!original) return given(board.files) ? ('stored' as const) : ('missing' as const)
+  return (board.byPath.get(original) ?? []).some(({ file: f, group }) => onStorage(f, group))
     ? ('stored' as const)
     : ('copied' as const)
 }
@@ -165,14 +175,14 @@ const dcimOf = (mount: string) => path.join(mount, 'DCIM')
 const listCamera = async (mount: string, outputDir: string, trashDir: string) => {
   const files = fs.existsSync(dcimOf(mount)) ? findMediaFiles(dcimOf(mount)) : []
   const folders = await dayFoldersOf(files, outputDir)
-  const manifest = loadManifest(getManifestPath(outputDir))
+  const board = boardOf(loadManifest(getManifestPath(outputDir)))
   const binned = binnedBy(binnedCopies(trashDir), contentOf)
   const listed: CameraFile[] = []
   for (const file of files) {
     const stat = fs.statSync(file)
     const dir = folders.get(file) ?? ''
     const original = await alreadyThere(file, stat, dir)
-    const state = standingOf(manifest, original, (files) => freedAlready(files, file, stat, dir))
+    const state = standingOf(board, original, () => freedAlready(board.inFolder, file, stat, dir))
     listed.push({
       path: file,
       name: path.relative(dcimOf(mount), file),
@@ -194,14 +204,14 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
 
 const listCameraThroughKde = (camera: string, outputDir: string) => {
   const seen = seenOnCamera(camera)
-  const manifest = loadManifest(getManifestPath(outputDir))
+  const board = boardOf(loadManifest(getManifestPath(outputDir)))
   const listed: CameraFile[] = seen.clips.map((clip) => ({
     path: clip.url,
     name: clip.url.slice(`${camera}/DCIM/`.length),
     size: clip.size,
     mtime:
       clip.mtime ?? (clip.original && fs.existsSync(clip.original) ? mtimeOf(clip.original) : 0),
-    state: standingOf(manifest, clip.original, (files) => givenBack(files, clip.name, clip.size))
+    state: standingOf(board, clip.original, (files) => givenBack(files, clip.name, clip.size))
   }))
   return {
     camera: cameraName(camera),

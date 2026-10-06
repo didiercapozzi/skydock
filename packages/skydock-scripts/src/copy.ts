@@ -78,12 +78,22 @@ const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
 const givenBack = (files: ManifestFile[], name: string, size: number) =>
   files.some((f) => f.freed && f.size === size && isNameFor(f.filename, name))
 
-const freedAlready = (board: ManifestFile[], src: string, srcStat: fs.Stats, dir: string) =>
-  givenBack(
-    board.filter((f) => path.resolve(path.dirname(f.path)) === path.resolve(dir)),
-    path.basename(src),
-    srcStat.size
-  )
+const folderIndex = (board: ManifestFile[]) => {
+  const found = new Map<string, ManifestFile[]>()
+  return (dir: string) => {
+    const key = path.resolve(dir)
+    const held = found.get(key) ?? board.filter((f) => path.resolve(path.dirname(f.path)) === key)
+    found.set(key, held)
+    return held
+  }
+}
+
+const freedAlready = (
+  inFolder: (dir: string) => ManifestFile[],
+  src: string,
+  srcStat: fs.Stats,
+  dir: string
+) => givenBack(inFolder(dir), path.basename(src), srcStat.size)
 
 const loadBoard = (outputDir: string) => {
   try {
@@ -151,6 +161,7 @@ const copyCamera = async ({
   const board = manifest
     ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]
     : ([] as ManifestFile[])
+  const inFolder = folderIndex(board)
   const progress: CopyProgress = { done: 0, total: files.length, copied: 0, skipped: 0 }
   onProgress?.({
     ...progress,
@@ -170,7 +181,7 @@ const copyCamera = async ({
     try {
       const destDir = originalsDay(outputDir, shot)
       const there =
-        freedAlready(board, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
+        freedAlready(inFolder, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
       if (there) progress.skipped++
       else {
         const copied = await copyOne(src, srcStat, destDir, (part) =>
@@ -267,6 +278,7 @@ export {
   copyCamera,
   dayFoldersOf,
   landingFor,
+  folderIndex,
   freedAlready,
   isNameFor,
   loadBoard
