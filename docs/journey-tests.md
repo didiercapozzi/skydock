@@ -14,6 +14,7 @@ RULES.md stays the authority on what the app does; the chapters are named in its
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ----- |
 | `web/tests/journey/journey.test.ts`    | the story, in order, on one app, Playwright inside vitest; `npm run test:journey` (~15 s)                          | built |
 | `app.ts`, `media.ts`, `page.ts`        | a temp world (work, config, bin), the built server started with only its own folders, ffmpeg-made DJI-style clips | built |
+| [`docs/journey-map.md`](./journey-map.md) | which chapter guards which RULES.md feature, and what it asserts — written by the coverage guard from the claims, so it is never out of date | built |
 | `steps.ts`, `record.ts`                 | what a person does on the page (places, dialogs, the storage connected and a folder chosen, clips opened, waits on what is on screen) and the record as the app's own shape reads it — written once, taking the `Page`, for every chapter | built |
 | silent-break check                     | after every chapter: no console error, no failed request (a failed picture is asked for again before it counts)    | built |
 | films and failure screens              | `videos/journey.mp4` (click it in the editor to watch) with a pointer dot, `JOURNEY_SLOW=250` for a human pace; a screen and text on failure        | built |
