@@ -14,7 +14,8 @@ import { pointerDot, VIDEOS, watch } from './page'
    started on it, a browser with the whole run filmed and the pointer drawn, and — when a chapter fails —
    what the person would have seen. A file asks for it once and then writes only what a person does.
 
-   `JOURNEY_SLOW` (ms) slows every action down to the pace of a person. */
+   `JOURNEY_SLOW` (ms) slows every action down to the pace of a person. `JOURNEY_FILM=1` films the run, with the
+   pointer drawn, and keeps a trace of it: both cost time, so an ordinary run has neither. */
 
 type Options = {
   /* names the film, and the folder kept when something fails */
@@ -36,6 +37,7 @@ const harness = (options: Options) => {
   let page: Page
   let seen: ReturnType<typeof watch>
   let failed = false
+  const filming = Boolean(process.env.JOURNEY_FILM)
   const viewport = options.viewport ?? { width: 1280, height: 800 }
   const environment = () => options.env?.(world) ?? {}
 
@@ -47,10 +49,12 @@ const harness = (options: Options) => {
     fs.mkdirSync(VIDEOS, { recursive: true })
     context = await browser.newContext({
       viewport,
-      recordVideo: { dir: VIDEOS, size: viewport }
+      ...(filming ? { recordVideo: { dir: VIDEOS, size: viewport } } : {})
     })
-    await context.addInitScript(pointerDot)
-    await context.tracing.start({ screenshots: true, snapshots: true })
+    if (filming) {
+      await context.addInitScript(pointerDot)
+      await context.tracing.start({ screenshots: true, snapshots: true })
+    }
     page = await context.newPage()
     seen = watch(page)
   })
@@ -66,11 +70,12 @@ const harness = (options: Options) => {
     )
   })
 
-  /* a run that fails keeps its folder, with the screens of what failed and a trace to open with
+  /* a run that fails keeps its folder, with the screens of what failed — and, filmed, a trace to open with
      `npx playwright show-trace` */
   afterAll(async () => {
     const film = page?.video()
-    await context?.tracing.stop(failed ? { path: path.join(world.root, 'trace.zip') } : {})
+    if (filming)
+      await context?.tracing.stop(failed ? { path: path.join(world.root, 'trace.zip') } : {})
     await context?.close()
     /* kept as mp4, which a click in the editor plays; the browser's own film is webm */
     const raw = path.join(VIDEOS, `${options.name}.webm`)

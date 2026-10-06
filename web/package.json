@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "react-router build",
-    "build:journey": "react-router build && tsx ../scripts/build-server.ts",
+    "build:journey": "tsx tests/journey/build-if-stale.ts",
     "dev": "react-router dev --host",
     "i18n:extract": "lingui extract --clean",
     "predev": "npx --yes kill-port 5173 || true",
