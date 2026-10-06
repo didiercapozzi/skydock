@@ -96,4 +96,35 @@ describe('the journey and RULES.md', () => {
     const { exempt } = await load()
     expect(Object.entries(exempt).filter(([, why]) => why.trim().length < 12)).toEqual([])
   })
+
+  /* the map a person reads: what RULES.md says, and which chapter walks it. It is written from the claims, so
+     it cannot be edited by hand and cannot be out of date — a change to the claims fails here until the map is
+     rewritten with UPDATE_JOURNEY_MAP=1. */
+  test('docs/journey-map.md shows which chapter guards which feature', async () => {
+    const { covers, exempt } = await load()
+    const files = filesUnder(JOURNEY).filter((file) => file.endsWith('.test.ts'))
+    const where = (title: string) =>
+      files
+        .filter((file) => fs.readFileSync(file, 'utf8').includes(title))
+        .map((file) => path.basename(file, '.test.ts'))[0] ?? '?'
+    const rows = features.map((name) =>
+      name in covers
+        ? `| ${name} | ${[...new Set(covers[name])].map((title) => `**${where(title)}** — ${title}`).join('<br>')} |`
+        : `| ${name} | _not walked:_ ${exempt[name]} |`
+    )
+    const map = [
+      '# What the journey guards',
+      '',
+      'Written by `journey-coverage.test.ts` from RULES.md and the chapter claims — do not edit by hand.',
+      'Rewrite it with `UPDATE_JOURNEY_MAP=1 npm run test:node -- journey-coverage`.',
+      '',
+      '| RULES.md feature | Chapter (file) — what it asserts |',
+      '| --- | --- |',
+      ...rows,
+      ''
+    ].join('\n')
+    const target = path.join(here, '..', '..', '..', 'docs', 'journey-map.md')
+    if (process.env.UPDATE_JOURNEY_MAP) fs.writeFileSync(target, map)
+    expect(fs.readFileSync(target, 'utf8')).toBe(map)
+  })
 })
