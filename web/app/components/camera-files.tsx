@@ -31,7 +31,7 @@ const STANDING = {
   missing: {
     label: msg`not copied yet`,
     many: msg`not copied yet`,
-    tone: 'bg-changed-soft text-changed',
+    tone: 'text-changed',
     ring: true,
     ink: 'text-accent',
     title: msg`Not copied here yet — it cannot be deleted from the camera`
@@ -39,21 +39,21 @@ const STANDING = {
   copied: {
     label: msg`copied, not uploaded`,
     many: msg`here, not uploaded`,
-    tone: 'bg-local-soft text-local',
+    tone: 'text-local',
     ink: 'text-local',
     title: msg`Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera`
   },
   binned: {
     label: msg`in the bin`,
     many: msg`here, put in the bin`,
-    tone: 'bg-bin-soft text-bin',
+    tone: 'text-bin',
     ink: 'text-bin',
     title: msg`Copied here and then put in the bin — can be deleted from the camera`
   },
   stored: {
     label: msg`on the storage`,
     many: msg`on the storage`,
-    tone: 'bg-up-soft text-up',
+    tone: 'text-up',
     ink: 'text-up',
     title: msg`Copied here and on the storage — can be deleted from the camera`
   }
@@ -380,7 +380,7 @@ const CameraFiles = ({
         {listing?.over === 'mtp' && (
           <span
             title={t`This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card.`}
-            className='inline-flex h-chip items-center rounded-full bg-local-soft px-2.5 text-micro font-bold text-local'>
+            className='inline-flex h-chip items-center rounded-full bg-pane shadow-hairline px-2.5 text-micro font-bold text-local'>
             {t`handed over, not a drive — slower than a card reader`}
           </span>
         )}

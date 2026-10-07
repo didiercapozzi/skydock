@@ -62,17 +62,17 @@ type Props = {
   empty: string
 }
 
-/* A fact about a run of files, said as a small tinted pill with a dot of its colour */
+/* A fact about a run of files, said as a small white pill with a dot of its colour */
 const TAGS = {
-  local: 'bg-local-soft text-local',
-  proc: 'bg-proc-soft text-proc',
-  up: 'bg-up-soft text-up',
-  lock: 'bg-lock-soft text-lock'
+  local: 'text-local',
+  proc: 'text-proc',
+  up: 'text-up',
+  lock: 'text-lock'
 }
 
 const Tag = ({ tone, children }: { tone: keyof typeof TAGS; children: string }) => (
   <span
-    className={`inline-flex h-chip items-center gap-1.5 rounded-full px-2.25 text-micro font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current before:content-[''] ${TAGS[tone]}`}>
+    className={`inline-flex h-chip items-center gap-1.5 rounded-full bg-pane px-2.25 text-micro font-bold whitespace-nowrap shadow-hairline before:size-1.5 before:rounded-full before:bg-current before:content-[''] ${TAGS[tone]}`}>
     {children}
   </span>
 )
@@ -351,7 +351,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
     title?: string,
     about?: string,
     bare?: boolean,
-    joined?: boolean
+    prepared?: boolean
   ) => (
     /* one block, so the space between a jump's parts is not also put inside its list */
     <div key={`files:${key}`}>
@@ -361,7 +361,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
         title={title}
         about={about}
         bare={bare}
-        joined={joined}
+        prepared={prepared}
       />
     </div>
   )

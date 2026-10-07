@@ -8,34 +8,19 @@ import type { IconName } from './icons'
    storage: one row, so a file looks the same wherever it is listed. A tick (or a lock where it cannot
    move, or nothing where there is nothing to pick it for), its picture, its name with what is worth
    knowing under it, and where it has got to. What differs from place to place is what each says in those
-   places, never how the row is built.
-
-   `joined` is a row inside a card of rows — a montage's prepared copies — drawn flatter, with a hairline
-   between rows instead of a card each. */
+   places, never how the row is built. */
 
 /* the columns of a row: tick, picture, the name with what it is under it, and where it has got to */
 const COLUMNS = 'grid grid-cols-[22px_64px_minmax(0,1fr)_auto] items-center gap-x-3.5 px-3'
 
 /* The row's own frame. The one looked at is marked apart from the picked ones by a ring round it. */
-const frameOf = (
-  picked: boolean,
-  previewed: boolean,
-  joined: boolean,
-  clickable: boolean,
-  menu: boolean
-) =>
-  `${COLUMNS} w-full text-left ${menu ? '' : '[content-visibility:auto]'} ${
-    joined
-      ? `h-13 rounded-corner [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
-          previewed || picked ? 'bg-accent-soft' : clickable ? 'hover:bg-well' : ''
-        }`
-      : `h-16.5 rounded-corner pr-5 [contain-intrinsic-size:auto_66px] ${
-          previewed
-            ? 'bg-accent-soft shadow-ring-2'
-            : picked
-              ? 'bg-accent-soft shadow-card'
-              : `bg-pane shadow-card ${clickable ? 'hover:bg-accent-soft' : ''}`
-        }`
+const frameOf = (picked: boolean, previewed: boolean, clickable: boolean, menu: boolean) =>
+  `${COLUMNS} w-full text-left ${menu ? '' : '[content-visibility:auto]'} h-16.5 rounded-corner pr-5 [contain-intrinsic-size:auto_66px] ${
+    previewed
+      ? 'bg-accent-soft shadow-ring-2'
+      : picked
+        ? 'bg-accent-soft shadow-card'
+        : `bg-pane shadow-card ${clickable ? 'hover:bg-accent-soft' : ''}`
   }`
 
 /* a file's box: blue with a tick once picked, an empty one to say it can be */
@@ -58,8 +43,8 @@ const Tick = ({
     }}
     className={`grid size-5 place-items-center rounded-corner border-2 p-0 ${
       picked
-        ? 'border-accent bg-accent text-white'
-        : 'border-check bg-transparent text-transparent hover:border-accent'
+        ? 'border-pick bg-pick text-white'
+        : 'border-check bg-transparent text-transparent hover:border-pick'
     }`}>
     <Icon
       name='check'
@@ -83,9 +68,8 @@ const Lock = ({ why }: { why: string }) => (
 )
 
 /* the frame a picture stands in */
-const Picture = ({ joined, children }: { joined: boolean; children?: ReactNode }) => (
-  <span
-    className={`relative grid place-items-center overflow-hidden bg-well ${joined ? 'h-control w-11.5 rounded-corner' : 'h-11 w-16 rounded-corner'}`}>
+const Picture = ({ children }: { children?: ReactNode }) => (
+  <span className='relative grid h-11 w-16 place-items-center overflow-hidden rounded-corner bg-well'>
     {children}
   </span>
 )
@@ -120,7 +104,7 @@ const State = ({
   dot = true,
   title
 }: {
-  /* the colours the state wears: a soft fill and a text, as the palette names them */
+  /* the colour the state wears in its word and its dot, as the palette names it: the pill itself is white */
   tone: string
   children: ReactNode
   /* the dot drawn as a ring, for the state that asks to be dealt with */
@@ -134,7 +118,7 @@ const State = ({
       dot
         ? `before:size-1.5 before:rounded-full before:content-[''] ${ring ? 'before:shadow-ring-current' : 'before:bg-current'}`
         : ''
-    } ${tone}`}>
+    } bg-pane shadow-hairline ${tone}`}>
     {children}
   </span>
 )
@@ -144,7 +128,6 @@ type Frame = Omit<HTMLAttributes<HTMLElement>, 'children'> & { href?: string }
 const FileRow = ({
   picked = false,
   previewed = false,
-  joined = false,
   pick,
   locked,
   picture,
@@ -158,7 +141,6 @@ const FileRow = ({
 }: Frame & {
   picked?: boolean
   previewed?: boolean
-  joined?: boolean
   /* the tick's own answer; none, and there is nothing to pick the file for */
   pick?: { label?: string; onPick: () => void }
   /* why a file cannot be picked, said by the lock that stands in place of the tick */
@@ -179,7 +161,7 @@ const FileRow = ({
     {
       ...frame,
       ...(href ? { href, target: '_blank', rel: 'noreferrer' } : {}),
-      className: frameOf(picked, previewed, joined, Boolean(frame.onClick || href), menu)
+      className: frameOf(picked, previewed, Boolean(frame.onClick || href), menu)
     },
     locked ? (
       <Lock why={locked} />
@@ -192,7 +174,7 @@ const FileRow = ({
     ) : (
       <span />
     ),
-    <Picture joined={joined}>{picture}</Picture>,
+    <Picture>{picture}</Picture>,
     <span className='min-w-0'>
       <span
         className='block truncate font-mono text-small font-medium tracking-title text-ink'

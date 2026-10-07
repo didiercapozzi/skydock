@@ -63,8 +63,8 @@ type Props = {
   about?: string
   /* the count is said by the heading above it, so only the column names are drawn */
   bare?: boolean
-  /* the rows share one card, a line between them, instead of a box each */
-  joined?: boolean
+  /* a montage's own copies: said as prepared, and the clips and the stills in one list */
+  prepared?: boolean
 }
 
 /* A card of 500 photos must not put 500 things on screen before they have been asked for. */
@@ -284,7 +284,7 @@ const PickMark = ({ picked, onPick }: { picked: boolean; onPick: () => void }) =
       onPick()
     }}
     className={`absolute top-2.25 left-2.25 z-2 grid size-5 place-items-center rounded-corner border-2 p-0 ${
-      picked ? 'border-accent bg-accent text-white' : 'border-white/90 bg-veil/30 text-transparent'
+      picked ? 'border-pick bg-pick text-white' : 'border-white/90 bg-veil/30 text-transparent'
     }`}>
     <Icon
       name='check'
@@ -374,11 +374,11 @@ const Row = ({
   onPick,
   onOpen,
   onDragFile,
-  joined = false
+  prepared = false
 }: {
   file: ManifestFile
   lane: ManifestFile[]
-  joined?: boolean
+  prepared?: boolean
   picked: boolean
   locked: string | null
   status: ShownStatus
@@ -417,7 +417,6 @@ const Row = ({
       }}
       picked={picked}
       previewed={previewed}
-      joined={joined}
       locked={locked}
       pick={{ onPick: () => onPick(file) }}
       /* a freed file is on the storage only: nothing here to draw it from */
@@ -471,7 +470,7 @@ const Row = ({
           otherwise={
             <StatusChip
               status={status}
-              prepared={joined}
+              prepared={prepared}
             />
           }
         />
@@ -724,7 +723,7 @@ const Lane = ({
   title = '',
   about,
   bare,
-  joined,
+  prepared,
   shape,
   picked,
   statusContext,
@@ -769,13 +768,7 @@ const Lane = ({
       )}
       <div
         ref={shape === 'grid' ? zoomWithWheel : undefined}
-        className={
-          shape === 'rows'
-            ? joined
-              ? 'flex flex-col rounded-corner bg-pane px-3.5 py-1.5 shadow-soft'
-              : 'flex flex-col gap-2'
-            : 'grid gap-3'
-        }
+        className={shape === 'rows' ? 'flex flex-col gap-2' : 'grid gap-3'}
         style={
           shape === 'grid'
             ? {
@@ -798,7 +791,7 @@ const Lane = ({
               name={deliveredName(file)}
               previewed={Boolean(file.id && file.id === previewed)}
               offGap={Boolean(file.id && offGap.has(file.id))}
-              joined={joined}
+              prepared={prepared}
               onFile={onFile}
               onPick={onPick}
               onOpen={onOpen}
@@ -857,8 +850,10 @@ const Lane = ({
    the two runs of rows stand one above the other unless the pane is wide enough for two, which
    putting the details away makes it; thumbnails stand side by side as soon as there is room. */
 const FileList = ({ files, kind, sortKey, ...rest }: Props) => {
-  /* in one card the clips and the stills are one list, clips first */
-  const lanes = rest.joined ? [lanesOf(files, kind, sortKey).flat()] : lanesOf(files, kind, sortKey)
+  /* a montage's clips and stills are one list, clips first */
+  const lanes = rest.prepared
+    ? [lanesOf(files, kind, sortKey).flat()]
+    : lanesOf(files, kind, sortKey)
   if (lanes.length === 1)
     return (
       <Lane

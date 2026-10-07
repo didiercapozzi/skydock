@@ -385,7 +385,7 @@ const StorageFolder = ({
                   <>
                     {hereToo && (
                       <State
-                        tone={here ? 'bg-up-soft text-up' : 'bg-well text-up'}
+                        tone='text-up'
                         ring={!here}>
                         {here ? t`Here too` : t`Only there`}
                       </State>

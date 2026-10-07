@@ -646,7 +646,7 @@ const ParcelRow = ({
         {item.name}
       </span>
       {missing && (
-        <span className='inline-flex h-chip flex-none items-center rounded-full bg-local-soft px-2.25 text-micro font-bold whitespace-nowrap text-local'>
+        <span className='inline-flex h-chip flex-none items-center rounded-full bg-pane shadow-hairline px-2.25 text-micro font-bold whitespace-nowrap text-local'>
           {t`no longer on the storage`}
         </span>
       )}

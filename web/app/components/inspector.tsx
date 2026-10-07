@@ -46,7 +46,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-corner isle-side wide:rounded-none wide:border-l wide:border-edge wide:border-l wide:border-edge transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-wide:fixed max-wide:inset-y-0 max-wide:right-0 max-wide:z-30 max-wide:w-[min(340px,90vw)] max-wide:shadow-overlay wide:col-start-5 wide:row-start-2 ${
+        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-corner isle-side wide:relative wide:z-10 wide:rounded-none transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-wide:fixed max-wide:inset-y-0 max-wide:right-0 max-wide:z-30 max-wide:w-[min(340px,90vw)] max-wide:shadow-overlay wide:col-start-5 wide:row-start-2 ${
           drawer ? '' : 'max-wide:invisible max-wide:translate-x-full'
         } ${column ? '' : 'wide:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than

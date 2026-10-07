@@ -332,7 +332,7 @@ const isPreviewAddress = (asked: string, board: string) => {
 let previewWindow: BrowserWindow | null = null
 
 /* what the window is before the page has drawn: the ground's own colour, so nothing flashes */
-const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a0f14' : '#e3edf1')
+const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a1119' : '#f8fbfe')
 
 const raise = (window: BrowserWindow) => {
   if (window.isMinimized()) window.restore()

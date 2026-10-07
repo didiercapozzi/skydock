@@ -406,7 +406,7 @@ const EmailDialog = ({
               />
             </label>
             {writingTemplate && (
-              <p className='m-0 rounded-r-corner border-l-3 border-accent bg-accent-soft px-3 py-2.25 text-small text-ink-2'>
+              <p className='m-0 rounded-r-corner border-l-3 border-pick bg-pick-soft px-3 py-2.25 text-small text-ink-2'>
                 <b className='text-ink'>{t`The template for every email.`}</b>{' '}
                 {t`What is written here is kept on this machine and drafts every email; each`}{' '}
                 {'{variable}'}{' '}

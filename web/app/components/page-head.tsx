@@ -12,10 +12,9 @@ import { Menu } from './settings-menu'
 type Tone = 'todo' | 'done' | 'plain'
 
 const CARD: Record<Tone, string> = {
-  todo: 'bg-(image:--gradient-paper-todo) shadow-card dark:bg-none dark:bg-local-soft dark:shadow-none',
-  done: 'bg-(image:--gradient-paper-done) shadow-card dark:bg-none dark:bg-up-soft dark:shadow-none',
-  plain:
-    'bg-(image:--gradient-paper-plain) shadow-card dark:bg-none dark:bg-accent-soft dark:shadow-none'
+  todo: 'bg-pane shadow-hairline dark:bg-local-soft dark:shadow-none',
+  done: 'bg-pane shadow-hairline dark:bg-up-soft dark:shadow-none',
+  plain: 'bg-pane shadow-hairline dark:bg-accent-soft dark:shadow-none'
 }
 
 const BADGE: Record<Tone, string> = {
@@ -138,7 +137,7 @@ const PageHead = ({
                 : 'bg-(image:--gradient-avatar-1) text-white'
               : 'up' in tile && tile.up
                 ? 'bg-up-soft text-up'
-                : 'bg-accent-soft text-accent-ink'
+                : 'bg-pane text-accent shadow-card'
           }`}>
           {'icon' in tile ? (
             <Icon

@@ -78,7 +78,7 @@
   --spacing-control: 34px;
   --spacing-control-lg: 42px;
 
-  --color-ground: #e3edf1;
+  --color-ground: #f8fbfe;
   --color-pane: #ffffff;
   --color-rail: #ffffff;
   --color-well: #e8f2fa;
@@ -89,12 +89,14 @@
   --color-line: #d5e7f3;
   --color-line-2: rgba(11, 127, 214, 0.24);
   --color-line-strong: #b3d2e8;
-  /* the line that parts a panel from the one beside or under it: a tint of the accent, never grey */
-  --color-edge: rgba(11, 127, 214, 0.24);
+  /* the plain line between two parts that meet — the places and the work: a tint of the accent, never grey */
+  --color-divider: #cfe0f2;
   --color-accent: #0b7fd6;
   --color-accent-ink: #0762ab;
   --color-accent-soft: #e4f1fc;
-  --color-pick: #0b7fd6;
+  /* what is picked, selected or chosen: a lighter blue than the accent, so a selection is clear without
+     shouting — a card's ring, a row's ring, a tick, a chosen option */
+  --color-pick: #56a9e6;
   --color-pick-soft: #e4f1fc;
   --color-local: #7d4309;
   --color-local-soft: #fdeacb;
@@ -126,15 +128,12 @@
   --color-dot-up: #23b877;
 
   /* the gradients, named for what they colour: each name's own colour in a list of names, the logo's tile,
-     a page head's card by its tone, a picture's empty ground, the marker on a graph, and what darkens a
-     picture's edge so white writing reads on it */
+     a picture's empty ground, the marker on a graph, and what darkens a picture's edge so white writing
+     reads on it */
   --gradient-avatar-1: linear-gradient(135deg, #0e7a8f, #5cc0cf);
   --gradient-avatar-2: linear-gradient(135deg, #7a5ad2, #b3a0ef);
   --gradient-avatar-3: linear-gradient(135deg, #d98a3a, #f0b877);
   --gradient-avatar-4: linear-gradient(135deg, #1f8a5a, #6fcf9f);
-  --gradient-paper-todo: linear-gradient(135deg, #fff6e8, #fffaf2);
-  --gradient-paper-done: linear-gradient(135deg, #eaf8f0, #f4fbf7);
-  --gradient-paper-plain: linear-gradient(90deg, #e8f3fb, #f5faff);
   --gradient-picture: linear-gradient(135deg, #c9e1f3, #e4f1fc);
   --gradient-marker: linear-gradient(90deg, #7fb0ff, #9a8cff);
   --gradient-veil-bottom: linear-gradient(
@@ -155,7 +154,7 @@
 
   /* what is raised off the page: a button, a row, a card. Every shadow in the light theme is a tint
      of the blue, never grey. */
-  --shadow-card: 0 2px 8px rgba(10, 110, 180, 0.16);
+  --shadow-card: 0 0 0 1px rgba(40, 100, 170, 0.08), 0 8px 22px rgba(40, 100, 170, 0.09);
   --shadow-soft: 0 1px 4px rgba(10, 100, 170, 0.08);
   /* a line drawn as a shadow, so it takes no room: round a picture or a chip */
   --shadow-hairline: 0 0 0 1px var(--color-line);
@@ -171,12 +170,12 @@
   --shadow-divider: 1px 0 0 var(--color-line-2);
   /* what says "this one": a ring round it, in the accent, the ink or the pick colour */
   --shadow-ring: 0 0 0 1px var(--color-accent);
-  --shadow-ring-2: 0 0 0 2px var(--color-accent);
+  --shadow-ring-2: 0 0 0 2px var(--color-pick);
   --shadow-ring-pick: 0 0 0 3px var(--color-pick);
   --shadow-ring-white: 0 0 0 2px rgba(255, 255, 255, 0.85);
   --shadow-ring-dark: 0 0 0 1.5px rgba(0, 0, 0, 0.45);
   --shadow-ring-stage: 0 0 0 1px rgba(20, 19, 17, 0.25);
-  --shadow-picked: 0 0 0 3px var(--color-pane), 0 0 0 5px var(--color-accent);
+  --shadow-picked: 0 0 0 3px var(--color-pane), 0 0 0 5px var(--color-pick);
   --shadow-looked: 0 0 0 3px var(--color-pane), 0 0 0 5px var(--color-ink-3);
   --shadow-halo: 0 0 0 4px var(--color-accent-soft);
   --shadow-inset-ring: inset 0 0 0 2px var(--color-line-strong);
@@ -198,7 +197,7 @@
    is (see the `dark` variant above). */
 :root {
   @variant dark {
-    --color-ground: #0b0e15;
+    --color-ground: #0a1119;
     --color-pane: #141922;
     --color-rail: #141922;
     --color-well: #17303a;
@@ -209,11 +208,11 @@
     --color-line: #22363f;
     --color-line-2: #1b2b33;
     --color-line-strong: #2b4a57;
-    --color-edge: #1b2b33;
+    --color-divider: #1f3a4a;
     --color-accent: #38bdd8;
     --color-accent-ink: #86dcee;
     --color-accent-soft: #0c3340;
-    --color-pick: #38bdd8;
+    --color-pick: #6fd0e6;
     --color-pick-soft: #0c3340;
     --color-local: #f5b25a;
     --color-local-soft: #3a2a10;
@@ -243,47 +242,115 @@
 
 /* The interface's own type: the size everything inherits, the leading that sits with it, and
    tabular figures so a column of counts and times lines up. */
-/* Colour and shape, kept quiet and the same in both themes: the places a wash with a few fine arcs and
-   contour lines, the work a pale head with arcs in its corner, the details a wash with waves at its foot,
-   over a backdrop of soft sky-blue glows. Drawn from these variables, so light and dark redraw the same
-   shapes in their own tints (docs/visual-design-rules.md). */
+/* The surface and what is drawn on it, kept quiet and the same in both themes: one pale sheet of colour —
+   mint at the top right, periwinkle at the bottom left, a pale sky between — with the places, the head, the
+   work, the details and the foot laid over it edge to edge, each a little more or less clear. Fine lines draw
+   what the work is about on it: a dot matrix and the routing of a board in the places, a honeycomb of cells
+   and a diagram's traces in the work, one soft green rising in the details. Drawn from these variables, so
+   light and dark redraw the same shapes in their own tints (docs/visual-design-rules.md). */
 :root {
+  /* the three colours of the surface, said once: the details' green is the work's green */
+  --surface-mint: #d8f1ec;
+  --surface-periwinkle: #e0e8ff;
+  --surface-sky: #eaf4ff;
+  --surface-base: #f8fbfe;
+  /* the line that fades out at both ends: the head's foot, the foot's head, the details' edge */
+  --hairline-fade: rgba(11, 127, 214, 0.26);
+  /* the same hairline lying along a part's edge, fading out at both ends */
+  --hairline-h: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--hairline-fade) 14%,
+    var(--hairline-fade) 86%,
+    transparent 100%
+  );
+  /* how far a part blurs what is behind it */
+  --glass-blur: 14px;
   --ground-bg:
-    radial-gradient(50rem 32rem at 4% -8%, #6fabd1 0%, transparent 64%),
-    radial-gradient(44rem 30rem at 100% 0%, #4d7ca3 0%, transparent 62%),
-    radial-gradient(50rem 32rem at 96% 108%, #6595aa 0%, transparent 62%), #dbebf8;
+    radial-gradient(48rem 30rem at 100% -6%, var(--surface-mint) 0%, transparent 62%),
+    radial-gradient(46rem 32rem at 18% 108%, var(--surface-periwinkle) 0%, transparent 60%),
+    radial-gradient(40rem 24rem at 62% 50%, var(--surface-sky) 0%, transparent 70%),
+    var(--surface-base);
+  --head-tint: rgba(255, 255, 255, 0.55);
+  --foot-tint: rgba(255, 255, 255, 0.62);
+  --head-shadow: 0 10px 24px -12px rgba(40, 100, 170, 0.12);
+  --side-shadow: -12px 0 28px -18px rgba(40, 100, 170, 0.16);
+  /* the places: a dot matrix coming down from the top, traces with nodes at the foot, over a pale tint */
   --rail-bg:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 830' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%230b7fd6' stroke-opacity='.15'%3E%3Ccircle cx='260' cy='20' r='70'/%3E%3Ccircle cx='260' cy='20' r='110'/%3E%3Ccircle cx='260' cy='20' r='150'/%3E%3C/g%3E%3Cg fill='none' stroke='%230b7fd6' stroke-opacity='.13'%3E%3Cpath d='M0 720c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 746c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 772c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 798c44-22 88 22 132 0s88-22 132 0'/%3E%3C/g%3E%3C/svg%3E")
-      center / cover no-repeat,
-    linear-gradient(180deg, #e0eff9 0%, #e9f3fb 45%, #f6fafd 100%);
-  --head-tint: linear-gradient(90deg, #f2f9fb 0%, #edf5f8 100%);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 230'%3E%3Cdefs%3E%3Cpattern id='p' width='14' height='14' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='1' cy='1' r='1' fill='%230b7fd6' fill-opacity='.26'/%3E%3C/pattern%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Cmask id='m'%3E%3Crect width='264' height='230' fill='url(%23g)'/%3E%3C/mask%3E%3C/defs%3E%3Crect width='264' height='230' fill='url(%23p)' mask='url(%23m)'/%3E%3C/svg%3E")
+      top left / 264px 230px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 150'%3E%3Cg fill='none' stroke='%230b7fd6' stroke-linejoin='round'%3E%3Cpath d='M0 108H58L82 84H150L174 108H264' stroke-opacity='.2'/%3E%3Cpath d='M0 134H96L120 110H196L220 134H264' stroke-opacity='.14'/%3E%3Cpath d='M0 84H30L46 68H92' stroke-opacity='.12'/%3E%3C/g%3E%3Cg fill='%23fff' stroke='%230b7fd6' stroke-opacity='.34'%3E%3Ccircle cx='82' cy='84' r='3'/%3E%3Ccircle cx='174' cy='108' r='3'/%3E%3Ccircle cx='120' cy='110' r='3'/%3E%3Ccircle cx='92' cy='68' r='2.4'/%3E%3C/g%3E%3C/svg%3E")
+      left bottom / 264px 150px no-repeat,
+    linear-gradient(
+      180deg,
+      rgba(226, 238, 251, 0.8) 0%,
+      rgba(238, 246, 252, 0.75) 55%,
+      rgba(247, 251, 254, 0.7) 100%
+    );
+  /* the work: a honeycomb in its top right corner, fading out from it; at its foot a diagram's traces and
+     a radar's arcs. It has no tint: the surface shows through. */
   --pane-shapes:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 240'%3E%3Cg fill='none' stroke='%230b7fd6' stroke-opacity='.13'%3E%3Ccircle cx='500' cy='230' r='70'/%3E%3Ccircle cx='500' cy='230' r='112'/%3E%3Ccircle cx='500' cy='230' r='154'/%3E%3Ccircle cx='500' cy='230' r='196'/%3E%3C/g%3E%3C/svg%3E")
-      right top / 560px 240px no-repeat,
-    linear-gradient(180deg, #eff8fa 0, #ffffff 240px);
-  --side-wash:
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 338 240'%3E%3Cg fill='none' stroke='%230b7fd6' stroke-opacity='.14'%3E%3Cpath d='M0 150c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 174c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 198c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 222c56-28 112 28 169 0s113-28 169 0'/%3E%3C/g%3E%3C/svg%3E")
-      left bottom / 100% auto no-repeat,
-    linear-gradient(180deg, #f0f8fa 0%, #f6fbfc 45%, #ffffff 100%);
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 230'%3E%3Cdefs%3E%3CradialGradient id='g' cx='1' cy='0' r='1'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='.78' stop-color='%23000'/%3E%3C/radialGradient%3E%3Cmask id='m'%3E%3Crect width='400' height='230' fill='url(%23g)'/%3E%3C/mask%3E%3C/defs%3E%3Cg mask='url(%23m)' fill='none' stroke='%230b7fd6' stroke-opacity='.2' stroke-linejoin='round'%3E%3Cpath d='M358 86L344 110.2L316 110.2L302 86L316 61.8L344 61.8Z' fill='%230b7fd6' fill-opacity='.06'/%3E%3Cpath d='M358 37.5L344 61.7L316 61.7L302 37.5L316 13.3L344 13.3Z'/%3E%3Cpath d='M358 134.5L344 158.7L316 158.7L302 134.5L316 110.3L344 110.3Z'/%3E%3Cpath d='M400 61.8L386 86L358 86L344 61.8L358 37.6L386 37.6Z'/%3E%3Cpath d='M400 110.3L386 134.5L358 134.5L344 110.3L358 86.1L386 86.1Z' fill='%230b7fd6' fill-opacity='.05'/%3E%3Cpath d='M316 61.8L302 86L274 86L260 61.8L274 37.6L302 37.6Z'/%3E%3Cpath d='M316 110.3L302 134.5L274 134.5L260 110.3L274 86.1L302 86.1Z'/%3E%3Cpath d='M400 13.3L386 37.5L358 37.5L344 13.3L358 -10.9L386 -10.9Z' fill='%230b7fd6' fill-opacity='.05'/%3E%3Cpath d='M274 37.6L260 61.8L232 61.8L218 37.6L232 13.4L260 13.4Z'/%3E%3C/g%3E%3C/svg%3E")
+      right top / 400px 230px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 230'%3E%3Cg fill='none' stroke='%230b7fd6' stroke-linejoin='round'%3E%3Cpath d='M0 196H120L150 166H300L330 196H470' stroke-opacity='.17'/%3E%3Cpath d='M0 168H80L108 140H208L236 112H380' stroke-opacity='.13'/%3E%3Cpath d='M520 204H620L650 174H760' stroke-opacity='.16'/%3E%3Cpath d='M60 224H260L284 200H420' stroke-opacity='.12'/%3E%3Cpath d='M470 196H520' stroke-opacity='.17' stroke-dasharray='3 5'/%3E%3Cpath d='M380 112H430L452 90' stroke-opacity='.1'/%3E%3C/g%3E%3Cg fill='%23fff' stroke='%230b7fd6' stroke-opacity='.34'%3E%3Ccircle cx='120' cy='196' r='3.2'/%3E%3Ccircle cx='330' cy='196' r='3.2'/%3E%3Ccircle cx='470' cy='196' r='3.2'/%3E%3Ccircle cx='80' cy='168' r='3.2'/%3E%3Ccircle cx='236' cy='112' r='3.2'/%3E%3Ccircle cx='380' cy='112' r='3.2'/%3E%3Ccircle cx='520' cy='204' r='3.2'/%3E%3Ccircle cx='760' cy='174' r='3.2'/%3E%3Ccircle cx='284' cy='200' r='2.6'/%3E%3Ccircle cx='452' cy='90' r='2.6'/%3E%3C/g%3E%3C/svg%3E")
+      left bottom / 800px 230px no-repeat,
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 190'%3E%3Cg fill='none' stroke='%230b7fd6'%3E%3Cpath d='M100 190A90 90 0 0 1 190 100' stroke-opacity='.1'/%3E%3Cpath d='M50 190A140 140 0 0 1 190 50' stroke-opacity='.08'/%3E%3Cpath d='M0 190A190 190 0 0 1 190 0' stroke-opacity='.06'/%3E%3C/g%3E%3C/svg%3E")
+      right bottom / 190px 190px no-repeat;
+  /* the details: a pale tint, an edge that fades out at both ends, and one soft green rising from the
+     bottom right corner — the surface's own green */
+  --side-bg:
+    linear-gradient(
+        180deg,
+        transparent 0%,
+        var(--hairline-fade) 14%,
+        var(--hairline-fade) 86%,
+        transparent 100%
+      )
+      left top / 1px 100% no-repeat,
+    radial-gradient(ellipse 100% 100% at 100% 100%, var(--surface-mint) 0%, transparent 72%) right
+      bottom / 340px 300px no-repeat,
+    rgba(255, 255, 255, 0.5);
   --go-fill: linear-gradient(135deg, #1a8be0 0%, #0b72c8 100%);
   @variant dark {
-    --ground-bg:
-      radial-gradient(50rem 32rem at 4% -8%, #0f3550 0%, transparent 64%),
-      radial-gradient(44rem 30rem at 100% 0%, #112c52 0%, transparent 62%),
-      radial-gradient(50rem 32rem at 96% 108%, #0e3347 0%, transparent 62%), #0a1119;
+    --surface-mint: #103a3c;
+    --surface-periwinkle: #14284f;
+    --surface-sky: #10304a;
+    --surface-base: #0a1119;
+    --hairline-fade: rgba(56, 189, 216, 0.26);
+    --head-tint: rgba(20, 35, 46, 0.55);
+    --foot-tint: rgba(16, 28, 38, 0.62);
+    --head-shadow: 0 10px 24px -12px rgba(0, 0, 0, 0.4);
+    --side-shadow: -12px 0 28px -18px rgba(0, 0, 0, 0.45);
     --rail-bg:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 830' preserveAspectRatio='xMidYMid slice'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.13'%3E%3Ccircle cx='260' cy='20' r='70'/%3E%3Ccircle cx='260' cy='20' r='110'/%3E%3Ccircle cx='260' cy='20' r='150'/%3E%3C/g%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Cpath d='M0 720c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 746c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 772c44-22 88 22 132 0s88-22 132 0'/%3E%3Cpath d='M0 798c44-22 88 22 132 0s88-22 132 0'/%3E%3C/g%3E%3C/svg%3E")
-        center / cover no-repeat,
-      linear-gradient(180deg, #142a33 0%, #111f28 100%);
-    --head-tint: linear-gradient(90deg, #142530 0%, #131f2b 100%);
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 230'%3E%3Cdefs%3E%3Cpattern id='p' width='14' height='14' patternUnits='userSpaceOnUse'%3E%3Ccircle cx='1' cy='1' r='1' fill='%2338bdd8' fill-opacity='.22'/%3E%3C/pattern%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='1' stop-color='%23000'/%3E%3C/linearGradient%3E%3Cmask id='m'%3E%3Crect width='264' height='230' fill='url(%23g)'/%3E%3C/mask%3E%3C/defs%3E%3Crect width='264' height='230' fill='url(%23p)' mask='url(%23m)'/%3E%3C/svg%3E")
+        top left / 264px 230px no-repeat,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 264 150'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-linejoin='round'%3E%3Cpath d='M0 108H58L82 84H150L174 108H264' stroke-opacity='.18'/%3E%3Cpath d='M0 134H96L120 110H196L220 134H264' stroke-opacity='.12'/%3E%3Cpath d='M0 84H30L46 68H92' stroke-opacity='.1'/%3E%3C/g%3E%3Cg fill='%23142a33' stroke='%2338bdd8' stroke-opacity='.34'%3E%3Ccircle cx='82' cy='84' r='3'/%3E%3Ccircle cx='174' cy='108' r='3'/%3E%3Ccircle cx='120' cy='110' r='3'/%3E%3Ccircle cx='92' cy='68' r='2.4'/%3E%3C/g%3E%3C/svg%3E")
+        left bottom / 264px 150px no-repeat,
+      linear-gradient(
+        180deg,
+        rgba(20, 42, 51, 0.8) 0%,
+        rgba(17, 31, 40, 0.75) 55%,
+        rgba(14, 24, 33, 0.7) 100%
+      );
     --pane-shapes:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 560 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.11'%3E%3Ccircle cx='500' cy='230' r='70'/%3E%3Ccircle cx='500' cy='230' r='112'/%3E%3Ccircle cx='500' cy='230' r='154'/%3E%3Ccircle cx='500' cy='230' r='196'/%3E%3C/g%3E%3C/svg%3E")
-        right top / 560px 240px no-repeat,
-      linear-gradient(180deg, #14232d 0, #141922 240px);
-    --side-wash:
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 338 240'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-opacity='.12'%3E%3Cpath d='M0 150c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 174c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 198c56-28 112 28 169 0s113-28 169 0'/%3E%3Cpath d='M0 222c56-28 112 28 169 0s113-28 169 0'/%3E%3C/g%3E%3C/svg%3E")
-        left bottom / 100% auto no-repeat,
-      linear-gradient(180deg, #15252f 0%, #131d27 45%, #141922 100%);
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 230'%3E%3Cdefs%3E%3CradialGradient id='g' cx='1' cy='0' r='1'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='.78' stop-color='%23000'/%3E%3C/radialGradient%3E%3Cmask id='m'%3E%3Crect width='400' height='230' fill='url(%23g)'/%3E%3C/mask%3E%3C/defs%3E%3Cg mask='url(%23m)' fill='none' stroke='%2338bdd8' stroke-opacity='.18' stroke-linejoin='round'%3E%3Cpath d='M358 86L344 110.2L316 110.2L302 86L316 61.8L344 61.8Z' fill='%2338bdd8' fill-opacity='.06'/%3E%3Cpath d='M358 37.5L344 61.7L316 61.7L302 37.5L316 13.3L344 13.3Z'/%3E%3Cpath d='M358 134.5L344 158.7L316 158.7L302 134.5L316 110.3L344 110.3Z'/%3E%3Cpath d='M400 61.8L386 86L358 86L344 61.8L358 37.6L386 37.6Z'/%3E%3Cpath d='M400 110.3L386 134.5L358 134.5L344 110.3L358 86.1L386 86.1Z' fill='%2338bdd8' fill-opacity='.05'/%3E%3Cpath d='M316 61.8L302 86L274 86L260 61.8L274 37.6L302 37.6Z'/%3E%3Cpath d='M316 110.3L302 134.5L274 134.5L260 110.3L274 86.1L302 86.1Z'/%3E%3Cpath d='M400 13.3L386 37.5L358 37.5L344 13.3L358 -10.9L386 -10.9Z' fill='%2338bdd8' fill-opacity='.05'/%3E%3Cpath d='M274 37.6L260 61.8L232 61.8L218 37.6L232 13.4L260 13.4Z'/%3E%3C/g%3E%3C/svg%3E")
+        right top / 400px 230px no-repeat,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 230'%3E%3Cg fill='none' stroke='%2338bdd8' stroke-linejoin='round'%3E%3Cpath d='M0 196H120L150 166H300L330 196H470' stroke-opacity='.15'/%3E%3Cpath d='M0 168H80L108 140H208L236 112H380' stroke-opacity='.11'/%3E%3Cpath d='M520 204H620L650 174H760' stroke-opacity='.14'/%3E%3Cpath d='M60 224H260L284 200H420' stroke-opacity='.1'/%3E%3Cpath d='M470 196H520' stroke-opacity='.15' stroke-dasharray='3 5'/%3E%3Cpath d='M380 112H430L452 90' stroke-opacity='.08'/%3E%3C/g%3E%3Cg fill='%23141922' stroke='%2338bdd8' stroke-opacity='.34'%3E%3Ccircle cx='120' cy='196' r='3.2'/%3E%3Ccircle cx='330' cy='196' r='3.2'/%3E%3Ccircle cx='470' cy='196' r='3.2'/%3E%3Ccircle cx='80' cy='168' r='3.2'/%3E%3Ccircle cx='236' cy='112' r='3.2'/%3E%3Ccircle cx='380' cy='112' r='3.2'/%3E%3Ccircle cx='520' cy='204' r='3.2'/%3E%3Ccircle cx='760' cy='174' r='3.2'/%3E%3Ccircle cx='284' cy='200' r='2.6'/%3E%3Ccircle cx='452' cy='90' r='2.6'/%3E%3C/g%3E%3C/svg%3E")
+        left bottom / 800px 230px no-repeat,
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 190 190'%3E%3Cg fill='none' stroke='%2338bdd8'%3E%3Cpath d='M100 190A90 90 0 0 1 190 100' stroke-opacity='.1'/%3E%3Cpath d='M50 190A140 140 0 0 1 190 50' stroke-opacity='.08'/%3E%3Cpath d='M0 190A190 190 0 0 1 190 0' stroke-opacity='.06'/%3E%3C/g%3E%3C/svg%3E")
+        right bottom / 190px 190px no-repeat;
+    --side-bg:
+      linear-gradient(
+          180deg,
+          transparent 0%,
+          var(--hairline-fade) 14%,
+          var(--hairline-fade) 86%,
+          transparent 100%
+        )
+        left top / 1px 100% no-repeat,
+      radial-gradient(ellipse 100% 100% at 100% 100%, var(--surface-mint) 0%, transparent 72%) right
+        bottom / 340px 300px no-repeat,
+      rgba(20, 34, 45, 0.5);
     --go-fill: linear-gradient(135deg, #48c9e0 0%, #3aa0d8 100%);
   }
 }
@@ -324,14 +391,47 @@
   .isle-rail {
     background: var(--rail-bg);
   }
+  /* above the work and the details, because it is a stacking context of its own now (the blur behind it)
+     and the menus it opens must still be drawn over them */
   .isle-head {
+    position: relative;
+    z-index: 20;
     background: var(--head-tint);
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--head-shadow);
+  }
+  /* the head's foot is a line that fades out at both ends, not a border */
+  .isle-head::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1px;
+    pointer-events: none;
+    background: var(--hairline-h);
   }
   .isle-pane {
     background: var(--pane-shapes);
   }
   .isle-side {
-    background: var(--side-wash);
+    background: var(--side-bg);
+    backdrop-filter: blur(var(--glass-blur));
+    box-shadow: var(--side-shadow);
+  }
+  .isle-foot {
+    background: var(--foot-tint);
+    backdrop-filter: blur(var(--glass-blur));
+  }
+  .isle-foot::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 1px;
+    pointer-events: none;
+    background: var(--hairline-h);
   }
   .go-fill {
     background: var(--go-fill);
@@ -380,6 +480,17 @@
     /* Plus Jakarta Sans sets its word gaps tight: a touch more, so a line of small words reads */
     word-spacing: 0.06em;
     -webkit-font-smoothing: antialiased;
+    /* it is an app, not a page: its words are not picked up by a drag, which would only get in the way of
+       dragging a jump or a file. What is written in a field still can be. */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input,
+  textarea,
+  [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
   }
 
   button,
@@ -418,7 +529,7 @@
   /* native radios and checkboxes in the accent, not the browser's grey-blue */
   input[type='radio'],
   input[type='checkbox'] {
-    accent-color: var(--color-accent);
+    accent-color: var(--color-pick);
   }
 
   :focus-visible {
