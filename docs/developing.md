@@ -138,6 +138,11 @@ npm run copy -- /path/to/camera1 /path/to/camera2   # copy the cameras into outp
 npm run scan                                       # find the jumps (the board's Scan button)
 ```
 
+To time the board against a busy season, `npm run big-board -- [files] [folder]` builds a work
+folder of 2,000 small files by default (in the system temp folder unless a folder is given), found by
+a scan and filed into jumps; it refuses the live work folder and anything under `/mnt`. Point
+`SKYDOCK_OUTPUT_DIR` at the folder it names and open the board.
+
 ## What the board can be asked to do
 
 [RULES.md](../RULES.md) says what the app does. What it does not say is how it is asked: every change

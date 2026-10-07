@@ -8,7 +8,7 @@ import { chromium } from 'playwright'
 import type { BrowserContext, Locator, Page } from 'playwright'
 import { afterAll, describe } from 'vitest'
 import { makeWorld } from '../app'
-import { makeClip } from '../media'
+import { makeBigClip, tool } from '../media'
 import type { World } from '../app'
 import { loadState } from '../saved'
 import { VIDEOS } from '../page'
@@ -320,8 +320,8 @@ const useDesk = (name: string) => {
         outer: [window.outerWidth, window.outerHeight]
       }
     })
-    const wide = Math.round(where.outer[0]! * where.scale)
-    const high = Math.round(where.outer[1]! * where.scale)
+    const wide = Math.round(where.outer[0]!)
+    const high = Math.round(where.outer[1]!)
     const frame = windows().find(
       (w) => Math.abs(w.width - wide) <= 2 && Math.abs(w.height - high) <= 2
     )
@@ -330,8 +330,8 @@ const useDesk = (name: string) => {
         `no window on the screen is ${wide}x${high}, the size of the page asked about`
       )
     const border = {
-      x: ((where.outer[0]! - where.inner[0]!) / 2) * where.scale,
-      y: ((where.outer[1]! - where.inner[1]!) / 2) * where.scale
+      x: (where.outer[0]! - where.inner[0]! * where.scale) / 2,
+      y: (where.outer[1]! - where.inner[1]! * where.scale) / 2
     }
     return {
       x: frame.x + border.x + where.x * where.scale,
@@ -408,7 +408,7 @@ const useDesk = (name: string) => {
     pointer('type', '--delay', '30', folder)
     await sleep(300)
     for (let attempt = 0; attempt < 4; attempt++) {
-      key('Return')
+      key('alt+o')
       await sleep(900)
       if (!windows().some((w) => w.name.includes(title))) return
     }
@@ -508,7 +508,7 @@ const useDesk = (name: string) => {
   }
 }
 
-const lengthenFootage = (world: World, seconds = 300) => {
+const lengthenFootage = (world: World, seconds = 1800) => {
   const clips = fs
     .readdirSync(path.join(world.output, 'original_files'), { recursive: true })
     .map(String)
@@ -516,7 +516,29 @@ const lengthenFootage = (world: World, seconds = 300) => {
   for (const clip of clips) {
     const file = path.join(world.output, 'original_files', clip)
     const { atime, mtime } = fs.statSync(file)
-    makeClip(file, mtime.toISOString().slice(0, 19), seconds)
+    const short = `${file}.short.mp4`
+    makeBigClip(short, mtime.toISOString().slice(0, 19), {
+      seconds: 20,
+      size: '1920x1080',
+      fast: true
+    })
+    execFileSync(tool('ffmpeg'), [
+      '-y',
+      '-v',
+      'error',
+      '-stream_loop',
+      String(Math.ceil(seconds / 20)),
+      '-i',
+      short,
+      '-c',
+      'copy',
+      '-t',
+      String(seconds),
+      '-f',
+      'mp4',
+      file
+    ])
+    fs.rmSync(short)
     fs.utimesSync(file, atime, mtime)
   }
 }

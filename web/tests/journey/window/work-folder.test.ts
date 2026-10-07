@@ -19,7 +19,7 @@ const QUESTION = 'SkyDock is working'
 const listing = (folder: string) =>
   fs
     .readdirSync(folder, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
+    .filter((entry) => entry.isFile() && !entry.parentPath.endsWith('.thumbs'))
     .map((entry) => {
       const file = path.join(entry.parentPath, entry.name)
       return `${file} ${fs.statSync(file).size}`

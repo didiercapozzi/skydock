@@ -13,8 +13,6 @@ What is still to do. What was done is in git, not here. Do not start on an item 
 
 ## 1. Tests
 
-- [ ] **Journey, window chapters.** `web/tests/journey/window/` was written in a container with no Electron and has never been run — run `npm run test:journey:window` on a machine that has it, fix what the first run shows, and drop the "written without being run" notes. The update-feed chapter ('It keeps itself current') is excused: the packaged app's feed cannot be pointed at a local one.
-
 ## 2. Bugs found by the journey
 
 Each is a skipped chapter with a `// BUG:` comment holding the evidence (`grep -rn "BUG:" web/tests/journey`) — fix the app, then unskip the chapter. The numbers are the journey's own; the gaps (1–5, 17, 19) are not open. The letters are the chapters.
@@ -61,21 +59,22 @@ From the read-only audit of 2026-10-06: every point was raised by a finder and t
 None of these was measured. Ranked by value over risk.
 
 - [ ] **First read of a big card is exiftool-bound.** Measured 2026-10-06: exiftool is 98% of listing a card, about 10 ms a file — 1.4 s for 100 real clips, 3.9 s for 400, 15.9 s for 1,600 — and the shot times are now kept, so only the first read pays it. Whether exiftool can read the time tags faster (fewer tags, `-fast`, a bigger batch) is unmeasured; worth a try only if a first read of 15 s on a big card bothers.
-- [ ] **Parallel macOS tool downloads.** `scripts/fetch-tools.ts:94-111` — run the loop with `Promise.all`; only the two macOS targets have two archives. Saves about one 80 MB download on a release build. 0 to +2 lines, low.
 
 ## 6. Useless features
-
-- [ ] **`scripts/big-board.ts:1-45`.** Builds a 2000-file synthetic board for timing, but nothing links to it: no npm script, and no mention in `docs/developing.md`, RULES.md, this file or the README. Its hard-coded `/workspace/output` is a deliberate guard that refuses the live work folder and `/mnt/*`, so that is not a reason to delete it. Decide: delete it (−45 lines), or add an npm script and one line in `docs/developing.md` (lower risk if the timing work is still wanted).
 
 ## 7. Decisions needed before building
 
 The audit found no feature that the code has and RULES.md never mentions, or the reverse. These need a maintainer's call:
 
-- [ ] **`kindsSaid` separator.** `file-browser:291` writes "2 videos, 1 photo"; the other callers use " · ". RULES.md is silent. Decide whether `file-browser` keeps `', '` on purpose or takes " · ".
 - [ ] **Freshness of the board.** RULES.md line 355 rules out the cached-answer half of the synchronous-stats item.
-- [ ] **`big-board.ts`.** Appears in no doc; a developer-script question: delete or document.
 
 ## Done
+
+- Journey, window chapters: all seven files of `web/tests/journey/window/` pass in this container (real-input, toolbar, welcome, work-folder, zoom, folder-drop, preview-window). The update-feed chapter ('It keeps itself current') stays excused: the packaged app's feed cannot be pointed at a local one.
+- `scripts/big-board.ts` documented, not deleted: `npm run big-board` and a paragraph in `docs/developing.md` (it builds a synthetic work folder for timing and refuses the live work folder and `/mnt`); not run.
+- `kindsSaid` separator decided: `file-browser` keeps `', '` on purpose.
+
+- Parallel macOS tool downloads: the two archives of a macOS target are now fetched together (`Promise.all` in `fetchInto`, `scripts/fetch-tools.ts`); not run, no network used.
 
 - Code reduction: unused `parseFormData`; dialog `Section`; one HH:MM writer, `minFileMtime` alias and `kindsOf` gone from `utils.ts`; one not-connected check in `api.nas.ts`; window setup written once in `electron/main.ts` (with `toldWhere` and the orphan comment); `useDetails` constants; exports used only in their own file; history comments in two tests.
 

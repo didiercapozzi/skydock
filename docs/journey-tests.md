@@ -50,9 +50,9 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | an empty board says "Nothing left to sort"                                                | A    | done  |
 | a work folder with no record is looked through at once when the board opens               | A    | done |
-| the welcome page the first time: Start, the folder picker, Change, Open the board; closing the picker changes nothing | B | written, not run here |
+| the welcome page the first time: Start, the folder picker, Change, Open the board; closing the picker changes nothing | B | done |
 | another work folder from Settings, refused while something is being written               | A/B  | done |
-| the window's close button; closing or quitting while a job runs asks first                | B    | written, not run here |
+| the window's close button; closing or quitting while a job runs asks first                | B    | done |
 | no "is ready" notification; update offered once, never installed unasked                  | B    | written, not run here |
 
 ### B. Getting footage in (Workflow 1–2, Adding files, Camera)
@@ -62,7 +62,7 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | a scan groups what a camera copy left into jumps by capture time                          | A    | done  |
 | files dropped on the board stay loose, are copied not moved, say what is coming           | A    | done (simulated drop) |
 | the same drop from another program, by address, with a real pointer                       | B    | done  |
-| a whole folder dropped: every video and photo inside, notes and bookkeeping left          | B    | written, not run here |
+| a whole folder dropped: every video and photo inside, notes and bookkeeping left          | B    | done |
 | footage already on the board is recognised by contents under another name                 | A    | done |
 | a card with a `DCIM` appears, is named and remembered, copied only as told, files copied not moved | A (needs a mount) | done |
 | a camera's clock corrected; "seeing what is on a camera" and deleting from it (proved by bytes, into the bin) | A | done |
@@ -89,7 +89,7 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | Trim to the jump uses the exit mark (marks seeded from a clip with a data stream, or by the redo script) | A | done |
 | frame (drag a rectangle, shapes), landscape with blurred sides, turn, full screen         | A    | done |
 | the weight a trim will make is shown; a processed copy goes out of date when trim, frame or turn changes | A | done |
-| the clip opens in the machine's own player; the preview in a window of its own            | B    | written, not run here |
+| the clip opens in the machine's own player; the preview in a window of its own            | B    | done |
 
 ### E. Preparing (Process, Acting, File status)
 
@@ -168,7 +168,7 @@ The chapters found real defects and places where RULES.md and the app disagree. 
 `// BUG:` comment (`grep -rn "BUG:" web/tests/journey`), listed in TODO.md. A fix unskips its chapter, which is the
 proof.
 
-## Order of work (all of it built; the window chapters are written but have never been run)
+## Order of work (all of it built; the window chapters run with `npm run test:journey:window`)
 
 1. **Saved states and the guard.** Copy the work folder after "sorted", "processed", "uploaded"; a helper restores one
    and starts the app on it. The guard reads RULES.md's bold lead-ins and `##` headings and fails on any that no
