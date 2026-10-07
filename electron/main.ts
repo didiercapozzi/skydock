@@ -8,14 +8,14 @@
    What this side is responsible for: where the work is kept, where the media tools are, and that
    nothing is left running when the window is closed. */
 
-import { spawn } from 'node:child_process'
+import type { WebContents } from 'electron'
+import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import updater from 'electron-updater'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
-import type { WebContents } from 'electron'
-import updater from 'electron-updater'
 import { z } from 'zod'
 
 /* Where every version of SkyDock has kept its settings and its storage session. Named rather than
@@ -357,10 +357,7 @@ const openWindow = (address: string) => {
     minWidth: 900,
     minHeight: 600,
     autoHideMenuBar: true,
-    /* No frame of the desktop's, and the window is solid: nothing of the desktop shows through. The page
-       draws its own buttons, and asks the window to do what they say. */
-    frame: false,
-    backgroundColor: groundColour(),
+     frame: false,
     webPreferences: {
       preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
       zoomFactor: zoom

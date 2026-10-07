@@ -61,7 +61,7 @@ const Menu = ({
           onClick={() => setOpen(!open)}
           className={
             round
-              ? `inline-flex size-control-lg items-center justify-center rounded-full border-0 shadow-card hover:bg-accent-soft ${open ? 'bg-accent-soft' : 'bg-pane'}`
+              ? `inline-flex size-control-lg items-center justify-center rounded-corner border-0 shadow-card hover:bg-accent-soft ${open ? 'bg-accent-soft' : 'bg-pane'}`
               : `${TOOL} w-control justify-center px-0 ${open ? 'bg-well' : ''}`
           }>
           <Icon
@@ -74,7 +74,7 @@ const Menu = ({
           type='button'
           aria-expanded={open}
           onClick={() => setOpen(!open)}
-          className='inline-flex h-control-sm w-full items-center justify-center gap-1.5 rounded-full bg-pane px-3 text-body font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
+          className='inline-flex h-control-sm w-full items-center justify-center gap-1.5 rounded-corner bg-pane px-3 text-body font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
           {lead && (
             <Icon
               name={lead}

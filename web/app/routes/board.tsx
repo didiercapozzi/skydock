@@ -46,6 +46,7 @@ import { useCameraCopying, useJobs } from '../hooks/liveStore'
 import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoardModel } from '../hooks/useBoardModel'
 import { useDetailsColumn } from '../hooks/useDetails'
+import { useRoundedWindow } from '../hooks/useWindowFrame'
 import type { Route } from './+types/board'
 
 /* The board's data is read once, and every change comes back in the answer the endpoint gives: the
@@ -242,6 +243,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
     return () => watch.disconnect()
   }, [])
   const model = useBoardModel(looked ? { ...loaderData, ...looked } : loaderData)
+  const cornered = useRoundedWindow()
   const details = useDetailsColumn()
   const { board, nas, drag, setDialog } = model
   /* the camera waiting to be asked about, when there is one */
@@ -357,7 +359,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (!fromComputer(e)) return
         setNote(t`Drop a clip on a destination, a montage or a jump to add it.`)
       }}
-      className='ground flex h-screen flex-col overflow-hidden'>
+      className={`ground flex h-screen flex-col overflow-hidden ${cornered ? 'rounded-corner' : ''}`}>
       <div
         data-docked={details ? '' : undefined}
         className={`group grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 desk:px-0 desk:pt-0 desk:pb-0 desk:grid-cols-[264px_0px_minmax(0,1fr)] desk:grid-rows-[56px_minmax(0,1fr)] desk:gap-y-0 wide:transition-[grid-template-columns] wide:duration-300 wide:ease-out motion-reduce:transition-none ${

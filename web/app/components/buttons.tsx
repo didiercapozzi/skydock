@@ -25,7 +25,7 @@ const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className='inline-flex h-control items-center justify-center gap-2 rounded-full go-fill px-4 text-body font-bold whitespace-nowrap text-on-accent shadow-lift hover:brightness-110 disabled:cursor-default disabled:opacity-45 disabled:shadow-none'>
+    className='inline-flex h-control items-center justify-center gap-2 rounded-corner go-fill px-4 text-body font-bold whitespace-nowrap text-on-accent shadow-lift hover:brightness-110 disabled:cursor-default disabled:opacity-45 disabled:shadow-none'>
     {children}
   </button>
 )
@@ -38,7 +38,7 @@ const Mini = ({ children, title, disabled, type = 'button', form, onClick, press
     disabled={disabled}
     onClick={onClick}
     aria-pressed={pressed}
-    className={`inline-flex h-control-sm items-center justify-center gap-1.5 rounded-full px-3.5 text-body font-bold whitespace-nowrap shadow-card disabled:cursor-default disabled:opacity-40 ${
+    className={`inline-flex h-control-sm items-center justify-center gap-1.5 rounded-corner px-3.5 text-body font-bold whitespace-nowrap shadow-card disabled:cursor-default disabled:opacity-40 ${
       pressed ? 'bg-accent-soft text-accent-ink' : 'bg-pane text-accent-ink hover:bg-accent-soft'
     }`}>
     {children}
@@ -73,7 +73,7 @@ const Danger = ({
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className={`inline-flex items-center justify-center gap-1.5 rounded-full bg-pane font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft disabled:cursor-default disabled:opacity-45 ${
+    className={`inline-flex items-center justify-center gap-1.5 rounded-corner bg-pane font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft disabled:cursor-default disabled:opacity-45 ${
       size === 'go' ? 'h-control px-3.5 text-body' : 'h-control-sm px-3 text-body'
     }`}>
     {children}
@@ -126,7 +126,7 @@ const Seg = <T extends string>({
   <span
     role='group'
     aria-label={label}
-    className={`h-10 gap-0.5 rounded-full bg-well p-1 shadow-inset ${wide ? 'flex w-full' : 'inline-flex'}`}>
+    className={`h-10 gap-0.5 rounded-corner bg-well p-1 shadow-inset ${wide ? 'flex w-full' : 'inline-flex'}`}>
     {options.map(([option, name, mark]) => (
       <button
         key={option}
@@ -135,7 +135,7 @@ const Seg = <T extends string>({
         aria-label={mark ? name : undefined}
         title={mark ? name : undefined}
         onClick={() => onPick(option)}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-full text-lead font-semibold whitespace-nowrap transition-colors duration-150 ${wide ? 'flex-1' : mark ? 'w-8' : 'px-4'} ${
+        className={`inline-flex items-center justify-center gap-1.5 rounded-corner text-lead font-semibold whitespace-nowrap transition-colors duration-150 ${wide ? 'flex-1' : mark ? 'w-8' : 'px-4'} ${
           value === option
             ? 'bg-pane text-accent-ink shadow-card'
             : 'text-ink-2 hover:bg-pane/60 hover:text-accent-ink'

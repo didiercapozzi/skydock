@@ -48,7 +48,7 @@ const KindSeg = ({
     <span
       role='group'
       aria-label={t`Videos or photos`}
-      className='inline-flex gap-0.5 rounded-full bg-well p-1 shadow-inset'>
+      className='inline-flex gap-0.5 rounded-corner bg-well p-1 shadow-inset'>
       {options.map(([value, label, count, title]) => (
         <button
           key={value}
@@ -57,7 +57,7 @@ const KindSeg = ({
           disabled={count === 0 && kind !== value}
           title={title}
           onClick={() => onPick(value)}
-          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-4 text-lead font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-default disabled:opacity-45 ${
+          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-corner px-4 text-lead font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-default disabled:opacity-45 ${
             kind === value
               ? 'bg-pane text-accent-ink shadow-card'
               : 'text-ink-2 hover:bg-pane/60 hover:text-accent-ink'

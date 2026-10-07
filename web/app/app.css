@@ -362,6 +362,12 @@
     height: 100%;
   }
 
+  /* in SkyDock's own window the page is drawn on glass: the app is the rounded thing, and nothing is behind it */
+  html.window-own,
+  html.window-own body {
+    background: transparent;
+  }
+
   body {
     background: var(--color-ground);
     color: var(--color-ink);

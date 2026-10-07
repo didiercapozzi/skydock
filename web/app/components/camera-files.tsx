@@ -520,7 +520,7 @@ const CameraFiles = ({
                         e.stopPropagation()
                         setPreviewing(file.path)
                       }}
-                      className='tool-button rounded-full'>
+                      className='tool-button rounded-corner'>
                       <Icon
                         name='play'
                         size={12}

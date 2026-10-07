@@ -83,7 +83,7 @@ const LinkMark = ({ shareUrl }: { shareUrl: string | null }) => {
           aria-label={t`Copy the link`}
           title={shareUrl}
           onClick={() => void copy()}
-          className='inline-flex size-control-sm cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 hover:bg-well'>
+          className='inline-flex size-control-sm cursor-pointer items-center justify-center rounded-corner border-0 bg-transparent p-0 hover:bg-well'>
           <Icon
             name={copied ? 'check' : 'link'}
             size={14}

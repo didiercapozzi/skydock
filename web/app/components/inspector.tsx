@@ -150,7 +150,7 @@ const Part = ({
    a menu's button is wrapped once, so it is reached by what it does, and the entries of its open
    list are left as they are. */
 const BIG =
-  '[&>button]:h-control-lg [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-full [&>button]:px-3.5 [&>button]:text-lead [&_button[aria-expanded]]:h-control-lg [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-full [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-lead [&_button[aria-expanded]_svg]:size-mark'
+  '[&>button]:h-control-lg [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-corner [&>button]:px-3.5 [&>button]:text-lead [&_button[aria-expanded]]:h-control-lg [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-corner [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-lead [&_button[aria-expanded]_svg]:size-mark'
 
 /* what can be done, two buttons to a row and a wide one across; a button alone in its row takes it */
 const Acts = ({ children }: { children: React.ReactNode }) => (
@@ -172,7 +172,7 @@ const BinButton = ({ children, onClick }: { children: React.ReactNode; onClick: 
   <button
     type='button'
     onClick={onClick}
-    className='inline-flex h-control items-center justify-center gap-2 rounded-full bg-pane px-3.5 text-body font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft'>
+    className='inline-flex h-control items-center justify-center gap-2 rounded-corner bg-pane px-3.5 text-body font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft'>
     {children}
   </button>
 )
@@ -480,7 +480,7 @@ const JumpPanel = ({
                   key={name}
                   type='button'
                   onClick={() => fileTo.onFile(name)}
-                  className='flex h-11.5 w-full cursor-pointer items-center gap-2.5 rounded-full border-0 bg-pane p-2 text-left text-lead font-bold text-ink shadow-card hover:bg-accent-soft'>
+                  className='flex h-11.5 w-full cursor-pointer items-center gap-2.5 rounded-corner border-0 bg-pane p-2 text-left text-lead font-bold text-ink shadow-card hover:bg-accent-soft'>
                   <span className='grid size-control-sm flex-none place-items-center rounded-full bg-accent-soft text-accent'>
                     <Icon
                       name='place'
