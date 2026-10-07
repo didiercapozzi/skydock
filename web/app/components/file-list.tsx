@@ -20,7 +20,7 @@ import type { ManifestFile } from './types'
 import { Mini } from './buttons'
 import { FileRow, Thumb } from './file-row'
 import { Icon } from './icons'
-import { clock, formatSize, formatTime, getPictureUrl, hhmm, isVideoFile } from './utils'
+import { clock, formatSize, getPictureUrl, hhmm, isVideoFile } from './utils'
 
 type Kind = 'all' | 'video' | 'photo'
 
@@ -373,7 +373,7 @@ const Row = ({
       meta={
         <>
           <span className='tabular-nums'>
-            {formatTime(file.mtime)} · {formatSize(file.size)}
+            {hhmm(file.mtime)} · {formatSize(file.size)}
             {afterNote(file)}
           </span>
           {name && (
@@ -475,7 +475,7 @@ const Tile = ({
       e.preventDefault()
       onPick(file)
     }}
-    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)}${afterNote(file)} · ${statusName(status)}${
+    title={`${file.filename} · ${hhmm(file.mtime)} · ${formatSize(file.size)}${afterNote(file)} · ${statusName(status)}${
       proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
     }${isWholeFrame(file.frame) ? '' : ` · ${t`framed`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
     className={`@container/tile relative aspect-[16/11] max-w-full min-w-0 cursor-pointer overflow-hidden rounded-card bg-well ${

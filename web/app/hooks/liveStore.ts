@@ -66,15 +66,6 @@ const useLiveFile = (id: string | undefined) =>
     () => undefined
   )
 
-const useJobOf = (type: Job['type']) =>
-  useSyncExternalStore(
-    liveJobs.subscribe,
-    () => Object.values(liveJobs.get()).find((job) => job.type === type),
-    () => undefined
-  )
-
-const useCameraCopy = () => useJobOf('camera-copy') ?? null
-
 const useCameraLanded = () =>
   useSyncExternalStore(
     liveJobs.subscribe,
@@ -125,10 +116,8 @@ export {
   liveJobs,
   liveFiles,
   liveKey,
-  useCameraCopy,
   useCameraCopying,
   useCameraLanded,
-  useJobOf,
   useJobRow,
   useJobRows,
   useJobs,
