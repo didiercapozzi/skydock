@@ -442,6 +442,14 @@ msgstr "{more, plural, one {… et # de plus, non listé ici.} other {… et # d
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  de {filename}"
 
+#: app/routes/place.tsx
+msgid "{name} can be unplugged now."
+msgstr "{name} peut être débranché."
+
+#: app/routes/place.tsx
+msgid "{name} could not be ejected."
+msgstr "{name} n’a pas pu être éjecté."
+
 #: app/components/places-tree.tsx
 msgid "{name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
 msgstr "{name} remet ses fichiers au lieu de s’afficher comme un disque, donc la lecture est plus lente qu’avec la même carte dans un lecteur."
@@ -768,10 +776,6 @@ msgstr "une copie du film"
 msgid "A dropzone needs a name."
 msgstr "Une dropzone a besoin d’un nom."
 
-#: app/components/about-dialog.tsx
-msgid "A dropzone’s media, from the cameras to the passenger"
-msgstr "Les médias d’une dropzone, des caméras jusqu’au passager"
-
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
 msgstr "un saut"
@@ -825,8 +829,8 @@ msgid "About SkyDock"
 msgstr "À propos de SkyDock"
 
 #: app/components/board-header.tsx
-msgid "About…"
-msgstr "À propos…"
+msgid "About SkyDock…"
+msgstr "À propos de SkyDock…"
 
 #: app/components/preview-drawer.tsx
 msgid "across"
@@ -1825,6 +1829,10 @@ msgstr "Modèles de montage"
 msgid "Either way, nothing filed to a destination or a montage is touched, and no original file is."
 msgstr "Dans les deux cas, rien de ce qui est classé dans une destination ou un montage n’est touché, ni aucun fichier original."
 
+#: app/routes/place.tsx
+msgid "Eject"
+msgstr "Éjecter"
+
 #: app/components/places-tree.tsx
 msgid "Elsewhere"
 msgstr "Ailleurs"
@@ -2632,6 +2640,10 @@ msgstr "Laissez vide pour le nommer d’après le projet"
 msgid "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
 msgstr "Laissez décoché pour une caméra qui n’est pas la vôtre — vous choisirez les fichiers à copier à chaque fois."
 
+#: app/routes/place.tsx
+msgid "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
+msgstr "Le libérer comme le fait le bureau, pour pouvoir le débrancher — rien n’y est touché"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
 msgstr "désélectionner"
@@ -2798,7 +2810,7 @@ msgstr "Création"
 
 #: app/components/jobs-panel.tsx
 msgid "Making small copies"
-msgstr "Création des petites copies"
+msgstr "Création des proxys"
 
 #: app/components/jobs-panel.tsx
 msgid "Making the zips…"
@@ -4988,6 +5000,10 @@ msgstr "Le nom d’utilisateur est requis"
 #: app/components/connection-dialog.tsx
 msgid "Username must be at least 2 characters"
 msgstr "Le nom d’utilisateur doit comporter au moins 2 caractères"
+
+#: app/components/about-dialog.tsx
+msgid "Version {version}"
+msgstr "Version {version}"
 
 #: app/components/storage-folder.tsx
 #: app/helpers/parcels.ts

@@ -114,15 +114,15 @@ const FrameCropper = ({
           width: `${crop.width * 100}%`,
           height: `${crop.height * 100}%`
         }}
-        className='absolute cursor-move rounded-chip border-2 border-white'>
-        <div className='absolute inset-0 rounded-bar bg-transparent backdrop-brightness-[1.8]' />
+        className='absolute cursor-move rounded-corner border-2 border-white'>
+        <div className='absolute inset-0 rounded-corner bg-transparent backdrop-brightness-[1.8]' />
         {HANDLES.map(({ corner, style }) => (
           <span
             key={corner}
             role='presentation'
             aria-label={t`Resize ${corner}`}
             onPointerDown={start(corner)}
-            className={`absolute h-2.5 w-2.5 rounded-bar bg-white shadow-ring-stage ${style}`}
+            className={`absolute h-2.5 w-2.5 rounded-corner bg-white shadow-ring-stage ${style}`}
           />
         ))}
       </div>

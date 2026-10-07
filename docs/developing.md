@@ -43,7 +43,7 @@ To see it on the machine around the container instead — its screen, its card, 
 drag a clip out of — it is run over there:
 
 ```bash
-npm run installers       # once — the app, built for this system
+npm run installers:dev   # once — the app, built for this system, unpacked only (no deb or AppImage)
 npm run dev:window:host  # the window, over there, showing the development server
 ```
 
@@ -107,6 +107,10 @@ journal. Interrupting this side stops it over there, as it always did.
 **What runs over there is what `npm run installers` built** — `build/installers/linux-unpacked/`,
 or the AppImage beside it. It is built in here and run out there, which is the ordinary case for an
 Electron app: it carries its own engine, and the only thing it takes from the machine is the screen.
+
+A change to `electron/main.ts` or `electron/preload.ts` is not seen until the window files are in that build: `npm run installers:shell` puts them there in a second, then close the window and open it again. The page itself needs nothing — it is the development server's, and reloads as it is edited.
+
+The app's icons (the favicon, the web icons and the installers' `.png`, `.ico` and `.icns`) are all drawn from `web/public/logo.svg`: change the drawing there and run `npm run icons`. `Mark` in `web/app/components/icons.tsx` draws the same shape in the app's own colours, so change it with the SVG.
 
 ### Drawing on the host's screen from inside the container
 

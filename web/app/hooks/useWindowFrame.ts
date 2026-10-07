@@ -26,4 +26,14 @@ const useWindowFrame = () => {
     : null
 }
 
-export { useWindowFrame }
+const useRoundedWindow = () => {
+  const frame = useWindowFrame()
+  const own = frame !== null
+  useEffect(() => {
+    document.documentElement.classList.toggle('window-own', own)
+    return () => document.documentElement.classList.remove('window-own')
+  }, [own])
+  return own && !frame.maximized
+}
+
+export { useRoundedWindow, useWindowFrame }

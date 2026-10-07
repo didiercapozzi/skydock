@@ -53,15 +53,15 @@ type Props = {
 }
 
 const TAGS = {
-  local: 'bg-local-soft text-local',
-  proc: 'bg-proc-soft text-proc',
-  up: 'bg-up-soft text-up',
-  lock: 'bg-lock-soft text-lock'
+  local: 'text-local',
+  proc: 'text-proc',
+  up: 'text-up',
+  lock: 'text-lock'
 }
 
 const Tag = ({ tone, children }: { tone: keyof typeof TAGS; children: string }) => (
   <span
-    className={`inline-flex h-chip items-center gap-1.5 rounded-full px-2.25 text-micro font-bold whitespace-nowrap before:size-1.5 before:rounded-full before:bg-current before:content-[''] ${TAGS[tone]}`}>
+    className={`inline-flex h-chip items-center gap-1.5 rounded-full bg-pane px-2.25 text-micro font-bold whitespace-nowrap shadow-hairline before:size-1.5 before:rounded-full before:bg-current before:content-[''] ${TAGS[tone]}`}>
     {children}
   </span>
 )
@@ -117,7 +117,7 @@ const DayHeader = ({
         aria-label={t`Fold this day`}
         title={t`Fold this day`}
         onClick={fold}
-        className='ml-auto grid size-7 place-items-center rounded-control border-0 bg-transparent text-ink-3 hover:bg-well hover:text-ink'>
+        className='ml-auto grid size-7 place-items-center rounded-corner border-0 bg-transparent text-ink-3 hover:bg-well hover:text-ink'>
         <Icon
           name='next'
           size={14}
@@ -147,7 +147,7 @@ const DaySection = ({
         type='button'
         aria-expanded={false}
         onClick={() => setShown(true)}
-        className='my-1.5 flex w-full items-center gap-3 rounded-card border-0 bg-well px-4.5 py-3.5 text-left font-semibold text-ink-2 hover:bg-line'>
+        className='my-1.5 flex w-full items-center gap-3 rounded-corner border-0 bg-well px-4.5 py-3.5 text-left font-semibold text-ink-2 hover:bg-line'>
         <Icon
           name='check'
           size={16}
@@ -240,8 +240,8 @@ const JumpCard = ({
       }
       className={`relative flex w-full flex-col overflow-hidden text-left ${
         group
-          ? `rounded-panel bg-pane ${frozen ? 'cursor-pointer' : 'cursor-grab'}`
-          : 'h-37.5 cursor-pointer gap-3 rounded-panel border-2 border-dashed border-line-strong bg-transparent p-3 text-ink-3 hover:border-ink-3'
+          ? `rounded-corner bg-pane ${frozen ? 'cursor-pointer' : 'cursor-grab'}`
+          : 'h-37.5 cursor-pointer gap-3 rounded-corner border-2 border-dashed border-line-strong bg-transparent p-3 text-ink-3 hover:border-ink-3'
       } ${over ? 'shadow-ring-pick' : open ? 'shadow-picked' : group ? 'shadow-soft' : ''}`}>
       {group ? (
         <>
@@ -307,7 +307,7 @@ const JumpCard = ({
 const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props) => {
   if (sections.length === 0)
     return (
-      <div className='mt-3 rounded-card border-2 border-dashed border-line-strong px-4 py-7 text-center font-medium text-ink-3'>
+      <div className='mt-3 rounded-corner border-2 border-dashed border-line-strong px-4 py-7 text-center font-medium text-ink-3'>
         {empty}
       </div>
     )
@@ -317,7 +317,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
     title?: string,
     about?: string,
     bare?: boolean,
-    joined?: boolean
+    prepared?: boolean
   ) => (
     <div key={`files:${key}`}>
       <FileList
@@ -326,7 +326,7 @@ const FileBrowser = ({ sections, statusOf, jump, cards, empty, ...list }: Props)
         title={title}
         about={about}
         bare={bare}
-        joined={joined}
+        prepared={prepared}
       />
     </div>
   )

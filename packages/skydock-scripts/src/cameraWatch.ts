@@ -145,7 +145,7 @@ const diskIds = () => {
   }
 }
 
-const deviceOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
+const mountOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
   let text: string
   try {
     text = fs.readFileSync(mountinfo, 'utf-8')
@@ -166,8 +166,10 @@ const deviceOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
     )
       best = { point: place, source }
   }
-  return best?.source ?? null
+  return best
 }
+
+const deviceOf = (mount: string, mountinfo?: string) => mountOf(mount, mountinfo)?.source ?? null
 
 const cameraKey = (mount: string, mountinfo?: string) => {
   if (!isKioCamera(mount) && process.platform === 'linux') {
@@ -592,6 +594,8 @@ export {
   cameraName,
   camerasSeenThroughKde,
   copyAgain,
+  deviceOf,
+  mountOf,
   isOnCamera,
   keyOfMount,
   lookForCameras,

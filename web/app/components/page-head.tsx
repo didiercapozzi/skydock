@@ -7,10 +7,9 @@ import { Menu } from './settings-menu'
 type Tone = 'todo' | 'done' | 'plain'
 
 const CARD: Record<Tone, string> = {
-  todo: 'bg-(image:--gradient-paper-todo) shadow-card dark:bg-none dark:bg-local-soft dark:shadow-none',
-  done: 'bg-(image:--gradient-paper-done) shadow-card dark:bg-none dark:bg-up-soft dark:shadow-none',
-  plain:
-    'bg-(image:--gradient-paper-plain) shadow-card dark:bg-none dark:bg-accent-soft dark:shadow-none'
+  todo: 'bg-pane shadow-hairline dark:bg-local-soft dark:shadow-none',
+  done: 'bg-pane shadow-hairline dark:bg-up-soft dark:shadow-none',
+  plain: 'bg-pane shadow-hairline dark:bg-accent-soft dark:shadow-none'
 }
 
 const BADGE: Record<Tone, string> = {
@@ -34,7 +33,8 @@ const StatusCard = ({
   progress?: { done: number; of: number; word: string }
   children?: React.ReactNode
 }) => (
-  <div className={`flex items-center min-h-16 gap-3.5 rounded-panel px-4 py-2.5 ${CARD[tone]}`}>
+  <div
+    className={`flex flex-wrap items-center min-h-16 gap-3.5 rounded-corner px-4 py-2.5 ${CARD[tone]}`}>
     <span className={`grid size-9 flex-none place-items-center rounded-full ${BADGE[tone]}`}>
       <Icon
         name={icon}
@@ -42,7 +42,7 @@ const StatusCard = ({
         weight={tone === 'done' ? 2.6 : 1.9}
       />
     </span>
-    <div className='min-w-0 flex-1'>
+    <div className='min-w-32 flex-1'>
       <h2 className='m-0 truncate font-display text-title font-semibold tracking-title text-ink'>
         {title}
       </h2>
@@ -56,9 +56,9 @@ const StatusCard = ({
           aria-valuemin={0}
           aria-valuemax={progress.of}
           aria-valuenow={progress.done}
-          className='flex h-1.5 w-27.5 overflow-hidden rounded-control bg-line'>
+          className='flex h-1.5 w-27.5 overflow-hidden rounded-corner bg-line'>
           <i
-            className='block h-full rounded-control bg-up'
+            className='block h-full rounded-corner bg-up'
             style={{ width: `${Math.round((progress.done / progress.of) * 100)}%` }}
           />
         </span>
@@ -66,7 +66,7 @@ const StatusCard = ({
       </div>
     )}
     {children && (
-      <div className='flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-full [&_button]:px-4 [&_button]:text-lead'>
+      <div className='ml-auto flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-corner [&_button]:px-4 [&_button]:text-lead'>
         {children}
       </div>
     )}
@@ -74,7 +74,7 @@ const StatusCard = ({
 )
 
 const SEARCH =
-  'inline-flex h-control-lg flex-none items-center gap-2 rounded-full border-0 bg-pane px-4 text-lead font-semibold text-accent-ink shadow-card hover:bg-accent-soft'
+  'inline-flex h-control-lg flex-none items-center gap-2 rounded-corner border-0 bg-pane px-4 text-lead font-semibold text-accent-ink shadow-card hover:bg-accent-soft'
 
 const PageHead = ({
   tile,
@@ -110,7 +110,7 @@ const PageHead = ({
       <div className='flex items-center gap-4.5'>
         <span
           className={`grid flex-none place-items-center ${
-            large ? 'size-14 rounded-panel' : 'size-12 rounded-card'
+            large ? 'size-14 rounded-corner' : 'size-12 rounded-corner'
           } ${
             'letter' in tile
               ? tile.done
@@ -118,7 +118,7 @@ const PageHead = ({
                 : 'bg-(image:--gradient-avatar-1) text-white'
               : 'up' in tile && tile.up
                 ? 'bg-up-soft text-up'
-                : 'bg-accent-soft text-accent-ink'
+                : 'bg-pane text-accent shadow-card'
           }`}>
           {'icon' in tile ? (
             <Icon
@@ -144,7 +144,7 @@ const PageHead = ({
         </div>
         {onQuery &&
           (showSearch ? (
-            <label className='flex h-control-lg w-60 items-center gap-2.5 rounded-full bg-well px-4 text-ink-3 focus-within:shadow-focus'>
+            <label className='flex h-control-lg w-60 items-center gap-2.5 rounded-corner bg-well px-4 text-ink-3 focus-within:shadow-focus'>
               <Icon
                 name='search'
                 size={16}

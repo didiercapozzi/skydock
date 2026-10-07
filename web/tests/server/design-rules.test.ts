@@ -13,9 +13,10 @@ const files = (dir: string): string[] =>
 
 const RULES: Array<[string, RegExp]> = [
   ['a type size in pixels (use text-micro … text-display)', /(?<![\w-])text-\[\d/],
+  ['a corner in pixels (use rounded-corner)', /(?<![\w-])rounded(?:-[a-z]{1,2})?-\[/],
   [
-    'a corner in pixels (use rounded-bar, -chip, -control, -card or -panel)',
-    /(?<![\w-])rounded(?:-[a-z]{1,2})?-\[/
+    'a corner of another size (there is one: rounded-corner — or rounded-full for a pill or a dot)',
+    /(?<![\w-])rounded(?:-(?:t|b|r|l|tl|tr|bl|br))?(?:-(?:bar|chip|control|card|panel|xs|sm|md|lg|[2-4]?xl))?(?![\w-])/
   ],
   [
     'a letter spacing in em (use tracking-title, -display, -eyebrow or -spaced)',

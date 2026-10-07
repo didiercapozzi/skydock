@@ -44,7 +44,7 @@ const KindSeg = ({
     <span
       role='group'
       aria-label={t`Videos or photos`}
-      className='inline-flex gap-0.5 rounded-full bg-well p-1 shadow-inset'>
+      className='inline-flex gap-0.5 rounded-corner bg-well p-1 shadow-inset'>
       {options.map(([value, label, count, title]) => (
         <button
           key={value}
@@ -53,7 +53,7 @@ const KindSeg = ({
           disabled={count === 0 && kind !== value}
           title={title}
           onClick={() => onPick(value)}
-          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-4 text-lead font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-default disabled:opacity-45 ${
+          className={`inline-flex h-8 items-center justify-center gap-1.5 rounded-corner px-4 text-lead font-semibold whitespace-nowrap transition-colors duration-150 disabled:cursor-default disabled:opacity-45 ${
             kind === value
               ? 'bg-pane text-accent-ink shadow-card'
               : 'text-ink-2 hover:bg-pane/60 hover:text-accent-ink'
@@ -105,7 +105,7 @@ const PlacePane = ({
   const controls = browsing ? (
     <>
       {browsing && (
-        <label className='flex h-9 w-40 items-center gap-2.5 rounded-control bg-well px-3 text-ink-3 focus-within:shadow-focus max-desk:w-32.5'>
+        <label className='flex h-9 w-40 items-center gap-2.5 rounded-corner bg-well px-3 text-ink-3 focus-within:shadow-focus max-desk:w-32.5'>
           <Icon name='narrow' />
           <input
             type='text'
@@ -146,7 +146,7 @@ const PlacePane = ({
         e.preventDefault()
         onImport(carried, incoming.target, incoming.where)
       }}
-      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-panel isle-pane max-desk:rounded-panel desk:rounded-b-none desk:border-t desk:border-edge desk:col-start-3 desk:row-start-2'>
+      className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-corner isle-pane max-desk:rounded-corner desk:rounded-b-none desk:col-start-3 desk:row-start-2'>
       {head ? (
         head({ query, onQuery })
       ) : (

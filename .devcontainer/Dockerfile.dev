@@ -67,11 +67,12 @@ RUN apt update && apt install -y --no-install-recommends \
     openbox \
     && rm -rf /var/lib/apt/lists/*
 
-# What the journey tests of the window need: a real pointer on that display (xdotool), and GTK for the small
-# program that offers files to be dropped, the way a file manager does.
+# What the journey tests of the window need: a real pointer on that display (xdotool), and GTK with its Python
+# binding (python3-gi) for the small program that offers files to be dropped, the way a file manager does.
 RUN apt update && apt install -y --no-install-recommends \
     xdotool \
     gir1.2-gtk-3.0 \
+    python3-gi \
     && rm -rf /var/lib/apt/lists/*
 
     # Install NodeJS

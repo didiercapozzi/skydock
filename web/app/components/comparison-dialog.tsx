@@ -2,6 +2,7 @@ import { plural, t } from '@lingui/core/macro'
 import { startOfFiles } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
+import { FileRow, Thumb } from './file-row'
 import { Icon } from './icons'
 import { INPUT, Modal, Spacer } from './modal'
 import type { VideoRef } from './preview-drawer'
@@ -146,7 +147,7 @@ const ComparisonDialog = ({
     const fileUrl = getPlaybackUrl(file)
     return (
       <div className='flex flex-col gap-2'>
-        <div className='flex h-50 items-center justify-center overflow-hidden rounded-card bg-stage'>
+        <div className='flex h-50 items-center justify-center overflow-hidden rounded-corner bg-stage'>
           {isVideoFile(file.filename) ? (
             <PreviewVideo
               src={fileUrl}
@@ -157,7 +158,7 @@ const ComparisonDialog = ({
             <img
               src={fileUrl}
               alt={file.filename}
-              className='max-h-50 max-w-full rounded object-contain'
+              className='max-h-50 max-w-full rounded-corner object-contain'
             />
           )}
         </div>
@@ -302,7 +303,7 @@ const ComparisonDialog = ({
         <div
           data-merge-date-popup='true'
           className='fixed inset-0 z-50 grid place-items-center bg-scrim p-4 '>
-          <div className='flex w-95 flex-col overflow-hidden rounded-panel bg-pane text-ink shadow-float'>
+          <div className='flex w-95 flex-col overflow-hidden rounded-corner bg-pane text-ink shadow-float'>
             <h3 className='font-display m-0 border-b border-line-2 px-6.5 pt-5 pb-4 text-heading leading-title font-bold tracking-display'>
               {t`Merge date`}
             </h3>
@@ -311,7 +312,7 @@ const ComparisonDialog = ({
                 {t`Which date should the merged jump have? The chosen jump keeps its times.`}
               </p>
               <div className='space-y-2 mb-4'>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-control border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-pick has-checked:bg-pick-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -323,7 +324,7 @@ const ComparisonDialog = ({
                     {labels.get(leftGroup.id) ?? leftGroup.label} — {getGroupDate(leftGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-control border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-pick has-checked:bg-pick-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -335,7 +336,7 @@ const ComparisonDialog = ({
                     {labels.get(rightGroup.id) ?? rightGroup.label} — {getGroupDate(rightGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-control border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-pick has-checked:bg-pick-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -461,7 +462,7 @@ const ComparePanel = ({
               type='button'
               data-action={`group-prev-${side}`}
               onClick={onGroupPrev}
-              className='grid h-7 w-7 place-items-center rounded-control border border-line-strong bg-pane text-ink-2 hover:bg-well hover:text-ink'>
+              className='grid h-7 w-7 place-items-center rounded-corner border border-line-strong bg-pane text-ink-2 hover:bg-well hover:text-ink'>
               <Icon
                 name='previous'
                 size={15}
@@ -472,7 +473,7 @@ const ComparePanel = ({
               type='button'
               data-action={`group-next-${side}`}
               onClick={onGroupNext}
-              className='grid h-7 w-7 place-items-center rounded-control border border-line-strong bg-pane text-ink-2 hover:bg-well hover:text-ink'>
+              className='grid h-7 w-7 place-items-center rounded-corner border border-line-strong bg-pane text-ink-2 hover:bg-well hover:text-ink'>
               <Icon
                 name='next'
                 size={15}
@@ -502,9 +503,9 @@ const ComparePanel = ({
           else if (e.key === 'ArrowLeft') toAnotherJump(e, onGroupPrev)
           else if (e.key === 'ArrowRight') toAnotherJump(e, onGroupNext)
         }}
-        className='flex-1 overflow-y-auto p-2 space-y-px min-h-0'>
+        className='flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2'>
         {group.files.map((f, i) => (
-          <div
+          <FileRow
             key={f.path}
             data-compare-file='true'
             role='option'
@@ -516,16 +517,11 @@ const ComparePanel = ({
               e.preventDefault()
               onFileIndexChange(i)
             }}
-            className={`px-3 py-2 rounded-control cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-              i === fileIndex ? 'bg-accent-soft shadow-inset-bar' : 'hover:bg-well'
-            }`}>
-            <div className='flex items-center justify-between'>
-              <span className='truncate font-mono text-micro'>{f.filename}</span>
-              <span className='ml-2 shrink-0 font-mono text-micro text-ink-3 tabular-nums'>
-                {formatSize(f.size)}
-              </span>
-            </div>
-          </div>
+            previewed={i === fileIndex}
+            picture={<Thumb src={getThumbUrl(f.path, isVideoFile(f.filename) ? 1 : 0, 64)} />}
+            name={f.filename}
+            meta={<span className='tabular-nums'>{formatSize(f.size)}</span>}
+          />
         ))}
       </div>
 
@@ -579,7 +575,7 @@ const PreviewVideo = ({
         const v = e.currentTarget
         if (v.duration && Number.isFinite(v.duration)) onDurationChange(v.duration)
       }}
-      className='max-h-50 max-w-full rounded'
+      className='max-h-50 max-w-full rounded-corner'
     />
   )
 }
