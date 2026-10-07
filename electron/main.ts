@@ -357,7 +357,7 @@ const openWindow = (address: string) => {
     minWidth: 900,
     minHeight: 600,
     autoHideMenuBar: true,
-     frame: false,
+    frame: false,
     webPreferences: {
       preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
       zoomFactor: zoom

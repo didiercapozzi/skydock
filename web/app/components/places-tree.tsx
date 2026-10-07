@@ -301,7 +301,7 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-8 rounded-corner desk:rounded-r-none desk:rounded-b-none px-2.5 pb-3.5 desk:pr-0 desk:border-r desk:border-edge max-desk:pt-2 max-desk:flex max-desk:h-auto max-desk:items-center max-desk:gap-1.5 max-desk:overflow-x-auto max-desk:overflow-y-hidden max-desk:px-3 max-desk:pb-2 desk:col-start-1 desk:row-span-2 desk:row-start-1 desk:flex desk:h-full desk:flex-col'>
+      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-8 rounded-corner desk:rounded-r-none desk:rounded-b-none px-2.5 pb-3.5 desk:border-r desk:border-edge max-desk:pt-2 max-desk:flex max-desk:h-auto max-desk:items-center max-desk:gap-1.5 max-desk:overflow-x-auto max-desk:overflow-y-hidden max-desk:px-3 max-desk:pb-2 desk:col-start-1 desk:row-span-2 desk:row-start-1 desk:flex desk:h-full desk:flex-col'>
       {/* the app's name, level with the header across from it */}
       <div className='flex h-14 flex-none items-center gap-2.5 px-2 max-desk:hidden'>
         <Mark size={32} />
