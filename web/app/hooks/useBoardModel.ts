@@ -499,6 +499,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     assign,
     toMontage,
     importDropped,
+    askRemove: (ids) => sendBack(ids.flatMap((id) => fileById(id) ?? [])),
     askMontageName: (what) => {
       if ('groupId' in what) {
         setDialog({ kind: 'name-montage', groupId: what.groupId })

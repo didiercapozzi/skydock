@@ -39,6 +39,7 @@ const useDragAndDrop = ({
   toMontage,
   importDropped,
   askMontageName,
+  askRemove,
   onFiled
 }: {
   groups: ManifestGroup[]
@@ -52,6 +53,8 @@ const useDragAndDrop = ({
   toMontage: (ids: string[], passenger?: Passenger) => void
   /* a jump or files dropped on the Montages heading: the montage's name is asked for first */
   askMontageName: (what: { groupId: string } | { fileIds: string[] }) => void
+  /* files dropped on the bin: the question every removal asks comes first */
+  askRemove: (fileIds: string[]) => void
   importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
   /* what the board does once something from it is filed under a destination: goes there */
   onFiled: (destination: string) => void
@@ -139,7 +142,7 @@ const useDragAndDrop = ({
      files or whole jumps, back to Fresh files, under a destination, into a named montage, or to
      the Montages heading, which asks for a name first. */
   const land = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     what: { files: string[] } | { jumps: string[] },
     how: { into?: { passenger: Passenger; hostId: string }; copy?: boolean } = {}
   ) => {
@@ -148,11 +151,12 @@ const useDragAndDrop = ({
     if ('files' in what) {
       if (what.files.length === 0) return
       if (into) moveFiles(what.files, { targetGroupId: into.hostId, copy })
+      else if (to.kind === 'bin') askRemove(what.files)
       else if (to.kind === 'montage') askMontageName({ fileIds: what.files })
       else moveFiles(what.files, { destination })
     } else {
       const [first] = what.jumps
-      if (!first) return
+      if (!first || to.kind === 'bin') return
       if (into) toMontage(what.jumps, into.passenger)
       else if (to.kind === 'montage') askMontageName({ groupId: first })
       else assign(what.jumps, destination)
@@ -183,7 +187,7 @@ const useDragAndDrop = ({
      dropzone is a target in the menu and on its own card, and each has to light on its own. `to` is
      where it lands: back among the fresh files, a destination, or the montages. */
   const dropTarget = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     named?: string,
     /* a named montage: what is dropped joins it rather than starting a montage of its own */
     into?: { passenger: Passenger; hostId: string }
@@ -191,7 +195,9 @@ const useDragAndDrop = ({
     const key = named ?? (to.kind === 'dz' ? `dest:${to.name}` : to.kind)
     /* the sorting area takes files back; a destination card takes whole jumps as well */
     const accepts =
-      to.kind === 'sort' ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
+      to.kind === 'sort' || to.kind === 'bin'
+        ? draggedFiles.length > 0
+        : dragged.length > 0 || draggedFiles.length > 0
     /* From the computer: into a montage, a dropzone as lone files, or the sorting area. The Montages
        heading is not a place for a file — it has to be somebody's. */
     const incoming = into
@@ -250,15 +256,20 @@ const useDragAndDrop = ({
         ? groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      target.kind === 'camera' || target.kind === 'bin' || staying || (host && frozen.has(host.id))
+      target.kind === 'camera' || staying || (host && frozen.has(host.id))
         ? {}
-        : target.kind === 'sort'
-          ? dropTarget({ kind: 'sort' }, key)
-          : target.kind === 'dz'
-            ? dropTarget({ kind: 'dz', name: target.name }, key)
-            : host?.passenger
-              ? dropTarget({ kind: 'montage' }, key, { passenger: host.passenger, hostId: host.id })
-              : dropTarget({ kind: 'montage' }, key)
+        : target.kind === 'bin'
+          ? dropTarget({ kind: 'bin' }, key)
+          : target.kind === 'sort'
+            ? dropTarget({ kind: 'sort' }, key)
+            : target.kind === 'dz'
+              ? dropTarget({ kind: 'dz', name: target.name }, key)
+              : host?.passenger
+                ? dropTarget({ kind: 'montage' }, key, {
+                    passenger: host.passenger,
+                    hostId: host.id
+                  })
+                : dropTarget({ kind: 'montage' }, key)
     return { ...props, 'data-place': key }
   }
 

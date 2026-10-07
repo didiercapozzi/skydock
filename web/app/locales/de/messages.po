@@ -768,6 +768,10 @@ msgstr "eine Kopie des Films"
 msgid "A dropzone needs a name."
 msgstr "Eine Dropzone braucht einen Namen."
 
+#: app/components/about-dialog.tsx
+msgid "A dropzone’s media, from the cameras to the passenger"
+msgstr "Die Medien einer Dropzone, von den Kameras bis zum Passagier"
+
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
 msgstr "ein Sprung"
@@ -815,6 +819,14 @@ msgstr "Ein Einlesen läuft"
 #: app/components/templates-dialog.tsx
 msgid "A template for {who}’s montage"
 msgstr "Eine Vorlage für die Montage von {who}"
+
+#: app/components/about-dialog.tsx
+msgid "About SkyDock"
+msgstr "Über SkyDock"
+
+#: app/components/board-header.tsx
+msgid "About…"
+msgstr "Über …"
 
 #: app/components/preview-drawer.tsx
 msgid "across"
@@ -956,6 +968,10 @@ msgstr "Wird gefragt…"
 #: app/components/email-dialog.tsx
 msgid "At the counter"
 msgstr "Am Schalter"
+
+#: app/components/about-dialog.tsx
+msgid "Author: Capo"
+msgstr "Autor: Capo"
 
 #: app/components/board-header.tsx
 msgid "Auto"
@@ -1255,6 +1271,7 @@ msgstr "Klicken, um die Dateien anzuzeigen · ⌘/Strg-Klick auf einen zweiten S
 msgid "close"
 msgstr "schließen"
 
+#: app/components/about-dialog.tsx
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/reset-fresh-dialog.tsx
@@ -2618,6 +2635,10 @@ msgstr "Lass das bei einer fremden Kamera ungewählt — du wählst jedes Mal di
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
 msgstr "Auswahl aufheben"
+
+#: app/components/about-dialog.tsx
+msgid "Licence: MIT"
+msgstr "Lizenz: MIT"
 
 #: app/components/board-header.tsx
 msgid "Light"

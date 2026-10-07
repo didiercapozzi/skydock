@@ -412,6 +412,30 @@ const useDesk = (name: string) => {
     return { x: Math.round(box.x + (x - around.first)), y: Math.round(box.y + box.height / 2) }
   }
 
+  /* a point of the screen in an element where nothing is to be pressed, found anywhere in it (not only on its
+     middle line): the last such point, so that it is as far from the toolbar as the element allows, and away from the edge of the window, which resizes it */
+  const emptyPlaceIn = async (page: Page, target: Locator) => {
+    const box = await screenBox(page, target)
+    const found = await target.evaluate((el) => {
+      const r = el.getBoundingClientRect()
+      const scale = window.devicePixelRatio
+      const doing =
+        'button,input,a,select,textarea,label,video,img,[role],[tabindex],[draggable=true]'
+      let last: { x: number; y: number } | null = null
+      for (let y = r.y + 6; y < r.y + r.height - 6; y += 8)
+        for (let x = r.x + 6; x < r.x + r.width - 6; x += 8) {
+          const at = document.elementFromPoint(x, y)
+          const inside =
+            x > 16 && y > 16 && x < window.innerWidth - 16 && y < window.innerHeight - 16
+          if (inside && at && el.contains(at) && !at.closest(doing))
+            last = { x: (x - r.x) * scale, y: (y - r.y) * scale }
+        }
+      return last
+    })
+    if (!found) throw new Error('no empty place to press on')
+    return { x: Math.round(box.x + found.x), y: Math.round(box.y + found.y) }
+  }
+
   /* carried across the screen by a pressed button, in steps a window can follow, and let go */
   const drag = async (from: { x: number; y: number }, to: { x: number; y: number }) => {
     moveTo(from.x, from.y)
@@ -533,6 +557,7 @@ const useDesk = (name: string) => {
     middleOf,
     click,
     emptySpaceOf,
+    emptyPlaceIn,
     drag,
     moveTo,
     key,

@@ -736,7 +736,7 @@ one nobody wants, so while its camera is plugged in it can also be deleted from 
 (Seeing what is on a camera). SkyDock never empties the bin, so
 nothing is lost for good and no space comes back until someone empties it by hand. The bin is a folder
 of its own beside the work, apart from the originals and the delivered copies. Nothing is put in the
-bin while something is being processed.
+bin while something is being processed. Files dragged from the board onto the Bin in the menu ask the same question before anything moves; whole jumps are not taken there, and neither are files from the computer.
 
 **Looking into the bin.** _Bin_, in the menu, shows everything in it — each time something was put
 aside, the latest first, saying whether it came from Fresh files, out of a montage or a dropzone, or off a camera, and
@@ -796,7 +796,7 @@ montages are not looked at; nothing of them is here.
 **The toolbar and the status bar.** SkyDock is drawn as the desktop tool it is. The installed app's window has no frame of the
 desktop's, and the app fills it edge to edge, with no margin around the panels: there is no title bar of its own
 either. The minimise, maximise and close buttons sit at the end of the toolbar, at the top of the app, and
-the toolbar's empty space is what moves the window when dragged — pressed twice, it maximises. The panels
+the toolbar's empty space and the status bar's are what move the window when dragged — pressed twice on the toolbar, it maximises. The panels between them are not: a file dragged in from another program must be heard anywhere on a page. The panels
 join one another with a thin light line. The places, the work (its toolbar and its list as one panel)
 and what is open stand side by side, and a status bar runs along the bottom. The first look at a work folder, which has no
 toolbar, carries the same three buttons on a strip of its own. A file's window, below, carries them at the
@@ -810,7 +810,7 @@ are set in Sora, the rest in Plus Jakarta Sans, and file names in JetBrains Mono
 the same design on deep navy. The toolbar holds what is used every day:
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
 knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
-the history. The status bar says what is going on: the storage — whether it is connected, as whom
+an About saying who made it — Capo, with a link to donkeyfall.com that opens in the machine's own browser — and under what licence. The status bar says what is going on: the storage — whether it is connected, as whom
 and to what, a way to check what it holds now, and a way to disconnect — what is being copied or
 uploaded and how far, how many clips still wait for their proxy, and how big the board is drawn. The
 storage is named the way somebody would say it, who and where: the account the session was opened
@@ -1641,8 +1641,6 @@ sent_ leaves the montage to email. So a montage does not stay "to email" long af
 
 Worth knowing, so nobody goes looking:
 
-- **No history of the board, and no undo of it.** What was filed, named or merged by hand is changed by hand again;
-  the record keeps no earlier states and no copy beside it.
 - **SkyDock never sends email.** A person sends it from their own mail.
 - **Every photo is handed over.** There is no choosing which photos go into the archive; the
   montage takes the videos only.

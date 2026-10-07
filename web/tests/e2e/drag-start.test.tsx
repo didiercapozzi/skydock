@@ -36,6 +36,7 @@ const Carried = () => {
     toMontage: () => {},
     importDropped: async () => {},
     askMontageName: () => {},
+    askRemove: () => {},
     onFiled: () => {}
   })
   const handle = (label: string, onDragStart: (e: React.DragEvent) => void) =>
