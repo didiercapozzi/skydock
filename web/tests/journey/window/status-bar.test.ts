@@ -47,7 +47,7 @@ windowDescribe('the empty space of the window', () => {
   test('opens the About from Settings, and closes it with its Close button', async () => {
     const page = await desk.board()
     await desk.click(page, page.getByRole('button', { name: 'Settings' }))
-    await desk.click(page, page.getByRole('button', { name: /About…/ }))
+    await desk.click(page, page.getByRole('button', { name: 'About SkyDock…' }))
     const about = page.getByRole('dialog', { name: 'About SkyDock' })
     await about.waitFor({ timeout: 15_000 })
     expect(await about.getByRole('link', { name: 'donkeyfall.com' }).getAttribute('href')).toBe(
