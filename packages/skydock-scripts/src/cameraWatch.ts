@@ -200,9 +200,9 @@ const diskIds = () => {
   }
 }
 
-/* The device a mount is on: the nearest mount at or above it, which for a camera that keeps its
-   pictures one level into a drive is the drive. */
-const deviceOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
+/* The nearest mount at or above a place, with the device it is: for a camera that keeps its pictures one
+   level into a drive, the drive. */
+const mountOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
   let text: string
   try {
     text = fs.readFileSync(mountinfo, 'utf-8')
@@ -223,8 +223,10 @@ const deviceOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
     )
       best = { point: place, source }
   }
-  return best?.source ?? null
+  return best
 }
+
+const deviceOf = (mount: string, mountinfo?: string) => mountOf(mount, mountinfo)?.source ?? null
 
 /* Which camera this is, told apart across plugs: the disk's own id where the machine has one for it,
    or else the name it shows — a camera that hands its files over has no disk, and a card in a
@@ -729,6 +731,8 @@ export {
   cameraName,
   camerasSeenThroughKde,
   copyAgain,
+  deviceOf,
+  mountOf,
   isOnCamera,
   keyOfMount,
   lookForCameras,

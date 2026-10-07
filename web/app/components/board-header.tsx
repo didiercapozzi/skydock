@@ -75,6 +75,7 @@ const BoardHeader = ({
   onTemplates,
   onWorkFolder,
   onShortcuts,
+  onAbout,
   find
 }: {
   scanning: boolean
@@ -85,6 +86,7 @@ const BoardHeader = ({
   onWorkFolder: () => void
   /* every key the board knows */
   onShortcuts: () => void
+  onAbout: () => void
   /* anything on the board, by a piece of its name */
   find: (query: string) => Found[]
 }) => {
@@ -209,6 +211,13 @@ const BoardHeader = ({
                   onShortcuts()
                 }}>
                 {t`Keyboard shortcuts…`}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  close()
+                  onAbout()
+                }}>
+                {t`About SkyDock…`}
               </MenuItem>
             </div>
           </>

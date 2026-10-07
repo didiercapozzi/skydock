@@ -442,6 +442,14 @@ msgstr "{more, plural, one {… und # weitere, hier nicht aufgelistet.} other {�
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  aus {filename}"
 
+#: app/routes/place.tsx
+msgid "{name} can be unplugged now."
+msgstr "{name} kann jetzt abgezogen werden."
+
+#: app/routes/place.tsx
+msgid "{name} could not be ejected."
+msgstr "{name} konnte nicht ausgeworfen werden."
+
 #: app/components/places-tree.tsx
 msgid "{name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
 msgstr "{name} übergibt seine Dateien, statt sich als Laufwerk zu zeigen; das Lesen ist daher langsamer als mit derselben Karte im Kartenleser."
@@ -815,6 +823,14 @@ msgstr "Ein Einlesen läuft"
 #: app/components/templates-dialog.tsx
 msgid "A template for {who}’s montage"
 msgstr "Eine Vorlage für die Montage von {who}"
+
+#: app/components/about-dialog.tsx
+msgid "About SkyDock"
+msgstr "Über SkyDock"
+
+#: app/components/board-header.tsx
+msgid "About SkyDock…"
+msgstr "Über SkyDock…"
 
 #: app/components/preview-drawer.tsx
 msgid "across"
@@ -1255,6 +1271,7 @@ msgstr "Klicken, um die Dateien anzuzeigen · ⌘/Strg-Klick auf einen zweiten S
 msgid "close"
 msgstr "schließen"
 
+#: app/components/about-dialog.tsx
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/reset-fresh-dialog.tsx
@@ -1807,6 +1824,10 @@ msgstr "Schnittvorlagen"
 #: app/components/reset-fresh-dialog.tsx
 msgid "Either way, nothing filed to a destination or a montage is touched, and no original file is."
 msgstr "So oder so wird nichts angefasst, was in einem Ziel oder einer Montage abgelegt ist, und auch keine Originaldatei."
+
+#: app/routes/place.tsx
+msgid "Eject"
+msgstr "Auswerfen"
 
 #: app/components/places-tree.tsx
 msgid "Elsewhere"
@@ -2614,6 +2635,10 @@ msgstr "Leer lassen, um es nach dem Projekt zu benennen"
 #: app/components/camera-dialogs.tsx
 msgid "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
 msgstr "Lass das bei einer fremden Kamera ungewählt — du wählst jedes Mal die Dateien zum Kopieren."
+
+#: app/routes/place.tsx
+msgid "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
+msgstr "Freigeben, wie es der Desktop tut, damit es abgezogen werden kann — nichts darauf wird berührt"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
@@ -4967,6 +4992,10 @@ msgstr "Benutzername ist erforderlich"
 #: app/components/connection-dialog.tsx
 msgid "Username must be at least 2 characters"
 msgstr "Der Benutzername muss mindestens 2 Zeichen lang sein"
+
+#: app/components/about-dialog.tsx
+msgid "Version {version}"
+msgstr "Version {version}"
 
 #: app/components/storage-folder.tsx
 #: app/helpers/parcels.ts

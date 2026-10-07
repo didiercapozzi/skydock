@@ -366,6 +366,23 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     await quiet()
   })
 
+  test('a camera plugged in can be ejected from the menu of its page, which lets it go as the desktop does and touches no file', async () => {
+    const before = snapshot(originalsDir(j.world))
+    await openCamera('Osmo Action')
+    await j.page.getByRole('button', { name: 'More' }).click()
+    await j.page.getByRole('button', { name: 'Eject' }).click()
+    await j.page.getByText('Osmo Action can be unplugged now.').waitFor()
+    await camera('Osmo Action').getByText('not connected').waitFor({ timeout: 20_000 })
+    expect(snapshot(originalsDir(j.world)), 'no file touched').toEqual(before)
+    expect(fs.existsSync(card('Osmo Action')), 'what is on the card is where it was').toBe(true)
+    /* put back in, as it was for the chapters after */
+    plug('Osmo Action')
+    await camera('Osmo Action')
+      .getByText('not connected')
+      .waitFor({ state: 'detached', timeout: 20_000 })
+    await quiet()
+  })
+
   test('a camera can be forgotten from its page, which asks first and touches no file, and is new again the next time it is plugged in', async () => {
     const before = snapshot(originalsDir(j.world))
     await openCamera('Osmo Action')

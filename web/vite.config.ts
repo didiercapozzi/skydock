@@ -2,6 +2,7 @@ import { transformAsync } from '@babel/core'
 import { lingui } from '@lingui/vite-plugin'
 import { reactRouter } from '@react-router/dev/vite'
 import tailwindcss from '@tailwindcss/vite'
+import * as fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import babel from 'vite-plugin-babel'
@@ -10,6 +11,14 @@ import babel from 'vite-plugin-babel'
    everything it uses inside it rather than leaving it to be found at runtime. A build only: the
    development server reads the packages where they are, as it always did. */
 const building = process.argv.includes('build')
+
+/* Which version this is — the one the release moves in the root package.json, and so the one the installers
+   are named after — written into the page, so About says what the installer says. */
+const version = (
+  JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    version: string
+  }
+).version
 
 /* The shared packages sit beside the app, outside the folder the development server watches, so an
    edit there would reach the server but never the page. Watching them too keeps both in step. */
@@ -44,6 +53,7 @@ const linguiMacros = {
 }
 
 export default defineConfig({
+  define: { __SKYDOCK_VERSION__: JSON.stringify(version) },
   ssr: building ? { noExternal: true } : {},
   plugins: [
     watchPackages,
