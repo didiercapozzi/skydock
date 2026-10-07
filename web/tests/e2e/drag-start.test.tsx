@@ -28,6 +28,7 @@ const GROUP: ManifestGroup = { id: 'g1', label: 'Jump 1', day: '01.08.2026', fil
 const Carried = () => {
   const drag = useDragAndDrop({
     groups: [GROUP],
+    loose: [],
     labels: new Map([[GROUP.id, GROUP.label]]),
     frozen: new Set<string>(),
     moveFiles: () => {},
