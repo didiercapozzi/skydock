@@ -20,11 +20,12 @@ import { dialogNamed, place } from '../steps'
 const PICKER = 'Where should SkyDock work from now on?'
 const QUESTION = 'SkyDock is working'
 
-/* what a folder holds, to be told whether it was left exactly as it was */
+/* what a folder holds, to be told whether it was left exactly as it was — the pictures of its files are a
+   cache drawn whenever the board is shown, so they are not the work */
 const listing = (folder: string) =>
   fs
     .readdirSync(folder, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
+    .filter((entry) => entry.isFile() && !entry.parentPath.endsWith('.thumbs'))
     .map((entry) => {
       const file = path.join(entry.parentPath, entry.name)
       return `${file} ${fs.statSync(file).size}`

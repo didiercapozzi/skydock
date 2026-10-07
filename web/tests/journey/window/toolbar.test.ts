@@ -46,6 +46,7 @@ windowDescribe('the window buttons of the toolbar', () => {
     await sleep(150)
     desk.pointer('click', '--repeat', '2', '--delay', '90', '1')
     await hasAttribute(middle, 'aria-label', 'Restore')
+    await sleep(700)
     desk.pointer('click', '--repeat', '2', '--delay', '90', '1')
     await hasAttribute(middle, 'aria-label', 'Maximise')
     desk.silent()
@@ -65,6 +66,12 @@ windowDescribe('the window buttons of the toolbar', () => {
     expect(after.x - before.x).toBeGreaterThan(60)
     expect(after.y - before.y).toBeGreaterThan(30)
     desk.shot('moved')
+    /* put back, so that the buttons of the next chapter are on the screen */
+    await desk.drag({ x: from.x + 120, y: from.y + 70 }, from)
+    await waitFor('the window back where it was', () => {
+      const now = boardWindow()
+      return now && now.x === before.x && now.y === before.y
+    })
     desk.silent()
   })
 

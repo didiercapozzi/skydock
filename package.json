@@ -17,6 +17,7 @@
   "scripts": {
     "app": "npm run shell && electron . --no-sandbox",
     "app:host": "SKYDOCK_DEV_URL= SKYDOCK_ZOOM=100 scripts/window-on-host.sh",
+    "big-board": "npx tsx scripts/big-board.ts",
     "build": "npm run build --workspace=@workspace/web",
     "check": "npm run typecheck && npm run format:check && npm run lint",
     "copy": "npx tsx packages/skydock-scripts/src/copy.ts",
