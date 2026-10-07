@@ -25,4 +25,4 @@ const openFile = (goTo: NavigateFunction, place: Place, fileId: string, view: Bo
   window.open(new URL(href, window.location.href).toString())
 }
 
-export { hasOwnWindows, openFile }
+export { openFile }

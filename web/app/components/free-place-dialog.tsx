@@ -1,7 +1,7 @@
 import type { freeablePlace } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { Danger, Mini } from './buttons'
-import { Line, Modal, Spacer } from './modal'
+import { Line, Modal, Section, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import { Note } from './blurbs'
 
@@ -41,8 +41,7 @@ const FreePlaceDialog = ({
           <Danger onClick={onConfirm}>{t`Check and free about ${about}`}</Danger>
         </>
       }>
-      <p className='m-0 text-body font-semibold text-ink'>{t`Proved first`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`Proved first`}>
         <Line mark='✓'>
           {plural(files.length, {
             one: 'each of the # copy that went up is hashed here and by the storage, and both must match what was sent',
@@ -50,12 +49,11 @@ const FreePlaceDialog = ({
               'each of the # copies that went up is hashed here and by the storage, and both must match what was sent'
           })}
         </Line>
-      </ul>
+      </Section>
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`Then deleted from this machine`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`Then deleted from this machine`}>
         <Line mark='✕'>{t`${deleted}: the originals, the copies and the working copies`}</Line>
-      </ul>
+      </Section>
 
       {reshaped > 0 && (
         <p className='m-0 rounded-control bg-changed-soft px-2.5 py-2 text-small text-ink-2'>
@@ -63,8 +61,7 @@ const FreePlaceDialog = ({
         </p>
       )}
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`Kept`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`Kept`}>
         <Line mark='✓'>{t`everything on the storage, still listed and played from this page`}</Line>
         {kept > 0 && (
           <Line mark='✓'>
@@ -74,7 +71,7 @@ const FreePlaceDialog = ({
             })}
           </Line>
         )}
-      </ul>
+      </Section>
 
       <Note>
         {t`After this those files live on the storage only: they cannot be processed, moved or uploaded again from here, and a rescan leaves them as they are. If any check fails, nothing at all is deleted, and it says which.`}

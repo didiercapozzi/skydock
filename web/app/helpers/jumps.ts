@@ -1,6 +1,6 @@
-import { folderOfUpload, isoDay } from '@skydock/scripts'
+import { folderOfUpload, isoDay, startOfFiles } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { dayWritten, minFileMtime, pad, weekday } from '../components/utils'
+import { dayWritten, pad, weekday } from '../components/utils'
 
 /* local calendar day, built without Intl so the server and the client agree */
 const dayOfMtime = (mtime: number) => {
@@ -12,7 +12,7 @@ const dayOfMtime = (mtime: number) => {
    files here: a file dragged in from another day joins the jump, and a jump that swallowed one
    would otherwise jump to that file's day and take everything in it along (RULES, Jumps). Only a
    jump with no day recorded falls back to its earliest file. */
-const dayOf = (group: ManifestGroup) => isoDay(group.day) || dayOfMtime(minFileMtime(group.files))
+const dayOf = (group: ManifestGroup) => isoDay(group.day) || dayOfMtime(startOfFiles(group.files))
 
 const dayOfFile = (file: ManifestFile) => dayOfMtime(file.mtime)
 

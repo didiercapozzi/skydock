@@ -65,7 +65,7 @@ describe('the pictures the board shows', () => {
       .toContain('/api/thumb/original_files/2026-08-01/two.MP4?seek=0.5&width=160')
   })
 
-  /* a photo used to be drawn from the original, a megabyte and a full decode for eighty pixels */
+  /* a photo is asked for at its drawn size: the original costs a megabyte and a full decode for eighty pixels */
   test('ask for a photo at the size it is drawn at, not the whole of it', async () => {
     const Stub = createRoutesStub([boardRoute(() => board)])
     await render(createElement(Stub, { initialEntries: ['/'] }))

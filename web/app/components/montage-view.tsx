@@ -237,8 +237,7 @@ const montageSub = (group: ManifestGroup, emailedAt: number | null) => {
       : t`Freed from this machine ${freed}`
   }
   if (group.uploaded) return t`Jump of ${day} · delivered ${dayShort(group.uploaded.at)}`
-  const videos = group.files.filter((f) => isVideoFile(f.path)).length
-  const what = kindsSaid(videos, group.files.length - videos, ' · ')
+  const what = kindsSaid(group.files)
   const size = formatSize(group.files.reduce((n, f) => n + f.size, 0))
   return t`Jump of ${day} · ${what} · ${size}`
 }
@@ -330,7 +329,6 @@ const MontageBody = ({
       </div>
     )
   }
-  const videos = group.files.filter((f) => isVideoFile(f.path)).length
   return (
     <div className='flex flex-col gap-4 pb-6'>
       <MontageActions group={group} />
@@ -344,9 +342,7 @@ const MontageBody = ({
             <div className='font-display text-display leading-title font-semibold tracking-display'>
               {formatSize(group.files.reduce((n, f) => n + f.size, 0))}
             </div>
-            <div className='text-small text-ink-3'>
-              {kindsSaid(videos, group.files.length - videos, ' · ')}
-            </div>
+            <div className='text-small text-ink-3'>{kindsSaid(group.files)}</div>
           </div>
           {!gone && (
             <div className='flex items-start gap-2.5 rounded-card bg-well px-3.5 py-3 text-body'>

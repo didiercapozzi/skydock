@@ -1,6 +1,6 @@
 import { href as reactRouterHref } from 'react-router'
 import type z from 'zod'
-import { deepDateSchema, parseIsoDatesDeep } from '../utils/common'
+import { parseIsoDatesDeep } from '../utils/common'
 
 type PageDefinition = {
   params: Record<string, string | undefined>
@@ -302,32 +302,10 @@ const createSafeRoutingEngine = <const TRegister extends BaseRegister>(
     }
   }
 
-  const parseFormData = async <Schema extends z.ZodObject<z.ZodRawShape>>({
-    request,
-    schema,
-    data
-  }: {
-    schema: Schema
-  } & (
-    | {
-        request: Request
-        data?: never
-      }
-    | {
-        data: z.infer<Schema>
-        request?: never
-      }
-  )) => {
-    const jsonData = request ? await request.clone().json() : data
-
-    return deepDateSchema(schema).parse(jsonData)
-  }
-
   return {
     action,
     href,
     loader,
-    parseFormData,
     parseSearchParams,
     upload
   }

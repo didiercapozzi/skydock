@@ -5,6 +5,7 @@ import {
   isMontage,
   isVideoFile,
   passengerName,
+  startOfFiles,
   UPLOADED_LOCKED
 } from '@skydock/scripts'
 import type { FileStatus, ProxyFact } from '@skydock/scripts'
@@ -24,7 +25,7 @@ import type { Passenger } from './montage-card'
 import { Slices } from './slices'
 import type { ManifestFile, ManifestGroup } from './types'
 import { kindsSaid } from './kinds'
-import { dateLabel, formatSize, getPictureUrl, hhmm, minFileMtime, shortDate } from './utils'
+import { dateLabel, formatSize, getPictureUrl, hhmm, shortDate } from './utils'
 
 /* The right-hand pane says everything about whatever is selected — one file, several, a jump, or
    the folder itself when nothing is — and offers what can be done with it, so nothing has to be
@@ -439,7 +440,7 @@ const JumpPanel = ({
   end?: React.ReactNode
 }) => {
   const [renaming, setRenaming] = useState(false)
-  const from = minFileMtime(group.files) ?? 0
+  const from = startOfFiles(group.files)
   const to = group.files.reduce((n, f) => Math.max(n, f.mtime), 0)
   const montage = isMontage(group)
   const named = hasCompletePassenger(group.passenger)
@@ -453,8 +454,6 @@ const JumpPanel = ({
   /* A jump waiting in Fresh files has one decision to take: where it goes. The destinations are laid
      out as buttons, with making it a montage under them, so nothing is looked for in a menu. */
   if (fileTo && !montage && !group.freed) {
-    const videos = group.files.filter((f) => isVideoFile(f.path)).length
-    const photos = fileCount - videos
     const starts = hhmm(from)
     return (
       <>
@@ -470,7 +469,7 @@ const JumpPanel = ({
           eyebrow={t`Jump · ${dateLabel(from)}`}
           lower={fileCount === 0}
           title={label}
-          sub={`${kindsSaid(videos, photos, ' · ')} · ${t`starts ${starts}`}`}
+          sub={`${kindsSaid(group.files)} · ${t`starts ${starts}`}`}
         />
         {fileTo.places.length > 0 && (
           <Part heading={t`File it to`}>
@@ -985,7 +984,7 @@ const ManyPanel = ({
         <Part heading={t`A jump of these`}>
           <JumpForm
             named={false}
-            startsAt={minFileMtime(files) ?? 0}
+            startsAt={startOfFiles(files)}
             submitLabel={t`Make the jump`}
             onSubmit={(_name, startsAt) => onMakeJump(startsAt)}
             onCancel={() => setMaking(false)}

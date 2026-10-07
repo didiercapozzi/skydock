@@ -38,7 +38,7 @@ import { DialogHost } from '../components/dialog-host'
 import { JobsPanel } from '../components/jobs-panel'
 import { TransfersPanel } from '../components/transfers-panel'
 import { PlacesTree } from '../components/places-tree'
-import { formatTime } from '../components/utils'
+import { hhmm } from '../components/utils'
 import { fromComputer } from '../helpers/import'
 import { typingInField } from '../helpers/keys'
 import { routingEngine } from '../helpers/routing'
@@ -305,7 +305,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   }
 
   /* Only what is about the storage as a whole. Which folder is whose is said where it matters. */
-  const checkedAt = nas.remoteCheckedAt ? formatTime(nas.remoteCheckedAt) : null
+  const checkedAt = nas.remoteCheckedAt ? hhmm(nas.remoteCheckedAt) : null
   const nasLinks: NasLink[] = nas.connected
     ? [
         {

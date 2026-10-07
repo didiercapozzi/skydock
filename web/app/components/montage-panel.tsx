@@ -2,9 +2,9 @@ import { t } from '@lingui/core/macro'
 import {
   UPLOADED_LOCKED,
   hasCompletePassenger,
-  isVideoFile,
   passengerName,
-  slugOf
+  slugOf,
+  startOfFiles
 } from '@skydock/scripts'
 import { useState } from 'react'
 import { parcelsOfGroup } from '../helpers/parcels'
@@ -16,7 +16,7 @@ import { kindsSaid } from './kinds'
 import { PassengerName } from './montage-card'
 import type { Passenger } from './montage-card'
 import type { ManifestGroup } from './types'
-import { dateLabel, dayShort, hhmm, minFileMtime, shortDate } from './utils'
+import { dateLabel, dayShort, hhmm, shortDate } from './utils'
 
 /* The panel of a montage, which says what the page does not: when it starts and who it is for while there
    is work to do; its link and where each part went once it is delivered; what was sent and to whom once it
@@ -51,9 +51,8 @@ const MontagePanel = ({
   const [renaming, setRenaming] = useState(false)
   const named = hasCompletePassenger(group.passenger)
   const who = passengerName(group.passenger)
-  const from = minFileMtime(group.files) ?? 0
+  const from = startOfFiles(group.files)
   const to = group.files.reduce((n, f) => Math.max(n, f.mtime), 0)
-  const videos = group.files.filter((f) => isVideoFile(f.path)).length
   const emailed = model.emailedOn(group)
   const parcels = group.uploaded ? parcelsOfGroup(group, board.places) : []
   const handed = parcels.find((p) => p.handed) ?? parcels[0]
@@ -74,7 +73,7 @@ const MontagePanel = ({
       ? emailed
         ? t`Uploaded · emailed ${shortDate(emailed.at)}`
         : t`Uploaded · not emailed yet`
-      : `${shortDate(from)} · ${kindsSaid(videos, group.files.length - videos, ' · ')}`
+      : `${shortDate(from)} · ${kindsSaid(group.files)}`
 
   return (
     <>

@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { isVideoFile, passengerOf } from '@skydock/scripts'
+import { passengerOf, startOfFiles } from '@skydock/scripts'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { parcelsOfGroup } from '../helpers/parcels'
@@ -9,7 +9,7 @@ import { Mini } from './buttons'
 import { ParcelCards } from './montage-card'
 import { kindsSaid } from './kinds'
 import type { ManifestGroup } from './types'
-import { dayShort, formatSize, minFileMtime } from './utils'
+import { dayShort, formatSize } from './utils'
 
 /* The montages that are done (RULES, Montages done): freed from this machine, so that all there is of
    each is on the storage. One row each — who it was for, which day, when it was emailed, how
@@ -52,7 +52,6 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
         <ul className='m-0 flex list-none flex-col overflow-hidden rounded-panel bg-pane p-0 shadow-hairline'>
           {rows.map(([name, jumps]) => {
             const files = jumps.flatMap((g) => g.files)
-            const videos = files.filter((f) => isVideoFile(f.path)).length
             const emailed = jumps
               .map((g) => model.emailedOn(g)?.at ?? 0)
               .reduce((a, b) => Math.max(a, b), 0)
@@ -77,13 +76,13 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                       {name}
                     </b>
                     <span className='block truncate text-small text-ink-3'>
-                      {kindsSaid(videos, files.length - videos, ' · ') ||
+                      {kindsSaid(files) ||
                         plural(files.length, { one: '# file', other: '# files' })}
                     </span>
                   </span>
                 </span>
                 <span className='text-lead'>
-                  {first ? dayShort(minFileMtime(first.files) ?? 0) : ''}
+                  {first ? dayShort(startOfFiles(first.files)) : ''}
                 </span>
                 <span className='text-lead'>{emailed ? dayShort(emailed) : '—'}</span>
                 <b className='text-lead tabular-nums'>{size ? formatSize(size) : '—'}</b>

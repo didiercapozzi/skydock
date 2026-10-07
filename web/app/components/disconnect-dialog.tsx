@@ -1,6 +1,6 @@
 import { t } from '@lingui/core/macro'
 import { Go, Mini } from './buttons'
-import { Line, Modal, Spacer } from './modal'
+import { Line, Modal, Section, Spacer } from './modal'
 import { Note } from './blurbs'
 
 /* Disconnecting asks first. It costs nothing on the storage and nothing on this machine, but it
@@ -35,21 +35,19 @@ const DisconnectDialog = ({
         {user ? t`${user} on ${storage} is connected.` : t`${storage} is connected.`}
       </p>
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`What happens`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`What happens`}>
         <Line mark='✕'>{t`this machine forgets the connection`}</Line>
         <Line mark='✕'>
           {t`what is up there stops being listed here, so nothing can be uploaded, freed or played from the storage until it is connected again`}
         </Line>
-      </ul>
+      </Section>
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`What does not`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`What does not`}>
         <Line mark='✓'>{t`everything on the storage stays exactly as it is`}</Line>
         <Line mark='✓'>
           {t`every file on this machine stays as it is, and the board goes on working`}
         </Line>
-      </ul>
+      </Section>
 
       <Note>
         {t`Connecting again asks for the password — and for a code off your phone, if the account has two-step verification.`}
