@@ -2,11 +2,18 @@ import { transformAsync } from '@babel/core'
 import { lingui } from '@lingui/vite-plugin'
 import { reactRouter } from '@react-router/dev/vite'
 import tailwindcss from '@tailwindcss/vite'
+import * as fs from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import babel from 'vite-plugin-babel'
 
 const building = process.argv.includes('build')
+
+const version = (
+  JSON.parse(fs.readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+    version: string
+  }
+).version
 
 const watchPackages = {
   name: 'watch-packages',
@@ -35,6 +42,7 @@ const linguiMacros = {
 }
 
 export default defineConfig({
+  define: { __SKYDOCK_VERSION__: JSON.stringify(version) },
   ssr: building ? { noExternal: true } : {},
   plugins: [
     watchPackages,

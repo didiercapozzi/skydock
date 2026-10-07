@@ -191,7 +191,11 @@ Where cameras are mounted is told to SkyDock when it starts, and telling it noth
 **Seeing what is on a camera.** Every camera SkyDock has met is listed at the foot of the menu — a green dot
 while it is plugged in, with how many new files it holds, and greyed as _not connected_ when it is not, like
 a wifi network a phone remembers. A camera can be forgotten from its page, which asks first and touches
-no file: it is then new again the next time it is plugged in. Its page has the switch _Copy new files
+no file: it is then new again the next time it is plugged in. A camera that is plugged in can be
+_ejected_ from the menu on its page, as the desktop ejects a drive: it is let go of — unmounted, and powered
+down where the machine can — so it can be pulled out, and nothing on it is touched. It is refused while a
+camera is being copied, and when the machine says the camera is still in use, it says so as the machine did.
+Its page has the switch _Copy new files
 automatically_, and lists every photo and video on its card, each saying how far it has got:
 not copied yet, copied here but not uploaded, copied here and then put in the bin, or on the storage —
 copied read by the same rule the copy uses to pass a file over, and in the bin read by the file's bytes,
@@ -812,8 +816,9 @@ jump is a photograph of its own footage with its name on it, and a thumbnail is 
 are set in Sora, the rest in Plus Jakarta Sans, and file names in JetBrains Mono. Dark is
 the same design on deep navy. The toolbar holds what is used every day:
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
-knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
-the history. The status bar says what is going on: the storage — whether it is connected, as whom
+knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder, the
+history, and _About SkyDock_, which says which version this is — the one the installer is named
+after. The status bar says what is going on: the storage — whether it is connected, as whom
 and to what, a way to check what it holds now, and a way to disconnect — what is being copied or
 uploaded and how far, how many clips still wait for their proxy, and how big the board is drawn. The
 storage is named the way somebody would say it, who and where: the account the session was opened

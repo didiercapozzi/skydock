@@ -59,6 +59,7 @@ const BoardHeader = ({
   onTemplates,
   onWorkFolder,
   onShortcuts,
+  onAbout,
   find
 }: {
   scanning: boolean
@@ -66,6 +67,7 @@ const BoardHeader = ({
   onTemplates: () => void
   onWorkFolder: () => void
   onShortcuts: () => void
+  onAbout: () => void
   find: (query: string) => Found[]
 }) => {
   const view = useFileView()
@@ -185,6 +187,13 @@ const BoardHeader = ({
                   onShortcuts()
                 }}>
                 {t`Keyboard shortcuts…`}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  close()
+                  onAbout()
+                }}>
+                {t`About SkyDock…`}
               </MenuItem>
             </div>
           </>

@@ -442,6 +442,14 @@ msgstr "{more, plural, one {… and # more, not listed here.} other {… and # m
 msgid "{name}  ·  from {filename}"
 msgstr "{name}  ·  from {filename}"
 
+#: app/routes/place.tsx
+msgid "{name} can be unplugged now."
+msgstr "{name} can be unplugged now."
+
+#: app/routes/place.tsx
+msgid "{name} could not be ejected."
+msgstr "{name} could not be ejected."
+
 #: app/components/places-tree.tsx
 msgid "{name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
 msgstr "{name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
@@ -815,6 +823,14 @@ msgstr "A scan is running"
 #: app/components/templates-dialog.tsx
 msgid "A template for {who}’s montage"
 msgstr "A template for {who}’s montage"
+
+#: app/components/about-dialog.tsx
+msgid "About SkyDock"
+msgstr "About SkyDock"
+
+#: app/components/board-header.tsx
+msgid "About SkyDock…"
+msgstr "About SkyDock…"
 
 #: app/components/preview-drawer.tsx
 msgid "across"
@@ -1255,6 +1271,7 @@ msgstr "Click to list its files · ⌘/ctrl-click a second jump to compare the t
 msgid "close"
 msgstr "close"
 
+#: app/components/about-dialog.tsx
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/reset-fresh-dialog.tsx
@@ -1807,6 +1824,10 @@ msgstr "Editing templates"
 #: app/components/reset-fresh-dialog.tsx
 msgid "Either way, nothing filed to a destination or a montage is touched, and no original file is."
 msgstr "Either way, nothing filed to a destination or a montage is touched, and no original file is."
+
+#: app/routes/place.tsx
+msgid "Eject"
+msgstr "Eject"
 
 #: app/components/places-tree.tsx
 msgid "Elsewhere"
@@ -2614,6 +2635,10 @@ msgstr "Leave it empty to name it after the project"
 #: app/components/camera-dialogs.tsx
 msgid "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
 msgstr "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
+
+#: app/routes/place.tsx
+msgid "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
+msgstr "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
@@ -4967,6 +4992,10 @@ msgstr "Username is required"
 #: app/components/connection-dialog.tsx
 msgid "Username must be at least 2 characters"
 msgstr "Username must be at least 2 characters"
+
+#: app/components/about-dialog.tsx
+msgid "Version {version}"
+msgstr "Version {version}"
 
 #: app/components/storage-folder.tsx
 #: app/helpers/parcels.ts

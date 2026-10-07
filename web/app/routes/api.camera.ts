@@ -2,6 +2,7 @@ import { getOutputDir, loadManifest, processingNow, messageOf } from '@skydock/s
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { deleteFromCameras, listCameras } from '../../../packages/skydock-scripts/src/cameraFiles'
+import { ejectCamera } from '../../../packages/skydock-scripts/src/ejectCamera'
 import {
   answerCamera,
   copyAgain,
@@ -17,6 +18,7 @@ const actionArgs = z.object({
   remember: z.object({ key: z.string(), auto: z.boolean(), copy: z.boolean() }).optional(),
   forget: z.string().optional(),
   auto: z.object({ key: z.string(), on: z.boolean() }).optional(),
+  eject: z.string().optional(),
   copyFiles: z.object({ mount: z.string(), paths: z.array(z.string()) }).optional()
 })
 
@@ -41,6 +43,14 @@ const action = createValidatedFormAction()({
     if (data.auto) {
       answerCamera(getOutputDir(), { auto: data.auto })
       return { auto: data.auto }
+    }
+    if (data.eject) {
+      const done = await ejectCamera(data.eject)
+      if (!done.ok) {
+        errors.addGlobalError(done.reason)
+        return errors.toResponse(422)
+      }
+      return { ejected: data.eject }
     }
     if (data.copyFiles) {
       if (data.copyFiles.paths.length === 0) {

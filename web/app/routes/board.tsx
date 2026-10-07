@@ -301,6 +301,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           onTemplates={() => setDialog({ kind: 'templates' })}
           onWorkFolder={() => setDialog({ kind: 'work-folder' })}
           onShortcuts={() => setDialog({ kind: 'shortcuts' })}
+          onAbout={() => setDialog({ kind: 'about' })}
           find={model.findAnything}
         />
 
