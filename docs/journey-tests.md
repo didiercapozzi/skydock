@@ -18,7 +18,7 @@ RULES.md stays the authority on what the app does; the chapters are named in its
 | `steps.ts`, `record.ts`                 | what a person does on the page (places, dialogs, the storage connected and a folder chosen, clips opened, waits on what is on screen) and the record as the app's own shape reads it — written once, taking the `Page`, for every chapter | built |
 | silent-break check                     | after every chapter: no console error, no failed request (a failed picture is asked for again before it counts)    | built |
 | films and failure screens              | `JOURNEY_FILM=1` films the run to `videos/*.mp4` (click one in the editor to watch) with a pointer dot and keeps a trace; `JOURNEY_SLOW=250` for a human pace; a screen and text on failure        | built |
-| `window/*.test.ts`, `drag-source.py` | Tier B: SkyDock's own Electron window on its own Xvfb, a real pointer (`xdotool`), a real file drop (XDND); `npm run test:journey:window` | run here once Electron is unpacked: `folder-drop` and `preview-window` pass; the others are still to run, one file at a time with `--bail=1` |
+| `window/*.test.ts`, `drag-source.py` | Tier B: SkyDock's own Electron window on its own Xvfb, a real pointer (`xdotool`), a real file drop (XDND); `npm run test:journey:window` | all seven files pass, run one at a time; needs Electron unpacked (`node node_modules/electron/install.js`), `xdotool`, `openbox`, and a `python3` that has GTK (`python3-gi`) — all in `.devcontainer/Dockerfile.dev` |
 | `harness.ts`                           | what every file does the same way: a world (or a saved state), the app, the browser, the film, the failure screen | built |
 | saved states                           | the work folder copied after key chapters (`sorted`, `processed`, `i2-ready`), restored with its paths rewritten, so each file starts where the story left off | built |
 | fake storage                           | a standalone DSM-like process: Auth (2-step), List, Download, MD5, CopyMove, Rename, CreateFolder, Sharing, upload; can misbehave on request, proven against the app's own client | built |
@@ -42,7 +42,7 @@ cannot do: a file dropped from outside the window, the window's frame, quit. Tie
 
 ## Chapters
 
-Status: **done** · **written, not run here** (needs Electron) · **todo**. A chapter whose app behaviour is wrong is written, asserts what RULES.md says and is skipped with a `// BUG:` comment holding the evidence; TODO.md lists them.
+Status: **done** · **todo**. A chapter whose app behaviour is wrong is written, asserts what RULES.md says and is skipped with a `// BUG:` comment holding the evidence; TODO.md lists them.
 
 ### A. Opening and the work folder (RULES: Where it runs, The first time it is opened)
 
@@ -50,10 +50,10 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | an empty board says "Nothing left to sort"                                                | A    | done  |
 | a work folder with no record is looked through at once when the board opens               | A    | done |
-| the welcome page the first time: Start, the folder picker, Change, Open the board; closing the picker changes nothing | B | written, not run here |
+| the welcome page the first time: Start, the folder picker, Change, Open the board; closing the picker changes nothing | B | done |
 | another work folder from Settings, refused while something is being written               | A/B  | done |
-| the window's close button; closing or quitting while a job runs asks first                | B    | written, not run here |
-| no "is ready" notification; update offered once, never installed unasked                  | B    | written, not run here |
+| the window's close button; closing or quitting while a job runs asks first                | B    | done |
+| no "is ready" notification; update offered once, never installed unasked                  | B    | excused: the packaged app's feed cannot be pointed at a local one |
 
 ### B. Getting footage in (Workflow 1–2, Adding files, Camera)
 
@@ -62,7 +62,7 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | a scan groups what a camera copy left into jumps by capture time                          | A    | done  |
 | files dropped on the board stay loose, are copied not moved, say what is coming           | A    | done (simulated drop) |
 | the same drop from another program, by address, with a real pointer                       | B    | done  |
-| a whole folder dropped: every video and photo inside, notes and bookkeeping left          | B    | written, not run here |
+| a whole folder dropped: every video and photo inside, notes and bookkeeping left          | B    | done |
 | footage already on the board is recognised by contents under another name                 | A    | done |
 | a card with a `DCIM` appears, is named and remembered, copied only as told, files copied not moved | A (needs a mount) | done |
 | a camera's clock corrected; "seeing what is on a camera" and deleting from it (proved by bytes, into the bin) | A | done |
@@ -89,7 +89,7 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | Trim to the jump uses the exit mark (marks seeded from a clip with a data stream, or by the redo script) | A | done |
 | frame (drag a rectangle, shapes), landscape with blurred sides, turn, full screen         | A    | done |
 | the weight a trim will make is shown; a processed copy goes out of date when trim, frame or turn changes | A | done |
-| the clip opens in the machine's own player; the preview in a window of its own            | B    | written, not run here |
+| the clip opens in the machine's own player; the preview in a window of its own            | B    | done |
 
 ### E. Preparing (Process, Acting, File status)
 
@@ -168,7 +168,7 @@ The chapters found real defects and places where RULES.md and the app disagree. 
 `// BUG:` comment (`grep -rn "BUG:" web/tests/journey`), listed in TODO.md. A fix unskips its chapter, which is the
 proof.
 
-## Order of work (all of it built; the window chapters are written but have never been run)
+## Order of work (all of it built and run)
 
 1. **Saved states and the guard.** Copy the work folder after "sorted", "processed", "uploaded"; a helper restores one
    and starts the app on it. The guard reads RULES.md's bold lead-ins and `##` headings and fails on any that no

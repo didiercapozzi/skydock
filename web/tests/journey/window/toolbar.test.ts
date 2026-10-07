@@ -46,6 +46,9 @@ windowDescribe('the window buttons of the toolbar', () => {
     await sleep(150)
     desk.pointer('click', '--repeat', '2', '--delay', '90', '1')
     await hasAttribute(middle, 'aria-label', 'Restore')
+    /* a second pair of presses straight after the first is counted with it, as a longer run of clicks, and
+       asks nothing of the window: it waits out the desktop's double-click time */
+    await sleep(900)
     desk.pointer('click', '--repeat', '2', '--delay', '90', '1')
     await hasAttribute(middle, 'aria-label', 'Maximise')
     desk.silent()
@@ -65,6 +68,12 @@ windowDescribe('the window buttons of the toolbar', () => {
     expect(after.x - before.x).toBeGreaterThan(60)
     expect(after.y - before.y).toBeGreaterThan(30)
     desk.shot('moved')
+    /* put back where it was: moved right, the close button of the next chapter is off the screen */
+    desk.pointer('windowmove', before.id, String(before.x), String(before.y))
+    await waitFor('the window back where it was', () => {
+      const now = boardWindow()
+      return now && now.x === before.x && now.y === before.y
+    })
     desk.silent()
   })
 
