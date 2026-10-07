@@ -3,6 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "description": "A dropzone's media, from the cameras to the passenger",
+  "license": "MIT",
   "author": {
     "name": "Didier Capozzi",
     "email": "capozzi.didier@gmail.com"

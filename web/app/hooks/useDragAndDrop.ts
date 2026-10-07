@@ -32,6 +32,7 @@ const useDragAndDrop = ({
   toMontage,
   importDropped,
   askMontageName,
+  askRemove,
   onFiled
 }: {
   groups: ManifestGroup[]
@@ -42,6 +43,7 @@ const useDragAndDrop = ({
   assign: (ids: string[], destination: string | null) => void
   toMontage: (ids: string[], passenger?: Passenger) => void
   askMontageName: (what: { groupId: string } | { fileIds: string[] }) => void
+  askRemove: (fileIds: string[]) => void
   importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
   onFiled: (destination: string) => void
 }) => {
@@ -113,7 +115,7 @@ const useDragAndDrop = ({
   }
 
   const land = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     what: { files: string[] } | { jumps: string[] },
     how: { into?: { passenger: Passenger; hostId: string }; copy?: boolean } = {}
   ) => {
@@ -122,11 +124,12 @@ const useDragAndDrop = ({
     if ('files' in what) {
       if (what.files.length === 0) return
       if (into) moveFiles(what.files, { targetGroupId: into.hostId, copy })
+      else if (to.kind === 'bin') askRemove(what.files)
       else if (to.kind === 'montage') askMontageName({ fileIds: what.files })
       else moveFiles(what.files, { destination })
     } else {
       const [first] = what.jumps
-      if (!first) return
+      if (!first || to.kind === 'bin') return
       if (into) toMontage(what.jumps, into.passenger)
       else if (to.kind === 'montage') askMontageName({ groupId: first })
       else assign(what.jumps, destination)
@@ -153,13 +156,15 @@ const useDragAndDrop = ({
   }
 
   const dropTarget = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     named?: string,
     into?: { passenger: Passenger; hostId: string }
   ) => {
     const key = named ?? (to.kind === 'dz' ? `dest:${to.name}` : to.kind)
     const accepts =
-      to.kind === 'sort' ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
+      to.kind === 'sort' || to.kind === 'bin'
+        ? draggedFiles.length > 0
+        : dragged.length > 0 || draggedFiles.length > 0
     const incoming = into
       ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
       : to.kind === 'sort'
@@ -210,15 +215,20 @@ const useDragAndDrop = ({
         ? groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      target.kind === 'camera' || target.kind === 'bin' || staying || (host && frozen.has(host.id))
+      target.kind === 'camera' || staying || (host && frozen.has(host.id))
         ? {}
-        : target.kind === 'sort'
-          ? dropTarget({ kind: 'sort' }, key)
-          : target.kind === 'dz'
-            ? dropTarget({ kind: 'dz', name: target.name }, key)
-            : host?.passenger
-              ? dropTarget({ kind: 'montage' }, key, { passenger: host.passenger, hostId: host.id })
-              : dropTarget({ kind: 'montage' }, key)
+        : target.kind === 'bin'
+          ? dropTarget({ kind: 'bin' }, key)
+          : target.kind === 'sort'
+            ? dropTarget({ kind: 'sort' }, key)
+            : target.kind === 'dz'
+              ? dropTarget({ kind: 'dz', name: target.name }, key)
+              : host?.passenger
+                ? dropTarget({ kind: 'montage' }, key, {
+                    passenger: host.passenger,
+                    hostId: host.id
+                  })
+                : dropTarget({ kind: 'montage' }, key)
     return { ...props, 'data-place': key }
   }
 
