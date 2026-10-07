@@ -53,7 +53,7 @@ Status: **done** · **written, not run here** (needs Electron) · **todo**. A ch
 | the welcome page the first time: Start, the folder picker, Change, Open the board; closing the picker changes nothing | B | done |
 | another work folder from Settings, refused while something is being written               | A/B  | done |
 | the window's close button; closing or quitting while a job runs asks first                | B    | done |
-| no "is ready" notification; update offered once, never installed unasked                  | B    | written, not run here |
+| no "is ready" notification; update offered once, never installed unasked                  | B    | excused: the packaged app's feed cannot be pointed at a local one |
 
 ### B. Getting footage in (Workflow 1–2, Adding files, Camera)
 
