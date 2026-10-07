@@ -13,30 +13,13 @@ What is still to do. What was done is in git, not here. Do not start on an item 
 
 ## 1. Tests
 
+Nothing open.
+
 ## 2. Bugs found by the journey
 
 Each is a skipped chapter with a `// BUG:` comment holding the evidence (`grep -rn "BUG:" web/tests/journey`) — fix the app, then unskip the chapter. The numbers are the journey's own; the gaps (1–5, 17, 19) are not open. The letters are the chapters.
 
-### Storage and transfers
-
-- [ ] **6.** (f-storage) After an upload the jump files keep reading "Processed" / "1 of 6 on the storage" until the board is reopened (group files are copies; the upload answer lacks `uploaded` — `manifest.ts` / `upload-group.ts`). E agent saw it too.
-- [ ] **7.** (f-storage) A file deleted on the storage shows as ready to send but Upload answers "Nothing to upload yet — process it first." (`packages/skydock-scripts/src/upload.ts`).
-- [ ] **8.** (f-storage) Opening a place does not notice storage deletions (only reopening the board or the check button does) — RULES.md 'Noticing deletions'.
-- [ ] **9.** (f-storage / g-transfers) Reloading while the storage is slow leaves an unhandled "Unexpected Server Error" in the console, and the footer stays on "Checking the storage…" for good instead of turning to unreachable after a few seconds (`web/app/routes/board.tsx` loader).
-- [ ] **10.** (g-transfers) Reloading mid-upload leaves the destination's Upload button enabled while the corner says "Uploading…".
-- [ ] **11.** (g-transfers) A cancelled upload is kept in Transfers as "failed", not "cancelled".
-- [ ] **12.** (g-transfers) "Look again" keeps the mark of a link the storage has revoked until the page is reopened; (i2) the montage page and panel keep "Copy link / Remove link / Email…" after the storage revoked the link — only the email dialog reads the answer (`dialog-host.tsx`).
-- [ ] **16.** (i2) Photos sent as a folder are shown "no longer on the storage" although they are there — `goneSent` in `packages/skydock-scripts/src/upload.ts` looks a folder up like a file.
-
-### Montages and templates
-
-- [ ] **13.** (i1-montage) A montage made from a destination's files does not always open its page (~1 in 4); the note says "Copied 1 file into the jump" — suspect `goingTo` dropped in `web/app/hooks/useBoardModel.ts`.
-- [ ] **14.** (i1-templates) Marking a template as the usual one does not make "Make the project" skip the dialog (`askMontage` in the same hook).
-- [ ] **15.** (i1-templates) Template files come out owned by root, not by the owner of the output folder — `openToHost(held, root)` in `packages/skydock-scripts/src/templates.ts`.
-
-### Languages
-
-- [ ] **20.** (c1) Server sentences ("montages" refusal) stay in English in French and German.
+- [ ] **13.** (i1-montage) A montage made from a destination's files does not always open its page (~1 in 4); the note says "Copied 1 file into the jump" — suspect `goingTo` dropped in `web/app/hooks/useBoardModel.ts`. Not reproduced on 2026-10-07: 49 montages made in a row from a destination's files all opened their page, so the cause (the stale-answer guard in `useBoardState.ts`, unconfirmed) is a guess.
 
 ## 3. RULES.md and the app disagree
 
@@ -62,6 +45,8 @@ None of these was measured. Ranked by value over risk.
 
 ## 6. Useless features
 
+Nothing open.
+
 ## 7. Decisions needed before building
 
 The audit found no feature that the code has and RULES.md never mentions, or the reverse. These need a maintainer's call:
@@ -70,6 +55,7 @@ The audit found no feature that the code has and RULES.md never mentions, or the
 
 ## Done
 
+- Journey bugs 6–12, 14–16 and 20 were already fixed (acccce0); their chapters are live and no `// BUG:` is left. Found by reading the code on 2026-10-07, not by running the journey.
 - Journey, window chapters: all seven files of `web/tests/journey/window/` pass in this container (real-input, toolbar, welcome, work-folder, zoom, folder-drop, preview-window). The update-feed chapter ('It keeps itself current') stays excused: the packaged app's feed cannot be pointed at a local one.
 - `scripts/big-board.ts` documented, not deleted: `npm run big-board` and a paragraph in `docs/developing.md` (it builds a synthetic work folder for timing and refuses the live work folder and `/mnt`); not run.
 - `kindsSaid` separator decided: `file-browser` keeps `', '` on purpose.
