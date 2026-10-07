@@ -4,7 +4,7 @@ import { Icon } from './icons'
 import type { IconName } from './icons'
 
 const TOOL =
-  'inline-flex h-control items-center gap-2 rounded-control border-0 px-2.75 text-lead font-semibold text-ink hover:bg-well disabled:opacity-40'
+  'inline-flex h-control items-center gap-2 rounded-corner border-0 px-2.75 text-lead font-semibold text-ink hover:bg-well disabled:opacity-40'
 
 const Menu = ({
   label,
@@ -81,7 +81,7 @@ const Menu = ({
         <div
           role='group'
           aria-label={label}
-          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-50 flex-col gap-3 overflow-y-auto rounded-card bg-pane p-3.5 shadow-float ${
+          className={`absolute top-full z-50 mt-1.5 flex max-h-[60vh] w-max max-w-[min(300px,calc(100vw-2rem))] min-w-50 flex-col gap-3 overflow-y-auto rounded-corner bg-pane p-3.5 shadow-float ${
             side === 'right' ? 'right-0' : 'left-0'
           }`}>
           {children(close)}
@@ -126,7 +126,7 @@ const MenuItem = ({
     title={title}
     onClick={onClick}
     disabled={disabled}
-    className={`flex w-full items-center gap-2 rounded-control border-0 bg-transparent px-2.5 py-1.5 text-left text-body font-semibold hover:bg-well disabled:cursor-default disabled:opacity-40 ${danger ? 'text-bin' : 'text-ink'}`}>
+    className={`flex w-full items-center gap-2 rounded-corner border-0 bg-transparent px-2.5 py-1.5 text-left text-body font-semibold hover:bg-well disabled:cursor-default disabled:opacity-40 ${danger ? 'text-bin' : 'text-ink'}`}>
     {icon && (
       <Icon
         name={icon}

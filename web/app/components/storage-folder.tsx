@@ -41,13 +41,13 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
         controls
         autoPlay
         aria-label={file.name}
-        className='max-h-[70vh] w-full rounded-card bg-black'
+        className='max-h-[70vh] w-full rounded-corner bg-black'
       />
     ) : (
       <img
         src={storageFileUrl(file.path)}
         alt={file.name}
-        className='max-h-[70vh] w-full rounded-card bg-black object-contain'
+        className='max-h-[70vh] w-full rounded-corner bg-black object-contain'
       />
     )}
     <p className='m-0 font-mono text-micro break-all text-ink-3'>{file.path}</p>
@@ -245,7 +245,7 @@ const StorageFolder = ({
   return (
     <section
       aria-label={t`On the storage`}
-      className='mt-10 rounded-panel bg-well/60 px-4 pt-3.5 pb-3 shadow-hairline'>
+      className='mt-10 rounded-corner bg-well/60 px-4 pt-3.5 pb-3 shadow-hairline'>
       <div className='flex flex-wrap items-center gap-3 pt-1 pb-2'>
         <h3 className='m-0 flex items-center gap-2 font-display text-heading font-bold tracking-display text-ink'>
           <Icon

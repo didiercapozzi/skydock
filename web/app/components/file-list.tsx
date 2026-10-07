@@ -231,7 +231,7 @@ const PickMark = ({ picked, onPick }: { picked: boolean; onPick: () => void }) =
       e.stopPropagation()
       onPick()
     }}
-    className={`absolute top-2.25 left-2.25 z-2 grid size-5 place-items-center rounded-chip border-2 p-0 ${
+    className={`absolute top-2.25 left-2.25 z-2 grid size-5 place-items-center rounded-corner border-2 p-0 ${
       picked ? 'border-accent bg-accent text-white' : 'border-white/90 bg-veil/30 text-transparent'
     }`}>
     <Icon
@@ -478,7 +478,7 @@ const Tile = ({
     title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)}${afterNote(file)} · ${statusName(status)}${
       proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
     }${isWholeFrame(file.frame) ? '' : ` · ${t`framed`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
-    className={`@container/tile relative aspect-[16/11] max-w-full min-w-0 cursor-pointer overflow-hidden rounded-card bg-well ${
+    className={`@container/tile relative aspect-[16/11] max-w-full min-w-0 cursor-pointer overflow-hidden rounded-corner bg-well ${
       picked ? 'shadow-picked' : previewed ? 'shadow-looked' : 'shadow-soft'
     }`}>
     {!file.freed && (
@@ -683,7 +683,7 @@ const Lane = ({
         className={
           shape === 'rows'
             ? joined
-              ? 'flex flex-col rounded-panel bg-pane px-3.5 py-1.5 shadow-soft'
+              ? 'flex flex-col rounded-corner bg-pane px-3.5 py-1.5 shadow-soft'
               : 'flex flex-col gap-2'
             : 'grid gap-3'
         }

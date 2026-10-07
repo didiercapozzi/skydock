@@ -3,7 +3,7 @@ import { useWindowFrame } from '../hooks/useWindowFrame'
 import { Icon } from './icons'
 
 const CONTROL =
-  'grid size-7 place-items-center rounded-control text-ink-2 hover:bg-well hover:text-ink'
+  'grid size-7 place-items-center rounded-corner text-ink-2 hover:bg-well hover:text-ink'
 
 const WindowControls = ({ onClose }: { onClose?: () => void }) => {
   const frame = useWindowFrame()
