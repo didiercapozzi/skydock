@@ -656,7 +656,7 @@ move it. Everything a drag files can be filed from a menu as well: _Move to…_,
 file's and a selection's, lists Fresh files, every destination, every named montage and _A new
 montage…_, leaving out where it already is, and does exactly what dropping it there would — a new
 montage asks for its name first. A trackpad, a long list or a narrow window makes a drag hard; it is
-never the only way. While something is carried, the
+never the only way. While something is carried, what is drawn under the pointer is a small chip with the picture and the name of what is carried, hung down and to the right of the pointer so that the place being aimed at stays in sight; the
 place or jump under the pointer lights up when it would take it, and a place that already holds everything carried does not take it. Something dropped on a destination is
 followed there: that destination's page opens, with what was just filed in it. Dropping onto a montage
 joins that montage, never a new one. A montage whose last files are taken back to Fresh files is left

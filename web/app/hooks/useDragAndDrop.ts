@@ -70,6 +70,27 @@ const useDragAndDrop = ({
     if (!e) return
     e.dataTransfer.setData('text/plain', said)
     e.dataTransfer.effectAllowed = 'copyMove'
+    /* What is drawn under the pointer is a small chip, the picture of what is carried beside its name,
+       hung down and to the right of the pointer: the row it was taken from is too big and too solid to
+       see the place under it. The picture is the one already drawn in the row, copied, which is loaded
+       and so is drawn at once. The chip has to be on the page for the engine to draw it, and is taken
+       off again at once. */
+    const chip = document.createElement('div')
+    chip.className =
+      'fixed -top-96 -left-96 flex max-w-72 items-center gap-2 rounded-control bg-pane/90 p-1.5 pr-3 text-body font-semibold text-ink shadow-float'
+    const shown = e.currentTarget instanceof Element ? e.currentTarget.querySelector('img') : null
+    if (shown) {
+      const picture = shown.cloneNode() as HTMLImageElement
+      picture.className = 'size-10 flex-none rounded-control object-cover'
+      chip.appendChild(picture)
+    }
+    const name = document.createElement('span')
+    name.className = 'truncate'
+    name.textContent = said
+    chip.appendChild(name)
+    document.body.appendChild(chip)
+    e.dataTransfer.setDragImage(chip, -12, -12)
+    setTimeout(() => chip.remove(), 0)
   }
 
   /* a whole jump, picked up by its line: dropping it on a place files every file in it at once, and
