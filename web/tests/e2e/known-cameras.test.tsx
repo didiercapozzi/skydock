@@ -170,12 +170,38 @@ describe('a camera never met', () => {
   })
 })
 
+describe('the page of a camera plugged in', () => {
+  const open = async () => {
+    await renderBoard(`/camera/${encodeURIComponent(KEY)}`)
+    says({ mounted: [mounted({ known: true })], known: [known()], prompts: [] })
+    await expect.element(page.getByText('Plugged in')).toBeVisible()
+  }
+
+  test('is ejected from its menu, and says it can be unplugged', async () => {
+    await open()
+
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
+    await userEvent.click(page.getByRole('button', { name: 'Eject' }))
+
+    await expect.poll(() => sent).toEqual([{ eject: MOUNT }])
+    await expect.element(page.getByText('HERO5 Black can be unplugged now.')).toBeVisible()
+  })
+})
+
 describe('the page of a camera known and not plugged in', () => {
   const open = async (over: Record<string, unknown> = {}) => {
     await renderBoard(`/camera/${encodeURIComponent(KEY)}`)
     says({ mounted: [], known: [known(over)], prompts: [] })
     await expect.element(page.getByText('Plug it in to look at it')).toBeVisible()
   }
+
+  test('offers no eject, there being nothing to eject', async () => {
+    await open()
+
+    await userEvent.click(page.getByRole('button', { name: 'More' }))
+
+    await expect.element(page.getByRole('button', { name: 'Eject' })).not.toBeInTheDocument()
+  })
 
   test('says to plug it in, and switches copying by itself', async () => {
     await open()

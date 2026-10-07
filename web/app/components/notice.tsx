@@ -21,7 +21,7 @@ const Notice = ({
 }) => (
   <p
     role={problem ? 'alert' : 'status'}
-    className={`m-0 flex items-center gap-2.25 rounded-chip border px-2.5 py-1.75 text-body ${
+    className={`m-0 flex items-center gap-2.25 rounded-corner border px-2.5 py-1.75 text-body ${
       problem ? 'border-local/40 bg-local-soft text-local' : 'border-line-2 bg-rail text-ink-2'
     } ${className}`}>
     {!problem && (
@@ -48,7 +48,7 @@ const Notice = ({
       aria-label={t`Dismiss`}
       title={t`Dismiss`}
       onClick={onClose}
-      className='flex-none rounded border-0 bg-transparent px-1 text-ink-3 hover:text-ink'>
+      className='flex-none rounded-corner border-0 bg-transparent px-1 text-ink-3 hover:text-ink'>
       <Icon
         name='close'
         size={13}

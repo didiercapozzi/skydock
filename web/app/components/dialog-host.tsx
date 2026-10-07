@@ -20,6 +20,7 @@ import { UploadDialog } from './upload-dialog'
 import { ForgetCameraDialog } from './camera-dialogs'
 import { WorkFolderDialog } from './work-folder-dialog'
 import { ShortcutsDialog } from './shortcuts-dialog'
+import { AboutDialog } from './about-dialog'
 import { folderOnStorage } from '../helpers/jumps'
 import type { Passenger } from './montage-card'
 import type { SendPlan } from '@skydock/scripts'
@@ -58,6 +59,7 @@ type BoardDialog =
   /* a camera about to be forgotten: taken off the list, its copied files left alone */
   | { kind: 'forget-camera'; key: string; name: string }
   | { kind: 'shortcuts' }
+  | { kind: 'about' }
 
 const DialogHost = ({
   dialog,
@@ -248,6 +250,7 @@ const DialogHost = ({
         })()}
 
       {dialog?.kind === 'shortcuts' && <ShortcutsDialog onClose={close} />}
+      {dialog?.kind === 'about' && <AboutDialog onClose={close} />}
 
       {dialog?.kind === 'forget-camera' && (
         <ForgetCameraDialog

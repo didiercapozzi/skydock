@@ -235,7 +235,7 @@ const MontagePanel = ({
           </Part>
           {locked && locked !== UPLOADED_LOCKED && (
             <Part>
-              <p className='m-0 flex gap-2.5 rounded-control bg-well px-3 py-2.5 text-small text-ink-2'>
+              <p className='m-0 flex gap-2.5 rounded-corner bg-well px-3 py-2.5 text-small text-ink-2'>
                 {locked}
               </p>
             </Part>

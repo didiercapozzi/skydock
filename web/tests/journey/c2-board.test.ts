@@ -186,6 +186,24 @@ describe('dialogs', () => {
     await quiet()
   })
 
+  test('says which version this is from About SkyDock in Settings, the one the installer is named after', async () => {
+    const wanted = (
+      JSON.parse(
+        fs.readFileSync(path.join(__dirname, '..', '..', '..', 'package.json'), 'utf8')
+      ) as {
+        version: string
+      }
+    ).version
+    await fromSettings('About SkyDock…')
+    const about = dialogNamed(j.page, 'About SkyDock')
+    await about.waitFor()
+    expect(await about.innerText()).toContain(`Version ${wanted}`)
+    await j.page.keyboard.press('Escape')
+    await about.waitFor({ state: 'detached' })
+    await closesWithEscapeAndOutsideClick('About SkyDock', () => fromSettings('About SkyDock…'))
+    await quiet()
+  })
+
   test('closes the editing templates and the work folder with Escape and with a click outside', async () => {
     await closesWithEscapeAndOutsideClick('Editing templates', () => fromSettings('Templates…'))
     await closesWithEscapeAndOutsideClick('Work folder', () => fromSettings('Work folder…'))

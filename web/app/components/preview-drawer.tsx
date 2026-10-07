@@ -84,7 +84,7 @@ const MARK_DOT = {
    tilde, for the settings being set here; nothing when they change nothing (RULES, Cropping and turning) */
 const SizeAfter = ({ before, after }: { before: number; after: number }) =>
   Math.abs(after - before) < Math.max(1, before * 0.01) ? null : (
-    <div className='flex items-center justify-between gap-2 rounded-control bg-accent-soft px-2.5 py-2 text-small text-accent-ink'>
+    <div className='flex items-center justify-between gap-2 rounded-corner bg-accent-soft px-2.5 py-2 text-small text-accent-ink'>
       <span>{t`Size after`}</span>
       <span className='font-mono tabular-nums'>
         {formatSize(before)} → <b className='font-semibold'>~{formatSize(after)}</b>
@@ -94,7 +94,7 @@ const SizeAfter = ({ before, after }: { before: number; after: number }) =>
 
 /* a key on the keyboard that does the same as the button it sits in */
 const Key = ({ children }: { children: React.ReactNode }) => (
-  <span className='rounded-chip bg-well px-1.5 font-sans text-micro leading-4 font-semibold text-ink-3'>
+  <span className='rounded-corner bg-well px-1.5 font-sans text-micro leading-4 font-semibold text-ink-3'>
     {children}
   </span>
 )
@@ -117,7 +117,7 @@ const Ghost = ({
     aria-label={label}
     title={title}
     onClick={onClick}
-    className='inline-flex h-8 items-center gap-1.5 rounded-control px-2.5 text-body font-semibold whitespace-nowrap text-ink hover:bg-well'>
+    className='inline-flex h-8 items-center gap-1.5 rounded-corner px-2.5 text-body font-semibold whitespace-nowrap text-ink hover:bg-well'>
     {children}
   </button>
 )
@@ -143,7 +143,7 @@ const Choice = ({
     aria-label={label}
     title={title}
     onClick={onClick}
-    className={`inline-flex items-center justify-center gap-1.5 rounded-control px-2.25 text-small font-semibold whitespace-nowrap ${
+    className={`inline-flex items-center justify-center gap-1.5 rounded-corner px-2.25 text-small font-semibold whitespace-nowrap ${
       on ? 'bg-pane text-ink shadow-soft' : 'text-ink-2 hover:text-ink'
     }`}>
     {children}
@@ -151,7 +151,7 @@ const Choice = ({
 )
 
 const CHOICES =
-  'inline-flex h-control-sm self-start gap-px rounded-chip border border-line-2 bg-well p-0.5'
+  'inline-flex h-control-sm self-start gap-px rounded-corner border border-line-2 bg-well p-0.5'
 
 /* what is on the file for one part of it: solid when saved, dashed when changed and not saved yet,
    faint when there is nothing */
@@ -165,7 +165,7 @@ const Adj = ({
   children: string
 }) => (
   <span
-    className={`rounded-chip px-1.5 text-micro font-semibold text-ink-2 ${
+    className={`rounded-corner px-1.5 text-micro font-semibold text-ink-2 ${
       changed ? 'border-dashed bg-transparent' : saved ? 'bg-well' : 'bg-well opacity-40'
     }`}>
     {children}
@@ -607,7 +607,7 @@ const PreviewDrawer = ({
         role='dialog'
         aria-modal='true'
         aria-label={t`Preview`}
-        className={`relative flex flex-col overflow-hidden rounded-panel bg-pane text-ink shadow-float ${
+        className={`relative flex flex-col overflow-hidden rounded-corner bg-pane text-ink shadow-float ${
           /* in a window of its own the whole of it moves the window when dragged, wherever nothing is
              there to be pressed or dragged */
           windowed
@@ -622,7 +622,7 @@ const PreviewDrawer = ({
             aria-label={t`Previous`}
             disabled={index === 0}
             onClick={() => leave(onPrevious)}
-            className='grid h-8 w-8 flex-none place-items-center rounded-control text-ink-2 hover:bg-well hover:text-ink disabled:opacity-40'>
+            className='grid h-8 w-8 flex-none place-items-center rounded-corner text-ink-2 hover:bg-well hover:text-ink disabled:opacity-40'>
             <Icon
               name='previous'
               size={16}
@@ -656,7 +656,7 @@ const PreviewDrawer = ({
             aria-label={t`Next`}
             disabled={index === files.length - 1}
             onClick={() => leave(onNext)}
-            className='grid h-8 w-8 flex-none place-items-center rounded-control text-ink-2 hover:bg-well hover:text-ink disabled:opacity-40'>
+            className='grid h-8 w-8 flex-none place-items-center rounded-corner text-ink-2 hover:bg-well hover:text-ink disabled:opacity-40'>
             <Icon
               name='next'
               size={16}
@@ -708,7 +708,7 @@ const PreviewDrawer = ({
               aria-hidden='true'
               title={t`Close (Esc)`}
               onClick={onClose}
-              className='grid h-7 w-7 flex-none place-items-center rounded-control text-ink-2 hover:bg-well hover:text-ink'>
+              className='grid h-7 w-7 flex-none place-items-center rounded-corner text-ink-2 hover:bg-well hover:text-ink'>
               <Icon name='close' />
             </button>
           )}
@@ -725,7 +725,7 @@ const PreviewDrawer = ({
               className={
                 big
                   ? 'fixed inset-0 z-50 grid place-items-center bg-black'
-                  : 'no-drag group relative grid flex-1 place-items-center overflow-hidden rounded-panel bg-stage p-3'
+                  : 'no-drag group relative grid flex-1 place-items-center overflow-hidden rounded-corner bg-stage p-3'
               }>
               {/* A box the shape of the picture as it will come out — turned — with the picture
                   turned inside it, and the rectangle laid over the box: it is drawn on the
@@ -784,7 +784,7 @@ const PreviewDrawer = ({
                     }}
                     onError={() => wontPlay(playUrl)}
                     style={pictureStyle(shape, rotation)}
-                    className='absolute top-1/2 left-1/2 rounded-bar transition-transform duration-150'
+                    className='absolute top-1/2 left-1/2 rounded-corner transition-transform duration-150'
                   />
                 ) : (
                   <img
@@ -799,13 +799,13 @@ const PreviewDrawer = ({
                         })
                     }}
                     style={pictureStyle(shape, rotation)}
-                    className='absolute top-1/2 left-1/2 rounded-bar transition-transform duration-150'
+                    className='absolute top-1/2 left-1/2 rounded-corner transition-transform duration-150'
                   />
                 )}
                 {video && cannotShow && (
                   <span
                     role='status'
-                    className='absolute inset-0 grid place-items-center rounded-bar bg-stage p-4 text-center text-body text-white/80'>
+                    className='absolute inset-0 grid place-items-center rounded-corner bg-stage p-4 text-center text-body text-white/80'>
                     {!playsProxies()
                       ? t`This browser cannot play H.264 video — the format every proxy is made in — so no clip can be shown here. Open the board in Chrome, Edge or Safari, or in Firefox with its video codecs installed, and the clips play.`
                       : proxy?.state === 'none' && proxy.reason
@@ -837,7 +837,7 @@ const PreviewDrawer = ({
                             : `calc(${frame.y * 100}% + 8px)`,
                         marginLeft: frame.y > 0.08 ? 0 : 8
                       }}
-                      className='pointer-events-none absolute z-10 rounded-chip bg-white px-2 py-0.75 font-mono text-micro leading-text text-stage-ink tabular-nums'>
+                      className='pointer-events-none absolute z-10 rounded-corner bg-white px-2 py-0.75 font-mono text-micro leading-text text-stage-ink tabular-nums'>
                       {percent(frame.width)} × {percent(frame.height)}
                     </span>
                     <span
@@ -846,7 +846,7 @@ const PreviewDrawer = ({
                         right: `calc(${(1 - frame.x - frame.width) * 100}% + 8px)`,
                         bottom: `calc(${(1 - frame.y - frame.height) * 100}% + 8px)`
                       }}
-                      className='pointer-events-none absolute z-10 rounded-chip bg-white px-2 py-0.75 font-mono text-micro leading-text whitespace-nowrap text-stage-ink tabular-nums'>
+                      className='pointer-events-none absolute z-10 rounded-corner bg-white px-2 py-0.75 font-mono text-micro leading-text whitespace-nowrap text-stage-ink tabular-nums'>
                       {t`keeps ${percent(frame.width * frame.height)} of the picture`}
                       {/* and the shape it is held to, when that shape has a name */}
                       {shown.includes(':') && ` · ${shown}`}
@@ -921,7 +921,7 @@ const PreviewDrawer = ({
               {big && (
                 <div className='absolute top-3 right-3 flex items-center gap-2'>
                   {shrunk && (
-                    <span className='rounded-control bg-black/70 px-2 py-1 text-micro text-white/80'>
+                    <span className='rounded-corner bg-black/70 px-2 py-1 text-micro text-white/80'>
                       {t`This browser has no decoder for the clip itself — the small copy is playing`}
                     </span>
                   )}
@@ -929,7 +929,7 @@ const PreviewDrawer = ({
                     <span
                       role='group'
                       aria-label={t`Quality`}
-                      className='inline-flex h-8 gap-0.5 rounded-control bg-black/70 p-0.75 text-small font-semibold text-white/80'>
+                      className='inline-flex h-8 gap-0.5 rounded-corner bg-black/70 p-0.75 text-small font-semibold text-white/80'>
                       {(
                         [
                           [false, t`Proxy`, t`The small copy, which plays at once`],
@@ -942,7 +942,7 @@ const PreviewDrawer = ({
                           aria-pressed={original === which}
                           title={hint}
                           onClick={() => setOriginal(which)}
-                          className={`rounded-chip px-2.5 ${original === which ? 'bg-white text-stage-ink' : 'hover:text-white'}`}>
+                          className={`rounded-corner px-2.5 ${original === which ? 'bg-white text-stage-ink' : 'hover:text-white'}`}>
                           {name}
                         </button>
                       ))}
@@ -964,7 +964,7 @@ const PreviewDrawer = ({
                     aria-label={t`Back ten seconds`}
                     title={t`Back ten seconds`}
                     onClick={() => onSeek(Math.max(0, currentTime - 10))}
-                    className='grid h-control-sm w-control-sm flex-none place-items-center rounded-control bg-well text-ink hover:bg-line'>
+                    className='grid h-control-sm w-control-sm flex-none place-items-center rounded-corner bg-well text-ink hover:bg-line'>
                     <svg
                       aria-hidden='true'
                       width='14'
@@ -983,7 +983,7 @@ const PreviewDrawer = ({
                     aria-label={t`Forward ten seconds`}
                     title={t`Forward ten seconds`}
                     onClick={() => onSeek(Math.min(duration, currentTime + 10))}
-                    className='grid h-control-sm w-control-sm flex-none place-items-center rounded-control bg-well text-ink hover:bg-line'>
+                    className='grid h-control-sm w-control-sm flex-none place-items-center rounded-corner bg-well text-ink hover:bg-line'>
                     <svg
                       aria-hidden='true'
                       width='14'
@@ -1018,7 +1018,7 @@ const PreviewDrawer = ({
                             file.moments &&
                             onCropChange(jumpTrim(file.moments, montage, cropEnd ?? null))
                           }
-                          className='inline-flex h-control-sm items-center gap-1.5 rounded-control bg-accent-soft px-3 text-small font-medium text-accent-ink hover:brightness-95'>
+                          className='inline-flex h-control-sm items-center gap-1.5 rounded-corner bg-accent-soft px-3 text-small font-medium text-accent-ink hover:brightness-95'>
                           <Icon
                             name='scissors'
                             size={14}
@@ -1134,7 +1134,7 @@ const PreviewDrawer = ({
                               type='button'
                               onClick={() => onSeek(at)}
                               title={t`Go to the ${moment}`}
-                              className='flex w-full items-center gap-2.5 rounded-control px-2.5 py-2 text-left text-body text-ink hover:bg-well'>
+                              className='flex w-full items-center gap-2.5 rounded-corner px-2.5 py-2 text-left text-body text-ink hover:bg-well'>
                               <i
                                 className={`size-2 flex-none rounded-full ${MARK_DOT[which]}`}
                                 aria-hidden='true'
@@ -1180,20 +1180,20 @@ const PreviewDrawer = ({
             {shownTab === 'cut' && video && (
               <Part title={t`Trim`}>
                 <div className='grid grid-cols-2 gap-2'>
-                  <div className='flex flex-col gap-1 rounded-card bg-tile-1 px-3.5 py-3'>
+                  <div className='flex flex-col gap-1 rounded-corner bg-tile-1 px-3.5 py-3'>
                     <Note>{t`Start`}</Note>{' '}
                     <span className='font-mono text-heading leading-none font-medium tracking-title tabular-nums'>
                       {clock(from)}
                     </span>
                   </div>
-                  <div className='flex flex-col gap-1 rounded-card bg-tile-2 px-3.5 py-3'>
+                  <div className='flex flex-col gap-1 rounded-corner bg-tile-2 px-3.5 py-3'>
                     <Note>{t`End`}</Note>{' '}
                     <span className='font-mono text-heading leading-none font-medium tracking-title tabular-nums'>
                       {clock(to)}
                     </span>
                   </div>
                 </div>
-                <div className='flex flex-col gap-2.5 rounded-card border border-line-2 px-3.5 py-3'>
+                <div className='flex flex-col gap-2.5 rounded-corner border border-line-2 px-3.5 py-3'>
                   <div className='flex items-baseline justify-between'>
                     <span className='text-body text-ink-2'>
                       {t`Keeps`} <V>{clock(Math.max(0, to - from))}</V> {t`of`} {clock(duration)}
@@ -1269,7 +1269,7 @@ const PreviewDrawer = ({
                         aria-pressed={on}
                         title={title}
                         onClick={go}
-                        className={`flex h-16 flex-col items-center justify-center gap-0.5 rounded-control text-small font-medium ${
+                        className={`flex h-16 flex-col items-center justify-center gap-0.5 rounded-corner text-small font-medium ${
                           on ? 'bg-accent-soft text-accent-ink' : 'bg-well text-ink hover:bg-line'
                         }`}>
                         <span className='font-mono text-title'>{degrees}</span>
@@ -1489,7 +1489,7 @@ const PreviewDrawer = ({
                 onFrameChange(null)
                 onRotate(0)
               }}
-              className='h-8 rounded-control px-3 text-body font-medium text-ink-2 hover:bg-well hover:text-ink disabled:text-ink-3 disabled:hover:bg-transparent'>
+              className='h-8 rounded-corner px-3 text-body font-medium text-ink-2 hover:bg-well hover:text-ink disabled:text-ink-3 disabled:hover:bg-transparent'>
               {t`Reset`}
             </button>
           )}

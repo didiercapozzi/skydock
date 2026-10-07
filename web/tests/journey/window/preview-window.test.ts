@@ -69,7 +69,8 @@ windowDescribe('a file in a window of its own, and the machine own player', () =
     const file = await desk.preview()
     /* the file's window is drawn 1360 wide, and the desktop gives each window a thin border on top of that */
     const window = desk.windows().find((w) => Math.abs(w.width - 1360) <= 16)
-    const boardWindow = desk.windows().find((w) => w.width === 1440)
+    /* the board's window is a pixel short of what it was asked for when it is clear at its corners */
+    const boardWindow = desk.windows().find((w) => Math.abs(w.width - 1440) <= 16)
     if (!window || !boardWindow) throw new Error('both windows should be on the screen')
 
     /* the board comes forward, over the file's window */

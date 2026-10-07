@@ -109,13 +109,13 @@ const Entry = ({
   const reason = transfer.reason ?? ''
   const more = transfer.more ?? 0
   return (
-    <li className='rounded-control bg-well'>
+    <li className='rounded-corner bg-well'>
       <div className='flex items-center'>
         <button
           type='button'
           aria-expanded={open}
           onClick={onToggle}
-          className='flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-control border-0 bg-transparent px-3 py-2 text-left text-ink'>
+          className='flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 rounded-corner border-0 bg-transparent px-3 py-2 text-left text-ink'>
           <Icon
             name={ICON[transfer.kind]}
             size={14}
@@ -149,7 +149,7 @@ const Entry = ({
           aria-label={t`Forget ${what} · ${label}`}
           title={t`Forget this one — nothing that was sent or copied is touched`}
           onClick={onForget}
-          className='mr-1.5 grid size-7 flex-none place-items-center rounded-control border-0 bg-transparent p-0 text-ink-3 hover:bg-line hover:text-ink'>
+          className='mr-1.5 grid size-7 flex-none place-items-center rounded-corner border-0 bg-transparent p-0 text-ink-3 hover:bg-line hover:text-ink'>
           <Icon
             name='close'
             size={13}
@@ -227,7 +227,7 @@ const TransfersPanel = ({
   return (
     <aside
       aria-label={t`Transfers`}
-      className='flex max-h-[min(78vh,720px)] w-[min(560px,calc(100vw-2rem))] flex-col gap-2 rounded-panel bg-pane px-4 py-3.5 text-ink shadow-float'>
+      className='flex max-h-[min(78vh,720px)] w-[min(560px,calc(100vw-2rem))] flex-col gap-2 rounded-corner bg-pane px-4 py-3.5 text-ink shadow-float'>
       <div className='flex items-center gap-2'>
         <Icon
           name='upload'
@@ -260,7 +260,7 @@ const TransfersPanel = ({
       {transfers === null ? (
         <p className='m-0 text-body text-ink-3'>{t`Looking…`}</p>
       ) : transfers.length === 0 ? (
-        <p className='m-0 rounded-control border border-dashed border-line-strong px-3 py-4 text-center text-body text-ink-3'>
+        <p className='m-0 rounded-corner border border-dashed border-line-strong px-3 py-4 text-center text-body text-ink-3'>
           {t`Nothing has been sent or copied yet — each upload, drop and camera copy is listed here once it is done.`}
         </p>
       ) : (

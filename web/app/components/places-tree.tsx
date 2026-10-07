@@ -96,7 +96,7 @@ const Row = ({
     title={title}
     {...dropTarget}
     className={(current) =>
-      `flex w-full items-center gap-2.5 rounded-card px-2 py-1.5 text-left text-ink desk:min-h-control-lg max-desk:w-auto max-desk:flex-none max-desk:rounded-full max-desk:px-2.75 max-desk:shadow-soft ${
+      `flex w-full items-center gap-2.5 rounded-corner px-2 py-1.5 text-left text-ink desk:min-h-control-lg max-desk:w-auto max-desk:flex-none max-desk:rounded-full max-desk:px-2.75 max-desk:shadow-soft ${
         over
           ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed'
           : current
@@ -111,7 +111,7 @@ const Row = ({
         <>
           {/* the folder's mark in a tile: pale on the sky, solid blue for the folder being looked at */}
           <span
-            className={`grid size-control-sm flex-none place-items-center rounded-control max-desk:hidden ${
+            className={`grid size-control-sm flex-none place-items-center rounded-corner max-desk:hidden ${
               lit ? 'bg-accent text-on-accent shadow-glow' : 'bg-pane/70 text-accent'
             }`}>
             <Icon
@@ -187,7 +187,7 @@ const MontagesHeading = ({
   <h2
     {...dropTarget}
     title={t`Drop a jump or files here to make a montage — its name is asked for first`}
-    className={`mx-0 mt-3 mb-0.75 flex items-center gap-2 rounded-control px-2.5 py-0.5 text-micro font-bold tracking-eyebrow text-accent-ink/70 uppercase max-desk:my-0 max-desk:flex-none ${
+    className={`mx-0 mt-3 mb-0.75 flex items-center gap-2 rounded-corner px-2.5 py-0.5 text-micro font-bold tracking-eyebrow text-accent-ink/70 uppercase max-desk:my-0 max-desk:flex-none ${
       over ? 'bg-pick-soft outline-1 -outline-offset-1 outline-pick outline-dashed' : ''
     }`}>
     <span className='flex-1'>{t`Montages`}</span>
@@ -214,7 +214,7 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
       <button
         type='button'
         onClick={() => setOpen(true)}
-        className='mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-card border-[1.5px] border-dashed border-white bg-white/25 text-lead font-semibold text-accent-ink hover:bg-white/45 max-desk:hidden dark:border-line-strong dark:bg-transparent dark:hover:bg-well'>
+        className='mt-2 flex h-10 w-full items-center justify-center gap-2 rounded-corner border-[1.5px] border-dashed border-white bg-white/25 text-lead font-semibold text-accent-ink hover:bg-white/45 max-desk:hidden dark:border-line-strong dark:bg-transparent dark:hover:bg-well'>
         <Icon
           name='plus'
           size={16}
@@ -238,7 +238,7 @@ const AddPlace = ({ onAdd }: { onAdd: (name: string) => void }) => {
         onBlur={() => {
           if (!adding.trim()) setOpen(false)
         }}
-        className='h-8 min-w-0 flex-1 rounded-control border border-line-strong bg-well px-2.5 text-body outline-none placeholder:text-ink-3 focus:border-accent'
+        className='h-8 min-w-0 flex-1 rounded-corner border border-line-strong bg-well px-2.5 text-body outline-none placeholder:text-ink-3 focus:border-accent'
       />
       <Mini onClick={add}>{t`Add`}</Mini>
     </span>
@@ -301,7 +301,7 @@ const PlacesTree = ({
   return (
     <nav
       aria-label={t`Folders`}
-      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-8 rounded-panel desk:rounded-r-none desk:rounded-b-none px-2.5 pb-3.5 desk:pr-0 desk:border-r desk:border-edge max-desk:pt-2 max-desk:flex max-desk:h-auto max-desk:items-center max-desk:gap-1.5 max-desk:overflow-x-auto max-desk:overflow-y-hidden max-desk:px-3 max-desk:pb-2 desk:col-start-1 desk:row-span-2 desk:row-start-1 desk:flex desk:h-full desk:flex-col'>
+      className='sticky top-0 gap-px self-start overflow-y-auto isle-rail z-8 rounded-corner desk:rounded-r-none desk:rounded-b-none px-2.5 pb-3.5 desk:border-r desk:border-divider max-desk:pt-2 max-desk:flex max-desk:h-auto max-desk:items-center max-desk:gap-1.5 max-desk:overflow-x-auto max-desk:overflow-y-hidden max-desk:px-3 max-desk:pb-2 desk:col-start-1 desk:row-span-2 desk:row-start-1 desk:flex desk:h-full desk:flex-col'>
       {/* the app's name, level with the header across from it */}
       <div className='flex h-14 flex-none items-center gap-2.5 px-2 max-desk:hidden'>
         <Mark size={32} />

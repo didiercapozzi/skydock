@@ -56,7 +56,7 @@ const FreePlaceDialog = ({
       </Section>
 
       {reshaped > 0 && (
-        <p className='m-0 rounded-control bg-changed-soft px-2.5 py-2 text-small text-ink-2'>
+        <p className='m-0 rounded-corner bg-changed-soft px-2.5 py-2 text-small text-ink-2'>
           {t`${plural(reshaped, { one: '# file', other: '# files' })} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good.`}
         </p>
       )}

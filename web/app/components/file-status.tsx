@@ -25,14 +25,14 @@ const TITLES: Record<ShownStatus, MessageDescriptor> = {
   uploaded: msg`On the storage`
 }
 
-/* Each state a colour on its own tint, with a dot of it before the word, so a column of files reads
+/* Each state a colour, in its word and in a dot before it, on a white pill, so a column of files reads
    like a report. Only `changed` is outlined — the dot drawn as a ring — because it is the one asking
    to be dealt with rather than simply saying where a file has got to. */
 const TONE: Record<ShownStatus, string> = {
-  local: 'bg-local-soft text-local',
-  changed: 'bg-changed-soft text-changed',
-  processed: 'bg-proc-soft text-proc',
-  uploaded: 'bg-up-soft text-up'
+  local: 'text-local',
+  changed: 'text-changed',
+  processed: 'text-proc',
+  uploaded: 'text-up'
 }
 
 /* the state in words, for where there is no room for the chip */
@@ -43,7 +43,7 @@ const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 const StatusChip = ({ status, prepared = false }: { status: ShownStatus; prepared?: boolean }) =>
   prepared && status === 'processed' ? (
     <State
-      tone='bg-up-soft text-up'
+      tone='text-up'
       dot={false}
       title={i18n._(TITLES[status])}>
       {t`prepared`}

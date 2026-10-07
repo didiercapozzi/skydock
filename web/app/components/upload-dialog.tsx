@@ -74,7 +74,7 @@ const NOTE = 'text-micro leading-normal text-ink-3'
 
 /* a button with no box of its own, for what sits at the end of a line: take out, remove, leave out */
 const QUIET =
-  'inline-flex flex-none items-center gap-1 rounded-control font-semibold whitespace-nowrap text-ink-2 hover:bg-well hover:text-ink'
+  'inline-flex flex-none items-center gap-1 rounded-corner font-semibold whitespace-nowrap text-ink-2 hover:bg-well hover:text-ink'
 
 /* Each step keeps what is dragged from held at its top and lets what it is dropped on scroll beneath,
    so the thing being carried is never scrolled away from the place it is going. */
@@ -85,8 +85,7 @@ const SCROLL = 'flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto px-6.5 pt-px 
 const HELP = 'font-medium text-ink-3'
 
 /* a typed value in a dialog: a well with the text in the face file names are read in */
-const VALUE =
-  'h-9 rounded-control border-0 bg-well px-3 font-mono text-body tracking-title text-ink'
+const VALUE = 'h-9 rounded-corner border-0 bg-well px-3 font-mono text-body tracking-title text-ink'
 
 type Remove = { label: string; onClick: () => void }
 
@@ -109,7 +108,7 @@ const TakeOut = ({ remove }: { remove: Remove }) => (
 /* A step's heading: its number, quiet, and what it does. */
 const Heading = ({ n, children }: { n: string; children: React.ReactNode }) => (
   <span className='flex items-center gap-2.5'>
-    <span className='grid size-6.5 flex-none place-items-center self-center rounded-control bg-accent text-small font-bold text-on-accent'>
+    <span className='grid size-6.5 flex-none place-items-center self-center rounded-corner bg-accent text-small font-bold text-on-accent'>
       {n}
     </span>
     <h3 className='font-display m-0 text-subhead font-bold tracking-display'>{children}</h3>
@@ -181,7 +180,7 @@ const iconOfItem = (item: SendItem): IconName => (item.zip ? 'zip' : PART_ICONS[
 
 /* a drop target's look, quiet until something is held over it */
 const dropLook = (over: boolean, quiet: string) =>
-  over ? 'border border-dashed border-accent bg-accent-soft' : quiet
+  over ? 'border border-dashed border-pick bg-pick-soft' : quiet
 
 /* where something dragged in this dialog says what it is: a part in step one, items in step two */
 const carry = (e: React.DragEvent, what: string) => {
@@ -385,7 +384,7 @@ const UploadDialog = ({
               }}
               aria-label={partName(part)}
               title={`${aboutPart(part, parts, stem)} — ${t`press to put it in a new zip`}`}
-              className={`flex h-9 cursor-grab items-center gap-2 rounded-control px-3.5 font-bold ${
+              className={`flex h-9 cursor-grab items-center gap-2 rounded-corner px-3.5 font-bold ${
                 zipsIn(part) > 0 ? 'bg-up-soft text-up' : 'bg-well text-ink hover:bg-line'
               }`}>
               <Icon name={PART_ICONS[part]} />
@@ -432,7 +431,7 @@ const UploadDialog = ({
                   () => setOver(`zip:${at}`),
                   () => leave(`zip:${at}`)
                 )}
-                className={`flex flex-none flex-col gap-2.5 rounded-card px-4 py-3.5 ${dropLook(over === `zip:${at}`, 'bg-pane shadow-hairline')}`}>
+                className={`flex flex-none flex-col gap-2.5 rounded-corner px-4 py-3.5 ${dropLook(over === `zip:${at}`, 'bg-pane shadow-hairline')}`}>
                 <span
                   draggable
                   onDragStart={(e) => carry(e, `zip:${zip.ending}`)}
@@ -478,7 +477,7 @@ const UploadDialog = ({
                     className={`${INPUT} ${VALUE} w-30`}
                   />
                 </label>
-                <div className='flex flex-col rounded-control border-2 border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
+                <div className='flex flex-col rounded-corner border-2 border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
                   {inside.map((part) => (
                     <PartLine
                       key={part}
@@ -509,9 +508,9 @@ const UploadDialog = ({
             () => leave('new')
           )}
           title={t`Named ${stem}.….zip — you choose the end, or none.`}
-          className={`flex flex-none flex-col items-center gap-1.5 rounded-card px-4 text-center font-semibold text-ink-3 ${
+          className={`flex flex-none flex-col items-center gap-1.5 rounded-corner px-4 text-center font-semibold text-ink-3 ${
             plan.zips.length === 0 ? 'py-12' : 'py-4'
-          } ${over === 'new' ? 'border-2 border-dashed border-accent bg-accent-soft' : 'border-2 border-dashed border-ink-3'}`}>
+          } ${over === 'new' ? 'border-2 border-dashed border-pick bg-pick-soft' : 'border-2 border-dashed border-ink-3'}`}>
           <Icon
             name='zip'
             size={22}
@@ -553,7 +552,7 @@ const UploadDialog = ({
       </div>
       <div className={SCROLL}>
         {shown.length === 0 && (
-          <div className='flex flex-none flex-col items-center gap-1 rounded-card border-2 border-dashed border-ink-3 px-4 py-10 text-center text-body text-ink-3'>
+          <div className='flex flex-none flex-col items-center gap-1 rounded-corner border-2 border-dashed border-ink-3 px-4 py-10 text-center text-body text-ink-3'>
             <Icon
               name='place'
               size={22}
@@ -584,7 +583,7 @@ const UploadDialog = ({
                 () => setOver(p.name),
                 () => leave(p.name)
               )}
-              className={`flex flex-none flex-col overflow-hidden rounded-card ${dropLook(over === p.name, 'shadow-hairline')}`}>
+              className={`flex flex-none flex-col overflow-hidden rounded-corner ${dropLook(over === p.name, 'shadow-hairline')}`}>
               <span className='flex flex-wrap items-center gap-2.5 bg-well px-3.5 py-2.75'>
                 <Icon
                   name='place'
@@ -643,7 +642,7 @@ const UploadDialog = ({
                     aria-label={item.zip ? t`Inside ${item.name}` : undefined}
                     className='flex flex-col gap-1.5'>
                     <span
-                      className={`flex items-center gap-2.5 rounded-control px-2.5 py-1.5 ${item.holds[0] === 'film' ? 'bg-accent-soft' : ''}`}>
+                      className={`flex items-center gap-2.5 rounded-corner px-2.5 py-1.5 ${item.holds[0] === 'film' ? 'bg-accent-soft' : ''}`}>
                       <Icon
                         name={iconOfItem(item)}
                         size={16}
@@ -669,7 +668,7 @@ const UploadDialog = ({
                     {/* what a zip holds is set apart from what lands as it is: a box of its own, dashed
                         and on a different ground, under the zip */}
                     {item.zip && (
-                      <div className='ml-6.5 flex flex-col rounded-control border-2 border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
+                      <div className='ml-6.5 flex flex-col rounded-corner border-2 border-dashed border-ink-3 bg-well px-3 py-1.5 text-ink-2'>
                         {item.holds.map((part) => (
                           <PartLine
                             key={part}
@@ -701,7 +700,7 @@ const UploadDialog = ({
                 aria-label={t`Add a destination`}
                 value=''
                 onChange={(e) => e.target.value && setAdded([...added, e.target.value])}
-                className='h-7 cursor-pointer appearance-none rounded-control bg-transparent [&>option]:bg-pane pr-2.25 pl-7.25 font-bold text-ink-2'>
+                className='h-7 cursor-pointer appearance-none rounded-corner bg-transparent [&>option]:bg-pane pr-2.25 pl-7.25 font-bold text-ink-2'>
                 <option value=''>{t`Add a destination`}</option>
                 {hidden.map((p) => (
                   <option

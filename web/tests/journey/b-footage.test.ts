@@ -310,6 +310,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     expect(await j.page.getByText(/LRF|\._/).count(), 'what is not media is not listed').toBe(0)
 
     await recordPanels(j.page, 'Copying')
+    await listenToEvents(j.page)
     await j.page.getByRole('button', { name: 'Copy 3 files here' }).click()
     await j.page
       .getByText('copied, not uploaded', { exact: true })
@@ -318,8 +319,14 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
 
     const seen = await panelsSeen(j.page)
     const first = seen.find((panel) => panel.rows.length > 0)!
-    expect(first.rows, 'all three on the card named before the first lands').toHaveLength(3)
-    expect(first.summary).toContain('0 new files copied')
+    expect(first.rows, 'all three on the card named').toHaveLength(3)
+    /* before the first lands: asked of what the board is told, since a small file can land within the frame
+       the list is first drawn in, and the panel then shows both at once */
+    const listed = (await eventsHeard(j.page)).find(
+      (e) => e.kind === 'job' && e.type === 'camera-copy' && Array.isArray(e.rows)
+    )
+    expect(listed?.rows, 'all three on the card named').toHaveLength(3)
+    expect(listed?.done, 'before the first lands').toBe(0)
     expect(landedOriginals(j.world).sort()).toEqual([
       path.join('2026-09-05', 'DJI_20260905100000_0001_D.MP4'),
       path.join('2026-09-05', 'DJI_20260905100130_0003_D.JPG'),
@@ -356,6 +363,23 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
       .waitFor({ state: 'detached', timeout: 20_000 })
     expect(await asking().count(), 'a camera met once is not asked again').toBe(0)
     expect(snapshot(originalsDir(j.world)), 'nothing copied again').toEqual(before)
+    await quiet()
+  })
+
+  test('a camera plugged in can be ejected from the menu of its page, which lets it go as the desktop does and touches no file', async () => {
+    const before = snapshot(originalsDir(j.world))
+    await openCamera('Osmo Action')
+    await j.page.getByRole('button', { name: 'More' }).click()
+    await j.page.getByRole('button', { name: 'Eject' }).click()
+    await j.page.getByText('Osmo Action can be unplugged now.').waitFor()
+    await camera('Osmo Action').getByText('not connected').waitFor({ timeout: 20_000 })
+    expect(snapshot(originalsDir(j.world)), 'no file touched').toEqual(before)
+    expect(fs.existsSync(card('Osmo Action')), 'what is on the card is where it was').toBe(true)
+    /* put back in, as it was for the chapters after */
+    plug('Osmo Action')
+    await camera('Osmo Action')
+      .getByText('not connected')
+      .waitFor({ state: 'detached', timeout: 20_000 })
     await quiet()
   })
 
@@ -615,12 +639,13 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     await openCamera('Osmo Action')
     /* a picture beside a name is decoration for a screen reader, so it is found by what it shows */
     await eventually(() =>
-      j.page.evaluate(() =>
-        [...document.querySelectorAll<HTMLImageElement>('img[src^="/api/thumb/"]')].some(
-          (img) => img.naturalWidth > 0
-        )
+      j.page.evaluate(
+        () =>
+          [...document.querySelectorAll<HTMLImageElement>('img[src^="/api/thumb/"]')].every(
+            (img) => img.naturalWidth > 0
+          ) && document.querySelectorAll('img[src^="/api/thumb/"]').length > 0
       )
     ).toBe(true)
-    await j.quiet()
+    await quiet()
   })
 })

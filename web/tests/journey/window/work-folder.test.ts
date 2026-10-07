@@ -32,6 +32,20 @@ const listing = (folder: string) =>
     })
     .sort()
 
+/* what a folder holds once the board has finished drawing from it: the small pictures of a page are cut as the
+   page asks for them, so a listing taken the moment the board shows is one the folder is still changing under */
+const settled = async (folder: string) => {
+  let last = listing(folder)
+  await waitFor('the folder to stop changing', async () => {
+    await sleep(1500)
+    const now = listing(folder)
+    const same = now.join('\n') === last.join('\n')
+    last = now
+    return same
+  })
+  return last
+}
+
 windowDescribe('another work folder, and nothing cut off unasked', () => {
   const desk = useDesk('work-folder')
   const other = () => path.join(desk.root, 'Other')
@@ -54,9 +68,9 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
     fs.mkdirSync(other())
     await desk.launch({ state: 'sorted' })
     const behind = desk.world.output
-    const before = listing(behind)
     const page = await desk.board()
     await place(page, /Sion/).waitFor({ timeout: 60_000 })
+    const before = await settled(behind)
 
     await openWorkFolder(page)
     await waitFor('the dialog to say where the work is', async () =>

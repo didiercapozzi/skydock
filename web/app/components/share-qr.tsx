@@ -23,7 +23,7 @@ const ShareQr = ({ url, size = 220 }: { url: string; size?: number }) => {
       height={size}
       viewBox={`0 0 ${whole} ${whole}`}
       shapeRendering='crispEdges'
-      className='rounded-chip bg-white'>
+      className='rounded-corner bg-white'>
       <rect
         width={whole}
         height={whole}

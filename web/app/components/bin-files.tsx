@@ -105,7 +105,7 @@ const BinFiles = ({
         </Go>
       </div>
       {answered && (
-        <p className='m-0 flex items-center gap-2.5 rounded-control bg-well px-3 py-2 text-body font-medium text-ink-2'>
+        <p className='m-0 flex items-center gap-2.5 rounded-corner bg-well px-3 py-2 text-body font-medium text-ink-2'>
           <Icon
             name='bin'
             size={14}

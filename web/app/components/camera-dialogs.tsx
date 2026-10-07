@@ -47,7 +47,7 @@ const NewCameraDialog = ({
           ? t`SkyDock cannot say how many of its files are not on this machine yet. It will remember this camera, so it is in the list next time even when it is not plugged in.`
           : t`It holds ${plural(fresh, { one: '# file', other: '# files' })} that ${plural(fresh, { one: 'is', other: 'are' })} not on this machine yet. SkyDock will remember this camera, so it is in the list next time even when it is not plugged in.`}
       </p>
-      <label className='flex cursor-pointer items-start gap-3 rounded-control bg-well px-3.5 py-3'>
+      <label className='flex cursor-pointer items-start gap-3 rounded-corner bg-well px-3.5 py-3'>
         <input
           type='checkbox'
           checked={auto}

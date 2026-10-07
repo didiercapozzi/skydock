@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
+import { AboutDialog } from '../../app/components/about-dialog'
 import { BoardHeader, StatusBar } from '../../app/components/board-header'
 import { DisconnectDialog } from '../../app/components/disconnect-dialog'
 import { speak } from '../../app/i18n'
@@ -26,6 +27,7 @@ const header = (over: Partial<Frame> = {}) => {
     onTemplates: () => {},
     onWorkFolder: () => {},
     onShortcuts: () => {},
+    onAbout: () => {},
     find: () => [],
     proxies: { ready: 48, waiting: 2, total: 50 },
     jumps: { read: 50, total: 50 },
@@ -125,10 +127,23 @@ describe('the top of the board', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
 
-    for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Work folder…'])
+    for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Work folder…', 'About SkyDock…'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     await userEvent.keyboard('{Escape}')
     await expect.element(page.getByRole('group', { name: 'Settings' })).not.toBeInTheDocument()
+  })
+
+  test('says which version this is, from Settings', async () => {
+    const asked = vi.fn()
+    await header({ onAbout: asked })
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
+    await userEvent.click(page.getByRole('button', { name: 'About SkyDock…' }))
+    expect(asked).toHaveBeenCalledOnce()
+  })
+
+  test('says which version this is, in the dialog it opens', async () => {
+    render(createElement(AboutDialog, { onClose: () => {} }))
+    await expect.element(page.getByText(/^Version \d+\.\d+\.\d+/)).toBeVisible()
   })
 
   test('says which way files are drawn, and how the app is lit', async () => {

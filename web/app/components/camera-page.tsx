@@ -6,7 +6,7 @@ import { Icon } from './icons'
    plugged in, why there is nothing to look at. */
 
 const CameraSwitch = ({ auto, onChange }: { auto: boolean; onChange: (on: boolean) => void }) => (
-  <label className='flex cursor-pointer items-center gap-4 rounded-panel bg-pane px-4.5 py-3.5 shadow-hairline'>
+  <label className='flex cursor-pointer items-center gap-4 rounded-corner bg-pane px-4.5 py-3.5 shadow-hairline'>
     <input
       type='checkbox'
       role='switch'
@@ -32,7 +32,7 @@ const CameraSwitch = ({ auto, onChange }: { auto: boolean; onChange: (on: boolea
 )
 
 const AbsentCamera = ({ known }: { known: boolean }) => (
-  <div className='flex flex-col items-center gap-3 rounded-panel bg-pane px-8 py-10 text-center shadow-hairline'>
+  <div className='flex flex-col items-center gap-3 rounded-corner bg-pane px-8 py-10 text-center shadow-hairline'>
     <span className='grid size-16 place-items-center rounded-full bg-well text-ink-3'>
       <Icon
         name='camera'

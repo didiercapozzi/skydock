@@ -32,6 +32,7 @@ const covers: Record<string, string[]> = {
     'a camera that hands its files over is found by the DCIM inside one of its stores, named by that store, and said to be slower than a card reader, and its files cannot be looked at from the card'
   ],
   'Seeing what is on a camera': [
+    'a camera plugged in can be ejected from the menu of its page, which lets it go as the desktop does and touches no file',
     'a camera can be forgotten from its page, which asks first and touches no file, and is new again the next time it is plugged in',
     'a file not copied yet, or copied here and not uploaded, is not offered for deleting from the camera',
     'a file on a camera is looked at from the card without copying it, and only what lies under its DCIM folder can be asked for',

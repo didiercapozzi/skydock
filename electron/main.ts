@@ -8,14 +8,14 @@
    What this side is responsible for: where the work is kept, where the media tools are, and that
    nothing is left running when the window is closed. */
 
-import { spawn } from 'node:child_process'
+import type { WebContents } from 'electron'
+import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import updater from 'electron-updater'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
-import type { WebContents } from 'electron'
-import updater from 'electron-updater'
 import { z } from 'zod'
 
 /* Where every version of SkyDock has kept its settings and its storage session. Named rather than
@@ -332,7 +332,7 @@ const isPreviewAddress = (asked: string, board: string) => {
 let previewWindow: BrowserWindow | null = null
 
 /* what the window is before the page has drawn: the ground's own colour, so nothing flashes */
-const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a0f14' : '#e3edf1')
+const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a1119' : '#f8fbfe')
 
 const raise = (window: BrowserWindow) => {
   if (window.isMinimized()) window.restore()
@@ -354,7 +354,6 @@ const windowOptions = (zoom: number, size: { width: number; height: number }) =>
   minHeight: 600,
   autoHideMenuBar: true,
   frame: false,
-  backgroundColor: groundColour(),
   webPreferences: {
     preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
     zoomFactor: zoom
@@ -392,7 +391,10 @@ const openWindow = (address: string) => {
       }
       return {
         action: 'allow',
-        overrideBrowserWindowOptions: windowOptions(zoom, { width: 1360, height: 880 })
+        overrideBrowserWindowOptions: {
+          ...windowOptions(zoom, { width: 1360, height: 880 }),
+          backgroundColor: groundColour()
+        }
       }
     }
     return denyButOpenLinks(asked)

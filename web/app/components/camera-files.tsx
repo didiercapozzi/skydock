@@ -31,7 +31,7 @@ const STANDING = {
   missing: {
     label: msg`not copied yet`,
     many: msg`not copied yet`,
-    tone: 'bg-changed-soft text-changed',
+    tone: 'text-changed',
     ring: true,
     ink: 'text-accent',
     title: msg`Not copied here yet — it cannot be deleted from the camera`
@@ -39,21 +39,21 @@ const STANDING = {
   copied: {
     label: msg`copied, not uploaded`,
     many: msg`here, not uploaded`,
-    tone: 'bg-local-soft text-local',
+    tone: 'text-local',
     ink: 'text-local',
     title: msg`Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera`
   },
   binned: {
     label: msg`in the bin`,
     many: msg`here, put in the bin`,
-    tone: 'bg-bin-soft text-bin',
+    tone: 'text-bin',
     ink: 'text-bin',
     title: msg`Copied here and then put in the bin — can be deleted from the camera`
   },
   stored: {
     label: msg`on the storage`,
     many: msg`on the storage`,
-    tone: 'bg-up-soft text-up',
+    tone: 'text-up',
     ink: 'text-up',
     title: msg`Copied here and on the storage — can be deleted from the camera`
   }
@@ -128,7 +128,7 @@ const Confirm = ({
       <p className='m-0 text-body text-ink-2'>
         {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
       </p>
-      <p className='m-0 rounded-control bg-local-soft px-3.5 py-2.5 text-small text-ink-2'>
+      <p className='m-0 rounded-corner bg-local-soft px-3.5 py-2.5 text-small text-ink-2'>
         {t`They are not erased: they go to the bin,`} <span className='font-mono'>.trash/</span>
         {t`, kept as they sat on the card, and stay there until it is emptied by hand.`}
       </p>
@@ -324,7 +324,7 @@ const CameraFiles = ({
       className='flex flex-col gap-3'>
       {/* how far the card has got, counted — and, beside it, the one thing to do next about it */}
       {listing && (
-        <div className='flex items-center rounded-card bg-well py-3.5'>
+        <div className='flex items-center rounded-corner bg-well py-3.5'>
           {STATES.map((state, at) => (
             <span
               key={state}
@@ -380,7 +380,7 @@ const CameraFiles = ({
         {listing?.over === 'mtp' && (
           <span
             title={t`This camera hands its files over one request at a time rather than showing its card as a drive. Everything works; it is slower than the same card in a reader, which is worth knowing before a full card.`}
-            className='inline-flex h-chip items-center rounded-full bg-local-soft px-2.5 text-micro font-bold text-local'>
+            className='inline-flex h-chip items-center rounded-full bg-pane shadow-hairline px-2.5 text-micro font-bold text-local'>
             {t`handed over, not a drive — slower than a card reader`}
           </span>
         )}
@@ -445,7 +445,7 @@ const CameraFiles = ({
         )}
       </div>
       {listing && (
-        <p className='m-0 flex items-center gap-2.5 rounded-control bg-well px-3 py-2 text-body font-medium text-ink-2'>
+        <p className='m-0 flex items-center gap-2.5 rounded-corner bg-well px-3 py-2 text-body font-medium text-ink-2'>
           <Icon
             name='lock'
             size={14}
@@ -520,7 +520,7 @@ const CameraFiles = ({
                         e.stopPropagation()
                         setPreviewing(file.path)
                       }}
-                      className='tool-button rounded-full'>
+                      className='tool-button rounded-corner'>
                       <Icon
                         name='play'
                         size={12}

@@ -47,13 +47,13 @@ const StoragePlayer = ({ file, onClose }: { file: StorageFile; onClose: () => vo
         controls
         autoPlay
         aria-label={file.name}
-        className='max-h-[70vh] w-full rounded-card bg-black'
+        className='max-h-[70vh] w-full rounded-corner bg-black'
       />
     ) : (
       <img
         src={storageFileUrl(file.path)}
         alt={file.name}
-        className='max-h-[70vh] w-full rounded-card bg-black object-contain'
+        className='max-h-[70vh] w-full rounded-corner bg-black object-contain'
       />
     )}
     <p className='m-0 font-mono text-micro break-all text-ink-3'>{file.path}</p>
@@ -83,7 +83,7 @@ const LinkMark = ({ shareUrl }: { shareUrl: string | null }) => {
           aria-label={t`Copy the link`}
           title={shareUrl}
           onClick={() => void copy()}
-          className='inline-flex size-control-sm cursor-pointer items-center justify-center rounded-full border-0 bg-transparent p-0 hover:bg-well'>
+          className='inline-flex size-control-sm cursor-pointer items-center justify-center rounded-corner border-0 bg-transparent p-0 hover:bg-well'>
           <Icon
             name={copied ? 'check' : 'link'}
             size={14}
@@ -284,7 +284,7 @@ const StorageFolder = ({
       aria-label={t`On the storage`}
       /* what is up there is its own panel, apart from the files here above it: a tint, a hairline and a
          mark of the storage, so it is never taken for more of the list */
-      className='mt-10 rounded-panel bg-well/60 px-4 pt-3.5 pb-3 shadow-hairline'>
+      className='mt-10 rounded-corner bg-well/60 px-4 pt-3.5 pb-3 shadow-hairline'>
       <div className='flex flex-wrap items-center gap-3 pt-1 pb-2'>
         <h3 className='m-0 flex items-center gap-2 font-display text-heading font-bold tracking-display text-ink'>
           <Icon
@@ -385,7 +385,7 @@ const StorageFolder = ({
                   <>
                     {hereToo && (
                       <State
-                        tone={here ? 'bg-up-soft text-up' : 'bg-well text-up'}
+                        tone='text-up'
                         ring={!here}>
                         {here ? t`Here too` : t`Only there`}
                       </State>

@@ -1,10 +1,8 @@
 import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
-import { useState } from 'react'
 import { keepLanguage, spokenNow } from '../helpers/language'
 import type { Language } from '../helpers/language'
-import { AboutDialog } from './about-dialog'
 import { Seg } from './buttons'
 import { FindAnything } from './find-anything'
 import type { Found } from './find-anything'
@@ -77,6 +75,7 @@ const BoardHeader = ({
   onTemplates,
   onWorkFolder,
   onShortcuts,
+  onAbout,
   find
 }: {
   scanning: boolean
@@ -87,6 +86,7 @@ const BoardHeader = ({
   onWorkFolder: () => void
   /* every key the board knows */
   onShortcuts: () => void
+  onAbout: () => void
   /* anything on the board, by a piece of its name */
   find: (query: string) => Found[]
 }) => {
@@ -94,7 +94,6 @@ const BoardHeader = ({
   const tileSize = useTileSize()
   const theme = useTheme()
   const language = spokenNow()
-  const [about, setAbout] = useState(false)
   /* kept for the server too, and the page drawn again in it, from the server — what is going on
      there, an upload or a copy, is taken up again as after any reload */
   const speakIn = (next: Language) => {
@@ -102,139 +101,136 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <>
-      <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-panel isle-head px-3.5 max-desk:rounded-panel desk:rounded-tl-none wide:group-data-[docked]:rounded-tr-none desk:col-start-3 wide:col-end-6 desk:row-start-1'>
-        <button
-          type='button'
-          disabled={scanning}
-          onClick={onScan}
-          aria-label={t`Rescan cameras`}
-          title={t`Copy what is new on every camera plugged in — what is here already is passed over — and look through the work folder for files the board does not know yet`}
-          className={TOOL}>
-          <Icon
-            name='scan'
-            className={`text-ink-2 ${scanning ? 'animate-spin' : ''}`}
-          />
-          {scanning ? t`Scanning…` : t`Scan`}
-        </button>
-        <span className='mx-1.5 h-5 w-px bg-line' />
-        <span
-          role='group'
-          aria-label={t`How files are shown`}
-          className='inline-flex gap-1'>
-          {VIEWS.map(([option, name, icon]) => (
-            <button
-              key={option}
-              type='button'
-              aria-pressed={view === option}
-              aria-label={i18n._(name)}
-              title={i18n._(name)}
-              onClick={() => setFileView(option)}
-              className={`inline-flex h-control w-control items-center justify-center rounded-control ${
-                view === option ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-well'
-              }`}>
-              <Icon name={icon} />
-            </button>
-          ))}
-        </span>
-        {/* how big the thumbnails are, while they are what is shown — Ctrl or ⌘ with the wheel over
+    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-corner isle-head px-3.5 max-desk:rounded-corner desk:rounded-tl-none wide:group-data-[docked]:rounded-tr-none desk:col-start-3 wide:col-end-6 desk:row-start-1'>
+      <button
+        type='button'
+        disabled={scanning}
+        onClick={onScan}
+        aria-label={t`Rescan cameras`}
+        title={t`Copy what is new on every camera plugged in — what is here already is passed over — and look through the work folder for files the board does not know yet`}
+        className={TOOL}>
+        <Icon
+          name='scan'
+          className={`text-ink-2 ${scanning ? 'animate-spin' : ''}`}
+        />
+        {scanning ? t`Scanning…` : t`Scan`}
+      </button>
+      <span className='mx-1.5 h-5 w-px bg-line' />
+      <span
+        role='group'
+        aria-label={t`How files are shown`}
+        className='inline-flex gap-1'>
+        {VIEWS.map(([option, name, icon]) => (
+          <button
+            key={option}
+            type='button'
+            aria-pressed={view === option}
+            aria-label={i18n._(name)}
+            title={i18n._(name)}
+            onClick={() => setFileView(option)}
+            className={`inline-flex h-control w-control items-center justify-center rounded-corner ${
+              view === option ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-well'
+            }`}>
+            <Icon name={icon} />
+          </button>
+        ))}
+      </span>
+      {/* how big the thumbnails are, while they are what is shown — Ctrl or ⌘ with the wheel over
           them does the same */}
-        {view === 'grid' && (
-          <label
-            title={t`Thumbnail size — or Ctrl/⌘ and the mouse wheel over the thumbnails`}
-            className='ml-2 inline-flex items-center gap-1.5 text-small text-ink-3'>
-            <span aria-hidden='true'>▫</span>
-            <input
-              type='range'
-              aria-label={t`Thumbnail size`}
-              min={TILE_SIZE.min}
-              max={TILE_SIZE.max}
-              step={TILE_SIZE.step}
-              value={tileSize}
-              onChange={(e) => setTileSize(Number(e.target.value))}
-              className='w-24 accent-accent'
-            />
-            <span aria-hidden='true'>◻</span>
-          </label>
-        )}
-        <span className='flex-1' />
-        <FindAnything find={find} />
-        <span className='flex-1' />
-        <button
-          type='button'
-          aria-label={t`Keyboard shortcuts`}
-          title={t`Keyboard shortcuts (?)`}
-          onClick={onShortcuts}
-          className={`${TOOL} w-control justify-center px-0`}>
-          <Icon
-            name='keyboard'
-            className='text-ink-2'
+      {view === 'grid' && (
+        <label
+          title={t`Thumbnail size — or Ctrl/⌘ and the mouse wheel over the thumbnails`}
+          className='ml-2 inline-flex items-center gap-1.5 text-small text-ink-3'>
+          <span aria-hidden='true'>▫</span>
+          <input
+            type='range'
+            aria-label={t`Thumbnail size`}
+            min={TILE_SIZE.min}
+            max={TILE_SIZE.max}
+            step={TILE_SIZE.step}
+            value={tileSize}
+            onChange={(e) => setTileSize(Number(e.target.value))}
+            className='w-24 accent-accent'
           />
-        </button>
-        <SettingsMenu>
-          {(close) => (
-            <>
-              <SettingsRow label={t`Theme`}>
-                <Seg
-                  label={t`Theme`}
-                  value={theme}
-                  options={said(THEMES)}
-                  onPick={setTheme}
-                />
-              </SettingsRow>
-              <SettingsRow label={t`Language`}>
-                <Seg
-                  label={t`Language`}
-                  value={language}
-                  options={LANGUAGE_NAMES}
-                  onPick={speakIn}
-                />
-              </SettingsRow>
-              <div className='flex flex-col border-t border-line-2 pt-2'>
-                <MenuItem
-                  title={t`The editing templates a montage is made from — look them over, or bring one in`}
-                  onClick={() => {
-                    close()
-                    onTemplates()
-                  }}>
-                  {t`Templates…`}
-                </MenuItem>
-                <MenuItem
-                  title={t`The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in`}
-                  onClick={() => {
-                    close()
-                    onWorkFolder()
-                  }}>
-                  {t`Work folder…`}
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    close()
-                    onShortcuts()
-                  }}>
-                  {t`Keyboard shortcuts…`}
-                </MenuItem>
-                <MenuItem
-                  onClick={() => {
-                    close()
-                    setAbout(true)
-                  }}>
-                  {t`About…`}
-                </MenuItem>
-              </div>
-            </>
-          )}
-        </SettingsMenu>
-        <span className='mx-1.5 h-5 w-px bg-line' />
-        <DetailsToggle />
-        {/* the window's own buttons, at the top of the app; the space before them is what moves the window */}
-        <span className='min-w-3 self-stretch' />
-        <span className='relative z-40 flex items-center gap-1'>
-          <WindowControls />
-        </span>
-      </header>
-      {about && <AboutDialog onClose={() => setAbout(false)} />}
-    </>
+          <span aria-hidden='true'>◻</span>
+        </label>
+      )}
+      <span className='flex-1' />
+      <FindAnything find={find} />
+      <span className='flex-1' />
+      <button
+        type='button'
+        aria-label={t`Keyboard shortcuts`}
+        title={t`Keyboard shortcuts (?)`}
+        onClick={onShortcuts}
+        className={`${TOOL} w-control justify-center px-0`}>
+        <Icon
+          name='keyboard'
+          className='text-ink-2'
+        />
+      </button>
+      <SettingsMenu>
+        {(close) => (
+          <>
+            <SettingsRow label={t`Theme`}>
+              <Seg
+                label={t`Theme`}
+                value={theme}
+                options={said(THEMES)}
+                onPick={setTheme}
+              />
+            </SettingsRow>
+            <SettingsRow label={t`Language`}>
+              <Seg
+                label={t`Language`}
+                value={language}
+                options={LANGUAGE_NAMES}
+                onPick={speakIn}
+              />
+            </SettingsRow>
+            <div className='flex flex-col border-t border-line-2 pt-2'>
+              <MenuItem
+                title={t`The editing templates a montage is made from — look them over, or bring one in`}
+                onClick={() => {
+                  close()
+                  onTemplates()
+                }}>
+                {t`Templates…`}
+              </MenuItem>
+              <MenuItem
+                title={t`The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in`}
+                onClick={() => {
+                  close()
+                  onWorkFolder()
+                }}>
+                {t`Work folder…`}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  close()
+                  onShortcuts()
+                }}>
+                {t`Keyboard shortcuts…`}
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  close()
+                  onAbout()
+                }}>
+                {t`About SkyDock…`}
+              </MenuItem>
+            </div>
+          </>
+        )}
+      </SettingsMenu>
+      <span className='mx-1.5 h-5 w-px bg-line' />
+      <DetailsToggle />
+      {/* the window's own buttons, at the top of the app; the space before them is what moves the window */}
+      <span className='min-w-3 self-stretch' />
+      <span className='relative z-40 flex items-center gap-1'>
+        <WindowControls />
+      </span>
+    </header>
   )
 }
 
@@ -298,7 +294,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-1.75 whitespace-nowrap'
   return (
-    <footer className='drag-region mx-2.5 mb-2 desk:mx-0 desk:mb-0 desk:rounded-none flex h-control-sm flex-none items-center gap-5 rounded-control relative z-30 border-t border-edge bg-pane/60 px-3.5 desk:rounded-t-none text-micro font-semibold text-ink-2'>
+    <footer className='drag-region mx-2.5 mb-2 desk:mx-0 desk:mb-0 desk:rounded-none flex h-control-sm flex-none items-center gap-5 rounded-corner relative z-30 isle-foot px-3.5 desk:rounded-t-none text-micro font-semibold text-ink-2'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span
@@ -328,7 +324,7 @@ const StatusBar = ({
             onClick={link.onClick}
             className={
               link.mark
-                ? 'grid size-mark place-items-center rounded-bar text-ink-2 hover:bg-line hover:text-ink disabled:opacity-40'
+                ? 'grid size-mark place-items-center rounded-corner text-ink-2 hover:bg-line hover:text-ink disabled:opacity-40'
                 : 'text-accent-ink hover:underline disabled:opacity-60 disabled:no-underline'
             }>
             {link.mark === '⟳' ? (
@@ -355,7 +351,7 @@ const StatusBar = ({
         aria-pressed={transfers.open}
         title={t`What was sent and copied in, and how it went — even when it is all done`}
         onClick={transfers.onToggle}
-        className={`${item} rounded-chip px-1.5 hover:bg-line hover:text-ink ${transfers.open ? 'bg-line text-ink' : ''}`}>
+        className={`${item} rounded-corner px-1.5 hover:bg-line hover:text-ink ${transfers.open ? 'bg-line text-ink' : ''}`}>
         <Icon
           name='upload'
           size={12}
@@ -372,7 +368,7 @@ const StatusBar = ({
             className='text-accent'
           />
           {working.what}
-          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-bar bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-corner bg-line'>
             <i
               className='block h-full bg-accent'
               style={{ width: `${Math.round(working.part * 100)}%` }}
@@ -412,7 +408,7 @@ const StatusBar = ({
           className={item}>
           <span className='size-2.5 flex-none animate-spin rounded-full border-2 border-line-strong border-t-accent' />
           {t`Marks found ${read}/${clips}`}
-          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-bar bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-corner bg-line'>
             <i
               className='block h-full bg-accent transition-[width] duration-500'
               style={{ width: `${Math.round((read / clips) * 100)}%` }}
@@ -432,7 +428,7 @@ const StatusBar = ({
             aria-label={t`Smaller`}
             disabled={zoom.factor <= 0.5}
             onClick={zoom.smaller}
-            className='grid size-mark place-items-center rounded-chip hover:bg-line disabled:opacity-40'>
+            className='grid size-mark place-items-center rounded-corner hover:bg-line disabled:opacity-40'>
             −
           </button>
           <button
@@ -448,7 +444,7 @@ const StatusBar = ({
             aria-label={t`Bigger`}
             disabled={zoom.factor >= 3}
             onClick={zoom.bigger}
-            className='grid size-mark place-items-center rounded-chip hover:bg-line disabled:opacity-40'>
+            className='grid size-mark place-items-center rounded-corner hover:bg-line disabled:opacity-40'>
             +
           </button>
         </span>

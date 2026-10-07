@@ -47,7 +47,7 @@ const Shell = ({ children }: { children: React.ReactNode }) => {
         onKeyDown={(e) => {
           if (e.key === 'Escape' && drawer) setDetailsDrawer(false)
         }}
-        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-panel isle-side wide:rounded-none wide:border-l wide:border-edge wide:border-l wide:border-edge transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-wide:fixed max-wide:inset-y-0 max-wide:right-0 max-wide:z-30 max-wide:w-[min(340px,90vw)] max-wide:shadow-overlay wide:col-start-5 wide:row-start-2 ${
+        className={`group/side flex min-h-0 min-w-0 flex-col overflow-x-hidden overflow-y-auto rounded-corner isle-side wide:relative wide:z-10 wide:rounded-none transition-[translate,visibility] duration-300 ease-out motion-reduce:transition-none max-wide:fixed max-wide:inset-y-0 max-wide:right-0 max-wide:z-30 max-wide:w-[min(340px,90vw)] max-wide:shadow-overlay wide:col-start-5 wide:row-start-2 ${
           drawer ? '' : 'max-wide:invisible max-wide:translate-x-full'
         } ${column ? '' : 'wide:invisible'}`}>
         {/* as wide as the column is when open, so what is inside slides out of view rather than
@@ -151,7 +151,7 @@ const Part = ({
    a menu's button is wrapped once, so it is reached by what it does, and the entries of its open
    list are left as they are. */
 const BIG =
-  '[&>button]:h-control-lg [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-full [&>button]:px-3.5 [&>button]:text-lead [&_button[aria-expanded]]:h-control-lg [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-full [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-lead [&_button[aria-expanded]_svg]:size-mark'
+  '[&>button]:h-control-lg [&>button]:w-full [&>button]:justify-start [&>button]:gap-2.5 [&>button]:rounded-corner [&>button]:px-3.5 [&>button]:text-lead [&_button[aria-expanded]]:h-control-lg [&_button[aria-expanded]]:w-full [&_button[aria-expanded]]:justify-start [&_button[aria-expanded]]:gap-2.5 [&_button[aria-expanded]]:rounded-corner [&_button[aria-expanded]]:px-3.5 [&_button[aria-expanded]]:text-lead [&_button[aria-expanded]_svg]:size-mark'
 
 /* what can be done, two buttons to a row and a wide one across; a button alone in its row takes it */
 const Acts = ({ children }: { children: React.ReactNode }) => (
@@ -173,7 +173,7 @@ const BinButton = ({ children, onClick }: { children: React.ReactNode; onClick: 
   <button
     type='button'
     onClick={onClick}
-    className='inline-flex h-control items-center justify-center gap-2 rounded-full bg-pane px-3.5 text-body font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft'>
+    className='inline-flex h-control items-center justify-center gap-2 rounded-corner bg-pane px-3.5 text-body font-bold whitespace-nowrap text-bin shadow-card hover:bg-bin-soft'>
     {children}
   </button>
 )
@@ -214,9 +214,9 @@ const JumpMarks = ({ moments }: { moments: NonNullable<ManifestFile['moments']> 
   ]
   return (
     <div className='relative h-11.5'>
-      <div className='absolute inset-x-1 top-3 h-1.5 rounded-bar bg-well'>
+      <div className='absolute inset-x-1 top-3 h-1.5 rounded-corner bg-well'>
         <i
-          className='absolute inset-y-0 rounded-bar bg-(image:--gradient-marker)'
+          className='absolute inset-y-0 rounded-corner bg-(image:--gradient-marker)'
           style={{
             left: `${along(moments.exit)}%`,
             width: `${along(last) - along(moments.exit)}%`
@@ -241,7 +241,7 @@ const JumpMarks = ({ moments }: { moments: NonNullable<ManifestFile['moments']> 
 
 /* what holds the thing still — an edit, or being on the storage only — drawn with a lock */
 const Lock = ({ children }: { children: React.ReactNode }) => (
-  <p className='m-0 flex gap-2.5 rounded-control bg-well px-3 py-2.5 text-small text-ink-2'>
+  <p className='m-0 flex gap-2.5 rounded-corner bg-well px-3 py-2.5 text-small text-ink-2'>
     <Icon
       name='lock'
       size={14}
@@ -314,7 +314,7 @@ const SettingRow = ({
   children?: React.ReactNode
 }) => (
   <div className='flex items-center gap-3 border-t border-line-2 py-3 first:border-t-0'>
-    <span className='grid size-9.5 flex-none place-items-center rounded-control bg-accent-soft text-accent'>
+    <span className='grid size-9.5 flex-none place-items-center rounded-corner bg-accent-soft text-accent'>
       <Icon
         name={icon}
         size={18}
@@ -479,7 +479,7 @@ const JumpPanel = ({
                   key={name}
                   type='button'
                   onClick={() => fileTo.onFile(name)}
-                  className='flex h-11.5 w-full cursor-pointer items-center gap-2.5 rounded-full border-0 bg-pane p-2 text-left text-lead font-bold text-ink shadow-card hover:bg-accent-soft'>
+                  className='flex h-11.5 w-full cursor-pointer items-center gap-2.5 rounded-corner border-0 bg-pane p-2 text-left text-lead font-bold text-ink shadow-card hover:bg-accent-soft'>
                   <span className='grid size-control-sm flex-none place-items-center rounded-full bg-accent-soft text-accent'>
                     <Icon
                       name='place'
@@ -710,7 +710,7 @@ const StorageTwinPart = ({ name }: { name: string | null }) => {
   const dsm = twin.dsmHost ? dsmFolderUrl(twin.dsmHost, twin.file.path) : null
   return (
     <Part>
-      <div className='flex flex-col gap-2.5 rounded-card bg-up-soft px-4 py-3.5'>
+      <div className='flex flex-col gap-2.5 rounded-corner bg-up-soft px-4 py-3.5'>
         <b className='flex items-center gap-2'>
           <Icon
             name='storage'
@@ -727,7 +727,7 @@ const StorageTwinPart = ({ name }: { name: string | null }) => {
               target='_blank'
               rel='noreferrer'
               title={t`Show it in the storage’s own web interface, in a new tab`}
-              className='inline-flex h-control items-center justify-center gap-1.5 rounded-control bg-accent px-3.5 text-body font-bold whitespace-nowrap text-white no-underline'>
+              className='inline-flex h-control items-center justify-center gap-1.5 rounded-corner bg-accent px-3.5 text-body font-bold whitespace-nowrap text-white no-underline'>
               {t`Open in DSM`}
             </a>
           </span>
@@ -1007,7 +1007,7 @@ const ManyPanel = ({
               title={t`Clear (esc)`}
               onClick={onClear}>
               {t`Clear`}
-              <kbd className='rounded-chip bg-pane px-1.5 font-sans text-micro leading-4 font-semibold text-ink-3 shadow-hairline'>
+              <kbd className='rounded-corner bg-pane px-1.5 font-sans text-micro leading-4 font-semibold text-ink-3 shadow-hairline'>
                 esc
               </kbd>
             </Mini>

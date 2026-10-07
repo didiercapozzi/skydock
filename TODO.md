@@ -13,7 +13,7 @@ What is still to do. What was done is in git, not here. Do not start on an item 
 
 ## 1. Tests
 
-Nothing open.
+- [ ] **Journey, update chapter.** The window chapters run (`npm run test:journey:window`, one file at a time, 16 tests). What is left is 'It keeps itself current' (no "is ready" notification; an update offered once, never installed unasked): the packaged app's feed cannot be pointed at a local one, so it has no chapter.
 
 ## 2. Bugs found by the journey
 

@@ -117,7 +117,7 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={Math.round((row.part ?? 0) * 100)}
-            className='mt-0.75 mb-0.5 flex h-0.75 overflow-hidden rounded-bar bg-line'>
+            className='mt-0.75 mb-0.5 flex h-0.75 overflow-hidden rounded-corner bg-line'>
             <i
               className={`block h-full bg-accent transition-[width] duration-200`}
               style={{ width: `${Math.round((row.part ?? 0) * 100)}%` }}
@@ -188,7 +188,7 @@ const ProgressPanel = ({
   return (
     <aside
       aria-label={label}
-      className={`flex flex-col gap-2 rounded-panel bg-pane px-4 py-3.5 text-ink shadow-float ${
+      className={`flex flex-col gap-2 rounded-corner bg-pane px-4 py-3.5 text-ink shadow-float ${
         opened
           ? 'max-h-[min(78vh,720px)] w-[min(760px,calc(100vw-2rem))]'
           : 'max-h-[min(440px,60vh)] w-[min(330px,calc(100vw-2rem))]'
@@ -253,7 +253,7 @@ const ProgressPanel = ({
             aria-valuemax={100}
             aria-valuenow={percent}
             title={barTitle}
-            className='flex h-1 flex-none overflow-hidden rounded-bar bg-line'>
+            className='flex h-1 flex-none overflow-hidden rounded-corner bg-line'>
             <i
               className='block h-full bg-accent transition-[width] duration-200'
               style={{ width: `${percent}%` }}

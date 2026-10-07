@@ -31,4 +31,17 @@ const useWindowFrame = () => {
     : null
 }
 
-export { useWindowFrame }
+/* SkyDock's own window is transparent at its corners, so the app can be drawn with the one corner the whole
+   board has, and the page behind it lets the desktop show there. Maximised, the window fills the screen
+   and the corners are square. Says whether the app is to be drawn rounded. */
+const useRoundedWindow = () => {
+  const frame = useWindowFrame()
+  const own = frame !== null
+  useEffect(() => {
+    document.documentElement.classList.toggle('window-own', own)
+    return () => document.documentElement.classList.remove('window-own')
+  }, [own])
+  return own && !frame.maximized
+}
+
+export { useRoundedWindow, useWindowFrame }

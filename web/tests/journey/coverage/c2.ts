@@ -41,7 +41,8 @@ const covers: Record<string, string[]> = {
   'The toolbar and the status bar': [
     'scans from the toolbar, and the footage a camera copy left under the originals is found',
     'shows files as rows or as thumbnails, whichever was chosen last, for the whole board',
-    'puts what is set once behind Settings, and says in the status bar that the storage is not connected'
+    'puts what is set once behind Settings, and says in the status bar that the storage is not connected',
+    'says which version this is from About SkyDock in Settings, the one the installer is named after'
   ],
   'Light and dark': [
     'follows the machine while no choice has been made',

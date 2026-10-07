@@ -8,7 +8,7 @@ import { chromium } from 'playwright'
 import type { BrowserContext, Locator, Page } from 'playwright'
 import { afterAll, describe } from 'vitest'
 import { makeWorld } from '../app'
-import { makeBigClip, tool } from '../media'
+import { makeBigClip } from '../media'
 import type { World } from '../app'
 import { loadState } from '../saved'
 import { VIDEOS } from '../page'
@@ -354,20 +354,24 @@ const useDesk = (name: string) => {
         outer: [window.outerWidth, window.outerHeight]
       }
     })
-    /* the window's own size is told in the screen's pixels whatever size the board is drawn at, the page's
-       in the pixels of the drawing */
-    const wide = Math.round(where.outer[0]!)
-    const high = Math.round(where.outer[1]!)
-    const frame = windows().find(
-      (w) => Math.abs(w.width - wide) <= 2 && Math.abs(w.height - high) <= 2
+    /* the window's size as the page reports it is in the desktop's pixels when the board is drawn at 100% and
+       in the page's own when it is drawn bigger or smaller, so it is looked for as both */
+    const sizes = [where.scale, 1].map((by) => [
+      Math.round(where.outer[0]! * by),
+      Math.round(where.outer[1]! * by)
+    ])
+    const frame = windows().find((w) =>
+      sizes.some(
+        ([wide, high]) => Math.abs(w.width - wide!) <= 2 && Math.abs(w.height - high!) <= 2
+      )
     )
     if (!frame)
       throw new Error(
-        `no window on the screen is ${wide}x${high}, the size of the page asked about`
+        `no window on the screen is ${sizes.map((s) => s.join('x')).join(' or ')}, the size of the page asked about`
       )
     const border = {
-      x: (where.outer[0]! - where.inner[0]! * where.scale) / 2,
-      y: (where.outer[1]! - where.inner[1]! * where.scale) / 2
+      x: (frame.width - where.inner[0]! * where.scale) / 2,
+      y: (frame.height - where.inner[1]! * where.scale) / 2
     }
     return {
       x: frame.x + border.x + where.x * where.scale,
@@ -464,7 +468,7 @@ const useDesk = (name: string) => {
       seconds
     )
 
-  /* The machine's own folder picker answered the way a person does: the location typed, and Open pressed until it
+  /* The machine's own folder picker answered the way a person does: the location typed, and Enter until it
      closes. Closing it without choosing is Escape. */
   const chooseFolder = async (title: string, folder: string) => {
     const picker = await dialog(title)
@@ -474,6 +478,7 @@ const useDesk = (name: string) => {
     await sleep(300)
     pointer('type', '--delay', '30', folder)
     await sleep(300)
+    /* the Open button by its accelerator: Return in the location bar closes this GTK picker as if cancelled */
     for (let attempt = 0; attempt < 4; attempt++) {
       key('alt+o')
       await sleep(900)
@@ -583,10 +588,10 @@ const useDesk = (name: string) => {
   }
 }
 
-/* The clips of a saved work folder made long, under the same names and times, so that processing them takes
-   long enough for a person (or a test) to be in the middle of it: a short full-size clip played over and
-   over, copied rather than encoded again so that it is made quickly. */
-const lengthenFootage = (world: World, seconds = 1800) => {
+/* The clips of a saved work folder made big and turned, under the same names and times, so that processing
+   them takes long enough for a person (or a test) to be in the middle of it: a camera's size, and a re-encode
+   rather than a copy through, which is done in a moment. */
+const lengthenFootage = (world: World, seconds = 20) => {
   const clips = fs
     .readdirSync(path.join(world.output, 'original_files'), { recursive: true })
     .map(String)
@@ -594,31 +599,16 @@ const lengthenFootage = (world: World, seconds = 1800) => {
   for (const clip of clips) {
     const file = path.join(world.output, 'original_files', clip)
     const { atime, mtime } = fs.statSync(file)
-    const short = `${file}.short.mp4`
-    makeBigClip(short, mtime.toISOString().slice(0, 19), {
-      seconds: 20,
-      size: '1920x1080',
-      fast: true
-    })
-    execFileSync(tool('ffmpeg'), [
-      '-y',
-      '-v',
-      'error',
-      '-stream_loop',
-      String(Math.ceil(seconds / 20)),
-      '-i',
-      short,
-      '-c',
-      'copy',
-      '-t',
-      String(seconds),
-      '-f',
-      'mp4',
-      file
-    ])
-    fs.rmSync(short)
+    makeBigClip(file, mtime.toISOString().slice(0, 19), { seconds, size: '1920x1080', fast: true })
     fs.utimesSync(file, atime, mtime)
   }
+  /* and every one turned, which is what makes preparing it a re-encode and not a copy through */
+  const record = path.join(world.output, 'groups.json')
+  const kept = JSON.parse(fs.readFileSync(record, 'utf8')) as {
+    groups: { files: { rotation?: number | null }[] }[]
+  }
+  for (const group of kept.groups) for (const file of group.files) file.rotation = 180
+  fs.writeFileSync(record, JSON.stringify(kept))
 }
 
 /* What a page is waiting to say: an element's text, an attribute, whether it can be pressed — looked at until

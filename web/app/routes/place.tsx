@@ -67,6 +67,7 @@ import {
 } from '../helpers/places'
 import type { Place } from '../helpers/places'
 import { routingEngine, useSafeSearchParams } from '../helpers/routing'
+import { refusalSchema } from '../hooks/useBoardState'
 import { GROUPINGS, cardsOf, sectionsOf } from '../helpers/sections'
 import { boardViewSchema } from '../helpers/view'
 import { useCameraCopying } from '../hooks/liveStore'
@@ -170,6 +171,18 @@ const Place = () => {
   const cameraHere =
     place.kind === 'camera' ? board.cameras.find((c) => c.key === place.name) : undefined
   const { looking, query, family, openCard, sections, plain } = folder
+  /* Let go of as the desktop lets go of one: unmounted, so it can be unplugged. What the machine says when it
+     cannot is said as it is — a card still being read is the usual reason. */
+  const ejectCamera = async (mount: string, name: string) => {
+    setNote(null)
+    const raw = await routingEngine
+      .action({ url: '/api/camera', actionArgs: { eject: mount } })
+      .catch(() => null)
+    const refused = refusalSchema.safeParse(raw)
+    if (refused.success)
+      setProblem(refused.data.globalErrors?.[0] ?? t`${name} could not be ejected.`)
+    else setNote(t`${name} can be unplugged now.`)
+  }
   const kind = looking.kind ?? 'all'
 
   /* The jump whose card is open: its files are what is listed and its card is the one lit, so it is
@@ -358,21 +371,39 @@ const Place = () => {
                         : t`Not in the list`
                   }
                   menu={
-                    knownCamera
+                    cameraHere || knownCamera
                       ? (close) => (
-                          <MenuItem
-                            icon='bin'
-                            danger
-                            onClick={() => {
-                              setDialog({
-                                kind: 'forget-camera',
-                                key: knownCamera.key,
-                                name: knownCamera.name
-                              })
-                              close()
-                            }}>
-                            {t`Forget this camera…`}
-                          </MenuItem>
+                          <>
+                            {cameraHere && (
+                              <MenuItem
+                                icon='eject'
+                                title={t`Let go of it as the desktop does, so it can be unplugged — nothing on it is touched`}
+                                onClick={() => {
+                                  close()
+                                  void ejectCamera(
+                                    cameraHere.mount,
+                                    knownCamera?.name ?? placeLabel(place)
+                                  )
+                                }}>
+                                {t`Eject`}
+                              </MenuItem>
+                            )}
+                            {knownCamera && (
+                              <MenuItem
+                                icon='bin'
+                                danger
+                                onClick={() => {
+                                  setDialog({
+                                    kind: 'forget-camera',
+                                    key: knownCamera.key,
+                                    name: knownCamera.name
+                                  })
+                                  close()
+                                }}>
+                                {t`Forget this camera…`}
+                              </MenuItem>
+                            )}
+                          </>
                         )
                       : undefined
                   }

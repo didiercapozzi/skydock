@@ -91,13 +91,13 @@ type EmailSubject = EmailFacts & { shareUrl: string }
 /* the quiet name beside a field, and the field itself: a tall, calm box across the column */
 const EYEBROW = 'text-micro font-bold text-ink-3'
 const FIELD =
-  'h-9.5 min-w-0 flex-1 rounded-control border-0 bg-well px-3 text-body text-ink placeholder:font-normal placeholder:text-ink-3'
+  'h-9.5 min-w-0 flex-1 rounded-corner border-0 bg-well px-3 text-body text-ink placeholder:font-normal placeholder:text-ink-3'
 /* the email's toolbar: small and flat, lit only under the pointer */
 const TOOL =
-  'grid h-7 w-7 place-items-center rounded-control text-body text-ink-2 hover:bg-well hover:text-ink'
+  'grid h-7 w-7 place-items-center rounded-corner text-body text-ink-2 hover:bg-well hover:text-ink'
 /* a quiet button, for what is at hand without asking to be pressed */
 const QUIET =
-  'inline-flex h-7 items-center rounded-control px-2.25 text-body font-medium text-ink-2 hover:bg-well hover:text-ink'
+  'inline-flex h-7 items-center rounded-corner px-2.25 text-body font-medium text-ink-2 hover:bg-well hover:text-ink'
 
 const sentLabel = (at: number) => new Date(at * 1000).toLocaleDateString('de-CH')
 
@@ -406,7 +406,7 @@ const EmailDialog = ({
               />
             </label>
             {writingTemplate && (
-              <p className='m-0 rounded-r-chip border-l-3 border-accent bg-accent-soft px-3 py-2.25 text-small text-ink-2'>
+              <p className='m-0 rounded-r-corner border-l-3 border-pick bg-pick-soft px-3 py-2.25 text-small text-ink-2'>
                 <b className='text-ink'>{t`The template for every email.`}</b>{' '}
                 {t`What is written here is kept on this machine and drafts every email; each`}{' '}
                 {'{variable}'}{' '}
@@ -424,7 +424,7 @@ const EmailDialog = ({
                 className={`${FIELD} font-semibold`}
               />
             </label>
-            <div className='flex min-h-75 flex-1 flex-col overflow-hidden rounded-card border border-line-2'>
+            <div className='flex min-h-75 flex-1 flex-col overflow-hidden rounded-corner border border-line-2'>
               <div className='flex flex-none flex-wrap items-center gap-0.5 border-b border-line-2 bg-well px-2 py-1.5'>
                 {/* pressed without taking the caret out of the email, so what is picked stays picked */}
                 <span
@@ -477,7 +477,7 @@ const EmailDialog = ({
                     aria-label={t`Put in a variable`}
                     value=''
                     onChange={(e) => e.target.value && putVariable(e.target.value)}
-                    className='ml-1.5 h-7 rounded-control border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
+                    className='ml-1.5 h-7 rounded-corner border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
                     <option value=''>{t`Put in a variable…`}</option>
                     {EMAIL_VARIABLES.map((variable) => {
                       const here = values[variable.name]
@@ -574,14 +574,14 @@ const EmailDialog = ({
               {t`${firstname} can take the link with a phone, before the email has even gone.`}
             </span>
             {showingQr ? (
-              <span className='self-start rounded-card border border-line-2 bg-white p-1.5'>
+              <span className='self-start rounded-corner border border-line-2 bg-white p-1.5'>
                 <ShareQr
                   url={shareUrl}
                   size={196}
                 />
               </span>
             ) : (
-              <span className='grid h-52.5 w-52.5 place-items-center rounded-card border border-dashed border-line-strong'>
+              <span className='grid h-52.5 w-52.5 place-items-center rounded-corner border border-dashed border-line-strong'>
                 <Mini
                   pressed={false}
                   title={t`The link as a QR code, for a phone to take it now`}
@@ -610,7 +610,7 @@ const EmailDialog = ({
             {canRecord && (
               <div
                 role={opened && !emailed ? 'status' : undefined}
-                className='mt-auto flex flex-col gap-2 rounded-card border border-line-2 bg-pane p-4'>
+                className='mt-auto flex flex-col gap-2 rounded-corner border border-line-2 bg-pane p-4'>
                 {emailed ? (
                   <>
                     <span className='text-title leading-none font-semibold tracking-title text-up'>

@@ -185,9 +185,10 @@ const panelsSeen = async (page: Page) =>
     (seen) => panelSchema.parse(JSON.parse(seen))
   )
 
-/* The silent-break check of a page that lists a camera's files, but for the small picture of each file, which
-   the server does not find: it looks for it among the work folder's files, and a card is not one. Every other
-   failed request and every console error still counts. */
+/* The silent-break check of a page that lists a camera's files, but for the small picture of a file on a card:
+   a card taken out while its page was drawing them leaves pictures that can no longer be had, which the check
+   would otherwise count when it asks for them again. A chapter that is about those pictures looks at each one.
+   Every other failed request and every console error still counts. */
 const cardQuiet = (page: Page, world: World) => {
   const seen = watch(page)
   const ofCard = (problem: string) =>

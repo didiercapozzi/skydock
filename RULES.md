@@ -191,7 +191,11 @@ Where cameras are mounted is told to SkyDock when it starts, and telling it noth
 **Seeing what is on a camera.** Every camera SkyDock has met is listed at the foot of the menu — a green dot
 while it is plugged in, with how many new files it holds, and greyed as _not connected_ when it is not, like
 a wifi network a phone remembers. A camera can be forgotten from its page, which asks first and touches
-no file: it is then new again the next time it is plugged in. Its page has the switch _Copy new files
+no file: it is then new again the next time it is plugged in. A camera that is plugged in can be
+_ejected_ from the menu on its page, as the desktop ejects a drive: it is let go of — unmounted, and powered
+down where the machine can — so it can be pulled out, and nothing on it is touched. It is refused while a
+camera is being copied, and when the machine says the camera is still in use, it says so as the machine did.
+Its page has the switch _Copy new files
 automatically_, and lists every photo and video on its card, each saying how far it has got:
 not copied yet, copied here but not uploaded, copied here and then put in the bin, or on the storage —
 copied read by the same rule the copy uses to pass a file over, and in the bin read by the file's bytes,
@@ -487,8 +491,11 @@ come back to, and a trim nobody saved is not.
 (the box to narrow by name opens when it is pressed, and stays while something is typed in it) and a ⋯ menu
 holding what is set once — choosing its storage folder, taking it off the board, resetting Fresh files.
 Under that sits one card saying in a sentence where things stand — how many files need processing, are
-ready to upload, are all on the storage (then offering to free space, which asks first), or how many jumps
-are waiting for a home — with a slim bar of how many of the files this machine holds are on the storage (a file freed from here is only on the storage and not counted) and the one button that goes next.
+ready to upload, are all on the storage, or how many jumps
+are waiting for a home — with a slim bar of how many of the files this machine holds are on the storage (a file freed from here is only on the storage and not counted) and the one button that goes next. Once
+some of the files are on the storage, the offer to free space, which asks first, stands beside that button
+whatever is still to process or upload; when the card is too narrow for the sentence, the bar and the
+buttons, the buttons go under the sentence rather than squeeze it out.
 A destination with no files yet says so, and asks where it should go. The list has no column headings and no
 choice of kind: each file is a row with its picture, name, time and size, and a day whose files are all on
 the storage is folded into one line, opened by a click; each row is a box of its own. Fresh files shows
@@ -810,7 +817,9 @@ are set in Sora, the rest in Plus Jakarta Sans, and file names in JetBrains Mono
 the same design on deep navy. The toolbar holds what is used every day:
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
 knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
-an About saying who made it — Capo, with a link to donkeyfall.com that opens in the machine's own browser — and under what licence. The status bar says what is going on: the storage — whether it is connected, as whom
+_About SkyDock_, which says which version this is — the one the installer is named after — who made it
+(Capo, with a link to donkeyfall.com that opens in the machine's own browser) and under what licence. The
+status bar says what is going on: the storage — whether it is connected, as whom
 and to what, a way to check what it holds now, and a way to disconnect — what is being copied or
 uploaded and how far, how many clips still wait for their proxy, and how big the board is drawn. The
 storage is named the way somebody would say it, who and where: the account the session was opened
