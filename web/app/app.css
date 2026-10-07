@@ -307,6 +307,11 @@
     height: 100%;
   }
 
+  html.window-own,
+  html.window-own body {
+    background: transparent;
+  }
+
   body {
     background: var(--color-ground);
     color: var(--color-ink);

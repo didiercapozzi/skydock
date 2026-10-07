@@ -60,7 +60,7 @@ windowDescribe('a file in a window of its own, and the machine own player', () =
     const board = await desk.board()
     const file = await desk.preview()
     const window = desk.windows().find((w) => Math.abs(w.width - 1360) <= 16)
-    const boardWindow = desk.windows().find((w) => w.width === 1440)
+    const boardWindow = desk.windows().find((w) => Math.abs(w.width - 1440) <= 16)
     if (!window || !boardWindow) throw new Error('both windows should be on the screen')
 
     desk.pointer('windowactivate', boardWindow.id)

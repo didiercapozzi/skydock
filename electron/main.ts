@@ -1,11 +1,11 @@
-import { spawn } from 'node:child_process'
+import type { WebContents } from 'electron'
+import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import updater from 'electron-updater'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
-import type { WebContents } from 'electron'
-import updater from 'electron-updater'
 import { z } from 'zod'
 
 app.setPath('userData', path.join(app.getPath('appData'), 'ch.skydock.app'))
@@ -279,7 +279,6 @@ const openWindow = (address: string) => {
     minHeight: 600,
     autoHideMenuBar: true,
     frame: false,
-    backgroundColor: groundColour(),
     webPreferences: {
       preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
       zoomFactor: zoom

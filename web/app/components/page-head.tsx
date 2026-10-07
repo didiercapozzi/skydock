@@ -67,7 +67,7 @@ const StatusCard = ({
       </div>
     )}
     {children && (
-      <div className='ml-auto flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-full [&_button]:px-4 [&_button]:text-lead'>
+      <div className='ml-auto flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-corner [&_button]:px-4 [&_button]:text-lead'>
         {children}
       </div>
     )}
@@ -75,7 +75,7 @@ const StatusCard = ({
 )
 
 const SEARCH =
-  'inline-flex h-control-lg flex-none items-center gap-2 rounded-full border-0 bg-pane px-4 text-lead font-semibold text-accent-ink shadow-card hover:bg-accent-soft'
+  'inline-flex h-control-lg flex-none items-center gap-2 rounded-corner border-0 bg-pane px-4 text-lead font-semibold text-accent-ink shadow-card hover:bg-accent-soft'
 
 const PageHead = ({
   tile,
@@ -145,7 +145,7 @@ const PageHead = ({
         </div>
         {onQuery &&
           (showSearch ? (
-            <label className='flex h-control-lg w-60 items-center gap-2.5 rounded-full bg-well px-4 text-ink-3 focus-within:shadow-focus'>
+            <label className='flex h-control-lg w-60 items-center gap-2.5 rounded-corner bg-well px-4 text-ink-3 focus-within:shadow-focus'>
               <Icon
                 name='search'
                 size={16}
