@@ -487,8 +487,11 @@ come back to, and a trim nobody saved is not.
 (the box to narrow by name opens when it is pressed, and stays while something is typed in it) and a ⋯ menu
 holding what is set once — choosing its storage folder, taking it off the board, resetting Fresh files.
 Under that sits one card saying in a sentence where things stand — how many files need processing, are
-ready to upload, are all on the storage (then offering to free space, which asks first), or how many jumps
-are waiting for a home — with a slim bar of how many of the files this machine holds are on the storage (a file freed from here is only on the storage and not counted) and the one button that goes next.
+ready to upload, are all on the storage, or how many jumps
+are waiting for a home — with a slim bar of how many of the files this machine holds are on the storage (a file freed from here is only on the storage and not counted) and the one button that goes next. Once
+some of the files are on the storage, the offer to free space, which asks first, stands beside that button
+whatever is still to process or upload; when the card is too narrow for the sentence, the bar and the
+buttons, the buttons go under the sentence rather than squeeze it out.
 A destination with no files yet says so, and asks where it should go. The list has no column headings and no
 choice of kind: each file is a row with its picture, name, time and size, and a day whose files are all on
 the storage is folded into one line, opened by a click; each row is a box of its own. Fresh files shows

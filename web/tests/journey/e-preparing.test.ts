@@ -131,8 +131,8 @@ describe('preparing a destination whose clips are large', () => {
       .toBe(true)
     await j.page.getByRole('button', { name: 'Cancel', exact: true }).click()
     await see('3 files need processing', 30_000)
-    await processButton().waitFor()
-    expect(await processButton().isEnabled()).toBe(true)
+    /* the button comes back once the stop is through: the sentence can say so a moment before */
+    await expect.poll(() => processButton().isEnabled(), { timeout: 30_000 }).toBe(true)
     const left = fs.readdirSync(copies())
     expect(left.length, 'the copies finished stay, the one under way is gone').toBeLessThan(3)
     expect(left.every((name) => name.endsWith('.mp4'))).toBe(true)

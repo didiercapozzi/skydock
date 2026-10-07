@@ -5,7 +5,7 @@ import type { IconName } from './icons'
 import { Menu } from './settings-menu'
 
 /* The head of a folder's page, kept to what is needed to start: what it is, a way to search, the
-   folder's own menu, then one card that says in a sentence where things stand and holds the one button
+   folder's own menu, then one card that says in a sentence where things stand and holds the button
    that moves them on. Nothing else — the facts about what is picked are in the panel at the right, and
    open on demand. */
 
@@ -24,7 +24,7 @@ const BADGE: Record<Tone, string> = {
   plain: 'bg-pane text-accent-ink shadow-soft'
 }
 
-/* One sentence, one bar, one button. `progress` is how many of the whole are done, drawn as a slim bar. */
+/* One sentence, one bar, the button that goes next (and freeing, where it can be done). `progress` is how many of the whole are done, drawn as a slim bar. */
 const StatusCard = ({
   tone,
   icon,
@@ -42,7 +42,8 @@ const StatusCard = ({
   /* the button, or buttons, that move it on */
   children?: React.ReactNode
 }) => (
-  <div className={`flex items-center min-h-16 gap-3.5 rounded-panel px-4 py-2.5 ${CARD[tone]}`}>
+  <div
+    className={`flex flex-wrap items-center min-h-16 gap-3.5 rounded-panel px-4 py-2.5 ${CARD[tone]}`}>
     <span className={`grid size-9 flex-none place-items-center rounded-full ${BADGE[tone]}`}>
       <Icon
         name={icon}
@@ -50,7 +51,8 @@ const StatusCard = ({
         weight={tone === 'done' ? 2.6 : 1.9}
       />
     </span>
-    <div className='min-w-0 flex-1'>
+    {/* the sentence keeps room to be read: where the bar and the buttons leave too little, the buttons go under it */}
+    <div className='min-w-32 flex-1'>
       <h2 className='m-0 truncate font-display text-title font-semibold tracking-title text-ink'>
         {title}
       </h2>
@@ -74,7 +76,7 @@ const StatusCard = ({
       </div>
     )}
     {children && (
-      <div className='flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-full [&_button]:px-4 [&_button]:text-lead'>
+      <div className='ml-auto flex flex-none flex-wrap items-center gap-2 [&_button]:h-9 [&_button]:rounded-full [&_button]:px-4 [&_button]:text-lead'>
         {children}
       </div>
     )}
