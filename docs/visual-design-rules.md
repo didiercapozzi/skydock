@@ -68,8 +68,7 @@ Ink is a dark blue, never black and never grey.
 | Accent, darker (pressed, section headings) | `#0762ab` |
 | Accent soft (a chevron's disc, an active toolbar button) | `#e4f1fc` |
 | Pick (whatever is selected, picked or chosen: a card's ring, a row's ring, a ticked box, a chosen option, the keyboard's outline) | `#56a9e6` — a lighter blue than the accent, with `#e4f1fc` (`pick-soft`) behind a chosen option; `#6fd0e6` in the dark theme |
-| Accent gradient (the logo tile) | `linear-gradient(135deg, #43b0f5, #0b7fd6)` |
-| The main button's fill (white text on it) | `linear-gradient(135deg, #1a8be0, #0b72c8)` — darker than the logo's so the white text reads |
+| The main button's fill (white text on it) | `linear-gradient(135deg, #1a8be0, #0b72c8)` — dark enough for the white text to read |
 
 ### 2.4 State colours
 
@@ -152,7 +151,7 @@ A narrower window folds the details into a drawer as before (RULES.md, _The boar
 
 ### 5.2 Left panel
 
-- **Brand:** a 32 px tile in the accent gradient with a white mark, then _SkyDock_ in 18 px, 800. The row is 56 px high, level with the header.
+- **Brand:** a 32 px pale tile (the pane colour, a divider-colour hairline, the one corner) holding the mark in the accent colour — a play button hanging under a canopy, its lines running to the centre of the play with a small gap before it — then _SkyDock_ in 18 px, 800. The row is 56 px high, level with the header.
 - **Sections** (_Work_, _Destinations_, _Montages_, _Elsewhere_): a small capital heading, then its items.
 - **Item:** 42 px high, a 30 px icon tile at the left (white, accent icon), the name, and a badge at the right when there is something to say.
 - **Selected item:** a white card with `shadow-card`, the name in bold, and its icon tile turned solid accent with a white icon.
@@ -227,7 +226,7 @@ All buttons use the one corner (10) — not a pill — unless stated, are **opaq
 | Ordinary (_Search_, _Select its files_) | White, accent-dark text, 700; 34–42 px high |
 | Icon button | square, white, accent icon |
 | Destination | 46 px white; at the left a 30 px accent-soft disc with a folder icon, the name in bold, at the right a 28 px accent-soft disc with a chevron |
-| The main button (_Make a montage…_) | 48 px in the accent gradient, white 700 text at the left, a white-at-28 % disc with a chevron at the right, a blue glow |
+| The main button (_Make a montage…_) | 48 px filled with its own gradient, white 700 text at the left, a white-at-28 % disc with a chevron at the right, a blue glow |
 | Letting go (_Delete jump_) | the ordinary button with red text, white like the rest; never filled red |
 | Pill (state: _to file_, _Local_, _processed_, _uploaded_) | white with a hairline ring, 24 px high (22 on a card), radius 99, 12 px / 600; the state's colour only in its word and its dot — amber for local, blue for processed, green for uploaded |
 | Hover | a white button takes the accent-soft fill |
