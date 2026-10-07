@@ -30,7 +30,7 @@ const FirstScan = ({
   return (
     <div className='ground flex h-screen flex-col overflow-hidden'>
       <WindowBar />
-      <main className='mx-2.5 mb-2.5 grid flex-1 place-items-center overflow-auto rounded-panel bg-pane p-6 shadow-card'>
+      <main className='mx-2.5 mb-2.5 grid flex-1 place-items-center overflow-auto rounded-corner bg-pane p-6 shadow-card'>
         <div className='flex max-w-115 flex-col items-center gap-4 text-center'>
           {scanning || !note ? (
             <>
@@ -52,13 +52,13 @@ const FirstScan = ({
                 problem={problem}
                 onClose={onClose}
                 onOpen={onOpen}
-                className='rounded-chip border px-2.5 py-1.75 text-left'>
+                className='rounded-corner border px-2.5 py-1.75 text-left'>
                 {note}
               </Notice>
               <button
                 type='button'
                 onClick={onScan}
-                className='rounded-chip border border-accent bg-accent px-2.75 py-1.25 text-body font-medium text-white'>
+                className='rounded-corner border border-accent bg-accent px-2.75 py-1.25 text-body font-medium text-white'>
                 {t`Scan`}
               </button>
             </>

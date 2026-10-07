@@ -189,7 +189,7 @@ const StepMeter = ({
       {steps.map((step, i) => (
         <i
           key={step.name}
-          className={`block h-1 min-w-2.5 flex-1 rounded-bar ${
+          className={`block h-1 min-w-2.5 flex-1 rounded-corner ${
             step.done ? 'bg-up' : i === at ? 'bg-accent' : 'bg-line'
           }`}
         />
@@ -255,7 +255,7 @@ const StepLine = ({
             </b>
             {i < steps.length - 1 && (
               <span
-                className={`h-0.75 w-6.5 rounded-bar ${steps[i + 1]?.done ? 'bg-up' : 'bg-line'}`}
+                className={`h-0.75 w-6.5 rounded-corner ${steps[i + 1]?.done ? 'bg-up' : 'bg-line'}`}
               />
             )}
           </li>
@@ -270,11 +270,11 @@ const StepLine = ({
       className='relative m-0 grid list-none gap-0 p-0 py-1'
       style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
       <span
-        className='absolute top-4.25 right-[8.33%] left-[8.33%] h-0.5 rounded bg-line'
+        className='absolute top-4.25 right-[8.33%] left-[8.33%] h-0.5 rounded-corner bg-line'
         aria-hidden='true'
       />
       <span
-        className='absolute top-4.25 left-[8.33%] h-0.5 rounded bg-up'
+        className='absolute top-4.25 left-[8.33%] h-0.5 rounded-corner bg-up'
         style={{ width: `${reach * 83.33}%` }}
         aria-hidden='true'
       />
@@ -356,8 +356,8 @@ const NextStep = ({
         mini={mini}
       />
       {film ?? (
-        <div className='flex items-center gap-3.5 rounded-panel bg-accent-soft px-4 py-3'>
-          <span className='grid size-control-lg flex-none place-items-center rounded-card bg-pane text-accent-ink'>
+        <div className='flex items-center gap-3.5 rounded-corner bg-accent-soft px-4 py-3'>
+          <span className='grid size-control-lg flex-none place-items-center rounded-corner bg-pane text-accent-ink'>
             <Icon
               name={step ? (step.name === 'Emailed' ? 'mail' : 'next') : 'check'}
               size={20}
@@ -393,7 +393,7 @@ const NextStep = ({
               aria-expanded={explained}
               title={t`What happens?`}
               onClick={() => explain(!explained)}
-              className='grid size-control flex-none cursor-pointer place-items-center rounded-control border-0 bg-pane text-body font-bold text-accent-ink'>
+              className='grid size-control flex-none cursor-pointer place-items-center rounded-corner border-0 bg-pane text-body font-bold text-accent-ink'>
               ?
             </button>
           )}

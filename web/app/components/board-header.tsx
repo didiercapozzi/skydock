@@ -101,7 +101,7 @@ const BoardHeader = ({
     window.location.reload()
   }
   return (
-    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-panel isle-head px-3.5 max-desk:rounded-panel desk:rounded-tl-none wide:group-data-[docked]:rounded-tr-none desk:col-start-3 wide:col-end-6 desk:row-start-1'>
+    <header className='drag-region flex h-14 flex-none items-center gap-1 rounded-t-corner isle-head px-3.5 max-desk:rounded-corner desk:rounded-tl-none wide:group-data-[docked]:rounded-tr-none desk:col-start-3 wide:col-end-6 desk:row-start-1'>
       <button
         type='button'
         disabled={scanning}
@@ -128,7 +128,7 @@ const BoardHeader = ({
             aria-label={i18n._(name)}
             title={i18n._(name)}
             onClick={() => setFileView(option)}
-            className={`inline-flex h-control w-control items-center justify-center rounded-control ${
+            className={`inline-flex h-control w-control items-center justify-center rounded-corner ${
               view === option ? 'bg-accent-soft text-accent' : 'text-ink-2 hover:bg-well'
             }`}>
             <Icon name={icon} />
@@ -294,7 +294,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-1.75 whitespace-nowrap'
   return (
-    <footer className='mx-2.5 mb-2 desk:mx-0 desk:mb-0 desk:rounded-none flex h-control-sm flex-none items-center gap-5 rounded-control relative z-30 border-t border-edge bg-pane/60 px-3.5 desk:rounded-t-none text-micro font-semibold text-ink-2'>
+    <footer className='mx-2.5 mb-2 desk:mx-0 desk:mb-0 desk:rounded-none flex h-control-sm flex-none items-center gap-5 rounded-corner relative z-30 border-t border-edge bg-pane/60 px-3.5 desk:rounded-t-none text-micro font-semibold text-ink-2'>
       {/* Who the storage was connected as, and where: the same question a NAS asks at its own
           login, answered on the board rather than left to be remembered. */}
       <span
@@ -324,7 +324,7 @@ const StatusBar = ({
             onClick={link.onClick}
             className={
               link.mark
-                ? 'grid size-mark place-items-center rounded-bar text-ink-2 hover:bg-line hover:text-ink disabled:opacity-40'
+                ? 'grid size-mark place-items-center rounded-corner text-ink-2 hover:bg-line hover:text-ink disabled:opacity-40'
                 : 'text-accent-ink hover:underline disabled:opacity-60 disabled:no-underline'
             }>
             {link.mark === '⟳' ? (
@@ -351,7 +351,7 @@ const StatusBar = ({
         aria-pressed={transfers.open}
         title={t`What was sent and copied in, and how it went — even when it is all done`}
         onClick={transfers.onToggle}
-        className={`${item} rounded-chip px-1.5 hover:bg-line hover:text-ink ${transfers.open ? 'bg-line text-ink' : ''}`}>
+        className={`${item} rounded-corner px-1.5 hover:bg-line hover:text-ink ${transfers.open ? 'bg-line text-ink' : ''}`}>
         <Icon
           name='upload'
           size={12}
@@ -368,7 +368,7 @@ const StatusBar = ({
             className='text-accent'
           />
           {working.what}
-          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-bar bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-corner bg-line'>
             <i
               className='block h-full bg-accent'
               style={{ width: `${Math.round(working.part * 100)}%` }}
@@ -408,7 +408,7 @@ const StatusBar = ({
           className={item}>
           <span className='size-2.5 flex-none animate-spin rounded-full border-2 border-line-strong border-t-accent' />
           {t`Marks found ${read}/${clips}`}
-          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-bar bg-line'>
+          <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-corner bg-line'>
             <i
               className='block h-full bg-accent transition-[width] duration-500'
               style={{ width: `${Math.round((read / clips) * 100)}%` }}
@@ -428,7 +428,7 @@ const StatusBar = ({
             aria-label={t`Smaller`}
             disabled={zoom.factor <= 0.5}
             onClick={zoom.smaller}
-            className='grid size-mark place-items-center rounded-chip hover:bg-line disabled:opacity-40'>
+            className='grid size-mark place-items-center rounded-corner hover:bg-line disabled:opacity-40'>
             −
           </button>
           <button
@@ -444,7 +444,7 @@ const StatusBar = ({
             aria-label={t`Bigger`}
             disabled={zoom.factor >= 3}
             onClick={zoom.bigger}
-            className='grid size-mark place-items-center rounded-chip hover:bg-line disabled:opacity-40'>
+            className='grid size-mark place-items-center rounded-corner hover:bg-line disabled:opacity-40'>
             +
           </button>
         </span>

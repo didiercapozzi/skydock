@@ -49,7 +49,7 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
           <span>{t`On the storage`}</span>
           <span>{t`Link`}</span>
         </div>
-        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-panel bg-pane p-0 shadow-hairline'>
+        <ul className='m-0 flex list-none flex-col overflow-hidden rounded-corner bg-pane p-0 shadow-hairline'>
           {rows.map(([name, jumps]) => {
             const files = jumps.flatMap((g) => g.files)
             const videos = files.filter((f) => isVideoFile(f.path)).length
@@ -69,7 +69,7 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                 <span className='flex min-w-0 items-center gap-3.5'>
                   <span
                     aria-hidden='true'
-                    className={`grid size-11 flex-none place-items-center rounded-card font-display text-subhead font-semibold text-white ${avatarOf(name)}`}>
+                    className={`grid size-11 flex-none place-items-center rounded-corner font-display text-subhead font-semibold text-white ${avatarOf(name)}`}>
                     {name.charAt(0).toUpperCase()}
                   </span>
                   <span className='min-w-0'>

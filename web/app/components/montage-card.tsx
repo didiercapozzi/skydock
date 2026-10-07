@@ -21,7 +21,7 @@ import type { ManifestGroup } from './types'
 
 /* a name typed in, as tall as the button beside it */
 const FIELD =
-  'h-control min-w-0 flex-1 rounded-control border border-transparent bg-well px-3 text-body font-medium text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none'
+  'h-control min-w-0 flex-1 rounded-corner border border-transparent bg-well px-3 text-body font-medium text-ink placeholder:text-ink-3 focus:border-accent focus:outline-none'
 
 /* A montage is named once, by one name — "Luc Favre", "Boogie 2026" — and the name *is* the folder
    it gets (RULES, Places). Renaming moves the montage, or joins it to another, so it is never done by
@@ -107,7 +107,7 @@ const PassengerFrames = ({
             alt={alt}
             loading='lazy'
             decoding='async'
-            className='h-6 w-control rounded-chip bg-well object-cover'
+            className='h-6 w-control rounded-corner bg-well object-cover'
           />
         ))}
       </span>
@@ -122,7 +122,7 @@ const PassengerFrames = ({
           alt={alt}
           loading='lazy'
           decoding='async'
-          className='h-control-lg w-full min-w-0 rounded-control bg-well object-cover'
+          className='h-control-lg w-full min-w-0 rounded-corner bg-well object-cover'
         />
       ))}
     </span>
@@ -249,7 +249,7 @@ const FilmStrip = ({
   const renderedAt = hhmm(film.mtime)
   return (
     <div
-      className={`relative h-62.5 flex-none overflow-hidden rounded-panel bg-stage text-white shadow-card [--color-ink-2:rgba(255,255,255,0.8)] [--color-ink-3:rgba(255,255,255,0.7)] [--color-ink:#fff] [--color-line:rgba(255,255,255,0.3)] [--color-well:rgba(255,255,255,0.2)]`}>
+      className={`relative h-62.5 flex-none overflow-hidden rounded-corner bg-stage text-white shadow-card [--color-ink-2:rgba(255,255,255,0.8)] [--color-ink-3:rgba(255,255,255,0.7)] [--color-ink:#fff] [--color-line:rgba(255,255,255,0.3)] [--color-well:rgba(255,255,255,0.2)]`}>
       {watching ? (
         <>
           <video
@@ -314,7 +314,7 @@ const FilmStrip = ({
 /* While the montage has an edit, that the edit holds its files, with the lock that says so */
 const FilmNote = ({ locked }: { locked?: string | null }) =>
   locked && (
-    <div className='flex items-center gap-3.5 rounded-control bg-well px-3.5 py-3'>
+    <div className='flex items-center gap-3.5 rounded-corner bg-well px-3.5 py-3'>
       <Icon
         name='lock'
         className='text-ink-2'
@@ -630,7 +630,7 @@ const ParcelRow = ({
   const [open, setOpen] = useState(false)
   const holds = Boolean(item.inside && item.inside.length > 0) && !missing
   const ROW =
-    'flex min-w-0 flex-1 items-center gap-2.5 rounded-control px-2 py-1.5 text-ink no-underline hover:bg-well'
+    'flex min-w-0 flex-1 items-center gap-2.5 rounded-corner px-2 py-1.5 text-ink no-underline hover:bg-well'
   const body = (
     <>
       {holds && (
@@ -714,8 +714,8 @@ const NasCard = ({
      that file chosen */
   const dsm = dsmHost ? dsmFolderUrl(dsmHost, parcel.dir) : null
   return (
-    <div className='mt-2.5 rounded-card shadow-hairline'>
-      <div className='flex flex-wrap items-center gap-2.5 rounded-t-card bg-well px-3.5 py-2.75 text-body'>
+    <div className='mt-2.5 rounded-corner shadow-hairline'>
+      <div className='flex flex-wrap items-center gap-2.5 rounded-t-corner bg-well px-3.5 py-2.75 text-body'>
         {parcel.title && <b className='font-bold'>{parcel.title}</b>}
         {dsm ? (
           <a
@@ -835,7 +835,7 @@ const GoneFromStorage = ({ gone, at }: { gone: { remotePath: string }[]; at?: nu
   if (gone.length === 0) return null
   const uploadedOn = at ? new Date(at * 1000).toLocaleDateString('de-CH') : ''
   return (
-    <p className='mt-2.5 mb-0 rounded-control bg-changed-soft px-3.5 py-2.5 text-body text-changed'>
+    <p className='mt-2.5 mb-0 rounded-corner bg-changed-soft px-3.5 py-2.5 text-body text-changed'>
       {at ? t`Uploaded ${uploadedOn}, but ` : ''}
       {plural(gone.length, {
         one: 'this is no longer on the storage:',

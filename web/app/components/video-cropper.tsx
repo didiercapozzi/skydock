@@ -295,7 +295,7 @@ const VideoCropper = ({
             type='button'
             data-action='reset-zoom'
             onClick={handleBarResetZoom}
-            className='rounded-chip bg-well px-2 font-sans text-micro leading-5 font-semibold text-ink-2 hover:bg-line hover:text-ink'>
+            className='rounded-corner bg-well px-2 font-sans text-micro leading-5 font-semibold text-ink-2 hover:bg-line hover:text-ink'>
             {t`Reset`}
           </button>
         )}
@@ -318,7 +318,7 @@ const VideoCropper = ({
         onLostPointerCapture={() => {
           draggingRef.current = null
         }}
-        className={`relative h-12 cursor-crosshair overflow-hidden bg-well ${joined ? 'rounded-t-control' : 'rounded-control'}`}>
+        className={`relative h-12 cursor-crosshair overflow-hidden bg-well ${joined ? 'rounded-t-corner' : 'rounded-corner'}`}>
         {thumbs.length > 0 && (
           <div
             data-thumbs='true'
@@ -364,7 +364,7 @@ const VideoCropper = ({
                 style={{ left: `${positionFromTime(at)}%` }}>
                 <div className='pointer-events-none absolute top-0 bottom-0 left-1/2 -ml-px w-0.5 bg-ink' />
                 <span
-                  className={`pointer-events-none absolute rounded-bar bg-ink px-1 font-mono text-micro leading-3.5 font-medium tracking-eyebrow text-pane whitespace-nowrap uppercase ${
+                  className={`pointer-events-none absolute rounded-corner bg-ink px-1 font-mono text-micro leading-3.5 font-medium tracking-eyebrow text-pane whitespace-nowrap uppercase ${
                     /* a mark near the end of the bar is named on its left, where there is room, rather
                        than cut off by the edge */
                     positionFromTime(at) > 88 ? 'right-1.5' : 'left-1.5'
@@ -406,7 +406,7 @@ const VideoCropper = ({
                       ? t`Drag to trim the start`
                       : t`Drag to trim the end`
                 }
-                className={`absolute top-0 bottom-0 z-20 w-3 cursor-ew-resize rounded-bar border-2 border-accent bg-pane hover:bg-accent-soft ${
+                className={`absolute top-0 bottom-0 z-20 w-3 cursor-ew-resize rounded-corner border-2 border-accent bg-pane hover:bg-accent-soft ${
                   set ? '' : 'opacity-60 hover:opacity-100'
                 }`}
                 /* centred on its moment, but never half off the bar at either edge */

@@ -59,13 +59,9 @@
   --leading-text: 1.3;
   --leading-prose: 1.5;
 
-  /* The shapes: five corners and no others. A bar's track, a chip, a control — a button, a field, a row —,
-     a card, and a panel. Only a pill is round. */
-  --radius-bar: 2px;
-  --radius-chip: 6px;
-  --radius-control: 10px;
-  --radius-card: 14px;
-  --radius-panel: 18px;
+  /* The shape: one corner, everywhere — the size of the field that finds anything. A bar's track, a chip, a
+     button, a row, a card, a panel are all drawn with it. Only a pill or a dot is round. */
+  --radius-corner: 10px;
 
   /* The sizes things are drawn at: a chip, a small and a usual control, a large one, and a mark — an icon's
      box, a check. Everything else is on the 4 px scale (`p-3`, `gap-2.5`), never written in pixels. */
@@ -348,7 +344,7 @@
 
   /* a small square button in a panel's head: fold it, open it out, close it */
   .tool-button {
-    @apply grid size-7 flex-none place-items-center rounded-control border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink;
+    @apply grid size-7 flex-none place-items-center rounded-corner border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink;
   }
 
   /* a field with no box of its own, writing straight onto the surface it sits on */
@@ -422,7 +418,6 @@
   :focus-visible {
     outline: 2px solid var(--color-pick);
     outline-offset: 2px;
-    border-radius: 4px;
   }
 }
 

@@ -93,7 +93,7 @@ const ToBin = ({
     title={title}
     disabled={disabled}
     onClick={onClick}
-    className={`inline-flex items-center justify-center gap-1.5 rounded-control bg-bin font-bold whitespace-nowrap text-on-bin hover:brightness-110 disabled:cursor-default disabled:opacity-45 ${
+    className={`inline-flex items-center justify-center gap-1.5 rounded-corner bg-bin font-bold whitespace-nowrap text-on-bin hover:brightness-110 disabled:cursor-default disabled:opacity-45 ${
       size === 'go' ? 'h-control px-3.5 text-body' : 'h-control-sm px-3 text-body'
     }`}>
     <BinIcon />

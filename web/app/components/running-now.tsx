@@ -49,7 +49,7 @@ const RunningNow = () => {
       {going.map((work) => (
         <li
           key={work.key}
-          className='flex flex-col gap-1.5 rounded-control bg-accent-soft px-3 py-2'>
+          className='flex flex-col gap-1.5 rounded-corner bg-accent-soft px-3 py-2'>
           <span className='flex items-center gap-2.5 text-body font-semibold text-accent-ink'>
             <Icon
               name={work.icon}

@@ -205,7 +205,7 @@ const Card = ({
   aside?: React.ReactNode
   children: React.ReactNode
 }) => (
-  <section className='flex min-h-0 flex-col gap-3 overflow-hidden rounded-panel bg-pane p-5 shadow-hairline'>
+  <section className='flex min-h-0 flex-col gap-3 overflow-hidden rounded-corner bg-pane p-5 shadow-hairline'>
     <div className='flex items-center gap-3'>
       <Icon
         name={icon}
@@ -283,14 +283,14 @@ const MontageBody = ({
     return (
       <div className='flex flex-col gap-4 pb-6'>
         <div className='grid grid-cols-3 gap-3.5'>
-          <div className='rounded-panel bg-pane px-4.5 py-4 shadow-hairline'>
+          <div className='rounded-corner bg-pane px-4.5 py-4 shadow-hairline'>
             <div className='eyebrow'>{t`Stored`}</div>
             <div className='mt-0.5 font-display text-display font-semibold tracking-display'>
               {plural(items.length, { one: '# item', other: '# items' })}
             </div>
             <div className='text-small text-ink-3'>{t`${formatSize(stored)} on the storage`}</div>
           </div>
-          <div className='rounded-panel bg-pane px-4.5 py-4 shadow-hairline'>
+          <div className='rounded-corner bg-pane px-4.5 py-4 shadow-hairline'>
             <div className='eyebrow'>{t`Link`}</div>
             <div className='mt-1.5 flex items-center gap-2'>
               <span
@@ -313,7 +313,7 @@ const MontageBody = ({
               </div>
             )}
           </div>
-          <div className='rounded-panel bg-pane px-4.5 py-4 shadow-hairline'>
+          <div className='rounded-corner bg-pane px-4.5 py-4 shadow-hairline'>
             <div className='eyebrow'>{t`This machine`}</div>
             <div className='mt-0.5 font-display text-display font-semibold tracking-display'>
               {t`Empty`}
@@ -349,7 +349,7 @@ const MontageBody = ({
             </div>
           </div>
           {!gone && (
-            <div className='flex items-start gap-2.5 rounded-card bg-well px-3.5 py-3 text-body'>
+            <div className='flex items-start gap-2.5 rounded-corner bg-well px-3.5 py-3 text-body'>
               <Icon
                 name='check'
                 size={18}
@@ -504,7 +504,7 @@ const WayDone = () => (
             weight={4}
           />
         </span>
-        {n < 5 && <span className='h-0.75 w-3.5 rounded-bar bg-up' />}
+        {n < 5 && <span className='h-0.75 w-3.5 rounded-corner bg-up' />}
       </span>
     ))}
   </span>

@@ -26,10 +26,10 @@ const frameOf = (
 ) =>
   `${COLUMNS} w-full text-left ${menu ? '' : '[content-visibility:auto]'} ${
     joined
-      ? `h-13 rounded-control [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
+      ? `h-13 rounded-corner [contain-intrinsic-size:auto_52px] not-first:border-t not-first:border-line-2 ${
           previewed || picked ? 'bg-accent-soft' : clickable ? 'hover:bg-well' : ''
         }`
-      : `h-16.5 rounded-card pr-5 [contain-intrinsic-size:auto_66px] ${
+      : `h-16.5 rounded-corner pr-5 [contain-intrinsic-size:auto_66px] ${
           previewed
             ? 'bg-accent-soft shadow-ring-2'
             : picked
@@ -56,7 +56,7 @@ const Tick = ({
       e.stopPropagation()
       onPick()
     }}
-    className={`grid size-5 place-items-center rounded-chip border-2 p-0 ${
+    className={`grid size-5 place-items-center rounded-corner border-2 p-0 ${
       picked
         ? 'border-accent bg-accent text-white'
         : 'border-check bg-transparent text-transparent hover:border-accent'
@@ -85,7 +85,7 @@ const Lock = ({ why }: { why: string }) => (
 /* the frame a picture stands in */
 const Picture = ({ joined, children }: { joined: boolean; children?: ReactNode }) => (
   <span
-    className={`relative grid place-items-center overflow-hidden bg-well ${joined ? 'h-control w-11.5 rounded-control' : 'h-11 w-16 rounded-control'}`}>
+    className={`relative grid place-items-center overflow-hidden bg-well ${joined ? 'h-control w-11.5 rounded-corner' : 'h-11 w-16 rounded-corner'}`}>
     {children}
   </span>
 )

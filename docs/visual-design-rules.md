@@ -16,7 +16,7 @@ first one that breaks this.
 | Type | `text-micro` 11 · `text-small` 12 · `text-body` 13 · `text-lead` 14 · `text-title` 16 · `text-subhead` 18 · `text-heading` 22 · `text-display` 28 | seven sizes, and no other |
 | Letter spacing | `tracking-title` · `tracking-display` · `tracking-eyebrow` · `tracking-spaced` | |
 | Line height | `leading-title` 1.15 · `leading-text` 1.3 · `leading-prose` 1.5 | |
-| Corners | `rounded-bar` 2 · `rounded-chip` 6 · `rounded-control` 10 · `rounded-card` 14 · `rounded-panel` 18 · `rounded-full` | five corners; only a pill is round |
+| Corners | `rounded-corner` 10 · `rounded-full` | one corner, the size of the field that finds anything; only a pill or a dot is round. The radii the mockup sections below give (6, 8, 14, 16, 18) are drawn as this one corner |
 | Control sizes | `h-chip` 22 · `h-control-sm` 30 · `h-control` 34 · `h-control-lg` 42 · `size-mark` 18 | everything else is on the 4 px scale (`p-3`, `gap-2.5`, `top-4`), never in pixels |
 | Breakpoints | `desk:` from 781 · `roomy:` from 901 · `wide:` from 1101, and `max-desk:` `max-roomy:` `max-wide:` below them | |
 | Shadows | `shadow-soft` · `-card` · `-float` · `-overlay` · `-chip` · `-inset` · `-lift` · `-glow` · `-hairline` · `-divider` · `-edge-left`, and the rings `-ring` `-ring-2` `-ring-pick` `-ring-white` `-ring-dark` `-ring-stage` `-ring-current` `-picked` `-looked` `-halo` `-focus` `-inset-ring` `-inset-ring-accent` `-inset-bar` | a ring is a shadow, so it takes no room |
@@ -235,7 +235,7 @@ Outline icons on a 24 px grid, 1.9 px stroke, round caps and joins, `currentColo
 
 ## 10. Spacing
 
-The base unit is 4 px. Panel padding is 24–28 px; the gap between cards is 15 px; rows are 8 px apart; a heading sits 16 px above its content and 8 px over it. Round corners: cards 18, rows 16, the status card 18, the left panel's items 14, header buttons 10–12, pills and the main buttons fully round.
+The base unit is 4 px. Panel padding is 24–28 px; the gap between cards is 15 px; rows are 8 px apart; a heading sits 16 px above its content and 8 px over it. Corners: one, 10, on cards, rows, the status card, the left panel's items and header buttons alike; pills and the main buttons fully round.
 
 ## 11. What not to do
 

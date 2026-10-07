@@ -43,7 +43,7 @@ const StatusCard = ({
   children?: React.ReactNode
 }) => (
   <div
-    className={`flex flex-wrap items-center min-h-16 gap-3.5 rounded-panel px-4 py-2.5 ${CARD[tone]}`}>
+    className={`flex flex-wrap items-center min-h-16 gap-3.5 rounded-corner px-4 py-2.5 ${CARD[tone]}`}>
     <span className={`grid size-9 flex-none place-items-center rounded-full ${BADGE[tone]}`}>
       <Icon
         name={icon}
@@ -66,9 +66,9 @@ const StatusCard = ({
           aria-valuemin={0}
           aria-valuemax={progress.of}
           aria-valuenow={progress.done}
-          className='flex h-1.5 w-27.5 overflow-hidden rounded-control bg-line'>
+          className='flex h-1.5 w-27.5 overflow-hidden rounded-corner bg-line'>
           <i
-            className='block h-full rounded-control bg-up'
+            className='block h-full rounded-corner bg-up'
             style={{ width: `${Math.round((progress.done / progress.of) * 100)}%` }}
           />
         </span>
@@ -130,7 +130,7 @@ const PageHead = ({
       <div className='flex items-center gap-4.5'>
         <span
           className={`grid flex-none place-items-center ${
-            large ? 'size-14 rounded-panel' : 'size-12 rounded-card'
+            large ? 'size-14 rounded-corner' : 'size-12 rounded-corner'
           } ${
             'letter' in tile
               ? tile.done

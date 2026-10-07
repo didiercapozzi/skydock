@@ -93,7 +93,7 @@ const Modal = ({
         aria-label={label}
         onKeyDown={keys}
         style={full ? { width: `min(${full === true ? 1360 : full}px, 94vw)` } : undefined}
-        className={`flex max-h-full flex-col overflow-hidden rounded-panel bg-pane text-ink shadow-float ${
+        className={`flex max-h-full flex-col overflow-hidden rounded-corner bg-pane text-ink shadow-float ${
           full
             ? typeof full === 'number'
               ? 'h-[min(800px,94vh)]'
@@ -119,7 +119,7 @@ const Modal = ({
               aria-hidden='true'
               title={t`Close (Esc)`}
               onClick={onClose}
-              className='grid h-8 w-8 flex-none place-items-center rounded-control text-ink-2 hover:bg-well hover:text-ink'>
+              className='grid h-8 w-8 flex-none place-items-center rounded-corner text-ink-2 hover:bg-well hover:text-ink'>
               <Icon name='close' />
             </button>
           )}
@@ -133,7 +133,7 @@ const Modal = ({
           {children}
         </div>
         {footer && (
-          <div className='flex flex-none items-center gap-3 bg-well px-6.5 py-3.5 [&_button]:h-9.5 [&_button]:gap-2 [&_button]:rounded-control [&_button]:px-4 [&_button]:text-lead'>
+          <div className='flex flex-none items-center gap-3 bg-well px-6.5 py-3.5 [&_button]:h-9.5 [&_button]:gap-2 [&_button]:rounded-corner [&_button]:px-4 [&_button]:text-lead'>
             {footer}
           </div>
         )}
@@ -146,9 +146,9 @@ const Modal = ({
 const Spacer = () => <span className='flex-1' />
 
 const INPUT =
-  'rounded-control border border-line-strong bg-pane px-3 py-2 text-body text-ink placeholder:text-ink-3 hover:border-check focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50'
+  'rounded-corner border border-line-strong bg-pane px-3 py-2 text-body text-ink placeholder:text-ink-3 hover:border-check focus:border-accent focus:outline-2 focus:outline-accent/30 disabled:opacity-50'
 
-const ERROR = 'rounded-control bg-local-soft px-3 py-2 text-body text-local'
+const ERROR = 'rounded-corner bg-local-soft px-3 py-2 text-body text-local'
 
 /* one line of what a dialog proves, deletes or keeps, marked with what happens to it */
 const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) => (

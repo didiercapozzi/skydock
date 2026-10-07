@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /* The visual design is one set of rules, kept in app.css as variables and written down in
-   docs/visual-design-rules.md: seven type sizes, five corners, a few control sizes, the 4 px scale, a
+   docs/visual-design-rules.md: seven type sizes, one corner, a few control sizes, the 4 px scale, a
    handful of shadows, and colours that are named. A component never says a size, a corner, a shadow or a
    colour in its own pixels or its own hex — it names the one it means — so the whole app is changed, and
    kept alike, from one place. This reads every component and says which one broke the rule. */
@@ -20,9 +20,10 @@ const files = (dir: string): string[] =>
 /* what each rule forbids, written the way a class would say it */
 const RULES: Array<[string, RegExp]> = [
   ['a type size in pixels (use text-micro … text-display)', /(?<![\w-])text-\[\d/],
+  ['a corner in pixels (use rounded-corner)', /(?<![\w-])rounded(?:-[a-z]{1,2})?-\[/],
   [
-    'a corner in pixels (use rounded-bar, -chip, -control, -card or -panel)',
-    /(?<![\w-])rounded(?:-[a-z]{1,2})?-\[/
+    'a corner of another size (there is one: rounded-corner — or rounded-full for a pill or a dot)',
+    /(?<![\w-])rounded(?:-(?:t|b|r|l|tl|tr|bl|br))?(?:-(?:bar|chip|control|card|panel|xs|sm|md|lg|[2-4]?xl))?(?![\w-])/
   ],
   [
     'a letter spacing in em (use tracking-title, -display, -eyebrow or -spaced)',
