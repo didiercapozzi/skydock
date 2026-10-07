@@ -290,6 +290,7 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     expect(await j.page.getByText(/LRF|\._/).count(), 'what is not media is not listed').toBe(0)
 
     await recordPanels(j.page, 'Copying')
+    await listenToEvents(j.page)
     await j.page.getByRole('button', { name: 'Copy 3 files here' }).click()
     await j.page
       .getByText('copied, not uploaded', { exact: true })
@@ -298,8 +299,12 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
 
     const seen = await panelsSeen(j.page)
     const first = seen.find((panel) => panel.rows.length > 0)!
-    expect(first.rows, 'all three on the card named before the first lands').toHaveLength(3)
-    expect(first.summary).toContain('0 new files copied')
+    expect(first.rows, 'all three on the card named').toHaveLength(3)
+    const listed = (await eventsHeard(j.page)).find(
+      (e) => e.kind === 'job' && e.type === 'camera-copy' && Array.isArray(e.rows)
+    )
+    expect(listed?.rows, 'all three on the card named').toHaveLength(3)
+    expect(listed?.done, 'before the first lands').toBe(0)
     expect(landedOriginals(j.world).sort()).toEqual([
       path.join('2026-09-05', 'DJI_20260905100000_0001_D.MP4'),
       path.join('2026-09-05', 'DJI_20260905100130_0003_D.JPG'),
@@ -587,12 +592,13 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
       .waitFor({ state: 'detached', timeout: 20_000 })
     await openCamera('Osmo Action')
     await eventually(() =>
-      j.page.evaluate(() =>
-        [...document.querySelectorAll<HTMLImageElement>('img[src^="/api/thumb/"]')].some(
-          (img) => img.naturalWidth > 0
-        )
+      j.page.evaluate(
+        () =>
+          [...document.querySelectorAll<HTMLImageElement>('img[src^="/api/thumb/"]')].every(
+            (img) => img.naturalWidth > 0
+          ) && document.querySelectorAll('img[src^="/api/thumb/"]').length > 0
       )
     ).toBe(true)
-    await j.quiet()
+    await quiet()
   })
 })
