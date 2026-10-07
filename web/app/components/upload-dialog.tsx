@@ -154,7 +154,7 @@ const PART_ICONS: Record<SendPart, IconName> = {
 const iconOfItem = (item: SendItem): IconName => (item.zip ? 'zip' : PART_ICONS[item.holds[0]!])
 
 const dropLook = (over: boolean, quiet: string) =>
-  over ? 'border border-dashed border-accent bg-accent-soft' : quiet
+  over ? 'border border-dashed border-pick bg-pick-soft' : quiet
 
 const carry = (e: React.DragEvent, what: string) => {
   e.dataTransfer.setData('text/plain', what)
@@ -467,7 +467,7 @@ const UploadDialog = ({
           title={t`Named ${stem}.….zip — you choose the end, or none.`}
           className={`flex flex-none flex-col items-center gap-1.5 rounded-corner px-4 text-center font-semibold text-ink-3 ${
             plan.zips.length === 0 ? 'py-12' : 'py-4'
-          } ${over === 'new' ? 'border-2 border-dashed border-accent bg-accent-soft' : 'border-2 border-dashed border-ink-3'}`}>
+          } ${over === 'new' ? 'border-2 border-dashed border-pick bg-pick-soft' : 'border-2 border-dashed border-ink-3'}`}>
           <Icon
             name='zip'
             size={22}

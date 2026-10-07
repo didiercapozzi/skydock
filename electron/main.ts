@@ -258,7 +258,7 @@ const isPreviewAddress = (asked: string, board: string) => {
 
 let previewWindow: BrowserWindow | null = null
 
-const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a0f14' : '#e3edf1')
+const groundColour = () => (nativeTheme.shouldUseDarkColors ? '#0a1119' : '#f8fbfe')
 
 const raise = (window: BrowserWindow) => {
   if (window.isMinimized()) window.restore()

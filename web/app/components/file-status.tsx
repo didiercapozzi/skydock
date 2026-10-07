@@ -21,10 +21,10 @@ const TITLES: Record<ShownStatus, MessageDescriptor> = {
 }
 
 const TONE: Record<ShownStatus, string> = {
-  local: 'bg-local-soft text-local',
-  changed: 'bg-changed-soft text-changed',
-  processed: 'bg-proc-soft text-proc',
-  uploaded: 'bg-up-soft text-up'
+  local: 'text-local',
+  changed: 'text-changed',
+  processed: 'text-proc',
+  uploaded: 'text-up'
 }
 
 const statusName = (status: ShownStatus) => i18n._(LABELS[status])
@@ -32,7 +32,7 @@ const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 const StatusChip = ({ status, prepared = false }: { status: ShownStatus; prepared?: boolean }) =>
   prepared && status === 'processed' ? (
     <State
-      tone='bg-up-soft text-up'
+      tone='text-up'
       dot={false}
       title={i18n._(TITLES[status])}>
       {t`prepared`}

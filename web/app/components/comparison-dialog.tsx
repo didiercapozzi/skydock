@@ -1,6 +1,7 @@
 import { plural, t } from '@lingui/core/macro'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
+import { FileRow, Thumb } from './file-row'
 import { Icon } from './icons'
 import { INPUT, Modal, Spacer } from './modal'
 import type { VideoRef } from './preview-drawer'
@@ -314,7 +315,7 @@ const ComparisonDialog = ({
                 {t`Which date should the merged jump have? The chosen jump keeps its times.`}
               </p>
               <div className='space-y-2 mb-4'>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-pick has-checked:bg-pick-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -326,7 +327,7 @@ const ComparisonDialog = ({
                     {labels.get(leftGroup.id) ?? leftGroup.label} — {getGroupDate(leftGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-pick has-checked:bg-pick-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -338,7 +339,7 @@ const ComparisonDialog = ({
                     {labels.get(rightGroup.id) ?? rightGroup.label} — {getGroupDate(rightGroup)}
                   </span>
                 </label>
-                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-accent has-checked:bg-accent-soft'>
+                <label className='flex cursor-pointer flex-row items-center gap-2 rounded-corner border border-line-2 px-3 py-2 hover:bg-well has-checked:border-pick has-checked:bg-pick-soft'>
                   <input
                     type='radio'
                     name='merge-date'
@@ -505,9 +506,9 @@ const ComparePanel = ({
           else if (e.key === 'ArrowLeft') toAnotherJump(e, onGroupPrev)
           else if (e.key === 'ArrowRight') toAnotherJump(e, onGroupNext)
         }}
-        className='flex-1 overflow-y-auto p-2 space-y-px min-h-0'>
+        className='flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-2'>
         {group.files.map((f, i) => (
-          <div
+          <FileRow
             key={f.path}
             data-compare-file='true'
             role='option'
@@ -519,16 +520,11 @@ const ComparePanel = ({
               e.preventDefault()
               onFileIndexChange(i)
             }}
-            className={`px-3 py-2 rounded-corner cursor-pointer transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-accent ${
-              i === fileIndex ? 'bg-accent-soft shadow-inset-bar' : 'hover:bg-well'
-            }`}>
-            <div className='flex items-center justify-between'>
-              <span className='truncate font-mono text-micro'>{f.filename}</span>
-              <span className='ml-2 shrink-0 font-mono text-micro text-ink-3 tabular-nums'>
-                {formatSize(f.size)}
-              </span>
-            </div>
-          </div>
+            previewed={i === fileIndex}
+            picture={<Thumb src={getThumbUrl(f.path, isVideoFile(f.filename) ? 1 : 0, 64)} />}
+            name={f.filename}
+            meta={<span className='tabular-nums'>{formatSize(f.size)}</span>}
+          />
         ))}
       </div>
 
