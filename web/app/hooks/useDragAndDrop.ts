@@ -5,7 +5,7 @@ import type { Passenger } from '../components/montage-card'
 import type { Dropped } from '../helpers/import'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { droppedIn, fromComputer } from '../helpers/import'
-import { placeKey } from '../helpers/places'
+import { placeKey, placeOfGroup, placeOfLoose } from '../helpers/places'
 import type { Place } from '../helpers/places'
 
 type Move = {
@@ -24,6 +24,7 @@ const showIntent = (e: React.DragEvent) => {
 
 const useDragAndDrop = ({
   groups,
+  loose,
   labels,
   frozen,
   moveFiles,
@@ -34,6 +35,7 @@ const useDragAndDrop = ({
   onFiled
 }: {
   groups: ManifestGroup[]
+  loose: ManifestFile[]
   labels: Map<string, string>
   frozen: Set<string>
   moveFiles: (ids: string[], where: Move) => void
@@ -193,12 +195,22 @@ const useDragAndDrop = ({
 
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
+    const placeOfFile = (id: string) => {
+      const jump = groups.find((g) => g.files.some((f) => f.id === id))
+      const lone = loose.find((f) => f.id === id)
+      return jump ? placeOfGroup(jump) : lone ? placeOfLoose(lone) : undefined
+    }
+    const carried = [
+      ...dragged.map((id) => groups.find((g) => g.id === id)).map((g) => g && placeOfGroup(g)),
+      ...draggedFiles.map(placeOfFile)
+    ]
+    const staying = carried.length > 0 && carried.every((p) => p && placeKey(p) === key)
     const host =
       target.kind === 'pax'
         ? groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      target.kind === 'camera' || target.kind === 'bin' || (host && frozen.has(host.id))
+      target.kind === 'camera' || target.kind === 'bin' || staying || (host && frozen.has(host.id))
         ? {}
         : target.kind === 'sort'
           ? dropTarget({ kind: 'sort' }, key)

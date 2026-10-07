@@ -424,6 +424,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
 
   const drag = useDragAndDrop({
     groups,
+    loose,
     labels,
     frozen,
     moveFiles,
