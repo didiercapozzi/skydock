@@ -34,9 +34,27 @@ const Drawer = ({ onRotate = () => {} }: { onRotate?: () => void }) =>
 
 const player = () => document.querySelector('video')!
 
+/* The clip is not a file the page can load, and a browser that has failed to load one does nothing
+   when it is told to play — so whether Space plays it would depend on how fast the answer to the
+   request came. This player plays and pauses as one that loaded. */
+const playsAsLoaded = () => {
+  const video = player()
+  let paused = true
+  Object.defineProperty(video, 'paused', { get: () => paused })
+  video.play = async () => {
+    paused = false
+    video.dispatchEvent(new Event('play'))
+  }
+  video.pause = () => {
+    paused = true
+    video.dispatchEvent(new Event('pause'))
+  }
+}
+
 describe('playing a clip in the preview', () => {
   test('space plays it, and space again pauses it', async () => {
     await render(createElement(Drawer, {}))
+    playsAsLoaded()
     await userEvent.keyboard(' ')
     await expect.poll(() => player().paused).toBe(false)
     await expect.element(page.getByRole('button', { name: '❚❚ Pause' })).toBeVisible()
@@ -49,6 +67,7 @@ describe('playing a clip in the preview', () => {
   test('space plays it even after another button was pressed', async () => {
     const onRotate = vi.fn()
     await render(createElement(Drawer, { onRotate }))
+    playsAsLoaded()
     /* the turn buttons are on the Turn tab of the panel */
     await userEvent.click(page.getByRole('button', { name: 'Turn', exact: true }))
     await userEvent.click(page.getByRole('button', { name: '↻ +90°' }))
