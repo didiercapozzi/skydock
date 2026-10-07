@@ -55,6 +55,22 @@ const useDragAndDrop = ({
     if (!e) return
     e.dataTransfer.setData('text/plain', said)
     e.dataTransfer.effectAllowed = 'copyMove'
+    const chip = document.createElement('div')
+    chip.className =
+      'fixed -top-96 -left-96 flex max-w-72 items-center gap-2 rounded-control bg-pane/90 p-1.5 pr-3 text-body font-semibold text-ink shadow-float'
+    const shown = e.currentTarget instanceof Element ? e.currentTarget.querySelector('img') : null
+    if (shown) {
+      const picture = shown.cloneNode() as HTMLImageElement
+      picture.className = 'size-10 flex-none rounded-control object-cover'
+      chip.appendChild(picture)
+    }
+    const name = document.createElement('span')
+    name.className = 'truncate'
+    name.textContent = said
+    chip.appendChild(name)
+    document.body.appendChild(chip)
+    e.dataTransfer.setDragImage(chip, -12, -12)
+    setTimeout(() => chip.remove(), 0)
   }
 
   const startJumpDrag = (groupId: string, e?: React.DragEvent) => {
