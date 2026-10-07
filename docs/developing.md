@@ -110,6 +110,8 @@ Electron app: it carries its own engine, and the only thing it takes from the ma
 
 A change to `electron/main.ts` or `electron/preload.ts` is not seen until the window files are in that build: `npm run installers:shell` puts them there in a second, then close the window and open it again. The page itself needs nothing — it is the development server's, and reloads as it is edited.
 
+The app's icons (the favicon, the web icons and the installers' `.png`, `.ico` and `.icns`) are all drawn from `web/public/logo.svg`: change the drawing there and run `npm run icons`. `Mark` in `web/app/components/icons.tsx` draws the same shape in the app's own colours, so change it with the SVG.
+
 ### Drawing on the host's screen from inside the container
 
 This used to take the host's session down every time — and with it VS Code, and with VS Code the

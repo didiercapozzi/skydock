@@ -127,7 +127,7 @@
   --color-dot-proc: #e05ab6;
   --color-dot-up: #23b877;
 
-  /* the gradients, named for what they colour: each name's own colour in a list of names, the logo's tile,
+  /* the gradients, named for what they colour: each name's own colour in a list of names,
      a picture's empty ground, the marker on a graph, and what darkens a picture's edge so white writing
      reads on it */
   --gradient-avatar-1: linear-gradient(135deg, #0e7a8f, #5cc0cf);

@@ -1,3 +1,5 @@
+import { useId } from 'react'
+
 /* The board's icons, drawn as the design draws them: a thin stroke in the colour of the words beside
    them, on a 24-unit square. Kept here, one name each, so a place, a tool and a button asking for
    the same thing draw the same mark. */
@@ -339,54 +341,69 @@ const Icon = ({
   </svg>
 )
 
-/* the app's own mark: a canopy over a drop, on the accent gradient */
-const Mark = ({ size = 16 }: { size?: number }) => (
-  <svg
-    width={size}
-    height={size}
-    viewBox='0 0 22 22'
-    aria-hidden='true'
-    className='flex-none'>
-    <defs>
-      <linearGradient
-        id='mark-fill'
-        x1='0'
-        y1='0'
-        x2='1'
-        y2='1'>
-        <stop
-          offset='0'
-          stopColor='#43b0f5'
+/* the app's own mark: a play button hanging under a canopy, on a pale tile */
+const Mark = ({ size = 16 }: { size?: number }) => {
+  const gap = `mark-gap-${useId()}`
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox='0 0 48 48'
+      aria-hidden='true'
+      className='flex-none'>
+      <defs>
+        <mask id={gap}>
+          <rect
+            width='48'
+            height='48'
+            fill='#fff'
+          />
+          <path
+            d='M20 34 32 40 20 46Z'
+            transform='translate(0 -2)'
+            fill='#000'
+            stroke='#000'
+            strokeWidth='7'
+            strokeLinejoin='round'
+          />
+        </mask>
+      </defs>
+      <rect
+        x='.75'
+        y='.75'
+        width='46.5'
+        height='46.5'
+        rx='15'
+        strokeWidth='1.5'
+        className='fill-pane stroke-divider'
+      />
+      <g
+        transform='translate(6 6) scale(.75)'
+        className='text-accent'>
+        <path
+          d='M7 16C9 4 39 4 41 16q-4.3 3-8.6 0q-4.3 3-8.4 0q-4.3 3-8.4 0q-4.3 3-8.6 0Z'
+          fill='currentColor'
         />
-        <stop
-          offset='1'
-          stopColor='#0b7fd6'
+        <path
+          d='M8 18 24 38M16 19 24 38M24 19V38M32 19 24 38M40 18 24 38'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='1.6'
+          strokeLinecap='round'
+          mask={`url(#${gap})`}
         />
-      </linearGradient>
-    </defs>
-    <rect
-      width='22'
-      height='22'
-      rx='7'
-      fill='url(#mark-fill)'
-    />
-    <path
-      d='M5 10.5c2-4.4 10-4.4 12 0'
-      fill='none'
-      stroke='#fff'
-      strokeWidth='1.9'
-      strokeLinecap='round'
-    />
-    <path
-      d='M6 10.8 11 16l5-5.2'
-      fill='none'
-      stroke='#fff'
-      strokeWidth='1.9'
-      strokeLinecap='round'
-      strokeLinejoin='round'
-    />
-  </svg>
-)
+        <path
+          d='M20 34 32 40 20 46Z'
+          transform='translate(0 -2)'
+          fill='currentColor'
+          stroke='currentColor'
+          strokeWidth='2.4'
+          strokeLinejoin='round'
+        />
+      </g>
+    </svg>
+  )
+}
 
 export { Icon, Mark }
 export type { IconName }

@@ -25,6 +25,7 @@
     "fc": "npm run format && npm run check",
     "format": "oxfmt --config oxfmt.config.ts .",
     "format:check": "oxfmt --config oxfmt.config.ts --check .",
+    "icons": "npx tsx scripts/build-icons.ts",
     "installers": "npm run tools && SKYDOCK_TOOLS_DIR=\"$PWD/build/tools\" npm run pack && npm run shell && electron-builder --publish never",
     "installers:dev": "npm run tools && SKYDOCK_TOOLS_DIR=\"$PWD/build/tools\" npm run pack && npm run shell && electron-builder --linux --dir --publish never",
     "installers:shell": "npm run shell && npx tsx scripts/refresh-shell.ts",
