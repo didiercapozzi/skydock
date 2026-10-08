@@ -29,17 +29,27 @@ const TONE: Record<ShownStatus, string> = {
 
 const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 
-const StatusChip = ({ status, prepared = false }: { status: ShownStatus; prepared?: boolean }) =>
+const StatusChip = ({
+  status,
+  prepared = false,
+  bare = false
+}: {
+  status: ShownStatus
+  prepared?: boolean
+  bare?: boolean
+}) =>
   prepared && status === 'processed' ? (
     <State
       tone='text-up'
       dot={false}
+      bare={bare}
       title={i18n._(TITLES[status])}>
       {t`prepared`}
     </State>
   ) : (
     <State
       tone={TONE[status]}
+      bare={bare}
       ring={status === 'changed'}
       title={i18n._(TITLES[status])}>
       {i18n._(LABELS[status])}

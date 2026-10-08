@@ -94,7 +94,11 @@ const PlacePane = ({
   }
   kind: { value: Kind; onChange: (k: Kind) => void }
   tools?: React.ReactNode
-  head?: (pane: { query: string; onQuery: (query: string) => void }) => React.ReactNode
+  head?: (pane: {
+    query: string
+    onQuery: (query: string) => void
+    arrange: React.ReactNode
+  }) => React.ReactNode
   left?: React.ReactNode
   note: { text: string; problem: boolean; onClose: () => void; onOpen?: () => void } | null
   incoming: { target: string; where: string } | null
@@ -102,6 +106,17 @@ const PlacePane = ({
   children: React.ReactNode
 }) => {
   const browsing = true
+  const ways =
+    place.kind === 'sort' ? grouping.options.filter((g) => g !== 'none') : grouping.options
+  const arrange =
+    ways.length > 1 ? (
+      <Seg
+        label={t`Group`}
+        value={grouping.value}
+        options={ways.map((g) => [g, i18n._(GROUPING_LABEL[g])] as const)}
+        onPick={grouping.onChange}
+      />
+    ) : null
   const controls = browsing ? (
     <>
       {browsing && (
@@ -117,14 +132,7 @@ const PlacePane = ({
           />
         </label>
       )}
-      {browsing && grouping.options.length > 1 && (
-        <Seg
-          label={t`Group`}
-          value={grouping.value}
-          options={grouping.options.map((g) => [g, i18n._(GROUPING_LABEL[g])] as const)}
-          onPick={grouping.onChange}
-        />
-      )}
+      {arrange}
       {browsing && (
         <KindSeg
           files={files}
@@ -148,7 +156,7 @@ const PlacePane = ({
       }}
       className='flex min-h-0 min-w-0 flex-col overflow-hidden rounded-b-corner isle-pane max-desk:rounded-corner desk:rounded-b-none desk:col-start-3 desk:row-start-2'>
       {head ? (
-        head({ query, onQuery })
+        head({ query, onQuery, arrange })
       ) : (
         <div className='flex flex-wrap items-center gap-x-3.5 gap-y-2.5 px-7 pt-4 pb-2'>
           <div className='flex min-w-0 flex-wrap items-baseline gap-x-3'>

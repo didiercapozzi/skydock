@@ -4,7 +4,8 @@ import type { CSSProperties, ElementType, HTMLAttributes, ReactNode } from 'reac
 import { Icon } from './icons'
 import type { IconName } from './icons'
 
-const COLUMNS = 'grid grid-cols-[22px_64px_minmax(0,1fr)_auto] items-center gap-x-3.5 px-3'
+const COLUMNS =
+  'grid grid-cols-[22px_64px_minmax(0,1fr)_auto] content-center items-center gap-x-3.5 gap-y-1 px-3'
 
 const frameOf = (picked: boolean, previewed: boolean, clickable: boolean, menu: boolean) =>
   `${COLUMNS} w-full text-left ${menu ? '' : '[content-visibility:auto]'} h-16.5 rounded-corner pr-5 [contain-intrinsic-size:auto_66px] ${
@@ -86,21 +87,23 @@ const State = ({
   children,
   ring = false,
   dot = true,
+  bare = false,
   title
 }: {
   tone: string
   children: ReactNode
   ring?: boolean
   dot?: boolean
+  bare?: boolean
   title?: string
 }) => (
   <span
     title={title}
-    className={`inline-flex h-6 w-max flex-none items-center gap-1.5 rounded-full px-3 text-small font-semibold whitespace-nowrap capitalize ${
+    className={`inline-flex h-6 w-max flex-none items-center gap-1.5 rounded-full text-small font-semibold whitespace-nowrap capitalize ${
       dot
         ? `before:size-1.5 before:rounded-full before:content-[''] ${ring ? 'before:shadow-ring-current' : 'before:bg-current'}`
         : ''
-    } bg-pane shadow-hairline ${tone}`}>
+    } ${bare ? '' : 'bg-pane px-3 shadow-hairline'} ${tone}`}>
     {children}
   </span>
 )
@@ -117,6 +120,7 @@ const FileRow = ({
   nameTitle,
   meta,
   trailing,
+  when,
   href,
   menu = false,
   ...frame
@@ -130,9 +134,34 @@ const FileRow = ({
   nameTitle?: string
   meta?: ReactNode
   trailing?: ReactNode
+  when?: ReactNode
   menu?: boolean
 }) => {
   const Root: ElementType = href ? 'a' : 'div'
+  const tick = locked ? (
+    <Lock why={locked} />
+  ) : pick ? (
+    <Tick
+      picked={picked}
+      label={pick.label}
+      onPick={pick.onPick}
+    />
+  ) : (
+    <span />
+  )
+  const label = (
+    <span
+      className='block truncate font-mono text-small font-medium tracking-title text-ink'
+      title={nameTitle}>
+      {name}
+    </span>
+  )
+  const details = meta && (
+    <span className='flex min-w-0 items-center gap-1 truncate text-small font-medium text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
+      {meta}
+    </span>
+  )
+  const trail = 'flex min-w-28 items-center justify-end gap-2'
   return createElement(
     Root,
     {
@@ -140,31 +169,30 @@ const FileRow = ({
       ...(href ? { href, target: '_blank', rel: 'noreferrer' } : {}),
       className: frameOf(picked, previewed, Boolean(frame.onClick || href), menu)
     },
-    locked ? (
-      <Lock why={locked} />
-    ) : pick ? (
-      <Tick
-        picked={picked}
-        label={pick.label}
-        onPick={pick.onPick}
-      />
-    ) : (
-      <span />
-    ),
-    <Picture>{picture}</Picture>,
-    <span className='min-w-0'>
-      <span
-        className='block truncate font-mono text-small font-medium tracking-title text-ink'
-        title={nameTitle}>
-        {name}
-      </span>
-      {meta && (
-        <span className='flex min-w-0 items-center gap-1 truncate text-small font-medium text-ink-3 [&>*+*]:before:mr-1 [&>*+*]:before:text-ink-3 [&>*+*]:before:content-["·"]'>
-          {meta}
+    when ? (
+      <>
+        <span className='row-span-2 grid place-items-center'>{tick}</span>
+        <span className='row-span-2 grid place-items-center'>
+          <Picture>{picture}</Picture>
         </span>
-      )}
-    </span>,
-    <span className='flex min-w-28 items-center justify-end gap-2'>{trailing}</span>
+        <span className='col-start-3 min-w-0'>{label}</span>
+        <span className={`col-start-4 ${trail}`}>{trailing}</span>
+        <span className='col-start-3 min-w-0'>{details}</span>
+        <span className='col-start-4 flex items-center justify-end text-small font-medium text-ink-3 tabular-nums'>
+          {when}
+        </span>
+      </>
+    ) : (
+      <>
+        {tick}
+        <Picture>{picture}</Picture>
+        <span className='min-w-0'>
+          {label}
+          {details}
+        </span>
+        <span className={trail}>{trailing}</span>
+      </>
+    )
   )
 }
 
