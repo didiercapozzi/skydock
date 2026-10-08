@@ -105,7 +105,11 @@ const PlacePane = ({
   tools?: React.ReactNode
   /* a head of the page's own in place of the plain one, handed the ways of finding and arranging the
      folder's files to put where it wants them */
-  head?: (pane: { query: string; onQuery: (query: string) => void }) => React.ReactNode
+  head?: (pane: {
+    query: string
+    onQuery: (query: string) => void
+    arrange: React.ReactNode
+  }) => React.ReactNode
   /* what is still to do here, and anything that belongs to the folder, like its storage folder */
   left?: React.ReactNode
   /* what the board last said, and whether it was a refusal */
@@ -116,6 +120,19 @@ const PlacePane = ({
   children: React.ReactNode
 }) => {
   const browsing = true
+  /* Fresh files has jumps and days to choose between; the one list is for the folders that have no
+     jumps of their own to see */
+  const ways =
+    place.kind === 'sort' ? grouping.options.filter((g) => g !== 'none') : grouping.options
+  const arrange =
+    ways.length > 1 ? (
+      <Seg
+        label={t`Group`}
+        value={grouping.value}
+        options={ways.map((g) => [g, i18n._(GROUPING_LABEL[g])] as const)}
+        onPick={grouping.onChange}
+      />
+    ) : null
   const controls = browsing ? (
     <>
       {browsing && (
@@ -133,14 +150,7 @@ const PlacePane = ({
       )}
       {/* every way of arranging the folder in plain sight, one press each — a place with only
           one way has nothing to choose */}
-      {browsing && grouping.options.length > 1 && (
-        <Seg
-          label={t`Group`}
-          value={grouping.value}
-          options={grouping.options.map((g) => [g, i18n._(GROUPING_LABEL[g])] as const)}
-          onPick={grouping.onChange}
-        />
-      )}
+      {arrange}
       {browsing && (
         <KindSeg
           files={files}
@@ -168,7 +178,7 @@ const PlacePane = ({
           everything that acts on it — narrowing by name, the ways of arranging it, kinds, and the
           folder's own tools */}
       {head ? (
-        head({ query, onQuery })
+        head({ query, onQuery, arrange })
       ) : (
         <div className='flex flex-wrap items-center gap-x-3.5 gap-y-2.5 px-7 pt-4 pb-2'>
           {/* the count beside the name, on its line, so the controls at the right are level with it */}

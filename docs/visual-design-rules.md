@@ -74,7 +74,7 @@ Ink is a dark blue, never black and never grey.
 
 | Role | Value |
 | --- | --- |
-| Local, to file (pill) | a white pill with a hairline ring (`shadow-hairline`), its word and its 6 px dot in amber `#7d4309` |
+| Local, to file (pill) | a white pill with a hairline ring (`shadow-hairline`), its word and its 6 px dot in amber `#b8530a` |
 | Letting go (_Delete jump_, the bin) | text `#c0262d` |
 | "new" on a destination | white pill, accent text |
 | Count of what is waiting | solid accent pill, white text |
@@ -214,7 +214,7 @@ The app shows one slice per file up to five; when there are more files than that
 - **Picked:** the fill turns accent-soft and the box takes the pick blue with a white tick (`border-pick bg-pick`). **Looked at** (the file open in the preview, or the one taken in the compare dialog): accent-soft with a 2 px ring in the pick blue.
 - At the left a tick box: 20 px, a 2 px light-blue ring (`#86bfe6`) and no fill.
 - Then the picture: 64 × 44.
-- Then the file's name in mono, and under it its time, its size and its proxy in quiet 12 px.
+- Then the file's name in mono, and under it its size and its proxy in quiet 12 px. At the far end, its state as a coloured dot and word with no pill round it, and under it, level with the size, the time it was shot in the quiet grey.
 - At the right its state as a pill: amber _Local_ with its dot.
 
 ## 8. Buttons and pills

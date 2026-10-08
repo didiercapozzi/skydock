@@ -435,7 +435,7 @@ const Row = ({
       meta={
         <>
           <span className='tabular-nums'>
-            {formatTime(file.mtime)} · {formatSize(file.size)}
+            {formatSize(file.size)}
             {afterNote(file)}
           </span>
           {name && (
@@ -471,10 +471,12 @@ const Row = ({
             <StatusChip
               status={status}
               prepared={prepared}
+              bare
             />
           }
         />
       }
+      when={hhmm(file.mtime)}
     />
   )
 }

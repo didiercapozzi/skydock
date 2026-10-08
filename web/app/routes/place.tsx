@@ -481,9 +481,10 @@ const Place = () => {
                     />
                   )
                 : place.kind === 'sort'
-                  ? ({ query: q, onQuery }) => (
+                  ? ({ query: q, onQuery, arrange }) => (
                       <PageHead
                         tile={{ icon: 'fresh' }}
+                        aside={arrange}
                         title={placeLabel(place)}
                         sub={t`What came off the cameras, waiting to be sorted`}
                         query={q}

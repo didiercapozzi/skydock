@@ -40,17 +40,27 @@ const statusName = (status: ShownStatus) => i18n._(LABELS[status])
 
 /* `prepared` is what a montage's copies are called: processed, and nothing is left to do with them but
    go on, so they read as done rather than as waiting to be uploaded */
-const StatusChip = ({ status, prepared = false }: { status: ShownStatus; prepared?: boolean }) =>
+const StatusChip = ({
+  status,
+  prepared = false,
+  bare = false
+}: {
+  status: ShownStatus
+  prepared?: boolean
+  bare?: boolean
+}) =>
   prepared && status === 'processed' ? (
     <State
       tone='text-up'
       dot={false}
+      bare={bare}
       title={i18n._(TITLES[status])}>
       {t`prepared`}
     </State>
   ) : (
     <State
       tone={TONE[status]}
+      bare={bare}
       ring={status === 'changed'}
       title={i18n._(TITLES[status])}>
       {i18n._(LABELS[status])}

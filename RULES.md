@@ -490,6 +490,7 @@ come back to, and a trim nobody saved is not.
 **A destination's page and Fresh files are calm.** Each opens with its name, one quiet line, a search icon
 (the box to narrow by name opens when it is pressed, and stays while something is typed in it) and a ⋯ menu
 holding what is set once — choosing its storage folder, taking it off the board, resetting Fresh files.
+Fresh files also has, beside its search, the choice of looking by jump or by day (_Arranging and finding_).
 Under that sits one card saying in a sentence where things stand — how many files need processing, are
 ready to upload, are all on the storage, or how many jumps
 are waiting for a home — with a slim bar of how many of the files this machine holds are on the storage (a file freed from here is only on the storage and not counted) and the one button that goes next. Once
@@ -608,7 +609,7 @@ kind, the other, or all, the choice holding across the board; all is both side b
 column and photos in the other, stacked on a narrow screen; as rows, each column leaves out the size
 when it is too narrow for it, and putting the details away is often
 what makes the room for two. A badge for a kind with nothing in it is
-shown but cannot be chosen. Fresh files and a destination's page are calm and offer no such choice.
+shown but cannot be chosen. Fresh files and a destination's page are calm and offer no such choice of kind.
 
 **The board follows its record.** The board's record — `manifest.json` and the groups beside it — is
 written by more than the page that has it open: another tab, a script, a hand edit, work done outside
@@ -623,10 +624,12 @@ read whole is never shown as an older one.
 
 **Arranging and finding.** Where a page keeps the plain heading (a montage's, a camera's), the pane's heading has one button per way of arranging the place — by jump,
 by day, or as one list, whichever that place offers — so every choice is in sight and a single press
-away. Fresh files and a destination's page are calm and have no such buttons: each opens arranged its own way, and
-another way can be asked for by its address. Each kind of place opens arranged its own way — Fresh files and a montage by jump, a dropzone
+away. A destination's page is calm and has no such buttons. Fresh files is calm too, with one exception:
+beside its search it has the choice between _By jump_ and _By day_ — the jumps as cards, each opening its
+own files, or every day's files listed under the day, newest first, with the loose files of a day among
+them. Each kind of place opens arranged its own way — Fresh files and a montage by jump, a dropzone
 by day — and a choice made there is part of the folder's address, so it holds until another folder is
-opened. Every list of files runs
+opened, and another way can be asked for by an address. Every list of files runs
 newest first, the latest shot at the top — on the board, in what a place's folder on the storage holds,
 and on a camera's page. A box in the same heading narrows what is drawn, matching either name a file
 has; it changes only what is shown, so a jump with nothing matching drops out of view, the jumps left
