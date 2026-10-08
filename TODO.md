@@ -19,26 +19,7 @@ What is still to do. What was done is in git, not here. Do not start on an item 
 
 Each is a skipped chapter with a `// BUG:` comment holding the evidence (`grep -rn "BUG:" web/tests/journey`) — fix the app, then unskip the chapter. The numbers are the journey's own; the gaps (1–5, 17, 19) are not open. The letters are the chapters.
 
-### Storage and transfers
-
-- [ ] **6.** (f-storage) After an upload the jump files keep reading "Processed" / "1 of 6 on the storage" until the board is reopened (group files are copies; the upload answer lacks `uploaded` — `manifest.ts` / `upload-group.ts`). E agent saw it too.
-- [ ] **7.** (f-storage) A file deleted on the storage shows as ready to send but Upload answers "Nothing to upload yet — process it first." (`packages/skydock-scripts/src/upload.ts`).
-- [ ] **8.** (f-storage) Opening a place does not notice storage deletions (only reopening the board or the check button does) — RULES.md 'Noticing deletions'.
-- [ ] **9.** (f-storage / g-transfers) Reloading while the storage is slow leaves an unhandled "Unexpected Server Error" in the console, and the footer stays on "Checking the storage…" for good instead of turning to unreachable after a few seconds (`web/app/routes/board.tsx` loader).
-- [ ] **10.** (g-transfers) Reloading mid-upload leaves the destination's Upload button enabled while the corner says "Uploading…".
-- [ ] **11.** (g-transfers) A cancelled upload is kept in Transfers as "failed", not "cancelled".
-- [ ] **12.** (g-transfers) "Look again" keeps the mark of a link the storage has revoked until the page is reopened; (i2) the montage page and panel keep "Copy link / Remove link / Email…" after the storage revoked the link — only the email dialog reads the answer (`dialog-host.tsx`).
-- [ ] **16.** (i2) Photos sent as a folder are shown "no longer on the storage" although they are there — `goneSent` in `packages/skydock-scripts/src/upload.ts` looks a folder up like a file.
-
-### Montages and templates
-
-- [ ] **13.** (i1-montage) A montage made from a destination's files does not always open its page (~1 in 4); the note says "Copied 1 file into the jump" — suspect `goingTo` dropped in `web/app/hooks/useBoardModel.ts`.
-- [ ] **14.** (i1-templates) Marking a template as the usual one does not make "Make the project" skip the dialog (`askMontage` in the same hook).
-- [ ] **15.** (i1-templates) Template files come out owned by root, not by the owner of the output folder — `openToHost(held, root)` in `packages/skydock-scripts/src/templates.ts`.
-
-### Languages
-
-- [ ] **20.** (c1) Server sentences ("montages" refusal) stay in English in French and German.
+- [ ] **13.** (i1-montage) A montage made from a destination's files does not always open its page (~1 in 4); the note says "Copied 1 file into the jump" — suspect `goingTo` dropped in `web/app/hooks/useBoardModel.ts`. Not reproduced on 2026-10-07: 49 montages made in a row from a destination's files all opened their page, so the cause (the stale-answer guard in `useBoardState.ts`, unconfirmed) is a guess.
 
 ## 3. RULES.md and the app disagree
 
@@ -50,46 +31,40 @@ Decide which is right, then change the other; each has a skipped or app-assertin
 
 From the read-only audit of 2026-10-06: every point was raised by a finder and then checked by two skeptics, one hunting for a use of the code and one for a rule it would break. Line counts are estimates. About 200 lines could go across sections 4 and 6 (about 155 if `big-board.ts` is documented instead of deleted). Ranked by value over risk.
 
-- [ ] **Unused routing-engine function.** `packages/ui/routing/create-safe-routing-engine.ts:305-325,330` — delete `parseFormData` and its entry in the returned object; nothing calls it. Drop `deepDateSchema` from the import on line 3 (keep `parseIsoDatesDeep`; `deepDateSchema` stays in `utils/common.ts`). −22 lines, low risk.
-- [ ] **Unused exports in the live store.** `web/app/hooks/liveStore.ts:84-93,153,156` — delete `useJobOf` and `useCameraCopy`, their comments and export entries. −12 lines, low.
 - [ ] **Window setup written twice.** `electron/main.ts:351-423` — extract `windowOptions(zoom, size)`, `tellMaximizedOf(win)` and `denyButOpenLinks(asked)` (the shared tail of the open handler only; the main window keeps its preview-address branch). `tellMaximizedOf` must not include the close guard, since the preview window has none. Read `zoom` once at the top of `openWindow`. −18 lines, low.
 - [ ] **Share-link make-or-remove sequence written three times.** `web/app/routes/manifest/destination-link.ts`, `montage-link.ts`, `web/app/routes/api.share-link.ts` — one helper in `packages/skydock-scripts`, e.g. `setShareLink(session, path, make)` returning `{ url }`, `{ url: null }` or `{ refused }`; export it from `@skydock/scripts` and switch the two `../../../../packages/...` imports to the package. Each caller keeps its own bookkeeping; the helper needs a unit test. −22 lines before the helper's own cost, **medium** risk.
-- [ ] **Dialog section headings repeated.** `free-dialog.tsx` (~54-83), `free-place-dialog.tsx`, `disconnect-dialog.tsx`, `delete-jump-dialog.tsx`, take-back, remove-place, work-folder — add `Section({ title, children })` next to `Line` in `modal.tsx` and export it. `title` must accept a node (take-back has a ternary heading); `delete-jump` has no heading, so it keeps its bare `ul` or gets a headless variant. −14 lines, low.
 - [ ] **Montage storage-list step repeated.** `web/app/routes/manifest/upload-montage.ts`, `free-montage.ts` — add `listMontageOnStorage(saved, group, session)` beside `recordOnStorage` in `manifest/storage.ts`; both files lose four imports. −10 lines, low.
-- [ ] **Three HH:MM writers.** `web/app/components/utils.ts:59-66,68-75,81-88` (exports near 156 and 166) — keep `hhmm`; move `formatTime` callers to it; delete `TIME_WRITER` and `formatTime`; make `toTimeInputValue` a one-line alias of `hhmm`, dropping its unused `includeSeconds` parameter (the `comparison-dialog.tsx` call stays valid). `hhmm` has about 27 call sites in 14 files. −12 lines, low.
 - [ ] **Shared file-list pieces.** `bin-files.tsx:39,108-118,139`, `camera-files.tsx:66,448-452,492` — move `pickLabel` and a `FileThumb({ path })` (size 64) into `file-row.tsx`; add `Aside({ icon, children })` to `blurbs.tsx` (the strip text differs per list; the bin wraps it in a `span`). Leave the `Lock` strip in `inspector.tsx:243` alone. Afterwards check for unused `isVideoFile` and `getThumbUrl` imports. −10 to −15 lines, low.
-- [ ] **`kindsOf` helper.** `web/app/components/kinds.ts:1-12`; callers `montage-panel:77`, `montage-view:241,348`, `delivered-list:80`, `inspector:473`, `file-browser:291` — a helper that counts videos and photos itself. `inspector.tsx:386` is not a site (it has its own `counts()`). `file-browser:291` passes `', '`; keep the old signature or move all six callers in one change (see section 7). −8 lines, low.
-- [ ] **Repeated "not connected" branch.** `web/app/routes/api.nas.ts` — one local session-or-401 helper for `list-folder` and `create-folder`. Keep the "Session expired" and "Not connected" messages (tests assert "Session expired"). Drop the unreachable "Unknown intent" tail or make the chain an exhaustive `switch`. −8 lines, low.
-- [ ] **`minFileMtime` alias.** `web/app/components/utils.ts:96-97` (exported at 164), plus `groupMinMtime` in `comparison-dialog` — use `startOfFiles` from `@skydock/scripts` in all 7 importers: `sections.ts`, `jumps.ts`, `comparison-dialog`, `montage-panel`, `file-browser` (15, 92, 231), `delivered-list` (12, 86), `inspector` (27, 442, 988). Move the "a copy brought in from another jump has no say in" comment to `startOfFiles` in `clustering.ts`. −5 lines, low.
 - [ ] **`types.ts` forwarding module.** `web/app/components/types.ts:1-3` — delete it and import from `@skydock/scripts` directly (about 48 importers, all `import type`: 36 under `web/app`, 12 tests in `web/tests/e2e` and `web/tests/server`). Leave `routes/manifest/change.ts` and `web/tests/journey/invariants.ts` (they use a different types module). One pass, then `npm run format` and `npm run check`. −3 lines; low risk but wide for little gain.
-- [ ] **`toldWhere` wrapper.** `electron/main.ts:495-498` — collapse to `const toldWhere = () => process.env.SKYDOCK_DEV_URL?.trim() || null` (used at 515, 568, 616). −3 lines, low.
-- [ ] **`useDetails` repeated conversion.** `web/app/hooks/useDetails.ts:11-12,18-19` — hoist the shared `from`/`to` pair into two module constants (a helper would add indirection for two call sites). −2 lines, low.
-- [ ] **Exports used only in their own file.** Remove `hasOwnWindows` from the export list in `web/app/helpers/previewWindow.ts:30`, and `sayCameras` from the export block in `packages/skydock-scripts/src/cameraWatch.ts:737`. −2 lines, low.
-- [ ] **History comments in tests.** Rewrite in the present tense: `web/tests/e2e/media-urls.test.tsx:68` → "a photo is asked for at its drawn size: the original costs a megabyte and a full decode for eighty pixels"; `web/tests/e2e/drop-from-computer.test.tsx:439` → delete the "It used to empty itself here..." sentence, keep "the bar stays full while the file is read, so it does not read as a copy starting again". 0 lines, low.
 
 ## 5. Optimization
 
 None of these was measured. Ranked by value over risk.
 
 - [ ] **First read of a big card is exiftool-bound.** Measured 2026-10-06: exiftool is 98% of listing a card, about 10 ms a file — 1.4 s for 100 real clips, 3.9 s for 400, 15.9 s for 1,600 — and the shot times are now kept, so only the first read pays it. Whether exiftool can read the time tags faster (fewer tags, `-fast`, a bigger batch) is unmeasured; worth a try only if a first read of 15 s on a big card bothers.
-- [ ] **Parallel macOS tool downloads.** `scripts/fetch-tools.ts:94-111` — run the loop with `Promise.all`; only the two macOS targets have two archives. Saves about one 80 MB download on a release build. 0 to +2 lines, low.
 
 ## 6. Useless features
 
-- [ ] **`scripts/big-board.ts:1-45`.** Builds a 2000-file synthetic board for timing, but nothing links to it: no npm script, and no mention in `docs/developing.md`, RULES.md, this file or the README. Its hard-coded `/workspace/output` is a deliberate guard that refuses the live work folder and `/mnt/*`, so that is not a reason to delete it. Decide: delete it (−45 lines), or add an npm script and one line in `docs/developing.md` (lower risk if the timing work is still wanted).
-- [ ] **`parseFormData`** — the same item as the first one in section 4.
-- [ ] **Orphan comment.** `electron/main.ts:248` — "the same, asked for from the board's own control" follows the `zoomHotkeys` comment (lines 234-237) and fits the `zoom:get`/`zoom:set` handlers at 261-266. Delete it, or move it above line 261. −1 line, low.
+Nothing open.
 
 ## 7. Decisions needed before building
 
 The audit found no feature that the code has and RULES.md never mentions, or the reverse. These need a maintainer's call:
 
-- [ ] **`kindsSaid` separator.** `file-browser:291` writes "2 videos, 1 photo"; the other callers use " · ". RULES.md is silent. Decide whether `file-browser` keeps `', '` on purpose or takes " · ".
 - [ ] **Freshness of the board.** RULES.md line 355 rules out the cached-answer half of the synchronous-stats item.
-- [ ] **`big-board.ts`.** Appears in no doc; a developer-script question: delete or document.
 
 ## Done
 
+- Journey bugs 6–12, 14–16 and 20 were already fixed (acccce0); their chapters are live and no `// BUG:` is left. Found by reading the code on 2026-10-07, not by running the journey.
+- Journey, window chapters: all seven files of `web/tests/journey/window/` pass in this container (real-input, toolbar, welcome, work-folder, zoom, folder-drop, preview-window). The update-feed chapter ('It keeps itself current') stays excused: the packaged app's feed cannot be pointed at a local one.
+- `scripts/big-board.ts` documented, not deleted: `npm run big-board` and a paragraph in `docs/developing.md` (it builds a synthetic work folder for timing and refuses the live work folder and `/mnt`); not run.
+- `kindsSaid` separator decided: `file-browser` keeps `', '` on purpose.
+
+- Parallel macOS tool downloads: the two archives of a macOS target are now fetched together (`Promise.all` in `fetchInto`, `scripts/fetch-tools.ts`); not run, no network used.
+
+- Code reduction: unused `parseFormData`; dialog `Section`; one HH:MM writer, `minFileMtime` alias and `kindsOf` gone from `utils.ts`; one not-connected check in `api.nas.ts`; window setup written once in `electron/main.ts` (with `toldWhere` and the orphan comment); `useDetails` constants; exports used only in their own file; history comments in two tests.
+
+- Unused exports in the live store: `useJobOf` and `useCameraCopy` deleted (nothing used them).
 - Exiftool on every camera-page load: `shotTimes` (`scan.ts`) now keeps the time it found for a file while the file is as it was (its size and moment last written), so exiftool is asked about a file once and not on every read of the camera's page, every copy and every listing after a copy. A card of 1,600 real clips: 15.9 s the first time, then 90 ms (it was 15.9 s every time). The time kept is the one inside the file, not the corrected one in the record, so correcting a time by hand cannot make it stale.
 - Camera list scans (Optimization): measured, not done. The scan the item names, `lookable.includes` for each row, costs 1.0 ms per render at 1,600 clips and 11.7 ms at 6,400 (a Set: 0.2 ms), while the page itself takes about 0.37 s to draw 1,600 rows (0.42 s on a drive-read camera, which draws a preview button on every row; 0.23 s for 400). So the scan is a quarter of a percent of the draw, and paging the rows — the larger change the item weighed — would save a fraction of a second on a card that size. Browser, warm; reopen it for cards far beyond a few thousand clips.
 - Camera listing rebuilding the board per file: listing a card against the real record (1,435 files) took 2.2 s for 100 clips, 7.9 s for 400 and 54 s for 1,600 — and the cost per file grew. The board's entries, its files by path and its files by folder are now read once per listing (and once per copy for the folder index), so it is 0.9 s, 2.2 s and 8.8 s, 5.5 ms a file, flat. What is left per file is the shot time (exiftool), the stat and the bytes check: the exiftool item below is next if that matters.

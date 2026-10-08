@@ -245,7 +245,6 @@ const zoomHotkeys = (contents: WebContents) => {
   })
 }
 
-/* the same, asked for from the board's own control */
 /* what the page's own title bar asks of the window it is in */
 ipcMain.handle(
   'window:state',
@@ -260,6 +259,7 @@ ipcMain.on('window:toggle-maximize', (event) => {
 })
 ipcMain.on('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.close())
 
+/* the same, asked for from the board's own control */
 ipcMain.handle('zoom:get', (event) => event.sender.getZoomFactor())
 ipcMain.handle('zoom:set', (event, asked: unknown) =>
   typeof asked === 'number' && Number.isFinite(asked)
@@ -347,24 +347,40 @@ const raise = (window: BrowserWindow) => {
   window.setAlwaysOnTop(false)
 }
 
+/* how every window of the app is made: no frame of the desktop's, and solid, so nothing of the
+   desktop shows through; the page draws its own buttons and asks the window to do what they say */
+const windowOptions = (zoom: number, size: { width: number; height: number }) => ({
+  title: 'SkyDock',
+  ...size,
+  minWidth: 900,
+  minHeight: 600,
+  autoHideMenuBar: true,
+  frame: false,
+  webPreferences: {
+    preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
+    zoomFactor: zoom
+  }
+})
+
+/* the page draws the maximize button, so it is told whenever the window changes */
+const tellMaximizedOf = (window: BrowserWindow) => {
+  const tell = () => window.webContents.send('window:maximized', window.isMaximized())
+  window.on('maximize', tell)
+  window.on('unmaximize', tell)
+}
+
+/* a link out belongs to the machine's own browser; nothing else is opened */
+const denyButOpenLinks = (asked: string) => {
+  if (/^https?:/.test(asked)) void shell.openExternal(asked)
+  return { action: 'deny' as const }
+}
+
 /* The window itself: a browser on the server behind it, and nothing else. A link out of the board —
    the passenger's email, a share link — belongs to the machine's own browser; opened in here it
    would be the board gone, with no way back to it. */
 const openWindow = (address: string) => {
   const zoom = zoomLevel()
-  const window = new BrowserWindow({
-    title: 'SkyDock',
-    width: 1440,
-    height: 900,
-    minWidth: 900,
-    minHeight: 600,
-    autoHideMenuBar: true,
-    frame: false,
-    webPreferences: {
-      preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
-      zoomFactor: zoom
-    }
-  })
+  const window = new BrowserWindow(windowOptions(zoom, { width: 1440, height: 900 }))
   window.webContents.setWindowOpenHandler(({ url: asked }) => {
     /* a file looked at has a window of its own, apart from the board: the board asks for one by
        opening its own address with the file in it, and it is given here, the same kind of window */
@@ -378,23 +394,12 @@ const openWindow = (address: string) => {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
-          title: 'SkyDock',
-          width: 1360,
-          height: 880,
-          minWidth: 900,
-          minHeight: 600,
-          autoHideMenuBar: true,
-          frame: false,
-          backgroundColor: groundColour(),
-          webPreferences: {
-            preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
-            zoomFactor: zoom
-          }
+          ...windowOptions(zoom, { width: 1360, height: 880 }),
+          backgroundColor: groundColour()
         }
       }
     }
-    if (/^https?:/.test(asked)) void shell.openExternal(asked)
-    return { action: 'deny' }
+    return denyButOpenLinks(asked)
   })
   window.webContents.on('did-create-window', (preview) => {
     previewWindow = preview
@@ -403,19 +408,12 @@ const openWindow = (address: string) => {
     })
     zoomHotkeys(preview.webContents)
     /* nothing opens from it but a link out, which is the machine's own browser's */
-    preview.webContents.setWindowOpenHandler(({ url: asked }) => {
-      if (/^https?:/.test(asked)) void shell.openExternal(asked)
-      return { action: 'deny' }
-    })
-    const tellMaximized = () => preview.webContents.send('window:maximized', preview.isMaximized())
-    preview.on('maximize', tellMaximized)
-    preview.on('unmaximize', tellMaximized)
+    preview.webContents.setWindowOpenHandler(({ url: asked }) => denyButOpenLinks(asked))
+    tellMaximizedOf(preview)
   })
   zoomHotkeys(window.webContents)
   askBeforeClosing(window)
-  const tellMaximized = () => window.webContents.send('window:maximized', window.isMaximized())
-  window.on('maximize', tellMaximized)
-  window.on('unmaximize', tellMaximized)
+  tellMaximizedOf(window)
   void window.loadURL(address)
   console.log(`[SkyDock] the window is open on ${address}`)
   return window
@@ -491,10 +489,7 @@ const startServer = async (folder?: string, into?: BrowserWindow) => {
 /* A server already running, for working on the app itself: the development server is told where to
    keep its work and which editor to open, and this shows what it serves rather than starting a
    second one of its own. */
-const toldWhere = () => {
-  const told = process.env.SKYDOCK_DEV_URL?.trim()
-  return told ? told : null
-}
+const toldWhere = () => process.env.SKYDOCK_DEV_URL?.trim() || null
 
 const RELEASES = 'https://github.com/didiercapozzi/skydock/releases/latest'
 

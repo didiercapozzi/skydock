@@ -1,4 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
+import { startOfFiles } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { FileRow, Thumb } from './file-row'
@@ -15,12 +16,8 @@ import {
   getThumbUrl,
   hhmm,
   isVideoFile,
-  minFileMtime,
-  toDateInputValue,
-  toTimeInputValue
+  toDateInputValue
 } from './utils'
-
-const groupMinMtime = (group: ManifestGroup) => minFileMtime(group.files)
 
 /* When something was shot, said in full and to the minute. Two cameras are compared here because
    one of their clocks is wrong, so the day matters as much as the hour — and the second never did:
@@ -121,15 +118,15 @@ const ComparisonDialog = ({
 
   const handleMergeClick = () => {
     setDateChoice('left')
-    setCustomDate(toDateInputValue(groupMinMtime(leftGroup)))
-    setCustomTime(toTimeInputValue(groupMinMtime(leftGroup)))
+    setCustomDate(toDateInputValue(startOfFiles(leftGroup.files)))
+    setCustomTime(hhmm(startOfFiles(leftGroup.files)))
     setShowDatePopup(true)
   }
 
   const resolveAnchor = () => {
     if (dateChoice === 'left' || dateChoice === 'right') {
       const target = dateChoice === 'left' ? leftGroup : rightGroup
-      return groupMinMtime(target)
+      return startOfFiles(target.files)
     }
     if (!customDate) return null
     const parsed = new Date(`${customDate}T${customTime || '00:00'}:00`).getTime()

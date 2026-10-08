@@ -436,7 +436,7 @@ describe('while one large file is being copied in', () => {
   })
 
   /* The bytes are all in and the file is being read — still something happening, and the bar stays
-     where it got to. It used to empty itself here, which read as a finished copy starting again. */
+     where it got to, so it does not read as a copy starting again. */
   test('the bar stays full while what landed is being read', async () => {
     theStreamOpens()
     const finish = machineTakesItsTime()

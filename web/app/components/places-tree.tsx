@@ -416,6 +416,8 @@ const PlacesTree = ({
       {/* what was put aside, to be looked through and brought back from — never emptied from here */}
       <Row
         place={{ kind: 'bin' }}
+        dropTarget={dropTarget({ kind: 'bin' })}
+        over={overTarget === placeKey({ kind: 'bin' })}
         title={t`What was put aside — look through it, and bring files back to Fresh files`}
       />
     </nav>

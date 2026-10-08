@@ -25,7 +25,7 @@ import {
   clock,
   dateLabel,
   formatSize,
-  formatTime,
+  hhmm,
   getFileUrl,
   getPlaybackUrl,
   getThumbUrl,
@@ -634,7 +634,7 @@ const PreviewDrawer = ({
             </h2>
             <span className='flex flex-wrap items-center gap-x-2 gap-y-1 text-small text-ink-3'>
               <span>
-                {dateLabel(file.mtime)} · {formatTime(file.mtime)}
+                {dateLabel(file.mtime)} · {hhmm(file.mtime)}
               </span>
               <span>·</span>
               <span className='font-mono text-ink-2'>
@@ -1392,7 +1392,7 @@ const PreviewDrawer = ({
                 <div className='flex flex-col'>
                   {(
                     [
-                      [t`Shot`, `${dateLabel(file.mtime)} ${formatTime(file.mtime)}`],
+                      [t`Shot`, `${dateLabel(file.mtime)} ${hhmm(file.mtime)}`],
                       [t`Size now`, formatSize(file.size)],
                       ...(sizeAfter
                         ? ([[t`Size after processing`, sizeAfter]] as [string, string][])

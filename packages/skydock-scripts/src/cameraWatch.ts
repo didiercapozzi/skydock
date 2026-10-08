@@ -738,7 +738,6 @@ export {
   lookForCameras,
   mountedCameras,
   overMtp,
-  sayCameras,
   seenOnCamera,
   watchCameras
 }

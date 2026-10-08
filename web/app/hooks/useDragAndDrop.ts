@@ -5,7 +5,7 @@ import type { Passenger } from '../components/montage-card'
 import type { Dropped } from '../helpers/import'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { droppedIn, fromComputer } from '../helpers/import'
-import { placeKey } from '../helpers/places'
+import { placeKey, placeOfGroup, placeOfLoose } from '../helpers/places'
 import type { Place } from '../helpers/places'
 
 type Move = {
@@ -31,6 +31,7 @@ const showIntent = (e: React.DragEvent) => {
    under the pointer lights up, and only when it takes what is being carried. */
 const useDragAndDrop = ({
   groups,
+  loose,
   labels,
   frozen,
   moveFiles,
@@ -38,9 +39,11 @@ const useDragAndDrop = ({
   toMontage,
   importDropped,
   askMontageName,
+  askRemove,
   onFiled
 }: {
   groups: ManifestGroup[]
+  loose: ManifestFile[]
   /* what each jump is called on the board */
   labels: Map<string, string>
   frozen: Set<string>
@@ -50,6 +53,8 @@ const useDragAndDrop = ({
   toMontage: (ids: string[], passenger?: Passenger) => void
   /* a jump or files dropped on the Montages heading: the montage's name is asked for first */
   askMontageName: (what: { groupId: string } | { fileIds: string[] }) => void
+  /* files dropped on the bin: the question every removal asks comes first */
+  askRemove: (fileIds: string[]) => void
   importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
   /* what the board does once something from it is filed under a destination: goes there */
   onFiled: (destination: string) => void
@@ -65,6 +70,27 @@ const useDragAndDrop = ({
     if (!e) return
     e.dataTransfer.setData('text/plain', said)
     e.dataTransfer.effectAllowed = 'copyMove'
+    /* What is drawn under the pointer is a small chip, the picture of what is carried beside its name,
+       hung down and to the right of the pointer: the row it was taken from is too big and too solid to
+       see the place under it. The picture is the one already drawn in the row, copied, which is loaded
+       and so is drawn at once. The chip has to be on the page for the engine to draw it, and is taken
+       off again at once. */
+    const chip = document.createElement('div')
+    chip.className =
+      'fixed -top-96 -left-96 flex max-w-72 items-center gap-2 rounded-control bg-pane/90 p-1.5 pr-3 text-body font-semibold text-ink shadow-float'
+    const shown = e.currentTarget instanceof Element ? e.currentTarget.querySelector('img') : null
+    if (shown) {
+      const picture = shown.cloneNode() as HTMLImageElement
+      picture.className = 'size-10 flex-none rounded-control object-cover'
+      chip.appendChild(picture)
+    }
+    const name = document.createElement('span')
+    name.className = 'truncate'
+    name.textContent = said
+    chip.appendChild(name)
+    document.body.appendChild(chip)
+    e.dataTransfer.setDragImage(chip, -12, -12)
+    setTimeout(() => chip.remove(), 0)
   }
 
   /* a whole jump, picked up by its line: dropping it on a place files every file in it at once, and
@@ -137,7 +163,7 @@ const useDragAndDrop = ({
      files or whole jumps, back to Fresh files, under a destination, into a named montage, or to
      the Montages heading, which asks for a name first. */
   const land = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     what: { files: string[] } | { jumps: string[] },
     how: { into?: { passenger: Passenger; hostId: string }; copy?: boolean } = {}
   ) => {
@@ -146,11 +172,12 @@ const useDragAndDrop = ({
     if ('files' in what) {
       if (what.files.length === 0) return
       if (into) moveFiles(what.files, { targetGroupId: into.hostId, copy })
+      else if (to.kind === 'bin') askRemove(what.files)
       else if (to.kind === 'montage') askMontageName({ fileIds: what.files })
       else moveFiles(what.files, { destination })
     } else {
       const [first] = what.jumps
-      if (!first) return
+      if (!first || to.kind === 'bin') return
       if (into) toMontage(what.jumps, into.passenger)
       else if (to.kind === 'montage') askMontageName({ groupId: first })
       else assign(what.jumps, destination)
@@ -181,7 +208,7 @@ const useDragAndDrop = ({
      dropzone is a target in the menu and on its own card, and each has to light on its own. `to` is
      where it lands: back among the fresh files, a destination, or the montages. */
   const dropTarget = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     named?: string,
     /* a named montage: what is dropped joins it rather than starting a montage of its own */
     into?: { passenger: Passenger; hostId: string }
@@ -189,7 +216,9 @@ const useDragAndDrop = ({
     const key = named ?? (to.kind === 'dz' ? `dest:${to.name}` : to.kind)
     /* the sorting area takes files back; a destination card takes whole jumps as well */
     const accepts =
-      to.kind === 'sort' ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
+      to.kind === 'sort' || to.kind === 'bin'
+        ? draggedFiles.length > 0
+        : dragged.length > 0 || draggedFiles.length > 0
     /* From the computer: into a montage, a dropzone as lone files, or the sorting area. The Montages
        heading is not a place for a file — it has to be somebody's. */
     const incoming = into
@@ -231,20 +260,37 @@ const useDragAndDrop = ({
      storage holds, and a camera, are not somewhere a file can be put. */
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
+    /* what is carried from the board and is all in this place already has nowhere to go: dropping it
+       would only make the files start again, so the place does not take it */
+    const placeOfFile = (id: string) => {
+      const jump = groups.find((g) => g.files.some((f) => f.id === id))
+      const lone = loose.find((f) => f.id === id)
+      return jump ? placeOfGroup(jump) : lone ? placeOfLoose(lone) : undefined
+    }
+    const carried = [
+      ...dragged.map((id) => groups.find((g) => g.id === id)).map((g) => g && placeOfGroup(g)),
+      ...draggedFiles.map(placeOfFile)
+    ]
+    const staying = carried.length > 0 && carried.every((p) => p && placeKey(p) === key)
     const host =
       target.kind === 'pax'
         ? groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      target.kind === 'camera' || target.kind === 'bin' || (host && frozen.has(host.id))
+      target.kind === 'camera' || staying || (host && frozen.has(host.id))
         ? {}
-        : target.kind === 'sort'
-          ? dropTarget({ kind: 'sort' }, key)
-          : target.kind === 'dz'
-            ? dropTarget({ kind: 'dz', name: target.name }, key)
-            : host?.passenger
-              ? dropTarget({ kind: 'montage' }, key, { passenger: host.passenger, hostId: host.id })
-              : dropTarget({ kind: 'montage' }, key)
+        : target.kind === 'bin'
+          ? dropTarget({ kind: 'bin' }, key)
+          : target.kind === 'sort'
+            ? dropTarget({ kind: 'sort' }, key)
+            : target.kind === 'dz'
+              ? dropTarget({ kind: 'dz', name: target.name }, key)
+              : host?.passenger
+                ? dropTarget({ kind: 'montage' }, key, {
+                    passenger: host.passenger,
+                    hostId: host.id
+                  })
+                : dropTarget({ kind: 'montage' }, key)
     return { ...props, 'data-place': key }
   }
 

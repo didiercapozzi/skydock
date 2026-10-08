@@ -5,18 +5,21 @@ import { remembered } from './remembered'
    is remembered on this machine; on a narrow window it is a drawer that is shut until asked for, and
    that is only for this visit. A page starts without it, calm: it comes by itself when a file or a jump
    is picked, and on a montage's page, whose panel is where it is worked on. */
+const from = (stored: string) => (stored === 'open' ? true : stored === 'shut' ? false : null)
+const to = (open: boolean) => (open ? 'open' : 'shut')
+
 const column = remembered<boolean>({
   key: 'skydock.details',
   fallback: false,
-  from: (stored) => (stored === 'open' ? true : stored === 'shut' ? false : null),
-  to: (open) => (open ? 'open' : 'shut')
+  from,
+  to
 })
 
 const drawer = remembered<boolean>({
   key: 'skydock.detailsDrawer',
   fallback: false,
-  from: (stored) => (stored === 'open' ? true : stored === 'shut' ? false : null),
-  to: (open) => (open ? 'open' : 'shut'),
+  from,
+  to,
   kept: 'session'
 })
 

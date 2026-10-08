@@ -81,17 +81,6 @@ const useLiveFile = (id: string | undefined) =>
     () => undefined
   )
 
-/* a job of one kind under way, when there is one — the same object until something in it changes */
-const useJobOf = (type: Job['type']) =>
-  useSyncExternalStore(
-    liveJobs.subscribe,
-    () => Object.values(liveJobs.get()).find((job) => job.type === type),
-    () => undefined
-  )
-
-/* the card being copied, every byte of it — for the panel that shows it */
-const useCameraCopy = () => useJobOf('camera-copy') ?? null
-
 /* only which card, and how many files have come off it so far — what the board itself needs */
 const useCameraLanded = () =>
   useSyncExternalStore(
@@ -150,10 +139,8 @@ export {
   liveJobs,
   liveFiles,
   liveKey,
-  useCameraCopy,
   useCameraCopying,
   useCameraLanded,
-  useJobOf,
   useJobRow,
   useJobRows,
   useJobs,

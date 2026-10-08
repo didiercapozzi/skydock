@@ -2,7 +2,7 @@ import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { z } from 'zod'
 import { Go, Mini } from './buttons'
-import { Line, Modal, Spacer } from './modal'
+import { Line, Modal, Section, Spacer } from './modal'
 import { Note } from './blurbs'
 
 /* What the window answers when it is asked for another folder. */
@@ -60,8 +60,7 @@ const WorkFolderDialog = ({
       <p className='m-0 text-body text-ink-2'>{t`SkyDock works in`}</p>
       <code className='font-mono text-body break-all text-ink'>{folder}</code>
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`Choosing another folder`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`Choosing another folder`}>
         <Line mark='✓'>
           {t`the board opens on what that folder holds — empty, or the work already kept there`}
         </Line>
@@ -69,7 +68,7 @@ const WorkFolderDialog = ({
         <Line mark='✕'>
           {t`nothing is copied or moved: to take the work along, move the folder by hand first`}
         </Line>
-      </ul>
+      </Section>
 
       {!choose && (
         <Note>

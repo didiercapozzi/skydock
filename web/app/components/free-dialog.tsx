@@ -1,7 +1,7 @@
 import { lastSegment } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { Danger, Mini } from './buttons'
-import { Line, Modal, Spacer } from './modal'
+import { Line, Modal, Section, Spacer } from './modal'
 import { formatFilmSize } from './utils'
 import type { ManifestGroup } from './types'
 import { Note } from './blurbs'
@@ -51,8 +51,7 @@ const FreeDialog = ({
           <Danger onClick={onConfirm}>{t`Check and free about ${about}`}</Danger>
         </>
       }>
-      <p className='m-0 text-body font-semibold text-ink'>{t`Proved first`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`Proved first`}>
         {sent.length > 0 && (
           <Line mark='✓'>
             {t`each file that went up is hashed here and by the storage, and both must match what was sent:`}{' '}
@@ -67,21 +66,19 @@ const FreeDialog = ({
         )}
         <Line mark='✓'>{t`the originals are exactly what the backup holds`}</Line>
         <Line mark='✓'>{t`nothing about the montage changed since it was uploaded`}</Line>
-      </ul>
+      </Section>
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`Then deleted from this machine`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`Then deleted from this machine`}>
         <Line mark='✕'>
           {t`${plural(count, { one: 'the # original', other: 'the # originals' })} (${originalsSize})`}
         </Line>
         <Line mark='✕'>{t`the processed copies and the working copies made for the editor`}</Line>
         <Line mark='✕'>{t`the film and the zips`}</Line>
-      </ul>
+      </Section>
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`Kept`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`Kept`}>
         <Line mark='✓'>{t`the kdenlive project, and the record of what went where`}</Line>
-      </ul>
+      </Section>
 
       <Note>
         {t`After this the montage lives on the storage only: it cannot be processed, edited or uploaded again from here, and a rescan leaves it as it is. If any check fails, nothing at all is deleted, and it says which.`}

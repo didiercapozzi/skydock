@@ -168,7 +168,7 @@ The chapters found real defects and places where RULES.md and the app disagree. 
 `// BUG:` comment (`grep -rn "BUG:" web/tests/journey`), listed in TODO.md. A fix unskips its chapter, which is the
 proof.
 
-## Order of work (all of it built and run)
+## Order of work (all of it built; the window chapters run with `npm run test:journey:window`)
 
 1. **Saved states and the guard.** Copy the work folder after "sorted", "processed", "uploaded"; a helper restores one
    and starts the app on it. The guard reads RULES.md's bold lead-ins and `##` headings and fails on any that no

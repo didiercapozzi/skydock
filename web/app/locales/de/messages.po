@@ -973,6 +973,10 @@ msgstr "Wird gefragt…"
 msgid "At the counter"
 msgstr "Am Schalter"
 
+#: app/components/about-dialog.tsx
+msgid "Author: Capo"
+msgstr "Autor: Capo"
+
 #: app/components/board-header.tsx
 msgid "Auto"
 msgstr "Automatisch"
@@ -2643,6 +2647,10 @@ msgstr "Freigeben, wie es der Desktop tut, damit es abgezogen werden kann — ni
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
 msgstr "Auswahl aufheben"
+
+#: app/components/about-dialog.tsx
+msgid "Licence: MIT"
+msgstr "Lizenz: MIT"
 
 #: app/components/board-header.tsx
 msgid "Light"

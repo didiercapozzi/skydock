@@ -27,6 +27,13 @@ const actionArgs = z.object({
 const action = createValidatedFormAction()({
   schema: actionArgs,
   handler: async ({ data, errors }) => {
+    const notConnected = () => {
+      errors.addGlobalError(
+        loadNasSession() ? 'Session expired. Please reconnect.' : 'Not connected.'
+      )
+      return errors.toResponse(401)
+    }
+
     if (data.intent === 'status') {
       const session = await ensureNasSession()
       if (!session) {
@@ -87,15 +94,7 @@ const action = createValidatedFormAction()({
 
     if (data.intent === 'list-folder') {
       const session = await ensureNasSession()
-      if (!session) {
-        const raw = loadNasSession()
-        if (raw) {
-          errors.addGlobalError('Session expired. Please reconnect.')
-          return errors.toResponse(401)
-        }
-        errors.addGlobalError('Not connected.')
-        return errors.toResponse(401)
-      }
+      if (!session) return notConnected()
       try {
         const folderPath = data.path || '/'
         const folders = await dsmListFolder(session.hostname, session.sessionId, folderPath)
@@ -106,33 +105,20 @@ const action = createValidatedFormAction()({
       }
     }
 
-    if (data.intent === 'create-folder') {
-      if (!data.path || !data.name) {
-        errors.addGlobalError('Folder path and name are required.')
-        return errors.toResponse(422)
-      }
-      const session = await ensureNasSession()
-      if (!session) {
-        const raw = loadNasSession()
-        if (raw) {
-          errors.addGlobalError('Session expired. Please reconnect.')
-          return errors.toResponse(401)
-        }
-        errors.addGlobalError('Not connected.')
-        return errors.toResponse(401)
-      }
-      try {
-        await dsmCreateFolder(session.hostname, session.sessionId, data.path, data.name)
-        const folders = await dsmListFolder(session.hostname, session.sessionId, data.path)
-        return { folders }
-      } catch (err) {
-        errors.addGlobalError(err instanceof Error ? err.message : 'Failed to create folder.')
-        return errors.toResponse(422)
-      }
+    if (!data.path || !data.name) {
+      errors.addGlobalError('Folder path and name are required.')
+      return errors.toResponse(422)
     }
-
-    errors.addGlobalError('Unknown intent.')
-    return errors.toResponse(422)
+    const session = await ensureNasSession()
+    if (!session) return notConnected()
+    try {
+      await dsmCreateFolder(session.hostname, session.sessionId, data.path, data.name)
+      const folders = await dsmListFolder(session.hostname, session.sessionId, data.path)
+      return { folders }
+    } catch (err) {
+      errors.addGlobalError(err instanceof Error ? err.message : 'Failed to create folder.')
+      return errors.toResponse(422)
+    }
   }
 })
 

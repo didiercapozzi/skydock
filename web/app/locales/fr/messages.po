@@ -973,6 +973,10 @@ msgstr "Interrogation…"
 msgid "At the counter"
 msgstr "Au comptoir"
 
+#: app/components/about-dialog.tsx
+msgid "Author: Capo"
+msgstr "Auteur : Capo"
+
 #: app/components/board-header.tsx
 msgid "Auto"
 msgstr "Auto"
@@ -2643,6 +2647,10 @@ msgstr "Le libérer comme le fait le bureau, pour pouvoir le débrancher — rie
 #: app/components/shortcuts-dialog.tsx
 msgid "let go of the picks"
 msgstr "désélectionner"
+
+#: app/components/about-dialog.tsx
+msgid "Licence: MIT"
+msgstr "Licence : MIT"
 
 #: app/components/board-header.tsx
 msgid "Light"

@@ -46,7 +46,8 @@ const offGap = (held: ManifestFile[]) => {
 /* When a jump started: when its own run did. A file brought in from elsewhere — moved, added from
    the computer, copied — was often shot well before or after, and does not say when this jump was:
    the card's date, the jump's number, the day it is filed under and the time that gets corrected
-   all follow the run, so bringing a file in changes none of them and leaves nothing to set right. */
+   all follow the run, so bringing a file in changes none of them and leaves nothing to set right.
+   A copy brought in from another jump has no say in it. */
 const startOfFiles = (files: ManifestFile[]) => mainRun(files)[0]?.mtime ?? 0
 
 /* The day a jump belongs to: the day it started. It is stored rather than worked out from the

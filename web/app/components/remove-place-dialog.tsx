@@ -1,6 +1,6 @@
 import { plural, t } from '@lingui/core/macro'
 import { Danger, Mini } from './buttons'
-import { Line, Modal, Spacer } from './modal'
+import { Line, Modal, Section, Spacer } from './modal'
 import { Note } from './blurbs'
 
 /* Taking a place off the board deletes nothing, and the dialog's whole job is to say so: what was
@@ -39,8 +39,7 @@ const RemovePlaceDialog = ({
           <Danger onClick={onConfirm}>{t`Remove ${place}`}</Danger>
         </>
       }>
-      <p className='m-0 text-body font-semibold text-ink'>{t`What happens`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`What happens`}>
         <Line mark='✕'>{t`${place} stops being a destination files can be filed under`}</Line>
         {filed.length > 0 ? (
           <Line mark='↩'>
@@ -50,17 +49,16 @@ const RemovePlaceDialog = ({
           <Line mark='✓'>{t`nothing is filed there`}</Line>
         )}
         {linked && <Line mark='✕'>{t`it stops being linked to ${linked} on the storage`}</Line>}
-      </ul>
+      </Section>
 
-      <p className='m-0 text-body font-semibold text-ink'>{t`What does not`}</p>
-      <ul className='m-0 flex list-none flex-col gap-1 p-0'>
+      <Section title={t`What does not`}>
         <Line mark='✓'>{t`every original stays on this machine, exactly where it is`}</Line>
         {linked && (
           <Line mark='✓'>
             {t`${linked} and everything in it stays on the storage, and so does any link handed out of it`}
           </Line>
         )}
-      </ul>
+      </Section>
 
       <Note>
         {t`The copies already made for ${place} were written into a folder named after it, so they are forgotten and made again wherever those jumps are filed next. Making the place again by the same name does not bring the filing back.`}

@@ -20,7 +20,7 @@ import type { ManifestFile } from './types'
 import { Mini } from './buttons'
 import { FileRow, Thumb } from './file-row'
 import { Icon } from './icons'
-import { clock, formatSize, formatTime, getPictureUrl, hhmm, isVideoFile } from './utils'
+import { clock, formatSize, getPictureUrl, hhmm, isVideoFile } from './utils'
 
 /* Videos and photos are two different jobs on a montage — 15 clips to cut, 500 stills to cull — so
    the badges say which is on screen. The counts are always of everything there, never of what the
@@ -545,7 +545,7 @@ const Tile = ({
       e.preventDefault()
       onPick(file)
     }}
-    title={`${file.filename} · ${formatTime(file.mtime)} · ${formatSize(file.size)}${afterNote(file)} · ${statusName(status)}${
+    title={`${file.filename} · ${hhmm(file.mtime)} · ${formatSize(file.size)}${afterNote(file)} · ${statusName(status)}${
       proxy?.state === 'none' ? ` · ${proxy.reason ? t`proxy failed` : t`no proxy yet`}` : ''
     }${isWholeFrame(file.frame) ? '' : ` · ${t`framed`}`}${file.rotation ? ` · ${turnedTitle(file.rotation)}` : ''}`}
     /* the picked one ringed in the accent, the one looked at in grey — a ring outside the picture,

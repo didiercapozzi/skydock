@@ -1,16 +1,15 @@
 import { createElement } from 'react'
-import { afterEach, describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
 import type { ManifestFile, ManifestGroup } from '../../app/components/types'
 import { useDragAndDrop } from '../../app/hooks/useDragAndDrop'
 
-/* A drag has to be handed what it is carrying. The board keeps that on its own side — both ends of
-   the drag are the same board — but an engine given an empty drag cancels it before it starts, and
-   then nothing is ever dropped anywhere: SkyDock's own window draws no card and reaches no place,
-   where a browser lets the same drag by. So the name travels too, and this is what says it still
-   does. Dragged in a real browser. */
+/* What travels under the pointer while something is dragged is a small chip with its name, not the row
+   it was taken from — a whole row is too big and too solid to see the place under it (RULES, Filing).
+   The chip is handed to the drag with the pointer at its top-left corner, so it hangs down and to the
+   right of the pointer and never covers the spot being aimed at. Dragged in a real browser. */
 
 const clip = (id: string): ManifestFile => ({
   id,
@@ -25,6 +24,10 @@ const GROUP: ManifestGroup = { id: 'g1', label: 'Jump 1', day: '01.08.2026', fil
 
 /* Declared at module scope: Fast Refresh only instruments components there, and one using hooks
    inside a function body trips over its own missing runtime. */
+/* a picture already drawn, as the row's is */
+const PIXEL =
+  'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'
+
 const Carried = () => {
   const drag = useDragAndDrop({
     groups: [GROUP],
@@ -40,14 +43,18 @@ const Carried = () => {
     onFiled: () => {}
   })
   const handle = (label: string, onDragStart: (e: React.DragEvent) => void) =>
-    createElement('div', {
+    createElement(
+      'div',
+      {
       key: label,
       role: 'button',
       'aria-label': label,
       draggable: true,
       onDragStart,
       className: 'h-10 w-20 bg-line-2'
-    })
+      },
+      createElement('img', { alt: '', src: PIXEL })
+    )
   return createElement(
     'div',
     null,
@@ -63,28 +70,25 @@ const Carried = () => {
   )
 }
 
-/* what the drag was handed, read at the far end of a real one */
+/* what the far end of the drag was handed, which this file does not look at */
 const said: string[] = []
+const pictured: { text: string | null; picture: boolean; x: number; y: number }[] = []
 
-afterEach(() => {
-  said.length = 0
-})
+describe('what is drawn under the pointer during a drag', () => {
+  test('is a small chip with the picture and the name of the file, hanging off the pointer', async () => {
+    vi.spyOn(DataTransfer.prototype, 'setDragImage').mockImplementation((image, x, y) => {
+      pictured.push({ text: image.textContent, picture: image.querySelector('img') !== null, x, y })
+    })
+    await render(createElement(Carried))
+    await userEvent.dragAndDrop(
+      page.getByRole('button', { name: 'the clip' }),
+      page.getByTestId('landing')
+    )
 
-const dragged = async (name: string) => {
-  await render(createElement(Carried))
-  await userEvent.dragAndDrop(page.getByRole('button', { name }), page.getByTestId('landing'))
-}
-
-describe('a drag that has just started', () => {
-  test('carries the name of the file, so the engine lets it go', async () => {
-    await dragged('the clip')
-
-    expect(said).toEqual(['luc.MP4'])
-  })
-
-  test('carries the name of the jump', async () => {
-    await dragged('the jump')
-
-    expect(said).toEqual(['Jump 1'])
+    expect(pictured).toHaveLength(1)
+    expect(pictured[0]?.text).toBe('luc.MP4')
+    expect(pictured[0]?.picture, 'the picture drawn in the row is in the chip').toBe(true)
+    expect(pictured[0]!.x).toBeLessThan(0)
+    expect(pictured[0]!.y).toBeLessThan(0)
   })
 })
