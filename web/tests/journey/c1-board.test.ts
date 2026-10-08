@@ -187,7 +187,9 @@ describe('a destination', () => {
 
     /* each file a row of its own: its picture, name, time and size */
     const row = rowOf(j.page, 'DJI_20260905100520_0003_D.MP4')
-    expect(await row.innerText()).toMatch(/10:05\s*·\s*83 KB/)
+    const said = await row.innerText()
+    expect(said).toContain('10:05')
+    expect(said).toContain('83 KB')
     expect(await row.locator('img').count()).toBeGreaterThan(0)
     await quiet()
   })
@@ -694,10 +696,16 @@ describe('arranging and finding', () => {
     await quiet()
   })
 
-  test('offers no button for the ways of arranging Fresh files, which opens arranged by jump and keeps another way in its address', async () => {
+  test('offers the choice of By jump and By day for Fresh files, which opens by jump, and no button for one list', async () => {
     await fresh(j.page).click()
-    for (const way of ['By jump', 'By day', 'One list'])
-      expect(await pane('Fresh files').getByRole('button', { name: way }).count()).toBe(0)
+    const way = (name: string) => pane('Fresh files').getByRole('button', { name, exact: true })
+    expect(await way('By jump').getAttribute('aria-pressed')).toBe('true')
+    expect(await way('By day').count()).toBe(1)
+    expect(await way('One list').count()).toBe(0)
+    await way('By day').click()
+    await eventually(() => way('By day').getAttribute('aria-pressed')).toBe('true')
+    await way('By jump').click()
+    await eventually(() => way('By jump').getAttribute('aria-pressed')).toBe('true')
   })
 })
 

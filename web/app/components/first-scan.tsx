@@ -1,4 +1,5 @@
 import { t } from '@lingui/core/macro'
+import { Spinner } from './pending'
 import { useEffect, useRef } from 'react'
 import { Notice } from './notice'
 import { WindowBar } from './window-bar'
@@ -34,10 +35,9 @@ const FirstScan = ({
         <div className='flex max-w-115 flex-col items-center gap-4 text-center'>
           {scanning || !note ? (
             <>
-              <span
-                role='status'
-                aria-label={t`Scanning…`}
-                className='size-12 animate-spin rounded-full border-5 border-line-strong border-t-accent'
+              <Spinner
+                large
+                label={t`Scanning…`}
               />
               <h1 className='m-0 font-display text-heading font-bold tracking-display'>
                 {t`Scanning…`}

@@ -108,6 +108,13 @@ Everything below follows from these.
   got. Each can be folded down, none has to be waited for, and the ones that end leave a line in the
   transfers' history. A task that fails says why there until it is put away. This is the rule every new
   background task answers to before it is built.
+- **A wait that lasts is said.** Whatever the person asks for — moving files, making or deleting a jump,
+  taking files back, opening a project, freeing space, a page on its way — the board answers at once, and
+  if the answer has still not come after 300 milliseconds it says so: a thin line moves under the header and
+  the footer says in words what is being done, with a turning ring, until the answer lands. Something that
+  is answered sooner shows nothing, so a quick action never flashes. What is only waiting is never
+  held: the rest of the board stays usable, and a task long enough to be a background task (see above)
+  has its own window and words instead, and does not use this line.
 - **Uncertainty costs time, never a delivery.** When SkyDock cannot tell whether two files are the same,
   it sends the file again. When it cannot prove a copy is on the storage, it will not delete the local one.
 

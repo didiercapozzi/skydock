@@ -1066,6 +1066,10 @@ msgstr "Bringing back…"
 msgid "Bringing files back from the bin"
 msgstr "Bringing files back from the bin"
 
+#: app/components/pending.tsx
+msgid "Bringing files back…"
+msgstr "Bringing files back…"
+
 #: app/components/templates-dialog.tsx
 msgid "Bringing in {bringing}…"
 msgstr "Bringing in {bringing}…"
@@ -1527,6 +1531,14 @@ msgstr "Copying a camera, making proxies, processing and saving the board all ne
 msgid "Copying files back"
 msgstr "Copying files back"
 
+#: app/components/pending.tsx
+msgid "Copying files back…"
+msgstr "Copying files back…"
+
+#: app/components/pending.tsx
+msgid "Copying files…"
+msgstr "Copying files…"
+
 #: app/components/jobs-panel.tsx
 msgid "Copying the camera {label}"
 msgstr "Copying the camera {label}"
@@ -1538,6 +1550,10 @@ msgstr "Copying the files back off the card"
 #: app/components/jobs-panel.tsx
 msgid "Copying the template’s files"
 msgstr "Copying the template’s files"
+
+#: app/components/pending.tsx
+msgid "Correcting the time…"
+msgstr "Correcting the time…"
 
 #: app/components/jobs-panel.tsx
 msgid "could not be read"
@@ -1670,6 +1686,10 @@ msgstr "Deleting from the camera"
 #: app/components/camera-files.tsx
 msgid "Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself."
 msgstr "Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself."
+
+#: app/components/pending.tsx
+msgid "Deleting the jump…"
+msgstr "Deleting the jump…"
 
 #: app/components/jobs-panel.tsx
 msgid "Deleting what is here, and the whole of its folder"
@@ -2233,6 +2253,10 @@ msgstr "freefall"
 msgid "Freeing {label}"
 msgstr "Freeing {label}"
 
+#: app/components/pending.tsx
+msgid "Freeing space…"
+msgstr "Freeing space…"
+
 #: app/components/dialog-host.tsx
 #: app/components/move-to.tsx
 #: app/helpers/places.ts
@@ -2337,6 +2361,10 @@ msgstr "Group"
 #: app/components/folder-owed.tsx
 msgid "Group loose files into jumps"
 msgstr "Group loose files into jumps"
+
+#: app/components/pending.tsx
+msgid "Grouping the loose files…"
+msgstr "Grouping the loose files…"
 
 #: app/components/camera-files.tsx
 msgid "handed over, not a drive — slower than a card reader"
@@ -2492,6 +2520,10 @@ msgstr "Join montage"
 #: app/hooks/useBoardModel.ts
 msgid "Joined {who}’s montage"
 msgstr "Joined {who}’s montage"
+
+#: app/components/pending.tsx
+msgid "Joining the jumps…"
+msgstr "Joining the jumps…"
 
 #: app/components/montage-card.tsx
 msgid "Joins {joined}’s montage"
@@ -2676,6 +2708,7 @@ msgid "List"
 msgstr "List"
 
 #: app/components/nas-folder-browser.tsx
+#: app/routes/board.tsx
 msgid "Loading…"
 msgstr "Loading…"
 
@@ -2812,9 +2845,17 @@ msgstr "Making"
 msgid "Making small copies"
 msgstr "Making small copies"
 
+#: app/components/pending.tsx
+msgid "Making the link…"
+msgstr "Making the link…"
+
 #: app/components/jobs-panel.tsx
 msgid "Making the zips…"
 msgstr "Making the zips…"
+
+#: app/components/pending.tsx
+msgid "Making…"
+msgstr "Making…"
 
 #: app/components/email-dialog.tsx
 msgid "Mark as sent"
@@ -2906,6 +2947,10 @@ msgstr "moved to the bin"
 msgid "Moving"
 msgstr "Moving"
 
+#: app/components/pending.tsx
+msgid "Moving files…"
+msgstr "Moving files…"
+
 #: app/components/jobs-panel.tsx
 msgid "Moving the files back"
 msgstr "Moving the files back"
@@ -2913,6 +2958,10 @@ msgstr "Moving the files back"
 #: app/components/jobs-panel.tsx
 msgid "Moving the files into the bin"
 msgstr "Moving the files into the bin"
+
+#: app/components/pending.tsx
+msgid "Moving the time…"
+msgstr "Moving the time…"
 
 #: app/components/jobs-panel.tsx
 msgid "moving to the bin"
@@ -3213,6 +3262,10 @@ msgstr "Nothing was copied back — every file asked for is already here."
 msgid "Nothing was deleted."
 msgstr "Nothing was deleted."
 
+#: app/components/pending.tsx
+msgid "Noting the email…"
+msgstr "Noting the email…"
+
 #: app/components/preview-drawer.tsx
 msgid "of"
 msgstr "of"
@@ -3381,6 +3434,14 @@ msgstr "Opening it with {command}…"
 #: app/helpers/notes.ts
 msgid "Opening it…"
 msgstr "Opening it…"
+
+#: app/components/pending.tsx
+msgid "Opening the player…"
+msgstr "Opening the player…"
+
+#: app/components/pending.tsx
+msgid "Opening the project…"
+msgstr "Opening the project…"
 
 #: app/components/montage-card.tsx
 msgid "Opening…"
@@ -3698,6 +3759,14 @@ msgstr "Put the template back as SkyDock first wrote it"
 msgid "Putting files in the bin"
 msgstr "Putting files in the bin"
 
+#: app/components/pending.tsx
+msgid "Putting files in the bin…"
+msgstr "Putting files in the bin…"
+
+#: app/components/pending.tsx
+msgid "Putting Fresh files back…"
+msgstr "Putting Fresh files back…"
+
 #: app/components/email-dialog.tsx
 msgid "QR code"
 msgstr "QR code"
@@ -3800,6 +3869,7 @@ msgstr "Remove this copy (⌫)"
 msgid "Remove… (⌫)"
 msgstr "Remove… (⌫)"
 
+#: app/components/pending.tsx
 #: app/routes/place.tsx
 msgid "Removing…"
 msgstr "Removing…"
@@ -3912,6 +3982,10 @@ msgstr "Save"
 #: app/components/preview-drawer.tsx
 msgid "Save the changes to this file?"
 msgstr "Save the changes to this file?"
+
+#: app/components/pending.tsx
+msgid "Saving the moment…"
+msgstr "Saving the moment…"
 
 #: app/components/email-dialog.tsx
 msgid "Say on the storage’s list that they have their link"
@@ -4235,6 +4309,7 @@ msgid "Stop using by default"
 msgstr "Stop using by default"
 
 #: app/components/jobs-panel.tsx
+#: app/components/pending.tsx
 msgid "Stopping…"
 msgstr "Stopping…"
 
@@ -4314,6 +4389,10 @@ msgstr "Taken out of the dropzone {dropzone}"
 #: app/components/bin-files.tsx
 msgid "Taken out of the montage {montage}"
 msgstr "Taken out of the montage {montage}"
+
+#: app/components/pending.tsx
+msgid "Taking files back…"
+msgstr "Taking files back…"
 
 #: app/components/jobs-panel.tsx
 msgid "Template added"
@@ -5165,6 +5244,10 @@ msgstr "Work folder"
 #: app/components/board-header.tsx
 msgid "Work folder…"
 msgstr "Work folder…"
+
+#: app/components/pending.tsx
+msgid "Working"
+msgstr "Working"
 
 #: app/components/montage-card.tsx
 msgid "Write the kdenlive project — clips laid out, render destination set — and open it"

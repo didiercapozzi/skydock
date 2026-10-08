@@ -26,7 +26,7 @@ import { diskSpace } from '../../../packages/skydock-scripts/src/diskSpace'
 import { lostOnStorage, readMontageIndex } from '../../../packages/skydock-scripts/src/montageIndex'
 import { t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'
-import { Outlet } from 'react-router'
+import { Outlet, useNavigation } from 'react-router'
 import { useSafeSearchParams } from '../helpers/routing'
 import { boardViewSchema } from '../helpers/view'
 import type { ShouldRevalidateFunctionArgs } from 'react-router'
@@ -36,6 +36,7 @@ import { FirstScan } from '../components/first-scan'
 import { NewCameraDialog } from '../components/camera-dialogs'
 import { DialogHost } from '../components/dialog-host'
 import { JobsPanel } from '../components/jobs-panel'
+import { PendingLine, doingOf } from '../components/pending'
 import { TransfersPanel } from '../components/transfers-panel'
 import { PlacesTree } from '../components/places-tree'
 import { hhmm } from '../components/utils'
@@ -46,6 +47,7 @@ import { useCameraCopying, useJobs } from '../hooks/liveStore'
 import { useTransfersPanel } from '../hooks/transfersPanel'
 import { useBoardModel } from '../hooks/useBoardModel'
 import { useDetailsColumn } from '../hooks/useDetails'
+import { usePending } from '../hooks/usePending'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import type { Route } from './+types/board'
 
@@ -246,6 +248,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
   const cornered = useRoundedWindow()
   const details = useDetailsColumn()
   const { board, nas, drag, setDialog } = model
+  /* anything the board waits on — an answer to an action, a page on its way — is said once it has lasted */
+  const navigation = useNavigation()
+  const doing = board.busy ? doingOf(board.busy) : null
+  const navigating = navigation.state !== 'idle'
+  const pending = usePending(doing !== null || navigating)
   /* the camera waiting to be asked about, when there is one */
   const newCamera = board.cameras.find((c) => board.cameraPrompts.includes(c.mount))
   const { groups, loose, places, note, setNote, send } = board
@@ -359,7 +366,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         if (!fromComputer(e)) return
         setNote(t`Drop a clip on a destination, a montage or a jump to add it.`)
       }}
-      className={`ground flex h-screen flex-col overflow-hidden ${cornered ? 'rounded-corner' : ''}`}>
+      className={`ground relative flex h-screen flex-col overflow-hidden ${cornered ? 'rounded-corner' : ''}`}>
+      <PendingLine active={pending} />
       <div
         data-docked={details ? '' : undefined}
         className={`group grid min-h-0 flex-1 grid-cols-1 grid-rows-[auto_auto_minmax(0,1fr)] gap-y-2.5 px-2.5 pt-2.5 pb-2 desk:px-0 desk:pt-0 desk:pb-0 desk:grid-cols-[264px_0px_minmax(0,1fr)] desk:grid-rows-[56px_minmax(0,1fr)] desk:gap-y-0 wide:transition-[grid-template-columns] wide:duration-300 wide:ease-out motion-reduce:transition-none ${
@@ -397,6 +405,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
       </div>
 
       <StatusBar
+        doing={pending ? (doing ?? t`Loading…`) : null}
         transfers={{ open: transfersOpen, onToggle: transfersPanel.toggle }}
         proxies={board.proxyProgress}
         jumps={board.jumpProgress}
