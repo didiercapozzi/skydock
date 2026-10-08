@@ -43,7 +43,7 @@ const RULES: Array<[string, RegExp]> = [
   ],
   [
     'a size, space or offset in pixels (use the 4 px scale: p-3, gap-2.5, top-4 — or a named size)',
-    /(?<![\w\[-])-?(?:p[xytblrse]?|m[xytblrse]?|gap(?:-[xy])?|top|left|right|bottom|inset(?:-[xy])?|w|h|size|min-w|min-h|max-w|max-h|basis|space-[xy]|translate-[xy])-\[-?[\d.]+(?:px|rem)\]/
+    /(?<![\w[-])-?(?:p[xytblrse]?|m[xytblrse]?|gap(?:-[xy])?|top|left|right|bottom|inset(?:-[xy])?|w|h|size|min-w|min-h|max-w|max-h|basis|space-[xy]|translate-[xy])-\[-?[\d.]+(?:px|rem)\]/
   ],
   [
     'a breakpoint in pixels (use desk:, roomy:, wide: and their max- forms)',
