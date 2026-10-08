@@ -7,6 +7,7 @@ import { Seg } from './buttons'
 import { FindAnything } from './find-anything'
 import type { Found } from './find-anything'
 import { WindowControls } from './window-bar'
+import { Spinner } from './pending'
 import { Icon } from './icons'
 import { MenuItem, SettingsMenu, SettingsRow, TOOL } from './settings-menu'
 import { setFileView, useFileView } from '../hooks/useFileView'
@@ -239,13 +240,15 @@ const StatusBar = ({
   jumps,
   disk,
   nas,
-  transfers
+  transfers,
+  doing
 }: {
   proxies: { ready: number; waiting: number; total: number }
   jumps: { read: number; total: number }
   disk?: { free: number; level: 'ok' | 'low' | 'full' } | null
   nas: { connected: boolean; host: string | null; user: string | null; links: NasLink[] }
   transfers: { open: boolean; onToggle: () => void }
+  doing?: string | null
 }) => {
   const zoom = useZoom()
   const going = useJobs().find((job) => job.stage !== 'failed')
@@ -319,6 +322,14 @@ const StatusBar = ({
         />
         {t`Transfers`}
       </button>
+      {doing && (
+        <span
+          role='status'
+          className={`${item} text-ink`}>
+          <Spinner />
+          {doing}
+        </span>
+      )}
       {working && (
         <span className={`${item} text-ink`}>
           <Icon
@@ -355,7 +366,7 @@ const StatusBar = ({
         <span
           title={t`${ready} of ${total} clips have their small copy. They are built in the background; the count catches up whenever the board is redrawn.`}
           className={item}>
-          <span className='size-2.5 flex-none animate-spin rounded-full border-2 border-line-strong border-t-accent' />
+          <Spinner />
           {t`Proxies ready ${ready}/${total}`}
         </span>
       )}
@@ -363,7 +374,7 @@ const StatusBar = ({
         <span
           title={t`${read} of ${clips} clips have been read for where the jump is in them. They are read in the background; each clip says how far it has got.`}
           className={item}>
-          <span className='size-2.5 flex-none animate-spin rounded-full border-2 border-line-strong border-t-accent' />
+          <Spinner />
           {t`Marks found ${read}/${clips}`}
           <span className='ml-px h-1 w-20 flex-none overflow-hidden rounded-corner bg-line'>
             <i

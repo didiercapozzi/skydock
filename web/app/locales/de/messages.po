@@ -1066,6 +1066,10 @@ msgstr "Wird zurückgeholt…"
 msgid "Bringing files back from the bin"
 msgstr "Dateien werden aus dem Papierkorb geholt"
 
+#: app/components/pending.tsx
+msgid "Bringing files back…"
+msgstr "Dateien werden zurückgeholt…"
+
 #: app/components/templates-dialog.tsx
 msgid "Bringing in {bringing}…"
 msgstr "{bringing} wird hinzugefügt…"
@@ -1527,6 +1531,14 @@ msgstr "Eine Kamera kopieren, Proxys erstellen, aufbereiten und die Übersicht s
 msgid "Copying files back"
 msgstr "Dateien werden zurückkopiert"
 
+#: app/components/pending.tsx
+msgid "Copying files back…"
+msgstr "Dateien werden zurückkopiert…"
+
+#: app/components/pending.tsx
+msgid "Copying files…"
+msgstr "Dateien werden kopiert…"
+
 #: app/components/jobs-panel.tsx
 msgid "Copying the camera {label}"
 msgstr "Kamera {label} wird kopiert"
@@ -1538,6 +1550,10 @@ msgstr "Dateien werden von der Karte zurückkopiert"
 #: app/components/jobs-panel.tsx
 msgid "Copying the template’s files"
 msgstr "Dateien der Vorlage werden kopiert"
+
+#: app/components/pending.tsx
+msgid "Correcting the time…"
+msgstr "Uhrzeit wird korrigiert…"
 
 #: app/components/jobs-panel.tsx
 msgid "could not be read"
@@ -1670,6 +1686,10 @@ msgstr "Löschen von der Kamera"
 #: app/components/camera-files.tsx
 msgid "Deleting proves each file against the storage by reading it through, byte for byte, which needs the camera readable as files. Delete them on the camera itself."
 msgstr "Beim Löschen wird jede Datei Byte für Byte mit dem Speicher abgeglichen, dafür muss die Kamera als Dateien lesbar sein. Lösche sie auf der Kamera selbst."
+
+#: app/components/pending.tsx
+msgid "Deleting the jump…"
+msgstr "Sprung wird gelöscht…"
 
 #: app/components/jobs-panel.tsx
 msgid "Deleting what is here, and the whole of its folder"
@@ -2233,6 +2253,10 @@ msgstr "Freifall"
 msgid "Freeing {label}"
 msgstr "{label} wird freigegeben"
 
+#: app/components/pending.tsx
+msgid "Freeing space…"
+msgstr "Speicher wird freigegeben…"
+
 #: app/components/dialog-host.tsx
 #: app/components/move-to.tsx
 #: app/helpers/places.ts
@@ -2337,6 +2361,10 @@ msgstr "Gruppieren"
 #: app/components/folder-owed.tsx
 msgid "Group loose files into jumps"
 msgstr "Lose Dateien zu Sprüngen gruppieren"
+
+#: app/components/pending.tsx
+msgid "Grouping the loose files…"
+msgstr "Lose Dateien werden gruppiert…"
 
 #: app/components/camera-files.tsx
 msgid "handed over, not a drive — slower than a card reader"
@@ -2492,6 +2520,10 @@ msgstr "Montage beitreten"
 #: app/hooks/useBoardModel.ts
 msgid "Joined {who}’s montage"
 msgstr "Zur Montage von {who} hinzugefügt"
+
+#: app/components/pending.tsx
+msgid "Joining the jumps…"
+msgstr "Sprünge werden zusammengeführt…"
 
 #: app/components/montage-card.tsx
 msgid "Joins {joined}’s montage"
@@ -2676,6 +2708,7 @@ msgid "List"
 msgstr "Liste"
 
 #: app/components/nas-folder-browser.tsx
+#: app/routes/board.tsx
 msgid "Loading…"
 msgstr "Wird geladen…"
 
@@ -2812,9 +2845,17 @@ msgstr "Erstellen"
 msgid "Making small copies"
 msgstr "Kleine Kopien werden erstellt"
 
+#: app/components/pending.tsx
+msgid "Making the link…"
+msgstr "Link wird erstellt…"
+
 #: app/components/jobs-panel.tsx
 msgid "Making the zips…"
 msgstr "ZIPs werden erstellt…"
+
+#: app/components/pending.tsx
+msgid "Making…"
+msgstr "Wird erstellt…"
 
 #: app/components/email-dialog.tsx
 msgid "Mark as sent"
@@ -2906,6 +2947,10 @@ msgstr "in den Papierkorb verschoben"
 msgid "Moving"
 msgstr "Verschieben"
 
+#: app/components/pending.tsx
+msgid "Moving files…"
+msgstr "Dateien werden verschoben…"
+
 #: app/components/jobs-panel.tsx
 msgid "Moving the files back"
 msgstr "Dateien werden zurückverschoben"
@@ -2913,6 +2958,10 @@ msgstr "Dateien werden zurückverschoben"
 #: app/components/jobs-panel.tsx
 msgid "Moving the files into the bin"
 msgstr "Dateien werden in den Papierkorb verschoben"
+
+#: app/components/pending.tsx
+msgid "Moving the time…"
+msgstr "Uhrzeit wird verschoben…"
 
 #: app/components/jobs-panel.tsx
 msgid "moving to the bin"
@@ -3213,6 +3262,10 @@ msgstr "Nichts wurde zurückkopiert — jede angeforderte Datei ist schon hier."
 msgid "Nothing was deleted."
 msgstr "Nichts wurde gelöscht."
 
+#: app/components/pending.tsx
+msgid "Noting the email…"
+msgstr "E-Mail wird vermerkt…"
+
 #: app/components/preview-drawer.tsx
 msgid "of"
 msgstr "von"
@@ -3381,6 +3434,14 @@ msgstr "Wird mit {command} geöffnet…"
 #: app/helpers/notes.ts
 msgid "Opening it…"
 msgstr "Wird geöffnet…"
+
+#: app/components/pending.tsx
+msgid "Opening the player…"
+msgstr "Player wird geöffnet…"
+
+#: app/components/pending.tsx
+msgid "Opening the project…"
+msgstr "Projekt wird geöffnet…"
 
 #: app/components/montage-card.tsx
 msgid "Opening…"
@@ -3698,6 +3759,14 @@ msgstr "Die Vorlage so wiederherstellen, wie SkyDock sie ursprünglich geschrieb
 msgid "Putting files in the bin"
 msgstr "Dateien werden in den Papierkorb gelegt"
 
+#: app/components/pending.tsx
+msgid "Putting files in the bin…"
+msgstr "Dateien werden in den Papierkorb gelegt…"
+
+#: app/components/pending.tsx
+msgid "Putting Fresh files back…"
+msgstr "Neue Dateien werden zurückgesetzt…"
+
 #: app/components/email-dialog.tsx
 msgid "QR code"
 msgstr "QR-Code"
@@ -3800,6 +3869,7 @@ msgstr "Diese Kopie entfernen (⌫)"
 msgid "Remove… (⌫)"
 msgstr "Entfernen… (⌫)"
 
+#: app/components/pending.tsx
 #: app/routes/place.tsx
 msgid "Removing…"
 msgstr "Wird entfernt…"
@@ -3912,6 +3982,10 @@ msgstr "Speichern"
 #: app/components/preview-drawer.tsx
 msgid "Save the changes to this file?"
 msgstr "Änderungen an dieser Datei speichern?"
+
+#: app/components/pending.tsx
+msgid "Saving the moment…"
+msgstr "Moment wird gespeichert…"
 
 #: app/components/email-dialog.tsx
 msgid "Say on the storage’s list that they have their link"
@@ -4235,6 +4309,7 @@ msgid "Stop using by default"
 msgstr "Nicht mehr standardmäßig verwenden"
 
 #: app/components/jobs-panel.tsx
+#: app/components/pending.tsx
 msgid "Stopping…"
 msgstr "Wird gestoppt…"
 
@@ -4314,6 +4389,10 @@ msgstr "Aus der Dropzone {dropzone} genommen"
 #: app/components/bin-files.tsx
 msgid "Taken out of the montage {montage}"
 msgstr "Aus der Montage {montage} genommen"
+
+#: app/components/pending.tsx
+msgid "Taking files back…"
+msgstr "Dateien werden zurückgenommen…"
 
 #: app/components/jobs-panel.tsx
 msgid "Template added"
@@ -5165,6 +5244,10 @@ msgstr "Arbeitsordner"
 #: app/components/board-header.tsx
 msgid "Work folder…"
 msgstr "Arbeitsordner…"
+
+#: app/components/pending.tsx
+msgid "Working"
+msgstr "In Arbeit"
 
 #: app/components/montage-card.tsx
 msgid "Write the kdenlive project — clips laid out, render destination set — and open it"

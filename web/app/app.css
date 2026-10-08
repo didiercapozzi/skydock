@@ -154,6 +154,7 @@
 }
 
 :root {
+  --pending-line-height: 3px;
   @variant dark {
     --color-ground: #0a1119;
     --color-pane: #141922;
@@ -464,5 +465,35 @@
   40% {
     background: var(--color-accent-soft);
     box-shadow: inset 0 0 0 1px var(--color-accent);
+  }
+}
+
+.pending-line {
+  height: var(--pending-line-height);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--color-accent) 40%,
+    var(--color-pick) 60%,
+    transparent
+  );
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: pendingslide 1.1s ease-in-out infinite;
+}
+
+@keyframes pendingslide {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending-line {
+    animation: none;
+    background-position: 50% 0;
   }
 }
