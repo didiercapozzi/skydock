@@ -1,6 +1,5 @@
-import { passengerOf } from '@skydock/scripts'
+import { passengerOf, startOfFiles } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { minFileMtime } from '../components/utils'
 import { dayOf, dayOfFile } from './jumps'
 import { familyOf } from './places'
 import type { Place } from './places'
@@ -19,7 +18,7 @@ type Section =
   | { key: string; kind: 'loose'; day: string; files: ManifestFile[] }
   | { key: string; kind: 'all'; files: ManifestFile[] }
 
-const startOf = (group: ManifestGroup) => minFileMtime(group.files) ?? 0
+const startOf = (group: ManifestGroup) => startOfFiles(group.files)
 
 const jumpLabels = (groups: ManifestGroup[]) =>
   new Map(

@@ -15,10 +15,21 @@ const AboutDialog = ({ onClose }: { onClose: () => void }) => {
           <Mini onClick={onClose}>{t`Close`}</Mini>
         </>
       }>
-      <p className='text-ink'>
+      <p className='m-0 text-body text-ink'>
         <strong>SkyDock</strong>
       </p>
-      <p className='text-ink-2'>{t`Version ${version}`}</p>
+      <p className='m-0 text-body text-ink-2'>{t`Version ${version}`}</p>
+      <p className='m-0 text-body text-ink'>
+        {t`Author: Capo`} —{' '}
+        <a
+          href='https://donkeyfall.com'
+          target='_blank'
+          rel='noreferrer'
+          className='text-accent-ink hover:underline'>
+          donkeyfall.com
+        </a>
+      </p>
+      <p className='m-0 text-body text-ink'>{t`Licence: MIT`}</p>
     </Modal>
   )
 }

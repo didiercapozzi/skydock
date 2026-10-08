@@ -77,7 +77,7 @@ const fetchInto = async (system: string, into: string) => {
   const source = SOURCES[system]
   if (!source) throw new Error(`Nothing is listed to fetch for ${system}`)
   const wanted = source.each ?? { both: source.from! }
-  for (const [tool, from] of Object.entries(wanted)) {
+  const fetchOne = async ([tool, from]: [string, (typeof wanted)[string]]) => {
     const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-tools-'))
     try {
       const archive = path.join(staging, `tools.${source.archive}`)
@@ -90,6 +90,7 @@ const fetchInto = async (system: string, into: string) => {
       fs.rmSync(staging, { recursive: true, force: true })
     }
   }
+  await Promise.all(Object.entries(wanted).map(fetchOne))
 }
 
 const alreadyThere = (system: string, into: string) =>

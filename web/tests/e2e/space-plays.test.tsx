@@ -32,9 +32,24 @@ const Drawer = ({ onRotate = () => {} }: { onRotate?: () => void }) =>
 
 const player = () => document.querySelector('video')!
 
+const playsAsLoaded = () => {
+  const video = player()
+  let paused = true
+  Object.defineProperty(video, 'paused', { get: () => paused })
+  video.play = async () => {
+    paused = false
+    video.dispatchEvent(new Event('play'))
+  }
+  video.pause = () => {
+    paused = true
+    video.dispatchEvent(new Event('pause'))
+  }
+}
+
 describe('playing a clip in the preview', () => {
   test('space plays it, and space again pauses it', async () => {
     await render(createElement(Drawer, {}))
+    playsAsLoaded()
     await userEvent.keyboard(' ')
     await expect.poll(() => player().paused).toBe(false)
     await expect.element(page.getByRole('button', { name: '❚❚ Pause' })).toBeVisible()
@@ -47,6 +62,7 @@ describe('playing a clip in the preview', () => {
   test('space plays it even after another button was pressed', async () => {
     const onRotate = vi.fn()
     await render(createElement(Drawer, { onRotate }))
+    playsAsLoaded()
     await userEvent.click(page.getByRole('button', { name: 'Turn', exact: true }))
     await userEvent.click(page.getByRole('button', { name: '↻ +90°' }))
     await userEvent.keyboard(' ')

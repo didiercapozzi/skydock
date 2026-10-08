@@ -5,7 +5,7 @@ import type { Passenger } from '../components/montage-card'
 import type { Dropped } from '../helpers/import'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { droppedIn, fromComputer } from '../helpers/import'
-import { placeKey } from '../helpers/places'
+import { placeKey, placeOfGroup, placeOfLoose } from '../helpers/places'
 import type { Place } from '../helpers/places'
 
 type Move = {
@@ -24,6 +24,7 @@ const showIntent = (e: React.DragEvent) => {
 
 const useDragAndDrop = ({
   groups,
+  loose,
   labels,
   frozen,
   moveFiles,
@@ -31,15 +32,18 @@ const useDragAndDrop = ({
   toMontage,
   importDropped,
   askMontageName,
+  askRemove,
   onFiled
 }: {
   groups: ManifestGroup[]
+  loose: ManifestFile[]
   labels: Map<string, string>
   frozen: Set<string>
   moveFiles: (ids: string[], where: Move) => void
   assign: (ids: string[], destination: string | null) => void
   toMontage: (ids: string[], passenger?: Passenger) => void
   askMontageName: (what: { groupId: string } | { fileIds: string[] }) => void
+  askRemove: (fileIds: string[]) => void
   importDropped: (list: Dropped[], target: string, where: string) => Promise<void>
   onFiled: (destination: string) => void
 }) => {
@@ -51,6 +55,22 @@ const useDragAndDrop = ({
     if (!e) return
     e.dataTransfer.setData('text/plain', said)
     e.dataTransfer.effectAllowed = 'copyMove'
+    const chip = document.createElement('div')
+    chip.className =
+      'fixed -top-96 -left-96 flex max-w-72 items-center gap-2 rounded-control bg-pane/90 p-1.5 pr-3 text-body font-semibold text-ink shadow-float'
+    const shown = e.currentTarget instanceof Element ? e.currentTarget.querySelector('img') : null
+    if (shown) {
+      const picture = shown.cloneNode() as HTMLImageElement
+      picture.className = 'size-10 flex-none rounded-control object-cover'
+      chip.appendChild(picture)
+    }
+    const name = document.createElement('span')
+    name.className = 'truncate'
+    name.textContent = said
+    chip.appendChild(name)
+    document.body.appendChild(chip)
+    e.dataTransfer.setDragImage(chip, -12, -12)
+    setTimeout(() => chip.remove(), 0)
   }
 
   const startJumpDrag = (groupId: string, e?: React.DragEvent) => {
@@ -111,7 +131,7 @@ const useDragAndDrop = ({
   }
 
   const land = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     what: { files: string[] } | { jumps: string[] },
     how: { into?: { passenger: Passenger; hostId: string }; copy?: boolean } = {}
   ) => {
@@ -120,11 +140,12 @@ const useDragAndDrop = ({
     if ('files' in what) {
       if (what.files.length === 0) return
       if (into) moveFiles(what.files, { targetGroupId: into.hostId, copy })
+      else if (to.kind === 'bin') askRemove(what.files)
       else if (to.kind === 'montage') askMontageName({ fileIds: what.files })
       else moveFiles(what.files, { destination })
     } else {
       const [first] = what.jumps
-      if (!first) return
+      if (!first || to.kind === 'bin') return
       if (into) toMontage(what.jumps, into.passenger)
       else if (to.kind === 'montage') askMontageName({ groupId: first })
       else assign(what.jumps, destination)
@@ -151,13 +172,15 @@ const useDragAndDrop = ({
   }
 
   const dropTarget = (
-    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' },
+    to: { kind: 'sort' } | { kind: 'dz'; name: string } | { kind: 'montage' } | { kind: 'bin' },
     named?: string,
     into?: { passenger: Passenger; hostId: string }
   ) => {
     const key = named ?? (to.kind === 'dz' ? `dest:${to.name}` : to.kind)
     const accepts =
-      to.kind === 'sort' ? draggedFiles.length > 0 : dragged.length > 0 || draggedFiles.length > 0
+      to.kind === 'sort' || to.kind === 'bin'
+        ? draggedFiles.length > 0
+        : dragged.length > 0 || draggedFiles.length > 0
     const incoming = into
       ? { target: `group:${into.hostId}`, where: passengerName(into.passenger) }
       : to.kind === 'sort'
@@ -193,20 +216,35 @@ const useDragAndDrop = ({
 
   const placeDrop = (target: Place) => {
     const key = placeKey(target)
+    const placeOfFile = (id: string) => {
+      const jump = groups.find((g) => g.files.some((f) => f.id === id))
+      const lone = loose.find((f) => f.id === id)
+      return jump ? placeOfGroup(jump) : lone ? placeOfLoose(lone) : undefined
+    }
+    const carried = [
+      ...dragged.map((id) => groups.find((g) => g.id === id)).map((g) => g && placeOfGroup(g)),
+      ...draggedFiles.map(placeOfFile)
+    ]
+    const staying = carried.length > 0 && carried.every((p) => p && placeKey(p) === key)
     const host =
       target.kind === 'pax'
         ? groups.find((g) => isMontage(g) && passengerOf(g) === target.name)
         : undefined
     const props =
-      target.kind === 'camera' || target.kind === 'bin' || (host && frozen.has(host.id))
+      target.kind === 'camera' || staying || (host && frozen.has(host.id))
         ? {}
-        : target.kind === 'sort'
-          ? dropTarget({ kind: 'sort' }, key)
-          : target.kind === 'dz'
-            ? dropTarget({ kind: 'dz', name: target.name }, key)
-            : host?.passenger
-              ? dropTarget({ kind: 'montage' }, key, { passenger: host.passenger, hostId: host.id })
-              : dropTarget({ kind: 'montage' }, key)
+        : target.kind === 'bin'
+          ? dropTarget({ kind: 'bin' }, key)
+          : target.kind === 'sort'
+            ? dropTarget({ kind: 'sort' }, key)
+            : target.kind === 'dz'
+              ? dropTarget({ kind: 'dz', name: target.name }, key)
+              : host?.passenger
+                ? dropTarget({ kind: 'montage' }, key, {
+                    passenger: host.passenger,
+                    hostId: host.id
+                  })
+                : dropTarget({ kind: 'montage' }, key)
     return { ...props, 'data-place': key }
   }
 

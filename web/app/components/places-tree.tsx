@@ -372,6 +372,8 @@ const PlacesTree = ({
       )}
       <Row
         place={{ kind: 'bin' }}
+        dropTarget={dropTarget({ kind: 'bin' })}
+        over={overTarget === placeKey({ kind: 'bin' })}
         title={t`What was put aside — look through it, and bring files back to Fresh files`}
       />
     </nav>

@@ -1,17 +1,20 @@
 import { remembered } from './remembered'
 
+const from = (stored: string) => (stored === 'open' ? true : stored === 'shut' ? false : null)
+const to = (open: boolean) => (open ? 'open' : 'shut')
+
 const column = remembered<boolean>({
   key: 'skydock.details',
   fallback: false,
-  from: (stored) => (stored === 'open' ? true : stored === 'shut' ? false : null),
-  to: (open) => (open ? 'open' : 'shut')
+  from,
+  to
 })
 
 const drawer = remembered<boolean>({
   key: 'skydock.detailsDrawer',
   fallback: false,
-  from: (stored) => (stored === 'open' ? true : stored === 'shut' ? false : null),
-  to: (open) => (open ? 'open' : 'shut'),
+  from,
+  to,
   kept: 'session'
 })
 

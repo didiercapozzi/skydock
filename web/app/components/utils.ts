@@ -1,5 +1,5 @@
 import { i18n } from '@lingui/core'
-import { getOutputDir, isVideoFile, startOfFiles } from '@skydock/scripts'
+import { getOutputDir, isVideoFile } from '@skydock/scripts'
 import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from './types'
 
@@ -54,29 +54,12 @@ const formatFilmSize = (bytes: number) =>
 const clock = (seconds: number) =>
   `${Math.floor(seconds / 60)}:${String(Math.floor(Math.max(0, seconds) % 60)).padStart(2, '0')}`
 
-const TIME_WRITER = new Intl.DateTimeFormat('de-CH', {
-  hour: '2-digit',
-  minute: '2-digit'
-})
-
-const formatTime = (epoch: number) => TIME_WRITER.format(new Date(epoch * 1000))
-
-const toTimeInputValue = (epoch: number, includeSeconds = false) => {
-  const date = new Date(epoch * 1000)
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  if (!includeSeconds) return `${hours}:${minutes}`
-  return `${hours}:${minutes}:${String(date.getSeconds()).padStart(2, '0')}`
-}
-
 const toDateInputValue = (epoch: number) => {
   const d = new Date(epoch * 1000)
   const month = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${d.getFullYear()}-${month}-${day}`
 }
-
-const minFileMtime = startOfFiles
 
 const getGroupDate = (group: ManifestGroup) => group.day ?? ''
 
@@ -117,7 +100,6 @@ export {
   dateLabel,
   shortDate,
   formatSize,
-  formatTime,
   getFileUrl,
   getGroupDate,
   getPictureUrl,
@@ -125,8 +107,6 @@ export {
   getThumbUrl,
   getTrackUrl,
   isVideoFile,
-  minFileMtime,
   toDateInputValue,
-  toTimeInputValue,
   weekday
 }

@@ -424,12 +424,14 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
 
   const drag = useDragAndDrop({
     groups,
+    loose,
     labels,
     frozen,
     moveFiles,
     assign,
     toMontage,
     importDropped,
+    askRemove: (ids) => sendBack(ids.flatMap((id) => fileById(id) ?? [])),
     askMontageName: (what) => {
       if ('groupId' in what) {
         setDialog({ kind: 'name-montage', groupId: what.groupId })

@@ -136,4 +136,11 @@ const Line = ({ mark, children }: { mark: string; children: React.ReactNode }) =
   </li>
 )
 
-export { ERROR, INPUT, Line, Modal, Spacer }
+const Section = ({ title, children }: { title?: React.ReactNode; children: React.ReactNode }) => (
+  <>
+    {title && <p className='m-0 text-body font-semibold text-ink'>{title}</p>}
+    <ul className='m-0 flex list-none flex-col gap-1 p-0'>{children}</ul>
+  </>
+)
+
+export { ERROR, INPUT, Line, Modal, Section, Spacer }

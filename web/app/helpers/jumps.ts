@@ -1,13 +1,13 @@
-import { folderOfUpload, isoDay } from '@skydock/scripts'
+import { folderOfUpload, isoDay, startOfFiles } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from '../components/types'
-import { dayWritten, minFileMtime, pad, weekday } from '../components/utils'
+import { dayWritten, pad, weekday } from '../components/utils'
 
 const dayOfMtime = (mtime: number) => {
   const d = new Date(mtime * 1000)
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-const dayOf = (group: ManifestGroup) => isoDay(group.day) || dayOfMtime(minFileMtime(group.files))
+const dayOf = (group: ManifestGroup) => isoDay(group.day) || dayOfMtime(startOfFiles(group.files))
 
 const dayOfFile = (file: ManifestFile) => dayOfMtime(file.mtime)
 

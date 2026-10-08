@@ -271,21 +271,33 @@ const raise = (window: BrowserWindow) => {
   window.setAlwaysOnTop(false)
 }
 
+const windowOptions = (zoom: number, size: { width: number; height: number }) => ({
+  title: 'SkyDock',
+  ...size,
+  minWidth: 900,
+  minHeight: 600,
+  autoHideMenuBar: true,
+  frame: false,
+  webPreferences: {
+    preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
+    zoomFactor: zoom
+  }
+})
+
+const tellMaximizedOf = (window: BrowserWindow) => {
+  const tell = () => window.webContents.send('window:maximized', window.isMaximized())
+  window.on('maximize', tell)
+  window.on('unmaximize', tell)
+}
+
+const denyButOpenLinks = (asked: string) => {
+  if (/^https?:/.test(asked)) void shell.openExternal(asked)
+  return { action: 'deny' as const }
+}
+
 const openWindow = (address: string) => {
   const zoom = zoomLevel()
-  const window = new BrowserWindow({
-    title: 'SkyDock',
-    width: 1440,
-    height: 900,
-    minWidth: 900,
-    minHeight: 600,
-    autoHideMenuBar: true,
-    frame: false,
-    webPreferences: {
-      preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
-      zoomFactor: zoom
-    }
-  })
+  const window = new BrowserWindow(windowOptions(zoom, { width: 1440, height: 900 }))
   window.webContents.setWindowOpenHandler(({ url: asked }) => {
     if (isPreviewAddress(asked, address)) {
       const open = previewWindow
@@ -297,23 +309,12 @@ const openWindow = (address: string) => {
       return {
         action: 'allow',
         overrideBrowserWindowOptions: {
-          title: 'SkyDock',
-          width: 1360,
-          height: 880,
-          minWidth: 900,
-          minHeight: 600,
-          autoHideMenuBar: true,
-          frame: false,
-          backgroundColor: groundColour(),
-          webPreferences: {
-            preload: path.join(app.getAppPath(), 'build', 'electron', 'preload.cjs'),
-            zoomFactor: zoom
-          }
+          ...windowOptions(zoom, { width: 1360, height: 880 }),
+          backgroundColor: groundColour()
         }
       }
     }
-    if (/^https?:/.test(asked)) void shell.openExternal(asked)
-    return { action: 'deny' }
+    return denyButOpenLinks(asked)
   })
   window.webContents.on('did-create-window', (preview) => {
     previewWindow = preview
@@ -321,19 +322,12 @@ const openWindow = (address: string) => {
       if (previewWindow === preview) previewWindow = null
     })
     zoomHotkeys(preview.webContents)
-    preview.webContents.setWindowOpenHandler(({ url: asked }) => {
-      if (/^https?:/.test(asked)) void shell.openExternal(asked)
-      return { action: 'deny' }
-    })
-    const tellMaximized = () => preview.webContents.send('window:maximized', preview.isMaximized())
-    preview.on('maximize', tellMaximized)
-    preview.on('unmaximize', tellMaximized)
+    preview.webContents.setWindowOpenHandler(({ url: asked }) => denyButOpenLinks(asked))
+    tellMaximizedOf(preview)
   })
   zoomHotkeys(window.webContents)
   askBeforeClosing(window)
-  const tellMaximized = () => window.webContents.send('window:maximized', window.isMaximized())
-  window.on('maximize', tellMaximized)
-  window.on('unmaximize', tellMaximized)
+  tellMaximizedOf(window)
   void window.loadURL(address)
   console.log(`[SkyDock] the window is open on ${address}`)
   return window
@@ -392,10 +386,7 @@ const startServer = async (folder?: string, into?: BrowserWindow) => {
   })
 }
 
-const toldWhere = () => {
-  const told = process.env.SKYDOCK_DEV_URL?.trim()
-  return told ? told : null
-}
+const toldWhere = () => process.env.SKYDOCK_DEV_URL?.trim() || null
 
 const RELEASES = 'https://github.com/didiercapozzi/skydock/releases/latest'
 

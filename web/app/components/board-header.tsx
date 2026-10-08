@@ -257,7 +257,7 @@ const StatusBar = ({
   const user = nas.user
   const item = 'inline-flex h-5 items-center gap-1.75 whitespace-nowrap'
   return (
-    <footer className='mx-2.5 mb-2 desk:mx-0 desk:mb-0 desk:rounded-none flex h-control-sm flex-none items-center gap-5 rounded-corner relative z-30 isle-foot px-3.5 desk:rounded-t-none text-micro font-semibold text-ink-2'>
+    <footer className='drag-region mx-2.5 mb-2 desk:mx-0 desk:mb-0 desk:rounded-none flex h-control-sm flex-none items-center gap-5 rounded-corner relative z-30 isle-foot px-3.5 desk:rounded-t-none text-micro font-semibold text-ink-2'>
       <span
         title={
           nas.connected

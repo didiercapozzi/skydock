@@ -1,6 +1,6 @@
 import { plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
-import { isMontage } from '@skydock/scripts'
+import { isMontage, startOfFiles } from '@skydock/scripts'
 import type { FileStatus, ProxyFact, StatusContext, MontageProgress } from '@skydock/scripts'
 import { dayLabel } from '../helpers/jumps'
 import { cardsOf } from '../helpers/sections'
@@ -12,7 +12,7 @@ import { StepMeter } from './montage-steps'
 import { Slices } from './slices'
 import type { ManifestFile, ManifestGroup } from './types'
 import { kindsSaid } from './kinds'
-import { dateLabel, hhmm, minFileMtime, shortDate, weekday } from './utils'
+import { dateLabel, hhmm, shortDate, weekday } from './utils'
 
 type JumpControls = {
   selected: string | null
@@ -76,7 +76,7 @@ const progressTag = (files: ManifestFile[], statusOf: (file: ManifestFile) => Fi
 }
 
 const timeSpan = (files: ManifestFile[]) => {
-  const from = minFileMtime(files) ?? 0
+  const from = startOfFiles(files)
   const to = files.reduce((latest, f) => Math.max(latest, f.mtime), from)
   return `${hhmm(from)}${hhmm(to) === hhmm(from) ? '' : `–${hhmm(to)}`}`
 }
@@ -203,7 +203,7 @@ const JumpCard = ({
   const group = section.kind === 'jump' ? section.group : null
   const frozen = group ? jump.frozen.has(group.id) : false
   const over = group !== null && jump.overTarget === `group:${group.id}`
-  const from = minFileMtime(section.files) ?? 0
+  const from = startOfFiles(section.files)
   const shown = group?.freed ? [] : section.files
   const label = section.kind === 'jump' ? section.label : t`Loose files`
   const progress = group ? (jump.progress?.(group) ?? null) : null
@@ -258,7 +258,7 @@ const JumpCard = ({
               </b>
               <span className='block truncate text-body text-ink-3'>
                 {weekday(new Date(from * 1000), 'short')} {shortDate(from)} · {hhmm(from)} ·{' '}
-                {kindsSaid(videosIn(section.files), section.files.length - videosIn(section.files))}
+                {kindsSaid(section.files, ', ')}
               </span>
             </span>
             <span className='flex flex-none flex-col items-end gap-1'>
