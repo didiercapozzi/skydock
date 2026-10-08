@@ -6,6 +6,8 @@ export default defineConfig({
   rules: {
     'eslint/no-unused-vars': 'error',
     'react/refs': 'error',
-    'react/set-state-in-effect': 'error'
+    'react/set-state-in-effect': 'error',
+    'no-useless-escape': 'error',
+    'no-unused-expressions': 'error'
   }
 })
