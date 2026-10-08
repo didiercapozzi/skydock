@@ -254,7 +254,9 @@ ipcMain.handle(
 ipcMain.on('window:minimize', (event) => BrowserWindow.fromWebContents(event.sender)?.minimize())
 ipcMain.on('window:toggle-maximize', (event) => {
   const window = BrowserWindow.fromWebContents(event.sender)
-  if (window) window.isMaximized() ? window.unmaximize() : window.maximize()
+  if (!window) return
+  if (window.isMaximized()) window.unmaximize()
+  else window.maximize()
 })
 ipcMain.on('window:close', (event) => BrowserWindow.fromWebContents(event.sender)?.close())
 
@@ -496,6 +498,25 @@ const toldWhere = () => {
 
 const RELEASES = 'https://github.com/didiercapozzi/skydock/releases/latest'
 
+/* what a Linux install from a .deb has downloaded; an AppImage replaces itself and has no such file */
+const debToInstall = z.object({ installerPath: z.string().endsWith('.deb') })
+
+/* The installation asks for the password through the desktop's own dialog and runs beside the window,
+   which stays alive; whether it went through is the program's exit. The file is handed over as an
+   argument, never put into the command. */
+const installDeb = (file: string) =>
+  new Promise<boolean>((resolve) => {
+    const install = spawn(
+      'pkexec',
+      ['/bin/bash', '-c', 'dpkg -i "$0" || apt-get install -f -y', file],
+      {
+        stdio: 'ignore'
+      }
+    )
+    install.on('error', () => resolve(false))
+    install.on('close', (code) => resolve(code === 0))
+  })
+
 /* Whether there is a newer SkyDock, and if there is, offering it.
 
    Nothing is installed without being asked: a dropzone's machine is in the middle of somebody's day,
@@ -547,6 +568,30 @@ const offerUpdate = () => {
         if (response !== 0) return
         const [window] = BrowserWindow.getAllWindows()
         if (window && !(await goAheadDespite(window, 'Installing'))) return
+        const deb = debToInstall.safeParse(autoUpdater)
+        if (deb.success) {
+          /* the updater's own install of a .deb waits for the password and the whole installation with
+             the app's program stopped, so the window cannot be moved or even redrawn meanwhile */
+          if (!(await installDeb(deb.data.installerPath))) {
+            void dialog
+              .showMessageBox({
+                type: 'error',
+                title: 'A new SkyDock',
+                message: `SkyDock ${found.version} could not be installed.`,
+                detail: 'Nothing was changed. The new version can be downloaded from its page.',
+                buttons: ['Open the page', 'Close']
+              })
+              .then(({ response: opened }) => {
+                if (opened === 0) void shell.openExternal(RELEASES)
+              })
+            return
+          }
+          leaving = true
+          stopServer()
+          app.relaunch()
+          app.quit()
+          return
+        }
         leaving = true
         /* the server is stopped on the way out, as it is however the app ends */
         stopServer()
