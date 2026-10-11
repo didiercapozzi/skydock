@@ -208,10 +208,11 @@ not copied yet, copied here but not uploaded, copied here and then put in the bi
 copied read by the same rule the copy uses to pass a file over, and in the bin read by the file's bytes,
 never its name, which the copy may have changed: only a file of the bin of the very same size is read
 through to be compared, so the rest of the card is not read at all, and what was read is remembered
-while it stays the same. Only a file on the storage, or one whose
-copy here was put in the bin, can be picked and deleted from the camera, to make room on the card; a file not
-copied yet has a tick too, to be copied alone, and the rest have none, since until a file is uploaded or
-thrown away the card is its other copy. A camera that hands its files over has to be gone over — read, never
+while it stays the same. Any file already copied here — not
+uploaded yet, on the storage, or one whose copy here was put in the bin — can be picked and deleted from the
+camera, to make room on the card, once it is proved by its bytes to be the one the board holds; a file not
+copied yet has a tick too, to be copied alone, and only it has no way to be deleted, since until it is copied
+the card is its only copy. A camera that hands its files over has to be gone over — read, never
 copied — before it can say how many files are new or list them.
 
 A file on a camera that shows as a drive can be **looked at from the card**, without copying it: a button on its
@@ -234,11 +235,11 @@ camera readable as files — and for the same reason its page does not say which
 Its page says to delete on the camera itself.
 
 A file not on a camera plugged in now stops the whole request, and the files at fault are named. Past
-that, each file is its own: one shown to be on the storage, or whose copy is in the bin, is moved off the
+that, each file is its own: one shown to be copied here, or whose copy is in the bin, is moved off the
 card as soon as it has been read through, without waiting for the others, and one that is not stays on
 the card and is named — the others still go. Only when none can go is it said that nothing was deleted.
 A file leaves the camera's list the moment it has gone. What passes is moved off the card into a folder of the bin named after the camera and the moment,
-kept as it sat on the card. What decides is what the file is, by its contents, and what the records say of it: it is on the storage if its upload was checked by md5 on both sides when it went up, or it was freed once the storage held it. Nothing is asked of the storage when a file is deleted, so there is nothing to wait for. A file the board does not know, one only copied here and not uploaded, or one whose copy in the bin is a different file, stays and is named. The files are read a few at a time and moved one at a time, and each file being deleted
+kept as it sat on the card. What decides is what the file is, by its contents, and what the records say of it: it is a file the board holds, by its bytes — copied here, uploaded or not, or freed once the storage held it. Nothing is asked of the storage when a file is deleted, so there is nothing to wait for. A file the board does not know, or one whose copy in the bin is a different file, stays and is named. The files are read a few at a time and moved one at a time, and each file being deleted
 shows a bar on its own row, first for reading it through and then for moving it into the
 bin, so a long delete is seen to be going. Nothing is deleted from a camera while one is being copied or
 anything is being processed.

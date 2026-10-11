@@ -21,9 +21,9 @@ import { dateLabel, formatFilmSize, formatSize, getThumbUrl, hhmm } from './util
 
 /* What is on a camera plugged in (RULES, Seeing what is on a camera): every file on its card, and
    how far it has got — not copied yet, copied here, put in the bin once copied, or on the storage
-   too. Only a file on the storage or in the bin can be picked, and deleting asks first: each is
-   proved, by its bytes, to be what the storage holds or its copy in the bin before it leaves the
-   card, and goes to the bin. */
+   too. Any file already copied here can be picked, and deleting asks first: each is proved, by its
+   bytes, to be what the board holds or its copy in the bin before it leaves the card, and goes to
+   the bin. */
 
 /* how far a camera file has got, as each row says it and as the count above the list says it —
    in the badge colours the board gives the same states of its own files */
@@ -41,7 +41,7 @@ const STANDING = {
     many: msg`here, not uploaded`,
     tone: 'text-local',
     ink: 'text-local',
-    title: msg`Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera`
+    title: msg`Copied here, not on the storage yet — it can be deleted from the camera`
   },
   binned: {
     label: msg`in the bin`,
@@ -126,7 +126,7 @@ const Confirm = ({
         </>
       }>
       <p className='m-0 text-body text-ink-2'>
-        {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
+        {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with the copy the board holds here or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
       </p>
       <p className='m-0 rounded-corner bg-local-soft px-3.5 py-2.5 text-small text-ink-2'>
         {t`They are not erased: they go to the bin,`} <span className='font-mono'>.trash/</span>
@@ -207,13 +207,11 @@ const CameraFiles = ({
     useJobRows('camera-delete').flatMap((row) => (row.at === 'done' ? [row.key] : []))
   )
   const files = (listing?.files ?? []).filter((f) => !gone.has(f.path))
-  /* what can be picked is what could be deleted: what is on the storage or in the bin — nothing, on
-     a camera read through KDE */
-  const pickable = listing?.deletable
-    ? files.filter((f) => f.state === 'stored' || f.state === 'binned')
-    : []
+  /* what can be picked is what could be deleted: what is copied here, on the storage or in the bin —
+     nothing, on a camera read through KDE */
+  const pickable = listing?.deletable ? files.filter((f) => f.state !== 'missing') : []
   const missing = files.filter((f) => f.state === 'missing')
-  /* a file not copied yet can be picked to be copied; one on the storage or in the bin, to be deleted */
+  /* a file not copied yet can be picked to be copied; one copied here, on the storage or in the bin, to be deleted */
   const canPick = new Set([...missing, ...pickable])
   const chosen = pickable.filter((f) => picked.has(f.path))
   const chosenToCopy = missing.filter((f) => picked.has(f.path))
@@ -453,7 +451,7 @@ const CameraFiles = ({
           />
           {listing.deletable ? (
             <span>
-              {t`Pick a file not copied yet to copy just that one. Only a file uploaded to the storage, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased.`}
+              {t`Pick a file not copied yet to copy just that one. Only a file already copied here, uploaded or not, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased.`}
             </span>
           ) : (
             <span

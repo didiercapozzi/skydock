@@ -23,10 +23,9 @@ import type { Manifest, ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getTrashDir, isVideoFile, sizeOf } from './utils'
 
 /* What is on a camera plugged in, and taking off it what is no longer wanted there (RULES, Seeing
-   what is on a camera). A file leaves a camera only once it is proved to be on the storage, or its
-   copy here to have been put in the bin — by its bytes, not its name, since every name changes on
-   the way — only from a drive that is a camera, and never erased: it goes to the bin, like any file
-   put aside. */
+   what is on a camera). A file leaves a camera only once it is proved to be copied here, on the
+   board or in the bin — by its bytes, not its name, since every name changes on the way — only from
+   a drive that is a camera, and never erased: it goes to the bin, like any file put aside. */
 
 type Uploaded = NonNullable<ManifestFile['uploaded']>
 
@@ -276,9 +275,8 @@ const listCameras = async (
   ])
 
 /* All or nothing: every file asked for has to be on a camera plugged in now and, by what it contains, a
-   file the records say is on the storage, or whose copy is in the bin — or nothing is touched and each
-   file that is not is named. A file only copied here stays: until it is uploaded or put in the bin, the
-   card is its other copy. */
+   file the board holds, or whose copy is in the bin — or nothing is touched and each file that is not
+   is named. */
 const canWriteIn = (dir: string) => {
   try {
     fs.accessSync(dir, fs.constants.W_OK)
@@ -374,7 +372,7 @@ const deleteNow = async ({
   }
   /* its copy in the bin is the very file off the card: the same content, read through now */
   const binned = binnedBy(binnedCopies(trashDir), (file) => fingerprint(file).catch(() => null))
-  /* Each file is its own: read through to know what it is, and — if the records say it is on the storage,
+  /* Each file is its own: read through to know what it is, and — if the board holds it,
      or its copy is in the bin — moved into the bin at once, without waiting for the others. Several are
      read at a time, since the camera is slow to read; they are moved one at a time, since moving is
      reading the camera again and two at once only slow each other. A file that is not shown to be there
@@ -402,12 +400,8 @@ const deleteNow = async ({
       const mine = entries.filter(
         ({ file: f }) => f.id === camera.id || (f.copyOf !== undefined && f.copyOf === camera.id)
       )
-      if (!mine.some(({ file: f, group }) => onStorage(f, group)) && !(await binned(file, size)))
-        return refused(
-          mine.length === 0
-            ? `${name} is neither on the board nor in the bin — copy it and scan first`
-            : `${name} is not uploaded yet, nor put in the bin`
-        )
+      if (mine.length === 0 && !(await binned(file, size)))
+        return refused(`${name} is neither on the board nor in the bin — copy it and scan first`)
       said(file, 'checked', 0.5)
       return await afterTheOthers(async () => {
         const mount = cameraOf(file)!

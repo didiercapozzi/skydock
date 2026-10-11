@@ -30,7 +30,7 @@ const actionArgs = z.object({
   copyFiles: z.object({ mount: z.string(), paths: z.array(z.string()) }).optional()
 })
 
-/* A camera's files deleted from it, into the bin, once each is proved to be on the storage, or its
+/* A camera's files deleted from it, into the bin, once each is proved to be copied here, or its
    copy here to be in the bin, by its bytes (RULES, Seeing what is on a camera). All or nothing, with
    every file that is not named. */
 const action = createValidatedFormAction()({
