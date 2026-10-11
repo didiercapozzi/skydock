@@ -249,8 +249,8 @@ msgid "{count, plural, one {# file} other {# files}}"
 msgstr "{count, plural, one {# fichier} other {# fichiers}}"
 
 #: app/components/camera-files.tsx
-msgid "{count, plural, one {# file} other {# files}} — {size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which."
-msgstr "{count, plural, one {# fichier} other {# fichiers}} — {size} — quittent la carte de la caméra. Chacun est d’abord lu en entier et comparé, par ses octets et non par son nom, à ce que contient le stockage ou à sa copie dans la corbeille ; si un seul ne correspond pas, rien du tout n’est supprimé, et il est indiqué lequel."
+msgid "{count, plural, one {# file} other {# files}} — {size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with the copy the board holds here or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which."
+msgstr "{count, plural, one {# fichier} other {# fichiers}} — {size} — quittent la carte de la caméra. Chacun est d’abord lu en entier et comparé, par ses octets et non par son nom, à la copie que le tableau détient ici ou à sa copie dans la corbeille ; si un seul ne correspond pas, rien du tout n’est supprimé, et il est indiqué lequel."
 
 #: app/components/montage-card.tsx
 msgid "{count, plural, one {# photo} other {# photos}}"
@@ -1358,8 +1358,8 @@ msgid "Copied here and then put in the bin — can be deleted from the camera"
 msgstr "Copié ici puis mis à la corbeille — peut être supprimé de la caméra"
 
 #: app/components/camera-files.tsx
-msgid "Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera"
-msgstr "Copié ici, pas encore sur le stockage — envoyez-le, ou mettez-le à la corbeille, avant de le supprimer de la caméra"
+msgid "Copied here, not on the storage yet — it can be deleted from the camera"
+msgstr "Copié ici, pas encore sur le stockage — il peut être supprimé de la caméra"
 
 #: app/components/transfers-panel.tsx
 msgid "Copied in"
@@ -3519,8 +3519,8 @@ msgid "Pick {name}"
 msgstr "Sélectionner {name}"
 
 #: app/components/camera-files.tsx
-msgid "Pick a file not copied yet to copy just that one. Only a file uploaded to the storage, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased."
-msgstr "Choisissez un fichier pas encore copié pour ne copier que celui-là. Seul un fichier envoyé sur le stockage, ou dont la copie ici est à la corbeille, peut être supprimé — les fichiers supprimés vont à la corbeille, jamais effacés."
+msgid "Pick a file not copied yet to copy just that one. Only a file already copied here, uploaded or not, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased."
+msgstr "Choisissez un fichier pas encore copié pour ne copier que celui-là. Seul un fichier déjà copié ici, envoyé ou non, ou dont la copie ici est à la corbeille, peut être supprimé — les fichiers supprimés vont à la corbeille, jamais effacés."
 
 #: app/components/shortcuts-dialog.tsx
 msgid "pick a run of files"

@@ -343,12 +343,8 @@ const deleteNow = async ({
       const mine = entries.filter(
         ({ file: f }) => f.id === camera.id || (f.copyOf !== undefined && f.copyOf === camera.id)
       )
-      if (!mine.some(({ file: f, group }) => onStorage(f, group)) && !(await binned(file, size)))
-        return refused(
-          mine.length === 0
-            ? `${name} is neither on the board nor in the bin — copy it and scan first`
-            : `${name} is not uploaded yet, nor put in the bin`
-        )
+      if (mine.length === 0 && !(await binned(file, size)))
+        return refused(`${name} is neither on the board nor in the bin — copy it and scan first`)
       said(file, 'checked', 0.5)
       return await afterTheOthers(async () => {
         const mount = cameraOf(file)!

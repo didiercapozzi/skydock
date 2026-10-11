@@ -421,13 +421,13 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     await quiet()
   })
 
-  test('a file not copied yet, or copied here and not uploaded, is not offered for deleting from the camera', async () => {
+  test('a file copied here and not uploaded is offered for deleting from the camera, one not copied yet only for copying', async () => {
     const del = j.page.getByRole('button', { name: /Delete .*from the camera…/ })
     expect(await del.isDisabled(), 'nothing picked').toBe(true)
     expect(
       await j.page.getByRole('button', { name: 'Pick 100MEDIA/GX010002.MP4' }).count(),
-      'a copy not uploaded has no box: the card is its other copy'
-    ).toBe(0)
+      'a copy not uploaded has its box: it is here, so it can leave the card'
+    ).toBe(1)
     await j.page.getByRole('button', { name: 'Pick 100MEDIA/GX010003.MP4' }).click()
     await j.page.getByRole('button', { name: 'Copy 1 file selected' }).waitFor()
     expect(await del.isDisabled(), 'ticked to be copied, not to be deleted').toBe(true)

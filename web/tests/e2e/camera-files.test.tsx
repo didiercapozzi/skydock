@@ -77,7 +77,7 @@ afterEach(() => {
 })
 
 describe('a camera plugged in', () => {
-  test('says how far each file has got; a file not copied yet or one on the storage or in the bin can be picked', async () => {
+  test('says how far each file has got; a file not copied yet, or one copied, on the storage or in the bin, can be picked', async () => {
     stubServer()
     await render(createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} }))
 
@@ -89,9 +89,7 @@ describe('a camera plugged in', () => {
     await expect.element(page.getByRole('button', { name: 'Pick DJI_0001.MP4' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: 'Pick DJI_0004.MP4' })).toBeVisible()
     await expect.element(page.getByRole('button', { name: 'Pick DJI_0003.MP4' })).toBeVisible()
-    await expect
-      .element(page.getByRole('button', { name: 'Pick DJI_0002.MP4' }))
-      .not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Pick DJI_0002.MP4' })).toBeVisible()
   })
 
   test('copies just the files picked that are not copied yet, and posts them as picked', async () => {

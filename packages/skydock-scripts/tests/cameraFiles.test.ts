@@ -280,7 +280,7 @@ describe('deleting from a camera', () => {
     await expect(
       deleteFromCameras({
         paths: [onCard(root, 'GX01.MP4')],
-        manifest: board([dropzone([file])]),
+        manifest: board([]),
         trashDir,
         mounts: [root],
         outputDir
@@ -301,12 +301,13 @@ describe('deleting from a camera', () => {
     expect(readTransfers(outputDir)[0]).toMatchObject({ kind: 'delete', state: 'done' })
   })
 
-  it('keeps it on the card while it is only copied here, not uploaded', async () => {
+  it('takes a file off the card that is only copied here, not uploaded', async () => {
     const { root, file } = await setup()
     withStorage({})
 
-    await expect(remove(root, board([dropzone([file])]))).rejects.toThrow(/is not uploaded yet/)
-    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(true)
+    await remove(root, board([dropzone([file])]))
+
+    expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)
   })
 
   it('takes a file off the card once its copy here was put in the bin, without the storage', async () => {
@@ -366,7 +367,7 @@ describe('deleting from a camera', () => {
     await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
     const storage: Record<string, string> = {}
     const first = await entry('GX01.MP4')
-    const manifest = board([dropzone([sentAsCopy(first, storage), await entry('GX02.MP4')])])
+    const manifest = board([dropzone([sentAsCopy(first, storage)])])
     const heard: LiveEvent[] = []
     const stop = subscribe((event) => heard.push(event))
 
@@ -383,7 +384,7 @@ describe('deleting from a camera', () => {
     expect(result.stayed).toEqual([
       {
         file: onCard(root, 'GX02.MP4'),
-        why: expect.stringMatching(/GX02\.MP4 is not uploaded yet/)
+        why: expect.stringMatching(/GX02\.MP4 is neither on the board nor in the bin/)
       }
     ])
     expect(fs.existsSync(onCard(root, 'GX01.MP4'))).toBe(false)

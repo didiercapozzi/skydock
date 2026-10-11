@@ -33,7 +33,7 @@ const STANDING = {
     many: msg`here, not uploaded`,
     tone: 'text-local',
     ink: 'text-local',
-    title: msg`Copied here, not on the storage yet — upload it, or put it in the bin, before deleting it from the camera`
+    title: msg`Copied here, not on the storage yet — it can be deleted from the camera`
   },
   binned: {
     label: msg`in the bin`,
@@ -115,7 +115,7 @@ const Confirm = ({
         </>
       }>
       <p className='m-0 text-body text-ink-2'>
-        {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with what the storage holds or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
+        {t`${plural(count, { one: '# file', other: '# files' })} — ${size} — come off the camera’s card. Each is first read through and matched, by its bytes and not its name, with the copy the board holds here or with its copy in the bin; if any one does not match, nothing at all is deleted, and it says which.`}
       </p>
       <p className='m-0 rounded-corner bg-local-soft px-3.5 py-2.5 text-small text-ink-2'>
         {t`They are not erased: they go to the bin,`} <span className='font-mono'>.trash/</span>
@@ -184,9 +184,7 @@ const CameraFiles = ({
     useJobRows('camera-delete').flatMap((row) => (row.at === 'done' ? [row.key] : []))
   )
   const files = (listing?.files ?? []).filter((f) => !gone.has(f.path))
-  const pickable = listing?.deletable
-    ? files.filter((f) => f.state === 'stored' || f.state === 'binned')
-    : []
+  const pickable = listing?.deletable ? files.filter((f) => f.state !== 'missing') : []
   const missing = files.filter((f) => f.state === 'missing')
   const canPick = new Set([...missing, ...pickable])
   const chosen = pickable.filter((f) => picked.has(f.path))
@@ -413,7 +411,7 @@ const CameraFiles = ({
           />
           {listing.deletable ? (
             <span>
-              {t`Pick a file not copied yet to copy just that one. Only a file uploaded to the storage, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased.`}
+              {t`Pick a file not copied yet to copy just that one. Only a file already copied here, uploaded or not, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased.`}
             </span>
           ) : (
             <span
