@@ -270,6 +270,16 @@ notarisation, removes the warning entirely and is what would let a Mac update it
 certificate for Windows. Both are given to the build as secrets and nothing else changes —
 [electron-builder on signing](https://www.electron.build/code-signing).
 
+**Windows can be signed for free by [SignPath Foundation](https://signpath.org)**, which signs
+open-source projects built on GitHub Actions. The release workflow is ready for it and does nothing
+until the repository carries the variables `SIGNPATH_ORGANIZATION_ID`, `SIGNPATH_PROJECT_SLUG` and
+`SIGNPATH_SIGNING_POLICY_SLUG` and the secret `SIGNPATH_API_TOKEN`. With them, the Windows machine
+builds the setup `.exe` and the `.msi` without publishing, hands them to SignPath, puts the signed
+ones back, writes their hash and length again into `latest.yml` with a fresh block map
+([scripts/signed-windows.ts](../scripts/signed-windows.ts)), and hangs those on the release. The
+artifact configuration in SignPath is a zip holding the `.exe` and the `.msi` at its root. SmartScreen
+still warns about a newly signed app until enough copies of it have been installed.
+
 ## Configuration
 
 | Variable                                                               | Purpose                                                                                                                                                                  | Default                                                                    |

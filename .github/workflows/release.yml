@@ -53,6 +53,8 @@ jobs:
             target: ''
             args: '--win'
     runs-on: ${{ matrix.platform }}
+    env:
+      SIGNING: ${{ matrix.platform == 'windows-latest' && vars.SIGNPATH_ORGANIZATION_ID != '' }}
     steps:
       - uses: actions/checkout@v7
 
@@ -83,7 +85,46 @@ jobs:
 
       - name: The installers
         shell: bash
-        run: npx electron-builder ${{ matrix.args }} ${{ startsWith(github.ref, 'refs/tags/') && '--publish always' || '--publish never' }}
+        run: npx electron-builder ${{ matrix.args }} ${{ startsWith(github.ref, 'refs/tags/') && env.SIGNING != 'true' && '--publish always' || '--publish never' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: The Windows installers, before signing
+        id: unsigned
+        if: env.SIGNING == 'true'
+        uses: actions/upload-artifact@v5
+        with:
+          name: skydock-windows-unsigned
+          path: |
+            build/installers/*.exe
+            build/installers/*.msi
+            !build/installers/__*
+          if-no-files-found: error
+
+      - name: Signed by SignPath
+        if: env.SIGNING == 'true'
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ vars.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ vars.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ vars.SIGNPATH_SIGNING_POLICY_SLUG }}
+          github-artifact-id: ${{ steps.unsigned.outputs.artifact-id }}
+          wait-for-completion: true
+          output-artifact-directory: build/signed
+
+      - name: The signed installers in place of the others
+        if: env.SIGNING == 'true'
+        shell: bash
+        run: npx tsx scripts/signed-windows.ts
+
+      - name: The signed installers on the release
+        if: env.SIGNING == 'true' && startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(build/installers/[!_]*.exe build/installers/[!_]*.exe.blockmap build/installers/*.msi build/installers/latest.yml)
+          npx electron-builder publish --policy always --files "${files[@]}"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
