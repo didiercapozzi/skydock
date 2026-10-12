@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { fileStatus, uploadGate } from '../src/fileStatus'
 import type { ManifestFile } from '../src/types'
@@ -126,7 +125,7 @@ describe('a turned file', () => {
     expect(fileStatus(turned, { output: onDisk })).toBe('processed')
   })
 
-  it('takes the turn from where the file is drawn, like the crop', () => {
+  it('reads as changed when it is turned on screen and not yet saved', () => {
     expect(
       fileStatus(processed(), {
         output: onDisk,

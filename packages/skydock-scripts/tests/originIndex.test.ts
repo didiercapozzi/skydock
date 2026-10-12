@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import {
-  deliveryFolders,
+  placeFolders,
   originsDirOf,
   readOriginIndex,
   recordOrigins,
@@ -66,7 +66,7 @@ describe('where the list of origins lives', () => {
       ]
     }
 
-    expect(deliveryFolders(manifest)).toEqual([
+    expect(placeFolders(manifest)).toEqual([
       YVERDON,
       '/usbshare2/Skydive/montages video originales'
     ])
@@ -234,12 +234,12 @@ describe('where the lists stay', () => {
     destinations: paths.map((p, i) => ({ name: `Place ${i}`, path: p }))
   })
 
-  it('is fixed the first time there are places, and does not move when one is added', () => {
+  it('is fixed the first time there are places, and does not move when one is added', async () => {
     const configDir = createTmpDir('skydock-lists-')
-    saveNasSession({ hostname: 'h', username: 'u', sessionId: 'sid' }, configDir)
+    await saveNasSession({ hostname: 'h', username: 'u', sessionId: 'sid' }, configDir)
 
-    settleListsDir(manifestWith(FOLDERS), configDir)
-    settleListsDir(manifestWith([...FOLDERS, '/usbshare2/Skydive/Backup']), configDir)
+    await settleListsDir(manifestWith(FOLDERS), configDir)
+    await settleListsDir(manifestWith([...FOLDERS, '/usbshare2/Skydive/Backup']), configDir)
 
     expect(loadNasSession(configDir)?.listsDir).toBe('/home/Photos/Skydive')
   })

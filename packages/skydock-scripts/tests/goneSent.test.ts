@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { goneSent } from '../src/upload'
 import type { ManifestGroup } from '../src/types'

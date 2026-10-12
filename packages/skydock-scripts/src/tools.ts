@@ -57,7 +57,7 @@ const run = (program: string, args: string[], listening?: Listening) =>
   )
 
 const positionIn = (text: string) => {
-  const found = [...text.matchAll(/out_time_us=(\d+)/g)].pop()
+  const found = [...text.matchAll(/out_time_us=(\d+)/g)].at(-1)
   return found ? Number(found[1]) / 1_000_000 : null
 }
 
@@ -102,7 +102,7 @@ const lastComplaint = (stderr: string) => {
     .map((l) => l.trim().replace(/^\[[^\]]+\]\s*/, ''))
     .filter((l) => l !== '' && !NOISE.some((n) => n.test(l)))
   const named = lines.filter((l) => NAMES_A_REASON.test(l))
-  return named[0] ?? lines[lines.length - 1] ?? 'ffmpeg failed with no output'
+  return named[0] ?? lines.at(-1) ?? 'ffmpeg failed with no output'
 }
 
-export { durationIn, lastComplaint, positionIn, run, runWatched, stoppable, stopTools }
+export { lastComplaint, run, runWatched, stoppable, stopTools }

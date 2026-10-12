@@ -2,7 +2,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   DEFAULT_TEMPLATES,
-  defaultPassengerEmail,
   fillEmailTemplate,
   gmailComposeUrl,
   htmlOfText,
@@ -15,7 +14,7 @@ const LINK = 'https://nas.example/sharing/AbC123'
 
 describe('the passenger email', () => {
   it('greets the passenger by name and says what is ready, on the day of the jump', () => {
-    const email = defaultPassengerEmail({
+    const email = fillEmailTemplate(DEFAULT_TEMPLATES.fr, {
       firstname: 'Luc',
       lastname: 'Favre',
       day: '01.08.2026',

@@ -1,19 +1,14 @@
-// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import { dayOfFiles, shiftFiles } from '../src/clustering'
+import { moveFiles } from '../src/moveFiles'
 import { isoDay } from '../src/utils'
 import { mergeGroups } from '../src/workspace'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
+import { manifestFile } from './fixtures'
 
 const at = (iso: string) => Math.floor(new Date(iso).getTime() / 1000)
 
-const file = (id: string, iso: string): ManifestFile => ({
-  id,
-  path: `/out/${id}.MP4`,
-  filename: `${id}.MP4`,
-  mtime: at(iso),
-  size: 1000
-})
+const file = (id: string, iso: string) => manifestFile(id, at(iso))
 
 const group = (id: string, files: ManifestFile[]): ManifestGroup => ({
   id,
@@ -23,20 +18,22 @@ const group = (id: string, files: ManifestFile[]): ManifestGroup => ({
 })
 
 describe('the day a jump is filed under', () => {
-  it('translates a stored day into a sortable key, and refuses anything else', () => {
-    expect(isoDay('12.09.2026')).toBe('2026-09-12')
-    expect(isoDay('2026-09-12')).toBe('')
-    expect(isoDay('')).toBe('')
-  })
-
   it('stays put when a file from an earlier day is dropped into the jump', () => {
     const older = file('a1', '2026-08-30T15:00:00')
-    const jump = group('gB', [file('b1', '2026-09-13T10:00:00'), file('b2', '2026-09-13T10:04:00')])
+    const files = [older, file('b1', '2026-09-13T10:00:00'), file('b2', '2026-09-13T10:04:00')]
+    const jump = group('gB', files.slice(1))
+    const manifest: Manifest = {
+      version: 1,
+      createdAt: '2026-09-13',
+      files,
+      groups: [jump],
+      destinations: []
+    }
 
-    jump.files = [...jump.files, older].sort((a, b) => a.mtime - b.mtime)
+    moveFiles(manifest, new Set(['a1']), { targetGroupId: 'gB' })
 
     expect(isoDay(jump.day)).toBe('2026-09-13')
-    expect(jump.files.map((f) => f.id)).toEqual(['a1', 'b1', 'b2'])
+    expect(manifest.groups[0].files.map((f) => f.id)).toEqual(['a1', 'b1', 'b2'])
   })
 
   it('follows the jump when the whole jump is re-timed across midnight', () => {

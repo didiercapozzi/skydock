@@ -1,17 +1,16 @@
-// @vitest-environment node
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { bringBackFromBin, listBin } from '../src/bin'
 import { computeFileId } from '../src/fileId'
 import type { Manifest } from '../src/types'
+import { createTmpDir } from './fixtures'
 
 let out = ''
 let trash = ''
 
 beforeEach(() => {
-  out = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-bin-'))
+  out = createTmpDir('skydock-bin-')
   trash = path.join(out, '.trash')
 })
 
@@ -32,12 +31,12 @@ const putAside = (folder: string, within: string, bytes = within) => {
 const empty = (): Manifest => ({ version: 2, createdAt: '2026-09-12', files: [], groups: [] })
 
 describe('what the bin holds', () => {
-  it('is each time something was put aside, the latest first, saying from where — Fresh files, a montage or a camera', () => {
+  it('is each time something was put aside, the latest first, saying from where — Fresh files, a montage or a camera', async () => {
     putAside('unsorted-2026-09-20T09-00-00-000Z', '2026-09-12/GX010001.MP4')
     putAside('camera-OsmoNano-2026-09-24T12-30-05-123Z', 'DCIM/100MEDIA/DJI_0001.MP4')
     putAside('montage-boogie-2026-2026-09-22T08-00-00-000Z', '2026-09-12/GX010002.MP4')
 
-    const batches = listBin(trash)
+    const batches = await listBin(trash)
 
     expect(batches.map((b) => [b.from, b.camera ?? b.montage, b.files.map((f) => f.name)])).toEqual(
       [
@@ -49,19 +48,19 @@ describe('what the bin holds', () => {
     expect(batches[0]?.at).toBe(Date.UTC(2026, 8, 24, 12, 30, 5) / 1000)
   })
 
-  it('lists the files of a batch newest first, not by name', () => {
+  it('lists the files of a batch newest first, not by name', async () => {
     const a = putAside('unsorted-2026-09-20T09-00-00-000Z', '2026-09-12/A.MP4')
     const z = putAside('unsorted-2026-09-20T09-00-00-000Z', '2026-09-12/Z.MP4')
     fs.utimesSync(z, new Date(2026, 8, 12, 11, 0, 0), new Date(2026, 8, 12, 11, 0, 0))
     fs.utimesSync(a, new Date(2026, 8, 12, 9, 0, 0), new Date(2026, 8, 12, 9, 0, 0))
 
-    expect(listBin(trash)[0]?.files.map((f) => f.name)).toEqual(['Z.MP4', 'A.MP4'])
+    expect((await listBin(trash))[0]?.files.map((f) => f.name)).toEqual(['Z.MP4', 'A.MP4'])
   })
 
-  it('lists only pictures and films, and nothing for a bin never used', () => {
+  it('lists only pictures and films, and nothing for a bin never used', async () => {
     putAside('unsorted-2026-09-20T09-00-00-000Z', 'notes.txt')
-    expect(listBin(trash)).toEqual([])
-    expect(listBin(path.join(out, 'nowhere'))).toEqual([])
+    expect(await listBin(trash)).toEqual([])
+    expect(await listBin(path.join(out, 'nowhere'))).toEqual([])
   })
 })
 

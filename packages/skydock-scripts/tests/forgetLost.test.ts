@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
@@ -65,34 +64,34 @@ afterEach(() => {
 })
 
 describe('footage that is nowhere', () => {
-  it('is forgotten when it was freed here and the storage no longer holds it', () => {
+  it('is forgotten when it was freed here and the storage no longer holds it', async () => {
     const manifest = manifestOf([file()])
 
-    expect(forgetLostFiles(manifest, lostOnStorage)).toEqual(['a.mp4'])
+    expect(await forgetLostFiles(manifest, lostOnStorage)).toEqual(['a.mp4'])
     expect(manifest.files).toEqual([])
   })
 
-  it('takes the jump it was the last of with it', () => {
+  it('takes the jump it was the last of with it', async () => {
     const lost = file()
     const manifest = manifestOf([lost], [jump([lost])])
 
-    forgetLostFiles(manifest, lostOnStorage)
+    await forgetLostFiles(manifest, lostOnStorage)
 
     expect(manifest.groups).toEqual([])
   })
 
-  it('leaves the jump standing while something of it is left', () => {
+  it('leaves the jump standing while something of it is left', async () => {
     const lost = file()
     const kept = file({ id: 'id-b', filename: 'b.mp4', path: onDisk('b.mp4'), freed: false })
     const manifest = manifestOf([lost, kept], [jump([lost, kept])])
 
-    forgetLostFiles(manifest, lostOnStorage)
+    await forgetLostFiles(manifest, lostOnStorage)
 
     expect(manifest.files.map((f) => f.id)).toEqual(['id-b'])
     expect(manifest.groups[0]!.files.map((f) => f.id)).toEqual(['id-b'])
   })
 
-  it('keeps a montage whose delivered film the storage still holds', () => {
+  it('keeps a montage whose delivered film the storage still holds', async () => {
     const lost = file()
     const manifest = manifestOf(
       [lost],
@@ -114,7 +113,7 @@ describe('footage that is nowhere', () => {
       ]
     )
 
-    forgetLostFiles(manifest, {
+    await forgetLostFiles(manifest, {
       dirs: ['/home/Yverdon', '/home/Passengers/Ana'],
       sizes: { '/home/Passengers/Ana/film.mp4': 10 }
     })
@@ -125,50 +124,53 @@ describe('footage that is nowhere', () => {
 })
 
 describe('what is left exactly as it was', () => {
-  it('a file whose folder the storage never answered about', () => {
+  it('a file whose folder the storage never answered about', async () => {
     const manifest = manifestOf([file()])
 
-    expect(forgetLostFiles(manifest, { dirs: ['/home/Colombier'], sizes: {} })).toEqual([])
+    expect(await forgetLostFiles(manifest, { dirs: ['/home/Colombier'], sizes: {} })).toEqual([])
     expect(manifest.files).toHaveLength(1)
   })
 
-  it('a file checked against no listing at all', () => {
+  it('a file checked against no listing at all', async () => {
     const manifest = manifestOf([file()])
 
-    expect(forgetLostFiles(manifest, null)).toEqual([])
+    expect(await forgetLostFiles(manifest, null)).toEqual([])
     expect(manifest.files).toHaveLength(1)
   })
 
-  it('a file the storage holds at another size — something is there', () => {
+  it('a file the storage holds at another size — something is there', async () => {
     const manifest = manifestOf([file()])
 
     expect(
-      forgetLostFiles(manifest, { dirs: ['/home/Yverdon'], sizes: { '/home/Yverdon/a.mp4': 5 } })
+      await forgetLostFiles(manifest, {
+        dirs: ['/home/Yverdon'],
+        sizes: { '/home/Yverdon/a.mp4': 5 }
+      })
     ).toEqual([])
     expect(manifest.files).toHaveLength(1)
   })
 
-  it('a freed file whose original another jump kept on this machine', () => {
+  it('a freed file whose original another jump kept on this machine', async () => {
     const manifest = manifestOf([file({ path: onDisk('shared.mp4') })])
 
-    expect(forgetLostFiles(manifest, lostOnStorage)).toEqual([])
+    expect(await forgetLostFiles(manifest, lostOnStorage)).toEqual([])
     expect(manifest.files).toHaveLength(1)
   })
 
-  it('a file whose processed copy is still on this machine', () => {
+  it('a file whose processed copy is still on this machine', async () => {
     const copy = onDisk('copy.mp4')
     const kept = file()
     kept.processed!.path = copy
     const manifest = manifestOf([kept])
 
-    expect(forgetLostFiles(manifest, lostOnStorage)).toEqual([])
+    expect(await forgetLostFiles(manifest, lostOnStorage)).toEqual([])
     expect(manifest.files).toHaveLength(1)
   })
 
-  it('a file that was never freed, whatever the storage says', () => {
+  it('a file that was never freed, whatever the storage says', async () => {
     const manifest = manifestOf([file({ freed: false })])
 
-    expect(forgetLostFiles(manifest, lostOnStorage)).toEqual([])
+    expect(await forgetLostFiles(manifest, lostOnStorage)).toEqual([])
     expect(manifest.files).toHaveLength(1)
   })
 })

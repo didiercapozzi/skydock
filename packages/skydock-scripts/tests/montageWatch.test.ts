@@ -31,7 +31,7 @@ const look = async (times = 1) => {
 }
 const montagesTold = () => heard.flatMap((e) => (e.kind === 'montage' ? [e] : []))
 
-beforeEach(() => {
+beforeEach(async () => {
   outputDir = createTmpDir('skydock-watch-')
   folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   fs.mkdirSync(folder, { recursive: true })
@@ -54,7 +54,7 @@ beforeEach(() => {
       }
     ]
   }
-  saveManifest(path.join(outputDir, 'manifest.json'), manifest)
+  await saveManifest(path.join(outputDir, 'manifest.json'), manifest)
   readable = true
   tellTools()
   execSyncMock.mockImplementation((cmd: string | Buffer) => {

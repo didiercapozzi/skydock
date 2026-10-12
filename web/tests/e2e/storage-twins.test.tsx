@@ -8,6 +8,7 @@ import { StorageTwinPart } from '../../app/components/inspector'
 import { FolderCard } from '../../app/components/storage-folder'
 import type { ManifestFile } from '../../app/components/types'
 import { StorageTwinsContext } from '../../app/hooks/storageTwins'
+import { openedPath } from './dsm'
 
 
 const DIR = '/SkyDock/Yverdon'
@@ -51,9 +52,7 @@ describe('a file that is up there too', () => {
     const open = page.getByRole('link', { name: 'Open in DSM' })
     await expect.element(open).toBeVisible()
     expect(open.element().getAttribute('target')).toBe('_blank')
-    expect(
-      decodeURIComponent(decodeURIComponent(open.element().getAttribute('href')?.split('launchParam=')[1] ?? ''))
-    ).toBe(`openfile=${DIR}/yverdon_20260927_120500.mp4`)
+    expect(openedPath(open.element().getAttribute('href') ?? '')).toBe(`openfile=${DIR}/yverdon_20260927_120500.mp4`)
     await expect.element(page.getByRole('button', { name: 'Watch' })).not.toBeInTheDocument()
   })
 

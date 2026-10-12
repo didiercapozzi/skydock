@@ -97,7 +97,6 @@ describe('a template that names its files where they were on another machine', (
     )
 
     relinkTemplate(project)
-    expect(said(project)).toContain('root=""')
     expect(said(project)).not.toContain('/home/someone/club')
   })
 

@@ -3,13 +3,19 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
-const app = path.join(__dirname, '..', '..', 'app')
+const roots = [
+  path.join(__dirname, '..', '..', 'app'),
+  path.join(__dirname, '..', '..', '..', 'packages', 'ui')
+]
 
 const files = (dir: string): string[] =>
-  fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name)
-    return entry.isDirectory() ? files(full) : full.endsWith('.tsx') ? [full] : []
-  })
+  fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.name !== 'node_modules')
+    .flatMap((entry) => {
+      const full = path.join(dir, entry.name)
+      return entry.isDirectory() ? files(full) : full.endsWith('.tsx') ? [full] : []
+    })
 
 const RULES: Array<[string, RegExp]> = [
   ['a type size in pixels (use text-micro … text-display)', /(?<![\w-])text-\[\d/],
@@ -45,8 +51,8 @@ const RULES: Array<[string, RegExp]> = [
 ]
 
 describe('the visual design rules', () => {
-  const sources = files(app).map(
-    (file) => [path.relative(app, file), fs.readFileSync(file, 'utf-8')] as const
+  const sources = roots.flatMap((root) =>
+    files(root).map((file) => [path.relative(root, file), fs.readFileSync(file, 'utf-8')] as const)
   )
 
   for (const [rule, pattern] of RULES) {

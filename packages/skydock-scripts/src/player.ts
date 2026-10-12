@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { access } from 'node:fs/promises'
 import { startDetached, tokenize } from './openOutside'
 
 const PLAYER_COMMAND = 'SKYDOCK_PLAYER_COMMAND'
@@ -18,7 +18,13 @@ const playerParts = () => {
 
 const openInPlayer = async (filePath: string) => {
   const command = playerCommand()
-  if (!fs.existsSync(filePath)) return { opened: false, command, reason: `No file at ${filePath}` }
+  if (
+    !(await access(filePath).then(
+      () => true,
+      () => false
+    ))
+  )
+    return { opened: false, command, reason: `No file at ${filePath}` }
   const parts = playerParts()
   if (!parts)
     return {

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import * as http from 'node:http'
 import { describe, it, expect, afterEach } from 'vitest'
-import { letGo, sendAnswer } from '../../server/answer'
+import { sendAnswer } from '../../server/answer'
 
 let running: http.Server | null = null
 
@@ -31,8 +31,8 @@ const serving = async () => {
   return { ended, port }
 }
 
-describe('an answer the page lets go of', () => {
-  it('is finished with, not failed', async () => {
+describe('a video the page stops watching', () => {
+  it('ends quietly', async () => {
     const { ended, port } = await serving()
 
     await new Promise((done) => {
@@ -46,25 +46,5 @@ describe('an answer the page lets go of', () => {
 
     await expect.poll(() => ended.length).toBe(1)
     expect(ended[0]?.value).toBe('written')
-  })
-})
-
-describe('what counts as a page letting go', () => {
-  const because = (code: string) => letGo(Object.assign(new Error('nope'), { code }))
-
-  it('is a write that ended before what it was writing did', () => {
-    expect(because('ERR_STREAM_PREMATURE_CLOSE')).toBe(true)
-    expect(because('ERR_STREAM_DESTROYED')).toBe(true)
-  })
-
-  it('is a connection the other end closed or broke', () => {
-    expect(because('EPIPE')).toBe(true)
-    expect(because('ECONNRESET')).toBe(true)
-  })
-
-  it('is not anything else, which is still worth saying out loud', () => {
-    expect(because('ENOENT')).toBe(false)
-    expect(letGo(new Error('the disk is full'))).toBe(false)
-    expect(letGo(null)).toBe(false)
   })
 })

@@ -1,8 +1,6 @@
-// @vitest-environment node
 import { describe, it, expect } from 'vitest'
 import {
   containCrop,
-  cropFilter,
   cropToPixels,
   fitRatio,
   isWholeFrame,
@@ -12,6 +10,7 @@ import {
   turnedSize,
   withRatio
 } from '../src/frameCrop'
+import type { FrameCrop } from '../src/types'
 
 describe('a rectangle covering everything', () => {
   it('is the same as no rectangle, so the file can be copied rather than encoded again', () => {
@@ -64,25 +63,25 @@ describe('the shape the crop keeps', () => {
   })
 })
 
-describe('turning fractions into pixels', () => {
-  it('gives even numbers, because an encoder will not take odd ones', () => {
+describe('the rectangle dragged over a clip', () => {
+  it('is cut in whole, even pixels', () => {
     const box = cropToPixels({ x: 0.1, y: 0.1, width: 0.777, height: 0.777 }, 1920, 1080)
     for (const n of [box.x, box.y, box.width, box.height]) expect(n % 2).toBe(0)
   })
 
-  it('never claims more rows than an odd-sized frame has', () => {
+  it('never keeps more than an odd-sized clip has', () => {
     const box = cropToPixels({ x: 0, y: 0, width: 1, height: 1 }, 1921, 1079)
     expect(box.width).toBeLessThanOrEqual(1920)
     expect(box.height).toBeLessThanOrEqual(1078)
   })
 
-  it('never runs off the edge of the frame', () => {
+  it('never runs off the edge of the picture', () => {
     const box = cropToPixels({ x: 0.9, y: 0.9, width: 0.5, height: 0.5 }, 1920, 1080)
     expect(box.x + box.width).toBeLessThanOrEqual(1920)
     expect(box.y + box.height).toBeLessThanOrEqual(1080)
   })
 
-  it('means the same part of the picture at any size', () => {
+  it('keeps the same part of the picture at any size', () => {
     const crop = { x: 0.25, y: 0.25, width: 0.5, height: 0.5 }
     const small = cropToPixels(crop, 640, 360)
     const large = cropToPixels(crop, 3840, 2160)
@@ -91,18 +90,21 @@ describe('turning fractions into pixels', () => {
   })
 })
 
-describe('the filter the clip is cut with', () => {
-  it('cuts the rectangle and puts the result back to the size it came at', () => {
-    const filter = cropFilter({ x: 0.1, y: 0, width: 0.9, height: 0.9 }, 3840, 2160)
+describe('what is left of a clip when the rectangle is cut away', () => {
+  const cutOut = (frame: FrameCrop, width: number, height: number) =>
+    pictureFilter({ frame, rotation: null, width, height })
+
+  it('is put back to the size the clip came at, so a 4K clip stays 4K', () => {
+    const filter = cutOut({ x: 0.1, y: 0, width: 0.9, height: 0.9 }, 3840, 2160)
     expect(filter).toBe('crop=3456:1944:384:0,scale=3840:2160')
   })
 
-  it('leaves out the rescale when nothing was taken off', () => {
-    expect(cropFilter({ x: 0, y: 0, width: 1, height: 1 }, 1920, 1080)).toBe('crop=1920:1080:0:0')
+  it('is not rescaled when nothing was taken off', () => {
+    expect(cutOut({ x: 0, y: 0, width: 1, height: 0.9995 }, 1920, 1080)).toBe('crop=1920:1080:0:0')
   })
 
-  it('keeps the shape of the picture it started with', () => {
-    const filter = cropFilter({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 }, 1920, 1080)
+  it('keeps the shape the clip already has', () => {
+    const filter = cutOut({ x: 0.1, y: 0.1, width: 0.8, height: 0.8 }, 1920, 1080)!
     const [, w, h] = /crop=(\d+):(\d+)/.exec(filter)!.map(Number)
     expect(w / h).toBeCloseTo(1920 / 1080, 1)
     expect(filter).toContain('scale=1920:1080')
@@ -122,7 +124,7 @@ describe('turning the picture', () => {
     expect(turnedSize(3840, 2160, 180)).toEqual({ width: 3840, height: 2160 })
   })
 
-  it('asks ffmpeg for the turn alone when there is no rectangle', () => {
+  it('is the turn alone when there is no rectangle', () => {
     expect(pictureFilter({ frame: null, rotation: 90, width: 3840, height: 2160 })).toBe(
       'transpose=1'
     )

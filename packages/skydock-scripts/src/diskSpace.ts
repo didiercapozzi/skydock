@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { statfs } from 'node:fs/promises'
 import { publish } from './live'
 
 const GB = 1024 ** 3
@@ -10,9 +10,9 @@ const EVERY_MS = 10_000
 const levelOf = (free: number): 'full' | 'low' | 'ok' =>
   free < FULL_BYTES ? 'full' : free < LOW_BYTES ? 'low' : 'ok'
 
-const diskSpace = (dir: string) => {
+const diskSpace = async (dir: string) => {
   try {
-    const stats = fs.statfsSync(dir)
+    const stats = await statfs(dir)
     const free = stats.bavail * stats.bsize
     return { free, total: stats.blocks * stats.bsize, level: levelOf(free) }
   } catch {
@@ -23,17 +23,22 @@ const diskSpace = (dir: string) => {
 type Watch = {
   timer: ReturnType<typeof setInterval> | null
   said: { level: string; free: number } | null
+  looking: boolean
 }
 
 declare global {
   var skydockDiskWatch: Watch | undefined
 }
 
-const watch = () => (globalThis.skydockDiskWatch ??= { timer: null, said: null })
+const watch = () => (globalThis.skydockDiskWatch ??= { timer: null, said: null, looking: false })
 
-const lookAtDisk = (dir: string) => {
+const lookAtDisk = async (dir: string) => {
   const state = watch()
-  const now = diskSpace(dir)
+  if (state.looking) return
+  state.looking = true
+  const now = await diskSpace(dir).finally(() => {
+    state.looking = false
+  })
   if (!now) return
   const said = state.said
   if (said && said.level === now.level && Math.abs(said.free - now.free) < CHANGE_BYTES) return
@@ -45,8 +50,8 @@ const watchDisk = (dir: string) => {
   const state = watch()
   if (state.timer) clearInterval(state.timer)
   state.said = null
-  lookAtDisk(dir)
-  state.timer = setInterval(() => lookAtDisk(dir), EVERY_MS)
+  void lookAtDisk(dir)
+  state.timer = setInterval(() => void lookAtDisk(dir), EVERY_MS)
 }
 
 export { diskSpace, levelOf, lookAtDisk, watchDisk }

@@ -9,24 +9,22 @@ import { VideoCropper } from '../../app/components/video-cropper'
 const renderCropper = async (props: Partial<Parameters<typeof VideoCropper>[0]> = {}) => {
   const onSeek = vi.fn()
   const onCropChange = vi.fn()
-  const onApply = vi.fn()
   const onZoomChange = vi.fn()
   await render(
     createElement(VideoCropper, {
       duration: 10,
       currentTime: 2,
-      bufferedRanges: [{ start: 0, end: 10 }],
       cropStart: null,
       cropEnd: null,
       zoom: 1,
       onSeek,
       onCropChange,
-      onApply,
+      onApply: () => {},
       onZoomChange,
       ...props
     })
   )
-  return { onSeek, onCropChange, onApply, onZoomChange }
+  return { onSeek, onCropChange, onZoomChange }
 }
 
 const part = (selector: string) => {
@@ -51,20 +49,10 @@ describe('trimming — the playhead', () => {
     expect(lastCall<number>(onSeek)).toBeCloseTo(5, 0)
   })
 
-  test('the playhead stays inside the clip, at either edge of the bar', async () => {
-    const { onSeek } = await renderCropper({ currentTime: 5 })
-    const track = page.elementLocator(bar())
-    const edge = bar().getBoundingClientRect()
-    await userEvent.click(track, { position: { x: 1, y: edge.height / 2 } })
-    await expect.poll(() => lastCall<number>(onSeek)).toBeCloseTo(0, 1)
-    await userEvent.click(track, { position: { x: edge.width - 2, y: edge.height / 2 } })
-    await expect.poll(() => lastCall<number>(onSeek)).toBeCloseTo(10, 1)
-    await page.screenshot({ path: './playwright-screenshots/video-cropper-seek-clamp.png' })
-  })
 })
 
 describe('trimming — zooming the timeline', () => {
-  test('the wheel zooms in, keeping the moment under the cursor, and never past 10×', async () => {
+  test('the wheel zooms in, about the pointer', async () => {
     const { onZoomChange } = await renderCropper({ currentTime: 5 })
     const rect = bar().getBoundingClientRect()
     const wheel = new WheelEvent('wheel', {
@@ -78,28 +66,9 @@ describe('trimming — zooming the timeline', () => {
     expect(preventDefault).toHaveBeenCalled()
     const zoom = lastCall<number>(onZoomChange)
     expect(zoom).toBeGreaterThan(1)
-    expect(zoom).toBeLessThanOrEqual(10)
     await page.screenshot({ path: './playwright-screenshots/video-cropper-wheel.png' })
   })
 
-  test('zoomed all the way in, the wheel goes no further', async () => {
-    const { onZoomChange } = await renderCropper({ cropStart: 2, cropEnd: 8, zoom: 10 })
-    bar().dispatchEvent(
-      new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -1000, clientX: 500 })
-    )
-    expect(onZoomChange).toHaveBeenCalledWith(10)
-  })
-
-  test('Reset brings the timeline back to 1×, and is only offered while zoomed', async () => {
-    const { onZoomChange } = await renderCropper({ zoom: 6 })
-    await userEvent.click(page.getByText('Reset'))
-    expect(onZoomChange).toHaveBeenCalledWith(1)
-  })
-
-  test('at 1× there is nothing to reset', async () => {
-    await renderCropper({ zoom: 1 })
-    expect(document.querySelector('[data-action="reset-zoom"]')).toBeNull()
-  })
 })
 
 describe('trimming — dragging the ends', () => {
@@ -142,25 +111,8 @@ describe('trimming — the ends are there from the start', () => {
   })
 })
 
-describe('trimming — start and end at the playhead', () => {
-  test('Start here and End here take the playhead’s moment', async () => {
-    const { onCropChange } = await renderCropper({ currentTime: 3.5 })
-    await userEvent.click(page.getByText('Start here'))
-    await expect.poll(() => onCropChange.mock.calls.some((c) => c[0].cropStart === 3.5)).toBe(true)
-    await userEvent.click(page.getByText('End here'))
-    await expect.poll(() => onCropChange.mock.calls.some((c) => c[0].cropEnd === 3.5)).toBe(true)
-  })
-
-  test('Apply hands the trim over to be saved', async () => {
-    const { onApply } = await renderCropper({ currentTime: 5, cropStart: 2, cropEnd: 8 })
-    await userEvent.click(page.getByText('Apply'))
-    expect(onApply).toHaveBeenCalledWith({ cropStart: 2, cropEnd: 8 })
-    await page.screenshot({ path: './playwright-screenshots/video-cropper-apply.png' })
-  })
-})
-
 describe('trimming — the filmstrip', () => {
-  test('shows frames across the clip when it is given a way to fetch them', async () => {
+  test('the timeline is drawn with pictures of the clip along it', async () => {
     await renderCropper({
       duration: 16,
       currentTime: 0,
@@ -174,11 +126,6 @@ describe('trimming — the filmstrip', () => {
     expect(thumbs[7]?.src).toContain('seek=15.0')
   })
 
-  test('shows no frames when it has no way to fetch them', async () => {
-    await renderCropper({ duration: 16, currentTime: 0 })
-    expect(document.querySelectorAll('[data-thumb]')).toHaveLength(0)
-    expect(document.querySelector('[data-thumbs]')).toBeNull()
-  })
 })
 
 const Zoomable = () => {

@@ -4,8 +4,7 @@ const limited = <T>(atOnce: number) => {
   const sharing = new Map<string, Promise<T>>()
   const next = () => {
     if (running >= atOnce) return
-    const start = waiting.shift()
-    if (start) start()
+    waiting.shift()?.()
   }
   const run = (key: string, work: () => Promise<T>, gone?: AbortSignal) => {
     const already = sharing.get(key)

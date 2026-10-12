@@ -5,6 +5,7 @@ import * as path from 'node:path'
 import { vi } from 'vitest'
 import type { NasSession } from '../src/nas'
 import { lastSegment, parentOf } from '../src/paths'
+import type { ManifestFile } from '../src/types'
 
 type SeenCall = { url: string; init: RequestInit }
 
@@ -73,6 +74,19 @@ const execFileViaSyncMock = (
 }
 
 const makeFfmpegMock = () => () => Buffer.from('')
+
+const manifestFile = (
+  id: string,
+  mtime: number,
+  over: Partial<ManifestFile> = {}
+): ManifestFile => ({
+  id,
+  path: `/o/${id}.MP4`,
+  filename: `${id}.MP4`,
+  size: 10,
+  mtime,
+  ...over
+})
 
 const seen: SeenCall[] = []
 
@@ -227,6 +241,7 @@ export {
   loginSuccess,
   makeFfmpegMock,
   makeTmpTree,
+  manifestFile,
   seen,
   startListStorage,
   stubFetch,

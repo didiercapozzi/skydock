@@ -11,7 +11,7 @@ const FormField = ({ field, label, description, className, children }: FormField
       {label ? (
         <label
           htmlFor={formField.id}
-          className='text-[12px] text-muted-foreground'>
+          className='text-small text-muted-foreground'>
           {label}
         </label>
       ) : null}
@@ -28,14 +28,14 @@ const FormField = ({ field, label, description, className, children }: FormField
       {description && !formField.error ? (
         <p
           id={descriptionId}
-          className='text-[11px] text-muted-foreground'>
+          className='text-micro text-muted-foreground'>
           {description}
         </p>
       ) : null}
       {formField.error ? (
         <span
           id={errorId}
-          className='text-[11.5px] font-medium text-destructive'
+          className='text-micro font-medium text-destructive'
           role='alert'>
           {formField.error}
         </span>

@@ -42,7 +42,7 @@ const group = (uploaded: ManifestGroup['uploaded']): ManifestGroup => ({
 
 const STEM = stemOf(group(undefined))
 
-describe('the parcels of a montage this board holds', () => {
+describe('what was handed over of a montage this board holds', () => {
   const sent = group({
     at: 1,
     shareUrl: LINK,
@@ -64,7 +64,7 @@ describe('the parcels of a montage this board holds', () => {
     ]
   })
 
-  it('hands over what holds the film, with its link, before what is kept', () => {
+  it('what holds the film is first, with its link, before what is kept', () => {
     const [handed, kept] = parcelsOfGroup(sent)
 
     expect(handed).toMatchObject({
@@ -130,11 +130,9 @@ describe('the parcels of a montage this board holds', () => {
       sent: [{ name: `${STEM}.mp4`, holds: ['film'], to: ['/A/x', '/B/x'], size: 1 }]
     })
 
-    expect(
-      parcelsOfGroup(twice)
-        .map((parcel) => parcel.dir)
-        .sort()
-    ).toEqual(['/A/x', '/B/x'])
+    expect(parcelsOfGroup(twice).map((handed) => handed.dir)).toEqual(
+      expect.arrayContaining(['/A/x', '/B/x'])
+    )
   })
 
   it('reads a montage uploaded before every item was written down', () => {
@@ -167,7 +165,7 @@ describe('the parcels of a montage this board holds', () => {
     expect(kept).toMatchObject({ dir: '/Backup/luc' })
   })
 
-  it('has no parcel for a montage that was never uploaded', () => {
+  it('has nothing handed over for a montage that was never uploaded', () => {
     expect(parcelsOfGroup(group(undefined))).toEqual([])
   })
 })

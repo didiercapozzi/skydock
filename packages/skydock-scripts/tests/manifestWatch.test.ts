@@ -4,9 +4,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { saveManifest } from '../src/manifest'
+import { getGroupsPath, saveManifest } from '../src/manifest'
 import { lookAtBoard } from '../src/manifestWatch'
-import { getGroupsPath } from '../src/manifest'
 import type { Manifest } from '../src/types'
 import { createTmpDir } from './fixtures'
 
@@ -23,18 +22,18 @@ const board = (label: string): Manifest => ({
 })
 const told = () => heard.filter((e) => e.kind === 'board')
 
-const writtenElsewhere = (label: string) => {
-  saveManifest(manifestPath, board(label))
+const writtenElsewhere = async (label: string) => {
+  await saveManifest(manifestPath, board(label))
   globalThis.skydockManifestWritten?.clear()
   const later = new Date(Date.now() + 5000)
   fs.utimesSync(manifestPath, later, later)
   fs.utimesSync(getGroupsPath(manifestPath), later, later)
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   outputDir = createTmpDir('skydock-boardwatch-')
   manifestPath = path.join(outputDir, 'manifest.json')
-  saveManifest(manifestPath, board('first'))
+  await saveManifest(manifestPath, board('first'))
   globalThis.skydockManifestWatch = undefined
   heard = []
   stop = subscribe((event) => heard.push(event))
@@ -57,7 +56,7 @@ describe('the board’s record changing outside the page', () => {
 
   it('says once, after the change has stopped changing', async () => {
     await lookAtBoard(outputDir)
-    writtenElsewhere('second')
+    await writtenElsewhere('second')
 
     await lookAtBoard(outputDir)
     expect(told()).toEqual([])
@@ -70,9 +69,9 @@ describe('the board’s record changing outside the page', () => {
 
   it('does not say what this process wrote itself', async () => {
     await lookAtBoard(outputDir)
-    saveManifest(manifestPath, board('mine'))
+    await saveManifest(manifestPath, board('mine'))
 
-    for (let i = 0; i < 4; i++) lookAtBoard(outputDir)
+    for (let i = 0; i < 4; i++) await lookAtBoard(outputDir)
 
     expect(told()).toEqual([])
   })
@@ -82,17 +81,17 @@ describe('the board’s record changing outside the page', () => {
     fs.writeFileSync(`${manifestPath}.123.abc.tmp`, 'x')
     fs.writeFileSync(path.join(outputDir, 'manifest.json.before-moments'), 'x')
 
-    for (let i = 0; i < 4; i++) lookAtBoard(outputDir)
+    for (let i = 0; i < 4; i++) await lookAtBoard(outputDir)
 
     expect(told()).toEqual([])
   })
 
   it('says nothing for a pair that cannot be read: it would be an older board', async () => {
     await lookAtBoard(outputDir)
-    writtenElsewhere('second')
+    await writtenElsewhere('second')
     fs.writeFileSync(manifestPath, '{ not json')
 
-    for (let i = 0; i < 4; i++) lookAtBoard(outputDir)
+    for (let i = 0; i < 4; i++) await lookAtBoard(outputDir)
 
     expect(told()).toEqual([])
   })

@@ -26,10 +26,10 @@ afterEach(() => {
 })
 
 describe('the edit, kept aside', () => {
-  it('is copied under the passenger’s name and the moment it was kept', () => {
+  it('is copied under the passenger’s name and the moment it was kept', async () => {
     fs.writeFileSync(project(), '<mlt>an afternoon</mlt>')
 
-    keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
 
     expect(kept()).toEqual(['luc_favre_20260802-2026-09-21T18-05-12.kdenlive'])
     expect(
@@ -37,21 +37,21 @@ describe('the edit, kept aside', () => {
     ).toBe('<mlt>an afternoon</mlt>')
   })
 
-  it('keeps one version of an edit that has not changed', () => {
+  it('keeps one version of an edit that has not changed', async () => {
     fs.writeFileSync(project(), '<mlt>an afternoon</mlt>')
-    keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
 
-    keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 9, 30))
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 9, 30))
 
     expect(kept()).toHaveLength(1)
   })
 
-  it('keeps the next version beside it once the edit moves on', () => {
+  it('keeps the next version beside it once the edit moves on', async () => {
     fs.writeFileSync(project(), '<mlt>an afternoon</mlt>')
-    keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
     fs.writeFileSync(project(), '<mlt>and an evening</mlt>')
 
-    keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 21, 40, 0))
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 21, 40, 0))
 
     expect(kept()).toEqual([
       'luc_favre_20260802-2026-09-21T18-05-12.kdenlive',
@@ -59,8 +59,8 @@ describe('the edit, kept aside', () => {
     ])
   })
 
-  it('keeps nothing for a montage that has no edit yet', () => {
-    expect(keepProject(outputDir, dir, BASE)).toBeNull()
+  it('keeps nothing for a montage that has no edit yet', async () => {
+    expect(await keepProject(outputDir, dir, BASE)).toBeNull()
     expect(kept()).toEqual([])
   })
 })

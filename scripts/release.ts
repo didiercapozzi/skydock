@@ -2,13 +2,7 @@ import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import * as url from 'node:url'
-import {
-  nextVersion,
-  tagOf,
-  versionIn,
-  versionedFiles,
-  withVersion
-} from '../packages/skydock-scripts/src/release'
+import { nextVersion, tagOf, versionIn, withVersion } from '../packages/skydock-scripts/src/release'
 
 const repo = path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..')
 
@@ -32,17 +26,9 @@ if (git('status', '--porcelain') !== '')
 const branch = git('rev-parse', '--abbrev-ref', 'HEAD')
 if (branch !== 'main') stop(`Releases are made from main, and this is ${branch}.`)
 
-const files = versionedFiles()
-const text = Object.fromEntries(
-  files.map((file) => [file, fs.readFileSync(path.join(repo, file), 'utf-8')])
-)
-const said = files.map((file) => versionIn(text[file], file))
-if (new Set(said).size > 1)
-  stop(
-    `The files disagree about which version this is:\n${files.map((file, at) => `  ${said[at]}  ${file}`).join('\n')}`
-  )
-
-const current = said[0]
+const file = path.join(repo, 'package.json')
+const text = fs.readFileSync(file, 'utf-8')
+const current = versionIn(text)
 const version = nextVersion(current, asked[0] ?? 'patch')
 const tag = tagOf(version)
 if (git('tag', '--list', tag) !== '') stop(`${tag} has been released already.`)
@@ -51,12 +37,10 @@ console.log(`[SkyDock] ${current} → ${version}`)
 
 loudly('npm', ['run', 'check'])
 
-for (const file of files) {
-  fs.writeFileSync(path.join(repo, file), withVersion(text[file], file, version))
-  console.log(`           ${file}`)
-}
+fs.writeFileSync(file, withVersion(text, version))
+console.log('           package.json')
 
-git('add', ...files)
+git('add', 'package.json')
 git('commit', '-m', `release: ${tag}`)
 git('tag', '-a', tag, '-m', `SkyDock ${version}`)
 

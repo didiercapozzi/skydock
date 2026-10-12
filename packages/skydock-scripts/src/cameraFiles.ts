@@ -124,8 +124,8 @@ const inParallel = async <T, R>(items: T[], limit: number, work: (item: T) => Pr
   return answers
 }
 
-const binnedCopies = (trashDir: string) =>
-  listBin(trashDir)
+const binnedCopies = async (trashDir: string) =>
+  (await listBin(trashDir))
     .filter((batch) => batch.from === 'fresh')
     .flatMap((batch) => batch.files)
 
@@ -147,7 +147,10 @@ const contentOf = async (file: string) => {
 }
 
 const binnedBy =
-  (bin: ReturnType<typeof binnedCopies>, read: (file: string) => Promise<Content | null>) =>
+  (
+    bin: Awaited<ReturnType<typeof binnedCopies>>,
+    read: (file: string) => Promise<Content | null>
+  ) =>
   async (file: string, size: number) => {
     const alike = bin.filter((f) => f.size === size)
     if (alike.length === 0) return false
@@ -179,7 +182,7 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
   const files = await findMediaFilesAsync(dcimOf(mount))
   const folders = await dayFoldersOf(files, outputDir)
   const board = boardOf(await loadManifestAsync(getManifestPath(outputDir)))
-  const binned = binnedBy(binnedCopies(trashDir), contentOf)
+  const binned = binnedBy(await binnedCopies(trashDir), contentOf)
   const names = new Map<string, Promise<string[]>>()
   const namesOnce = (dir: string) => {
     const found = names.get(dir) ?? namesIn(dir)
@@ -330,7 +333,9 @@ const deleteNow = async ({
     })
     if (stage === 'done') deleting.step()
   }
-  const binned = binnedBy(binnedCopies(trashDir), (file) => fingerprint(file).catch(() => null))
+  const binned = binnedBy(await binnedCopies(trashDir), (file) =>
+    fingerprint(file).catch(() => null)
+  )
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
   const bins = new Set<string>()
   let queue: Promise<unknown> = Promise.resolve()

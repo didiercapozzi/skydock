@@ -1,39 +1,21 @@
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
+import type { FileHandle } from 'node:fs/promises'
+import { copyFile, mkdir, open, readdir, rename, rm, stat, unlink, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { isMediaName } from '../constants'
 
 const DEFAULT_MAX_FIND_DEPTH = 10
 
-const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
-  const results: string[] = []
-
-  const search = (currentDir: string, depth: number) => {
-    if (depth > maxDepth) return
-    try {
-      const entries = fs.readdirSync(currentDir, { withFileTypes: true })
-      for (const entry of entries) {
-        const fullPath = path.join(currentDir, entry.name)
-        if (entry.isDirectory()) {
-          search(fullPath, depth + 1)
-        } else if (entry.isFile() && isMediaName(entry.name)) results.push(fullPath)
-      }
-    } catch {}
-  }
-
-  search(dir, 0)
-  return results
-}
-
 const findMediaFilesAsync = async (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
   const results: string[] = []
 
   const search = async (currentDir: string, depth: number) => {
     if (depth > maxDepth) return
-    const entries = await fs.promises
-      .readdir(currentDir, { withFileTypes: true })
-      .catch(() => [] as fs.Dirent[])
+    const entries = await readdir(currentDir, { withFileTypes: true }).catch(
+      () => [] as fs.Dirent[]
+    )
     await Promise.all(
       entries.map(async (entry) => {
         const fullPath = path.join(currentDir, entry.name)
@@ -51,11 +33,11 @@ const sameBytes = async (left: string, right: string) => {
   const size = 1024 * 1024
   const a = Buffer.alloc(size)
   const b = Buffer.alloc(size)
-  let first: fs.promises.FileHandle | null = null
-  let second: fs.promises.FileHandle | null = null
+  let first: FileHandle | null = null
+  let second: FileHandle | null = null
   try {
-    first = await fs.promises.open(left, 'r')
-    second = await fs.promises.open(right, 'r')
+    first = await open(left, 'r')
+    second = await open(right, 'r')
     if ((await first.stat()).size !== (await second.stat()).size) return false
     for (;;) {
       const [one, two] = await Promise.all([
@@ -92,14 +74,6 @@ const pushEntries = (stack: WalkItem[], dir: string, entries: fs.Dirent[]) => {
   }
 }
 
-const statOrNull = (file: string) => {
-  try {
-    return fs.statSync(file)
-  } catch {
-    return null
-  }
-}
-
 const mtimeOf = (file: string) => Math.floor(fs.statSync(file).mtimeMs / 1000)
 
 const walkFiles = (dir: string) => {
@@ -126,14 +100,13 @@ const walkFiles = (dir: string) => {
   return results
 }
 
-const hashFile = (filePath: string, algorithm = 'md5') =>
-  new Promise<string>((resolve, reject) => {
-    const hash = crypto.createHash(algorithm)
-    const stream = fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 })
-    stream.on('data', (chunk) => hash.update(chunk))
-    stream.on('error', reject)
-    stream.on('end', () => resolve(hash.digest('hex')))
-  })
+const hashFile = async (filePath: string, algorithm = 'md5') => {
+  const hash = crypto.createHash(algorithm)
+  for await (const chunk of fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 })) {
+    hash.update(chunk)
+  }
+  return hash.digest('hex')
+}
 
 const openToHost = (dir: string, like: string) => {
   const owner = fs.statSync(like)
@@ -175,50 +148,47 @@ const moveFile = async (
   to: string,
   onBytes?: (copied: number, total: number) => void
 ) => {
-  fs.mkdirSync(path.dirname(to), { recursive: true })
+  await mkdir(path.dirname(to), { recursive: true })
   try {
-    await fs.promises.rename(from, to)
+    await rename(from, to)
     return
   } catch (e) {
     if (!(e instanceof Error && 'code' in e && e.code === 'EXDEV')) throw e
   }
   const partial = `${to}.part`
   try {
-    const stat = fs.statSync(from)
+    const said = await stat(from)
     if (onBytes) {
       let copied = 0
       const reading = fs
         .createReadStream(from, { highWaterMark: 1024 * 1024 })
         .on('data', (chunk) => {
           copied += chunk.length
-          onBytes(copied, stat.size)
+          onBytes(copied, said.size)
         })
       await streams.pipeline(reading, fs.createWriteStream(partial))
-    } else await fs.promises.copyFile(from, partial)
-    fs.utimesSync(partial, stat.atime, stat.mtime)
-    fs.renameSync(partial, to)
+    } else await copyFile(from, partial)
+    await utimes(partial, said.atime, said.mtime)
+    await rename(partial, to)
   } catch (e) {
-    fs.rmSync(partial, { force: true })
+    await rm(partial, { force: true })
     throw e
   }
   try {
-    await fs.promises.unlink(from)
+    await unlink(from)
   } catch (e) {
-    fs.rmSync(to, { force: true })
+    await rm(to, { force: true })
     throw e
   }
 }
 
 export {
-  DEFAULT_MAX_FIND_DEPTH,
-  findMediaFiles,
   findMediaFilesAsync,
   hashFile,
   moveFile,
   mtimeOf,
   openToHost,
   sameBytes,
-  statOrNull,
   walkFiles,
   writeJsonAtomic
 }

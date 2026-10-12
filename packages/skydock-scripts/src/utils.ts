@@ -3,7 +3,6 @@ import * as path from 'node:path'
 import { z } from 'zod'
 import { getExtension, VIDEO_EXTENSIONS_SET } from './constants'
 import type { ManifestFile } from './types'
-import { DEFAULT_MAX_FIND_DEPTH, findMediaFiles, walkFiles } from './lib/fs'
 
 const TOOL_ENV: Record<string, string> = {
   ffmpeg: 'SKYDOCK_FFMPEG_PATH',
@@ -193,8 +192,6 @@ export {
   ffprobePath,
   exiftoolPath,
   checkExiftool,
-  DEFAULT_MAX_FIND_DEPTH,
-  findMediaFiles,
   formatDay,
   isoDay,
   getExtension,
@@ -211,6 +208,5 @@ export {
   parseExiftoolCsv,
   sizeOf,
   sortFilesByMtime,
-  walkFiles,
   withRetry
 }

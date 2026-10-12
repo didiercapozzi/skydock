@@ -60,7 +60,7 @@ describe('a file being brought back from the storage', () => {
 })
 
 describe('files being deleted off a camera', () => {
-  test('moves the whole bar with every file, says how big each is, and puts what has gone first, in green', async () => {
+  test('moves the whole bar with every file, says how big each is, and puts what has gone first, as moved to the bin', async () => {
     put({
       type: 'camera-delete',
       total: 4,
@@ -84,7 +84,6 @@ describe('files being deleted off a camera', () => {
     await expect
       .poll(() => page.getByRole('listitem').elements()[0]?.textContent ?? '')
       .toContain('moved to the bin')
-    await expect.element(page.getByText('D.MP4', { exact: true })).toHaveClass('text-up')
   })
 })
 

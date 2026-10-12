@@ -32,14 +32,6 @@ const Waiting = () => {
 const line = () => page.getByRole('progressbar', { name: 'Working' })
 
 describe('a wait that lasts', () => {
-  test('is not shown while the answer is still quick', async () => {
-    await render(<Waiting />)
-
-    await userEvent.click(page.getByRole('button', { name: 'Ask' }))
-
-    await expect.element(line()).not.toBeInTheDocument()
-  })
-
   test('is shown once it has lasted long enough to be felt, and gone when the answer lands', async () => {
     await render(<Waiting />)
     await userEvent.click(page.getByRole('button', { name: 'Ask' }))

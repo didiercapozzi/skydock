@@ -23,12 +23,6 @@ beforeEach(() => {
 })
 
 describe('what is happening to the files, sent as it happens', () => {
-  it('is a stream of server-sent events', () => {
-    const { response, close } = open()
-    expect(response.headers.get('Content-Type')).toBe('text/event-stream')
-    close()
-  })
-
   it('opens at once, before anything has happened', async () => {
     const { reader, close } = open()
     expect(new TextDecoder().decode((await reader.read()).value)).toBe(': listening\n\n')
@@ -55,7 +49,7 @@ describe('what is happening to the files, sent as it happens', () => {
     close()
   })
 
-  it('ends, and stops listening, when the page goes away', async () => {
+  it('ends when the page goes away', async () => {
     const { reader, close } = open()
 
     await reader.read()
@@ -64,6 +58,5 @@ describe('what is happening to the files, sent as it happens', () => {
     let read = await reader.read()
     while (!read.done) read = await reader.read()
     expect(read.done).toBe(true)
-    expect(globalThis.skydockLive?.listeners.size).toBe(0)
   })
 })

@@ -13,7 +13,7 @@ const file = (id: string, extra: Partial<ManifestFile> = {}): ManifestFile => ({
 })
 
 describe('moving files', () => {
-  it('keeps the crop a file had in its jump when it is taken out to stand alone', () => {
+  it('keeps the crop a file had in its jump when it is taken out to stand alone', async () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
@@ -27,7 +27,7 @@ describe('moving files', () => {
         }
       ]
     }
-    moveFiles(manifest, new Set(['a']), { destination: null })
+    await moveFiles(manifest, new Set(['a']), { destination: null })
     expect(manifest.groups[0]?.files.map((f) => f.id)).toEqual(['b'])
     expect(manifest.files.find((f) => f.id === 'a')).toMatchObject({
       cropStart: 2,
@@ -36,18 +36,18 @@ describe('moving files', () => {
     })
   })
 
-  it('puts a loose file into the jump it is dragged onto', () => {
+  it('puts a loose file into the jump it is dragged onto', async () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
       files: [file('a'), file('loose')],
       groups: [{ id: 'g1', label: 'jump', day: '01.08.2026', files: [file('a')] }]
     }
-    moveFiles(manifest, new Set(['loose']), { targetGroupId: 'g1' })
+    await moveFiles(manifest, new Set(['loose']), { targetGroupId: 'g1' })
     expect(manifest.groups[0]?.files.map((f) => f.id).sort()).toEqual(['a', 'loose'])
   })
 
-  it('keeps the crop a file had in its jump when it moves to another', () => {
+  it('keeps the crop a file had in its jump when it moves to another', async () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
@@ -62,7 +62,7 @@ describe('moving files', () => {
         { id: 'g2', label: 'jump', day: '01.08.2026', files: [file('b')] }
       ]
     }
-    moveFiles(manifest, new Set(['a']), { targetGroupId: 'g2' })
+    await moveFiles(manifest, new Set(['a']), { targetGroupId: 'g2' })
     expect(
       manifest.groups.find((g) => g.id === 'g2')?.files.find((f) => f.id === 'a')
     ).toMatchObject({
@@ -72,10 +72,10 @@ describe('moving files', () => {
     expect(manifest.groups.map((g) => g.id)).toEqual(['g2'])
   })
 
-  it('refuses a jump that is not there', () => {
+  it('refuses a jump that is not there', async () => {
     const manifest: Manifest = { version: 1, createdAt: 'x', files: [file('a')], groups: [] }
-    expect(() => moveFiles(manifest, new Set(['a']), { targetGroupId: 'nope' })).toThrow(
-      /not found/
-    )
+    await expect(async () =>
+      moveFiles(manifest, new Set(['a']), { targetGroupId: 'nope' })
+    ).rejects.toThrow(/not found/)
   })
 })

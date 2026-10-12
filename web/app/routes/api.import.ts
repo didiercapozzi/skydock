@@ -1,4 +1,5 @@
-import * as fs from 'node:fs'
+import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import * as path from 'node:path'
 import { Readable } from 'node:stream'
 import type { ReadableStream as NodeWebStream } from 'node:stream/web'
@@ -17,17 +18,17 @@ const targetOf = (raw: string | null): ImportTarget | null => {
   return null
 }
 
-const handedOver = (request: Request, url: URL) => {
+const handedOver = async (request: Request, url: URL) => {
   const from = url.searchParams.get('path')
   if (from) {
-    const said = fs.existsSync(from) ? fs.statSync(from) : null
+    const said = await stat(from).catch(() => null)
     if (!said?.isFile())
       throw new Error(`${path.basename(from)} is not a file this machine can read.`)
     return {
       filename: path.basename(from),
       lastModified: said.mtimeMs,
       size: said.size,
-      body: fs.createReadStream(from, { highWaterMark: 16 * 1024 ** 2 })
+      body: createReadStream(from, { highWaterMark: 16 * 1024 ** 2 })
     }
   }
   const filename = url.searchParams.get('filename')
@@ -72,7 +73,7 @@ const action = async ({ request }: Route.ActionArgs) => {
   if (!target) return Response.json({ ok: false, error: 'Nothing to add.' }, { status: 400 })
   const key = url.searchParams.get('key') ?? undefined
   try {
-    const carried = handedOver(request, url)
+    const carried = await handedOver(request, url)
     if (!carried) return Response.json({ ok: false, error: 'Nothing to add.' }, { status: 400 })
     const result = await importFile({
       outputDir: getOutputDir(),

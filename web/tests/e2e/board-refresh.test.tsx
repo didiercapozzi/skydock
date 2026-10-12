@@ -118,7 +118,7 @@ describe('the record changing outside the page', () => {
     await expect.element(page.getByText('g2f.MP4').first()).toBeVisible()
   })
 
-  test('asks once for one change, however often it is said', async () => {
+  test('a change to the record is looked at once, however many times it is announced', async () => {
     await open(board([jump('g1', 'Sunset load', 'Yverdon')]))
 
     says('stamp-1')

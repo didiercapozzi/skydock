@@ -49,7 +49,7 @@ const clip = (name: string, offset: number): ManifestFile => {
   return { path: source, size: 32, mtime: AT + offset, filename: name, id: `id${offset}` }
 }
 
-const write = (group: Partial<ManifestGroup> & { files: ManifestFile[] }) => {
+const write = async (group: Partial<ManifestGroup> & { files: ManifestFile[] }) => {
   const full: ManifestGroup = { id: 'g1', label: 'jump', day: DAY, ...group }
   const manifest: Manifest = {
     version: 1,
@@ -59,7 +59,7 @@ const write = (group: Partial<ManifestGroup> & { files: ManifestFile[] }) => {
     destinations: [{ name: 'Passengers' }, { name: 'Yverdon' }]
   }
   const manifestPath = path.join(outputDir, 'manifest.json')
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return { manifestPath, group: full }
 }
 
@@ -89,7 +89,7 @@ afterEach(() => {
 
 describe('where a montage lands', () => {
   it('gives the passenger a folder of their name, with videos and photos apart', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
@@ -104,7 +104,7 @@ describe('where a montage lands', () => {
   })
 
   it('folds accents and spaces out of the file names, not out of the folder', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Chloé', lastname: 'Perret' },
       files: [clip('GX010001.MP4', 0)]
@@ -118,7 +118,7 @@ describe('where a montage lands', () => {
   })
 
   it('gives a montage named by a single word a folder of its own', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Boogie', lastname: '' },
       files: [clip('GX010001.MP4', 0)]
@@ -132,7 +132,7 @@ describe('where a montage lands', () => {
   })
 
   it('treats a jump with nobody in it as a place, not a half montage', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0)]
     })
@@ -144,7 +144,7 @@ describe('where a montage lands', () => {
 
   it('keeps a passenger\u2019s other jump in their folder when one jump is processed on its own', async () => {
     const luc = { firstname: 'Luc', lastname: 'Favre' }
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       id: 'g1',
       montageJump: true,
       passenger: luc,
@@ -161,7 +161,7 @@ describe('where a montage lands', () => {
       passenger: luc,
       files: [later]
     })
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
 
     await processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
     await processJumps({ manifestPath, outputDir, groupIds: ['g2'] })
@@ -173,7 +173,7 @@ describe('where a montage lands', () => {
   })
 
   it('never writes a file named after the Montages folder itself', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
@@ -187,7 +187,7 @@ describe('where a montage lands', () => {
 
 describe('where a dropzone lands', () => {
   it('puts every file flat in the dropzone folder, named after the place and its own time', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
     })
@@ -201,7 +201,7 @@ describe('where a dropzone lands', () => {
   })
 
   it('keeps a dropzone flat — no videos or photos folders', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0)]
     })
@@ -220,7 +220,10 @@ describe('where a dropzone lands', () => {
       processed: { path: taken, size: 5, at: 1, source: { id: 'gone', size: 32, mtime: AT } }
     }
     fs.rmSync(gone.path)
-    const { manifestPath } = write({ destination: 'Yverdon', files: [clip('DJI_0002.MP4', 0)] })
+    const { manifestPath } = await write({
+      destination: 'Yverdon',
+      files: [clip('DJI_0002.MP4', 0)]
+    })
     const manifest = (await loadManifestAsync(manifestPath))!
     manifest.files = [...manifest.files, gone]
     manifest.groups.push({
@@ -231,7 +234,7 @@ describe('where a dropzone lands', () => {
       files: [gone],
       freed: { at: 1, bytes: 0 }
     })
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
 
     await processJumps({ manifestPath, outputDir })
 
@@ -240,14 +243,14 @@ describe('where a dropzone lands', () => {
 
   it('never gives a jump’s file the name a loose file of the same second already has', async () => {
     const lone: ManifestFile = { ...clip('DJI_0002.MP4', 0), id: 'lone', destination: 'Yverdon' }
-    const { manifestPath } = write({ id: 'g1', files: [clip('GX010001.MP4', 0)] })
+    const { manifestPath } = await write({ id: 'g1', files: [clip('GX010001.MP4', 0)] })
     const manifest = (await loadManifestAsync(manifestPath))!
     manifest.files = [...manifest.files, lone]
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     await processJumps({ manifestPath, outputDir, destination: 'Yverdon' })
     const after = (await loadManifestAsync(manifestPath))!
     after.groups[0]!.destination = 'Yverdon'
-    saveManifest(manifestPath, after)
+    await saveManifest(manifestPath, after)
 
     await processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
 
@@ -262,7 +265,7 @@ describe('particular files of a dropzone', () => {
   it('prepares only those, and leaves what is up there alone', async () => {
     const first = clip('DJI_0001.MP4', 0)
     const second = clip('DJI_0002.MP4', 60)
-    const { manifestPath } = write({ destination: 'Yverdon', files: [first, second] })
+    const { manifestPath } = await write({ destination: 'Yverdon', files: [first, second] })
     await processJumps({ manifestPath, outputDir })
     const done = (await loadManifestAsync(manifestPath))!
     const copy = done.files.find((f) => f.id === first.id)!
@@ -277,7 +280,7 @@ describe('particular files of a dropzone', () => {
     const target = done.files.find((f) => f.id === second.id)!
     fs.rmSync(target.processed!.path)
     delete target.processed
-    saveManifest(manifestPath, done)
+    await saveManifest(manifestPath, done)
     execSyncMock.mockClear()
 
     await processJumps({ manifestPath, outputDir, destination: 'Yverdon', fileIds: [second.id!] })
@@ -291,10 +294,10 @@ describe('particular files of a dropzone', () => {
   it('prepares only the loose files asked for', async () => {
     const lone: ManifestFile = { ...clip('DJI_0003.MP4', 0), id: 'lone', destination: 'Yverdon' }
     const other: ManifestFile = { ...clip('DJI_0004.MP4', 90), id: 'other', destination: 'Yverdon' }
-    const { manifestPath } = write({ id: 'g9', files: [clip('GX010009.MP4', 300)] })
+    const { manifestPath } = await write({ id: 'g9', files: [clip('GX010009.MP4', 300)] })
     const manifest = (await loadManifestAsync(manifestPath))!
     manifest.files = [...manifest.files, lone, other]
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
 
     await processJumps({ manifestPath, outputDir, destination: 'Yverdon', fileIds: ['other'] })
 
@@ -306,7 +309,7 @@ describe('particular files of a dropzone', () => {
 
 describe('a jump filed nowhere', () => {
   it('gets a folder of its own, named after the jump and its date', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       label: 'jump',
       files: [clip('GX010001.MP4', 0)]
     })
@@ -321,7 +324,7 @@ describe('cropping the frame', () => {
   const framed = { x: 0.1, y: 0, width: 0.9, height: 0.9 }
 
   it('cuts the rectangle and comes back out at the size the clip came at', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: framed }]
     })
@@ -334,7 +337,7 @@ describe('cropping the frame', () => {
   })
 
   it('encodes again rather than copying, because the picture changed', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: framed }]
     })
@@ -347,7 +350,7 @@ describe('cropping the frame', () => {
   })
 
   it('still copies the stream when only the ends were trimmed', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 1, cropEnd: 4 }]
     })
@@ -360,7 +363,7 @@ describe('cropping the frame', () => {
   })
 
   it('leaves the project, the film and the archives where they are when it prepares again', async () => {
-    const { manifestPath, group } = write({
+    const { manifestPath, group } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
@@ -382,7 +385,7 @@ describe('cropping the frame', () => {
   })
 
   it('cuts a clip trimmed at its end only', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), cropEnd: 4 }]
     })
@@ -396,7 +399,7 @@ describe('cropping the frame', () => {
   })
 
   it('cuts a clip trimmed at its start only, and lets it run to its end', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 2 }]
     })
@@ -409,7 +412,7 @@ describe('cropping the frame', () => {
   })
 
   it('does both at once when both were set', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: framed, cropStart: 1, cropEnd: 4 }]
     })
@@ -423,7 +426,7 @@ describe('cropping the frame', () => {
   })
 
   it('copies the file untouched when the rectangle covers everything', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), frame: { x: 0, y: 0, width: 1, height: 1 } }]
     })
@@ -434,7 +437,7 @@ describe('cropping the frame', () => {
   })
 
   it('leaves a photo alone — a frame crop is for clips', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('G0010002.JPG', 1), frame: framed }]
     })
@@ -447,7 +450,7 @@ describe('cropping the frame', () => {
 
 describe('while a processing is running', () => {
   it('keeps an edit saved in the meantime', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
@@ -470,7 +473,7 @@ describe('while a processing is running', () => {
   })
 
   it('does not call a jump processed when it was changed while its copies were written', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
@@ -491,7 +494,7 @@ describe('while a processing is running', () => {
   })
 
   it('says what it is working on, and refuses to start a second one on top of it', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
@@ -511,7 +514,7 @@ describe('what a delivered file says it came from', () => {
     execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.includes('skydock:from='))
 
   it('is the original it was made from, written into the copy itself', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0)]
     })
@@ -522,7 +525,7 @@ describe('what a delivered file says it came from', () => {
   })
 
   it('is written into a photo the same way', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [clip('G0010002.JPG', 1)]
     })
@@ -538,7 +541,7 @@ describe('turning a file', () => {
     execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('exiftool -n'))
 
   it('encodes a turned clip again, turned, rather than copying it', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
     })
@@ -551,7 +554,7 @@ describe('turning a file', () => {
   })
 
   it('turns a photo by its orientation tag, without encoding it', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('G0010002.JPG', 1), rotation: 90 }]
     })
@@ -563,7 +566,7 @@ describe('turning a file', () => {
   })
 
   it('stamps the copy with the turn it was made with', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('G0010002.JPG', 1), rotation: 180 }]
     })
@@ -580,7 +583,7 @@ describe('changing the picture on an Intel or AMD card', () => {
 
   it('hands the turned frames back to the card before encoding them', async () => {
     setProxyEncoder('vaapi')
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
     })
@@ -603,7 +606,7 @@ describe('changing the picture on an Intel or AMD card', () => {
       }
       return tools(cmd, opts)
     })
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
     })
@@ -627,7 +630,7 @@ describe('changing the picture on an Intel or AMD card', () => {
       }
       return tools(cmd, opts)
     })
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
     })
@@ -646,7 +649,7 @@ describe('processing, said as it happens', () => {
   }
 
   it('says of every file that it began, and that it ended well', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0), clip('G0010002.JPG', 1)]
@@ -672,7 +675,7 @@ describe('processing, said as it happens', () => {
   })
 
   it('asks ffmpeg to say where it is, on the clips it has to write itself', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 2, cropEnd: 8 }]
@@ -688,7 +691,7 @@ describe('processing, said as it happens', () => {
       if (String(cmd).startsWith('ffmpeg')) throw new Error('ffmpeg exited with code 1')
       return tools(cmd, opts)
     })
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 2, cropEnd: 8 }]
@@ -735,7 +738,7 @@ describe('processing a clip that two jumps hold', () => {
     }
     copyFiles(manifest, new Set(['id0']), 'g2')
     const manifestPath = path.join(outputDir, 'manifest.json')
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
 
     await processJumps({ manifestPath, outputDir })
 
@@ -754,7 +757,7 @@ describe('processing a clip that two jumps hold', () => {
 
 describe('cancelling what is being processed', () => {
   it('stops the run, leaves no half-written copy, and records nothing as processed', async () => {
-    const { manifestPath } = write({
+    const { manifestPath } = await write({
       destination: 'Yverdon',
       files: [clip('GX010001.MP4', 0), clip('GX010002.MP4', 1)]
     })

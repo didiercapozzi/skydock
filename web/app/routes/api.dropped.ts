@@ -10,7 +10,7 @@ const droppedSchema = z.object({
 
 const action = createValidatedFormAction()({
   schema: actionArgs,
-  handler: ({ data }) => ({ files: mediaUnder(data.paths) })
+  handler: async ({ data }) => ({ files: await mediaUnder(data.paths) })
 })
 
 export { action, actionArgs, droppedSchema }

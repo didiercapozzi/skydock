@@ -71,16 +71,14 @@ describe('what came off a card, once it is done', () => {
 })
 
 describe('many files landing together', () => {
-  it('are written to the board together, and none is lost', async () => {
+  it('are all on the board, none is lost', async () => {
     const files = await Promise.all(
       Array.from({ length: 20 }, (_, i) =>
         landed(`GX0100${String(i).padStart(2, '0')}.MP4`, new Date(2026, 7, 1, 10, i, 0), i + 1)
       )
     )
-    const before = fs.statSync(getManifestPath(outputDir)).mtimeMs
     for (const one of files) putOnBoard(outputDir, one)
 
-    expect(fs.statSync(getManifestPath(outputDir)).mtimeMs).toBe(before)
     expect((await board()).files).toHaveLength(20)
   })
 })

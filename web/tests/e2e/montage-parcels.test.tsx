@@ -1,15 +1,11 @@
 import { createElement } from 'react'
 import { createRoutesStub } from 'react-router'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-vi.mock(import('@skydock/scripts'), async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
-})
-
 import { boardRoute } from './board-route'
+import { openedPath } from './dsm'
 
 
 const DIR = '/SkyDock/Passengers'
@@ -116,7 +112,7 @@ describe('a montage as it was handed over', () => {
     expect(link.getAttribute('target')).toBe('_blank')
     const href = link.getAttribute('href') ?? ''
     expect(href.startsWith('https://nas.local/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
-    expect(decodeURIComponent(decodeURIComponent(href.split('launchParam=')[1] ?? ''))).toBe(
+    expect(openedPath(href)).toBe(
       `openfile=${DIR}/ana-roth/ana_roth_20260728.mp4`
     )
   })

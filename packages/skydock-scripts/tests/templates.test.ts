@@ -3,8 +3,8 @@ import { execSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { zipSync, strToU8 } from 'fflate'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { availableTemplates, defaultTemplate } from '../src/montage'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { defaultTemplate } from '../src/montage'
 import { importTemplate, listTemplates, setDefaultTemplate } from '../src/templates'
 import { createTmpDir } from './fixtures'
 
@@ -34,6 +34,20 @@ const whole = {
   'club/images/logo.png': 'l'
 }
 
+const tarOf = (mode?: { file: number; folder: number }) => {
+  const staged = path.join(incoming, 'club')
+  fs.mkdirSync(path.join(staged, 'audio'), { recursive: true })
+  fs.writeFileSync(path.join(staged, 'club.kdenlive'), project())
+  fs.writeFileSync(path.join(staged, 'audio', 'music.mp3'), 'm')
+  if (mode) {
+    fs.chmodSync(path.join(staged, 'audio', 'music.mp3'), mode.file)
+    fs.chmodSync(path.join(staged, 'audio'), mode.folder)
+  }
+  const archive = path.join(incoming, 'club.tar.gz')
+  execSync(`tar -czf "${archive}" -C "${incoming}" club`)
+  return archive
+}
+
 const bringIn = (archive: string, filename = path.basename(archive), name?: string) =>
   importTemplate({ outputDir, files: [{ filename, at: archive }], name })
 
@@ -56,22 +70,8 @@ beforeEach(() => {
 })
 
 afterEach(() => {
-  vi.unstubAllEnvs()
   fs.rmSync(outputDir, { recursive: true, force: true })
   fs.rmSync(incoming, { recursive: true, force: true })
-})
-
-describe('the templates the app itself carries', () => {
-  it('are where the app says they are', () => {
-    const shipped = path.join(incoming, 'shipped')
-    fs.mkdirSync(path.join(shipped, 'epco'), { recursive: true })
-    fs.writeFileSync(path.join(shipped, 'epco', 'epco.kdenlive'), project())
-    vi.stubEnv('SKYDOCK_TEMPLATES_DIR', shipped)
-
-    fs.rmSync(templatesDir(), { recursive: true, force: true })
-
-    expect(availableTemplates(outputDir).map((t) => t.name)).toEqual(['epco'])
-  })
 })
 
 describe('bringing a template in from a kdenlive archive', () => {
@@ -83,16 +83,7 @@ describe('bringing a template in from a kdenlive archive', () => {
   })
 
   it('leaves every file of it open to whoever edits it, whatever mode it was packed with', async () => {
-    const staged = path.join(incoming, 'club')
-    fs.mkdirSync(path.join(staged, 'audio'), { recursive: true })
-    fs.writeFileSync(path.join(staged, 'club.kdenlive'), project())
-    fs.writeFileSync(path.join(staged, 'audio', 'music.mp3'), 'm')
-    fs.chmodSync(path.join(staged, 'audio', 'music.mp3'), 0o600)
-    fs.chmodSync(path.join(staged, 'audio'), 0o700)
-    const archive = path.join(incoming, 'club.tar.gz')
-    execSync(`tar -czf "${archive}" -C "${incoming}" club`)
-
-    await bringIn(archive)
+    await bringIn(tarOf({ file: 0o600, folder: 0o700 }))
 
     const home = path.join(templatesDir(), 'club')
     const mode = (...parts: string[]) => fs.statSync(path.join(home, ...parts)).mode & 0o777
@@ -102,14 +93,7 @@ describe('bringing a template in from a kdenlive archive', () => {
   })
 
   it('unpacks a tar.gz the same way', async () => {
-    const staged = path.join(incoming, 'club')
-    fs.mkdirSync(path.join(staged, 'audio'), { recursive: true })
-    fs.writeFileSync(path.join(staged, 'club.kdenlive'), project())
-    fs.writeFileSync(path.join(staged, 'audio', 'music.mp3'), 'm')
-    const archive = path.join(incoming, 'club.tar.gz')
-    execSync(`tar -czf "${archive}" -C "${incoming}" club`)
-
-    const made = await bringIn(archive)
+    const made = await bringIn(tarOf())
 
     expect(made).toMatchObject({ name: 'club', assets: 2 })
   })

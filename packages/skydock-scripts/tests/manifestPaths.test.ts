@@ -23,7 +23,7 @@ describe('a work folder reached by another name', () => {
     const written = '/home/capo/Documents/skydock/output/original_files/2026-10-03/DJI_0001.MP4'
     const gone = '/home/capo/Documents/skydock/output/proxies/a.mp4'
     const manifestPath = path.join(outputDir, 'manifest.json')
-    saveManifest(manifestPath, {
+    await saveManifest(manifestPath, {
       version: 1,
       createdAt: 'x',
       files: [{ path: written, size: 1, mtime: 1, filename: 'DJI_0001.MP4', id: 'a', proxy: gone }],
@@ -39,7 +39,7 @@ describe('a work folder reached by another name', () => {
   it('leaves a path alone that is nowhere here', async () => {
     const manifestPath = path.join(outputDir, 'manifest.json')
     const written = '/elsewhere/output/original_files/2026-10-03/DJI_0002.MP4'
-    saveManifest(manifestPath, {
+    await saveManifest(manifestPath, {
       version: 1,
       createdAt: 'x',
       files: [{ path: written, size: 1, mtime: 1, filename: 'DJI_0002.MP4', id: 'b' }],

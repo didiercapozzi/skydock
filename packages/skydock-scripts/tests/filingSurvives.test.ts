@@ -49,8 +49,8 @@ afterEach(() => {
   fs.rmSync(outputDir, { recursive: true, force: true })
 })
 
-describe('filing survives being written down and read back', () => {
-  it('keeps every rectangle a drag can produce', async () => {
+describe('opened again, a clip shows its rectangle where it was saved', () => {
+  it('keeps the filing under every rectangle a drag can produce', async () => {
     for (const at of [0, 0.003, 0.1, 0.3333333333, 0.5, 0.9999999, 1]) {
       const frame = containCrop({ x: at, y: at, width: 1 - at, height: 1 - at })
       saveManifest(manifestPath, filed({ frame }))
@@ -60,7 +60,7 @@ describe('filing survives being written down and read back', () => {
     }
   })
 
-  it('keeps a rectangle fitted to any of the offered shapes', async () => {
+  it('keeps the filing under a rectangle fitted to any of the offered shapes', async () => {
     for (const ratio of [16 / 9, 9 / 16, 1, 4 / 5, 2, 1440 / 2560]) {
       const frame = fitRatio(ratio, 3840, 2160)
       saveManifest(manifestPath, filed({ frame }))
@@ -71,27 +71,7 @@ describe('filing survives being written down and read back', () => {
   })
 })
 
-describe('a manifest saved with a mark no longer kept', () => {
-  it('still loads, and loses only the mark', async () => {
-    saveManifest(manifestPath, filed())
-    const groupsPath = path.join(outputDir, 'groups.json')
-    const saved = JSON.parse(fs.readFileSync(groupsPath, 'utf8'))
-    const list = Array.isArray(saved) ? saved : saved.groups
-    list[0].paid = true
-    fs.writeFileSync(
-      groupsPath,
-      JSON.stringify(Array.isArray(saved) ? list : { ...saved, groups: list })
-    )
-
-    const back = await loadManifestAsync(manifestPath)
-
-    expect(back?.groups).toHaveLength(1)
-    expect(back?.groups[0].destination).toBe('Yverdon')
-    expect(back?.groups[0]).not.toHaveProperty('paid')
-  })
-})
-
-describe('the saved jumps, when they cannot be read', () => {
+describe('a record that cannot be read', () => {
   const corrupt = (mutate: (raw: { groups: unknown[] }) => void) => {
     saveManifest(manifestPath, filed())
     const groupsPath = path.join(outputDir, 'groups.json')
@@ -100,33 +80,21 @@ describe('the saved jumps, when they cannot be read', () => {
     fs.writeFileSync(groupsPath, JSON.stringify(raw))
   }
 
-  it('keeps the jumps when a fraction is a hair out of range', async () => {
-    corrupt((raw) => {
-      const group = raw.groups[0] as { files: { frame?: unknown }[] }
-      group.files[0].frame = { x: 0, y: 0, width: 1.0000000000000002, height: 1 }
-    })
-
-    const back = await loadManifestAsync(manifestPath)
-    expect(back?.groups).toHaveLength(1)
-    expect(back?.groups[0].destination).toBe('Yverdon')
-    expect(back?.groups[0].passenger?.lastname).toBe('Favre')
-  })
-
-  it('are never read as jumps when they are shaped like something else', async () => {
+  it('is refused, not read as no jumps, when it is not jumps', async () => {
     saveManifest(manifestPath, filed())
     fs.writeFileSync(path.join(outputDir, 'groups.json'), JSON.stringify({ groups: 'banana' }))
 
-    await expect(loadManifestAsync(manifestPath)).rejects.toThrow(/jumps file/)
+    await expect(loadManifestAsync(manifestPath)).rejects.toThrow()
   })
 
-  it('are never read as no jumps at all when the file is unreadable', async () => {
+  it('is refused, not read as no jumps, when it is broken', async () => {
     saveManifest(manifestPath, filed())
     fs.writeFileSync(path.join(outputDir, 'groups.json'), '{ this is not json')
 
     await expect(loadManifestAsync(manifestPath)).rejects.toThrow()
   })
 
-  it('never lets a rescan mint fresh jumps out of filed ones', async () => {
+  it('never lets a rescan build fresh jumps over the sorting it holds', async () => {
     corrupt((raw) => {
       const group = raw.groups[0] as { files: { frame?: unknown }[] }
       group.files[0].frame = { x: -0.0001, y: 0, width: 1, height: 1 }

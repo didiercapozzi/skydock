@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from 'node:timers/promises'
+
 declare global {
   var skydockCopiesUnderWay: number | undefined
 }
@@ -13,8 +15,7 @@ const copyBegins = () => {
 }
 
 const untilQuiet = async () => {
-  while ((globalThis.skydockCopiesUnderWay ?? 0) > 0)
-    await new Promise((resolve) => setTimeout(resolve, 500))
+  while ((globalThis.skydockCopiesUnderWay ?? 0) > 0) await sleep(500)
 }
 
 export { copyBegins, untilQuiet }

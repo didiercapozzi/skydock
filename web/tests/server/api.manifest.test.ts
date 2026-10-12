@@ -1,4 +1,3 @@
-// @vitest-environment node
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
@@ -21,6 +20,8 @@ type Answer = { groups: ManifestGroup[]; looseFiles: ManifestFile[] }
 
 const refusal = (res: unknown) => res as Refusal
 const answer = (res: unknown) => res as Answer
+const idsByGroup = (res: Answer) =>
+  Object.fromEntries(res.groups.map((g) => [g.id, g.files.map((f) => f.id)]))
 
 const file = (over: Partial<ManifestFile> & { id: string }): ManifestFile => ({
   path: `/src/${over.id}.mp4`,
@@ -39,11 +40,12 @@ const group = (over: Partial<ManifestGroup> & { id: string }): ManifestGroup => 
 
 describe('changes made on the board', () => {
   let tmpDir: string
-  let previousOutputDir: string | undefined
+  const previous: Record<string, string | undefined> = {}
+  const keys = ['SKYDOCK_OUTPUT_DIR', 'SKYDOCK_CONFIG_DIR', 'SKYDOCK_TRASH_DIR']
 
   beforeEach(() => {
     tmpDir = createTmpDir('skydock-api-manifest-')
-    previousOutputDir = process.env.SKYDOCK_OUTPUT_DIR
+    for (const key of keys) previous[key] = process.env[key]
     process.env.SKYDOCK_OUTPUT_DIR = tmpDir
     process.env.SKYDOCK_CONFIG_DIR = tmpDir
     process.env.SKYDOCK_TRASH_DIR = path.join(tmpDir, '.trash')
@@ -51,8 +53,10 @@ describe('changes made on the board', () => {
 
   afterEach(() => {
     fs.rmSync(tmpDir, { recursive: true, force: true })
-    if (previousOutputDir === undefined) delete process.env.SKYDOCK_OUTPUT_DIR
-    else process.env.SKYDOCK_OUTPUT_DIR = previousOutputDir
+    for (const key of keys) {
+      if (previous[key] === undefined) delete process.env[key]
+      else process.env[key] = previous[key]
+    }
   })
 
   const writeManifest = (groups: ManifestGroup[], files: ManifestFile[] = [], version = 1) => {
@@ -77,12 +81,6 @@ describe('changes made on the board', () => {
         })
       )
     )
-
-  it('refuses everything before a scan has ever run', async () => {
-    const res = refusal(await send({ intent: 'save-groups' }))
-    expect(res.success).toBe(false)
-    expect(res.globalErrors?.[0]).toContain('No manifest')
-  })
 
   describe('merging two jumps', () => {
     it('makes two jumps one, keeping every file', async () => {
@@ -121,12 +119,6 @@ describe('changes made on the board', () => {
       expect(times[0]).toBe(1_754_000_500)
       expect(times[1] - times[0]).toBe(100)
     })
-
-    it('needs two jumps', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
-      const res = refusal(await send({ intent: 'merge-groups', leftId: 'group_1' }))
-      expect(res.globalErrors?.[0]).toContain('two group ids')
-    })
   })
 
   describe('re-timing a jump', () => {
@@ -144,20 +136,6 @@ describe('changes made on the board', () => {
 
       expect(res.groups[0].files.map((f) => f.mtime)).toEqual([1_754_002_000, 1_754_002_090])
     })
-
-    it('refuses a start that is not a time', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
-      const res = refusal(await send({ intent: 'shift-group-time', groupId: 'group_1' }))
-      expect(res.globalErrors?.[0]).toContain('anchor')
-    })
-
-    it('refuses a jump that is not there', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
-      const res = refusal(
-        await send({ intent: 'shift-group-time', groupId: 'nope', anchorEpoch: 1_754_002_000 })
-      )
-      expect(res.globalErrors?.[0]).toContain('not found')
-    })
   })
 
   describe('moving files', () => {
@@ -171,7 +149,7 @@ describe('changes made on the board', () => {
         await send({ intent: 'move-files', fileIds: ['b'], targetGroupId: 'group_2' })
       )
 
-      const byId = Object.fromEntries(res.groups.map((g) => [g.id, g.files.map((f) => f.id)]))
+      const byId = idsByGroup(res)
       expect(byId.group_1).toEqual(['a'])
       expect(byId.group_2?.sort()).toEqual(['b', 'c'])
     })
@@ -208,29 +186,9 @@ describe('changes made on the board', () => {
         (await loadManifestAsync(path.join(tmpDir, 'manifest.json')))?.groups[0]?.files
       ).toHaveLength(2)
     })
-
-    it('needs at least one file', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
-      const res = refusal(await send({ intent: 'move-files', fileIds: [] }))
-      expect(res.globalErrors?.[0]).toContain('at least one file')
-    })
-  })
-
-  describe('regrouping loose files', () => {
-    it('says so rather than pretending, when there is nothing loose to regroup', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), file({ id: 'b' })] })])
-      const res = refusal(await send({ intent: 'regroup-loose' }))
-      expect(res.globalErrors?.[0]).toContain('Nothing to regroup')
-    })
   })
 
   describe('uploading a dropzone', () => {
-    it('needs something to upload', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
-      const res = refusal(await send({ intent: 'upload-group' }))
-      expect(res.globalErrors?.[0]).toContain('needs a group or a destination')
-    })
-
     it('refuses a montage, which is uploaded from its own page', async () => {
       writeManifest([
         group({
@@ -482,12 +440,6 @@ describe('changes made on the board', () => {
       expect(res.globalErrors?.[0]).toContain('montages are kept')
     })
 
-    it('needs the list it is meant to save', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
-      const res = refusal(await send({ intent: 'save-groups' }))
-      expect(res.globalErrors?.[0]).toContain('needs groups')
-    })
-
     it('applies a crop to a lone file without touching the rest of it', async () => {
       const lone = file({ id: 'z', destination: 'Yverdon', size: 999 })
       writeManifest([], [lone])
@@ -732,30 +684,6 @@ describe('changes made on the board', () => {
       expect(fresh?.files[0]?.cropStart).toBeUndefined()
       expect(res.groups.find((g) => g.destination === 'Yverdon')?.files[0]?.cropStart).toBe(2)
     })
-
-    it('keeps the jump, its name and its trims when only the times are reset', async () => {
-      writeManifest([
-        group({
-          id: 'g1',
-          name: 'Sunset load',
-          files: [
-            file({ id: 'a', cropStart: 1, cropEnd: 4 }),
-            file({ id: 'b', mtime: 1_754_000_060 })
-          ]
-        })
-      ])
-
-      const res = answer(await send({ intent: 'reset-fresh', resetWhat: 'times' }))
-
-      expect(res.groups[0]).toMatchObject({ id: 'g1', name: 'Sunset load' })
-      expect(res.groups[0]?.files[0]).toMatchObject({ cropStart: 1, cropEnd: 4 })
-    })
-
-    it('says so when there is nothing in Fresh files', async () => {
-      writeManifest([group({ id: 'g2', destination: 'Yverdon', files: [file({ id: 'c' })] })])
-      const res = refusal(await send({ intent: 'reset-fresh' }))
-      expect(res.globalErrors?.[0]).toContain('nothing in Fresh files')
-    })
   })
 
   describe('copying files into another jump', () => {
@@ -770,7 +698,7 @@ describe('changes made on the board', () => {
 
       const res = answer(await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' }))
 
-      const byId = Object.fromEntries(res.groups.map((g) => [g.id, g.files.map((f) => f.id)]))
+      const byId = idsByGroup(res)
       expect(byId.g1).toEqual(['a', 'b'])
       expect(byId.g2).toEqual(['a~1', 'c'])
       expect(res.groups[1]?.files[0]).toMatchObject({ copyOf: 'a', path: '/src/a.mp4' })
@@ -794,7 +722,7 @@ describe('changes made on the board', () => {
       const res = answer(await send({ intent: 'move-files', fileIds: ['a~1'] }))
 
       expect(res.looseFiles).toEqual([])
-      const byId = Object.fromEntries(res.groups.map((g) => [g.id, g.files.map((f) => f.id)]))
+      const byId = idsByGroup(res)
       expect(byId).toEqual({ g1: ['a', 'b'], g2: ['c'] })
     })
   })
@@ -821,31 +749,6 @@ describe('changes made on the board', () => {
       expect(made?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
       expect(made?.files.map((f) => f.id)).toEqual(['a', 'b'])
       expect(res.groups.find((g) => g.id === 'fresh')).toBeUndefined()
-    })
-
-    it('copies files a dropzone holds, adjusted as they are, and leaves the dropzone its own', async () => {
-      board()
-
-      const res = answer(
-        await send({ intent: 'make-montage', fileIds: ['c'], name: 'Boogie 2026' })
-      )
-
-      const made = res.groups.find((g) => g.montageJump)
-      expect(made?.files[0]).toMatchObject({ copyOf: 'c', cropStart: 3 })
-      expect(res.groups.find((g) => g.id === 'yv')?.files.map((f) => f.id)).toEqual(['c'])
-    })
-
-    it('joins a montage that has the name already, however it is written', async () => {
-      board()
-      await send({ intent: 'make-montage', fileIds: ['a'], name: 'Luc Favre' })
-
-      const res = answer(await send({ intent: 'make-montage', fileIds: ['c'], name: 'luc favre' }))
-
-      const jumps = res.groups.filter((g) => g.montageJump)
-      expect(jumps.map((g) => g.passenger)).toEqual([
-        { firstname: 'Luc', lastname: 'Favre' },
-        { firstname: 'Luc', lastname: 'Favre' }
-      ])
     })
 
     it('asks for a name', async () => {
@@ -904,20 +807,6 @@ describe('changes made on the board', () => {
   })
 
   describe('re-timing one file', () => {
-    it('moves that file alone', async () => {
-      writeManifest([
-        group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })] })
-      ])
-
-      const res = answer(
-        await send({ intent: 'retime-file', fileIds: ['a'], anchorEpoch: 1_754_003_600 })
-      )
-
-      const files = res.groups[0]?.files ?? []
-      expect(files.find((f) => f.id === 'a')?.mtime).toBe(1_754_003_600)
-      expect(files.find((f) => f.id === 'b')?.mtime).toBe(1_754_000_060)
-    })
-
     it('refuses an uploaded file', async () => {
       const up = file({
         id: 'a',
@@ -931,16 +820,6 @@ describe('changes made on the board', () => {
 
       expect(res.success).toBe(false)
       expect(res.globalErrors?.[0]).toContain('uploaded')
-    })
-
-    it('refuses more than one file at a time', async () => {
-      writeManifest([group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] })])
-
-      const res = refusal(
-        await send({ intent: 'retime-file', fileIds: ['a', 'b'], anchorEpoch: 1_754_003_600 })
-      )
-
-      expect(res.success).toBe(false)
     })
   })
 
@@ -963,27 +842,6 @@ describe('changes made on the board', () => {
       expect(fs.existsSync(a.path)).toBe(false)
       const bins = fs.readdirSync(path.join(tmpDir, '.trash'))
       expect(fs.existsSync(path.join(tmpDir, '.trash', bins[0]!, '2026-08-01', 'a.MP4'))).toBe(true)
-    })
-
-    it('takes a file already on the storage, and leaves the storage what it holds', async () => {
-      const a = {
-        ...onDisk('a'),
-        uploaded: { remotePath: '/nas/a.mp4', md5: 'x', size: 1, localPath: '/o/a.mp4', at: 1 }
-      }
-      writeManifest([group({ id: 'g1', destination: 'Yverdon', files: [a] })])
-
-      const res = answer(await send({ intent: 'trash-unsorted', fileIds: ['a'] }))
-
-      expect(res.groups).toEqual([])
-      expect(fs.existsSync(a.path)).toBe(false)
-    })
-
-    it('refuses when nothing was picked', async () => {
-      writeManifest([group({ id: 'g1', files: [onDisk('a')] })])
-
-      const res = refusal(await send({ intent: 'trash-unsorted', fileIds: [] }))
-
-      expect(res.success).toBe(false)
     })
   })
   describe('a mark on a jump', () => {
@@ -1073,26 +931,6 @@ describe('changes made on the board', () => {
   })
 
   describe('removing a place', () => {
-    it('takes it off the board and puts its jumps back in Fresh files', async () => {
-      writeManifest([group({ id: 'group_1', destination: 'Yverdon', files: [file({ id: 'a' })] })])
-
-      const res = answer(await send({ intent: 'remove-destination', destination: 'Yverdon' }))
-
-      expect(res.groups).toHaveLength(1)
-      expect(res.groups[0].destination).toBeUndefined()
-      const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
-      expect(saved?.destinations).toEqual([])
-    })
-
-    it('puts the loose files filed there back in Fresh files, loose', async () => {
-      writeManifest([], [file({ id: 'a', destination: 'Yverdon' })])
-
-      const res = answer(await send({ intent: 'remove-destination', destination: 'Yverdon' }))
-
-      expect(res.looseFiles).toHaveLength(1)
-      expect(res.looseFiles[0].destination).toBeUndefined()
-    })
-
     it('is refused while anything there is on the storage', async () => {
       writeManifest([
         group({

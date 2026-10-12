@@ -77,7 +77,7 @@ afterEach(() => {
   globalThis.skydockCameraWatch = undefined
 })
 
-describe('what kioclient says', () => {
+describe('what KDE says of a file on a camera', () => {
   it('names what is in a folder, and not the folder or its parent', () => {
     expect(namesIn('190GOPRO\n\n191GOPRO\n.\n..\n')).toEqual(['190GOPRO', '191GOPRO'])
   })

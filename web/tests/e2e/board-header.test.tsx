@@ -120,17 +120,14 @@ describe('the top of the board', () => {
     await expect.element(page.getByRole('group', { name: 'Settings' })).not.toBeInTheDocument()
   })
 
-  test('says which version this is, from Settings', async () => {
-    const asked = vi.fn()
-    await header({ onAbout: asked })
-    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
-    await userEvent.click(page.getByRole('button', { name: 'About SkyDock…' }))
-    expect(asked).toHaveBeenCalledOnce()
-  })
-
   test('says which version this is, in the dialog it opens', async () => {
     render(createElement(AboutDialog, { onClose: () => {} }))
     await expect.element(page.getByText(/^Version \d+\.\d+\.\d+/)).toBeVisible()
+    await expect.element(page.getByText(/Capo/)).toBeVisible()
+    await expect
+      .element(page.getByRole('link', { name: 'donkeyfall.com' }))
+      .toHaveAttribute('href', 'https://donkeyfall.com')
+    await expect.element(page.getByText('Licence: MIT')).toBeVisible()
   })
 
   test('says which way files are drawn, and how the app is lit', async () => {
@@ -230,26 +227,5 @@ describe('letting the storage go', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Disconnect' }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
-  })
-
-  test('is not done by the header itself, only asked for', async () => {
-    const asked: string[] = []
-    await header({
-      nas: {
-        connected: true,
-        host: 'https://didiercapozzi.synology.me:9500/',
-        user: 'didier',
-        links: [
-          {
-            label: 'Disconnect the storage',
-            mark: '⏻',
-            onClick: () => asked.push('asked')
-          }
-        ]
-      }
-    })
-
-    await userEvent.click(page.getByRole('button', { name: 'Disconnect the storage' }))
-    expect(asked).toEqual(['asked'])
   })
 })

@@ -81,13 +81,13 @@ const lookAtStorage = async (outputDir: string) => {
     let manifest = await loadManifestAsync(manifestPath)
     if (!manifest) return { nas, remote, storage }
     if (session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
-      saveManifest(manifestPath, manifest)
+      await saveManifest(manifestPath, manifest)
     const settled = settleListsDir(manifest) ?? session
     remote = await listRemoteFiles(manifest, settled)
     manifest = (await loadManifestAsync(manifestPath)) ?? manifest
-    const forgotten = forgetLostFiles(manifest, remote)
+    const forgotten = await forgetLostFiles(manifest, remote)
     if (forgotten.length > 0) {
-      saveManifest(manifestPath, manifest)
+      await saveManifest(manifestPath, manifest)
       console.log(`[Board] Forgot ${forgotten.length} file(s) nowhere: ${forgotten.join(', ')}`)
     }
     await learnStorage(manifest, settled, remote).catch((e: unknown) => {
@@ -149,7 +149,7 @@ const loader = async (_args: Route.LoaderArgs) => {
     destinations: manifest?.destinations ?? [],
     outputs: manifest ? statProcessedOutputs(manifest) : {},
     proxies: manifest ? statProxies(manifest, outputDir) : {},
-    disk: diskSpace(outputDir),
+    disk: await diskSpace(outputDir),
     outputDir,
     montages: manifest ? statMontageArtifacts(manifest, outputDir) : {},
     nas: { connected: false, hostname: null, username: null } as NasState,

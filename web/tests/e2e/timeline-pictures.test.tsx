@@ -10,7 +10,6 @@ describe('the pictures along a zoomed timeline', () => {
     const props = (currentTime: number) => ({
       duration: 60,
       currentTime,
-      bufferedRanges: [{ start: 0, end: 60 }],
       cropStart: null,
       cropEnd: null,
       zoom: 2,
@@ -37,7 +36,6 @@ describe('the pictures along a zoomed timeline', () => {
       createElement(VideoCropper, {
         duration: 15,
         currentTime: 0,
-        bufferedRanges: [{ start: 0, end: 15 }],
         cropStart: null,
         cropEnd: null,
         zoom: 1,

@@ -1,7 +1,8 @@
-import * as fs from 'node:fs'
+import { createWriteStream } from 'node:fs'
+import { mkdir, rename, rm, stat } from 'node:fs/promises'
 import * as path from 'node:path'
 import { Readable, Transform } from 'node:stream'
-import * as streams from 'node:stream/promises'
+import { pipeline } from 'node:stream/promises'
 import type { ReadableStream as NodeWebStream } from 'node:stream/web'
 import { computeFileId } from './fileId'
 import { dsmRequestUrl, normalizeNasPath } from './nas'
@@ -26,11 +27,11 @@ const fetchNasFile = async (
   const res = await fetch(url.toString())
   if (!res.ok || !res.body) throw new Error(`The storage answered ${res.status} for ${filePath}.`)
   const partial = `${localPath}.part`
-  fs.mkdirSync(path.dirname(localPath), { recursive: true })
+  await mkdir(path.dirname(localPath), { recursive: true })
   try {
     const total = Number(res.headers.get('content-length') ?? 0)
     let landed = 0
-    await streams.pipeline(
+    await pipeline(
       Readable.fromWeb(res.body as NodeWebStream<Uint8Array>),
       new Transform({
         transform(chunk: Buffer, _encoding, done) {
@@ -39,11 +40,11 @@ const fetchNasFile = async (
           done(null, chunk)
         }
       }),
-      fs.createWriteStream(partial)
+      createWriteStream(partial)
     )
-    fs.renameSync(partial, localPath)
+    await rename(partial, localPath)
   } catch (e) {
-    fs.rmSync(partial, { force: true })
+    await rm(partial, { force: true })
     throw e
   }
   return localPath
@@ -89,23 +90,24 @@ const bringBack = async ({
   if (!entry) throw new Error('That file is no longer on the board.')
   const sent = entry.uploaded
   if (!sent) throw new Error(`${entry.filename} was never uploaded, so there is nothing to fetch.`)
-  if (fs.existsSync(entry.path)) throw new Error(`${entry.filename} is already on this machine.`)
+  if (await stat(entry.path).catch(() => null))
+    throw new Error(`${entry.filename} is already on this machine.`)
 
   onStart?.(entry.filename, sent.size)
   await fetchNasFile(session.hostname, session.sessionId, sent.remotePath, entry.path, onBytes)
   const id = await computeFileId(entry.path)
-  const { size } = fs.statSync(entry.path)
+  const { size } = await stat(entry.path)
   const original = id === entry.id
   const board = await latest()
   const put = (file: ManifestFile) =>
     file.id === fileId ? (original ? sameFileBack : copyBack)(file, id, size) : file
   board.files = board.files.map(put)
-  board.groups = board.groups.map((group) => ({ ...group, files: group.files.map(put) }))
-  board.groups = board.groups.map((group) =>
-    group.freed && group.files.some((f) => f.id === id)
-      ? { ...group, freedBefore: group.freed, freed: undefined }
-      : group
-  )
+  board.groups = board.groups.map((group) => {
+    const files = group.files.map(put)
+    return group.freed && files.some((f) => f.id === id)
+      ? { ...group, files, freedBefore: group.freed, freed: undefined }
+      : { ...group, files }
+  })
   return { filename: entry.filename, original, size, board }
 }
 

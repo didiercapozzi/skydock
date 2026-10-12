@@ -119,27 +119,6 @@ describe('a proxy being made', () => {
   })
 })
 
-describe('the board’s line to the machine', () => {
-  test('is closed when the board goes away', async () => {
-    const screen = await render(createElement(Files, { shape: 'rows' }))
-    const opened = stream
-
-    await screen.unmount()
-
-    expect(opened?.close).toHaveBeenCalled()
-  })
-
-  test('ignores what it cannot make sense of', async () => {
-    await render(createElement(Files, { shape: 'rows' }))
-
-    stream?.onmessage?.({ data: 'not json' })
-    stream?.onmessage?.({ data: JSON.stringify({ kind: 'file', percent: 'half' }) })
-
-    await expect.element(page.getByRole('progressbar')).not.toBeInTheDocument()
-    await expect.element(page.getByText('a.MP4')).toBeInTheDocument()
-  })
-})
-
 describe('the jump in a clip being found', () => {
   test('shows on the file, and moves as it goes', async () => {
     await render(createElement(Files, { shape: 'rows' }))

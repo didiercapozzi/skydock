@@ -182,7 +182,6 @@ describe('the link as a QR code', () => {
 
 describe('the email template', () => {
   test('is written with variables, and drafts the email from them', async () => {
-    setEmailTemplate('fr', DEFAULT_TEMPLATE)
     await open()
     await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
     await expect.element(preview().getByText('{prénom}')).toBeVisible()
@@ -221,7 +220,6 @@ describe('the email template', () => {
 
 describe('the heading of the template', () => {
   test('is written in place too, and drafts the email from it', async () => {
-    setEmailTemplate('fr', DEFAULT_TEMPLATE)
     await open()
     await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
 
@@ -235,7 +233,6 @@ describe('the heading of the template', () => {
 
 describe('the line above the heading of the template', () => {
   test('is written in the template, and every email is drafted with it', async () => {
-    setEmailTemplate('fr', DEFAULT_TEMPLATE)
     const first = await open()
     await userEvent.click(page.getByRole('button', { name: 'Edit the template…' }))
     await userEvent.click(part('kicker'))
@@ -247,7 +244,6 @@ describe('the line above the heading of the template', () => {
     await open()
 
     await expect.poll(() => part('kicker').textContent).toBe('Le saut de Luc')
-    setEmailTemplate('fr', DEFAULT_TEMPLATE)
   })
 
   test('is the language’s own for a template written before it could be changed', async () => {

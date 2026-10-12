@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createScrub } from '../../app/helpers/scrub'
 
 
-const video = () => {
+const picture = () => {
   const sent: number[] = []
   let at = 0
   return {
@@ -18,42 +18,52 @@ const video = () => {
   }
 }
 
+type Picture = ReturnType<typeof picture>
+
+const startMoving = (el: Picture) => {
+  el.seeking = true
+}
+
+const land = (scrub: ReturnType<typeof createScrub>, el: Picture) => {
+  el.seeking = false
+  scrub.seeked(el)
+}
+
 afterEach(() => {
   vi.useRealTimers()
 })
 
 describe('dragging along the timeline', () => {
-  test('sends a moment at once while the video is free', () => {
+  test('the picture follows the pointer at once', () => {
     const scrub = createScrub()
-    const el = video()
+    const el = picture()
 
     scrub.seek(el, 2)
 
     expect(el.sent).toEqual([2])
   })
 
-  test('keeps only the latest moment while the video is still seeking, and sends it when it lands', () => {
+  test('when the picture is still moving only the latest place is asked for', () => {
     const scrub = createScrub()
-    const el = video()
+    const el = picture()
     scrub.seek(el, 1)
-    el.seeking = true
+    startMoving(el)
 
     scrub.seek(el, 2)
     scrub.seek(el, 3)
     scrub.seek(el, 4)
     expect(el.sent).toEqual([1])
 
-    el.seeking = false
-    scrub.seeked(el)
+    land(scrub, el)
     expect(el.sent).toEqual([1, 4])
   })
 
-  test('never waits on a seek for more than a quarter of a second', () => {
+  test('never stuck when the pointer stops', () => {
     vi.useFakeTimers()
     const scrub = createScrub()
-    const el = video()
+    const el = picture()
     scrub.seek(el, 1)
-    el.seeking = true
+    startMoving(el)
 
     scrub.seek(el, 5)
     vi.advanceTimersByTime(260)

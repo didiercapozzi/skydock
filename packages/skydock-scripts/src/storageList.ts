@@ -1,5 +1,5 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import type { z } from 'zod'
@@ -52,15 +52,15 @@ const writeList = async <T>(
   schema: z.ZodType<T>,
   from?: ListPlace | null
 ) => {
-  const staging = fs.mkdtempSync(path.join(os.tmpdir(), `skydock-list-${crypto.randomUUID()}`))
+  const staging = await mkdtemp(path.join(os.tmpdir(), `skydock-list-${crypto.randomUUID()}`))
   const local = path.join(staging, home.name)
   try {
-    fs.writeFileSync(local, JSON.stringify(schema.parse(list), null, 2))
+    await writeFile(local, JSON.stringify(schema.parse(list), null, 2))
     await uploadFile(session.hostname, session.sessionId, home.dir, local, undefined, {
       overwrite: true
     })
   } finally {
-    fs.rmSync(staging, { recursive: true, force: true })
+    await rm(staging, { recursive: true, force: true })
   }
   if (!from || pathOf(from) === pathOf(home)) return
   await download(session, home, schema)

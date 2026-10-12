@@ -1,15 +1,8 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
 import { retimeFile } from '../src/clustering'
-import type { Manifest, ManifestFile } from '../src/types'
-
-const file = (id: string, mtime: number): ManifestFile => ({
-  id,
-  path: `/src/${id}.mp4`,
-  filename: `${id}.mp4`,
-  size: 1,
-  mtime
-})
+import type { Manifest } from '../src/types'
+import { manifestFile } from './fixtures'
 
 const T = 1_789_300_000
 
@@ -18,9 +11,14 @@ describe('re-timing one file', () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
-      files: [file('a', T), file('b', T + 60)],
+      files: [manifestFile('a', T), manifestFile('b', T + 60)],
       groups: [
-        { id: 'g1', label: 'jump', day: '13.09.2026', files: [file('a', T), file('b', T + 60)] }
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '13.09.2026',
+          files: [manifestFile('a', T), manifestFile('b', T + 60)]
+        }
       ]
     }
 
@@ -35,9 +33,14 @@ describe('re-timing one file', () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
-      files: [file('a', T), file('b', T + 60)],
+      files: [manifestFile('a', T), manifestFile('b', T + 60)],
       groups: [
-        { id: 'g1', label: 'jump', day: '13.09.2026', files: [file('a', T), file('b', T + 60)] }
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '13.09.2026',
+          files: [manifestFile('a', T), manifestFile('b', T + 60)]
+        }
       ]
     }
 
@@ -50,9 +53,14 @@ describe('re-timing one file', () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
-      files: [file('a', T), file('b', T + 60)],
+      files: [manifestFile('a', T), manifestFile('b', T + 60)],
       groups: [
-        { id: 'g1', label: 'jump', day: '13.09.2026', files: [file('a', T), file('b', T + 60)] }
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '13.09.2026',
+          files: [manifestFile('a', T), manifestFile('b', T + 60)]
+        }
       ]
     }
 

@@ -208,7 +208,7 @@ describe('uploading a folder', () => {
   })
 
   it('uses the session it kept rather than logging in again', async () => {
-    saveNasSession({ hostname: server.url, username: 'u', sessionId: 'reused-sid' }, out)
+    await saveNasSession({ hostname: server.url, username: 'u', sessionId: 'reused-sid' }, out)
     stubFetch((url) => {
       if (url.includes('method=list_share'))
         return jsonResponse({ success: true, data: { shares: [] } })

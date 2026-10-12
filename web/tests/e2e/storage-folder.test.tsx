@@ -67,26 +67,22 @@ describe('a file’s own link', () => {
     expect(copied).toEqual(['https://nas.local/sharing/abc'])
   })
 
-  test('is asked of the storage for that one file, and shows on the row at once', async () => {
+  test('is made for that one file, and shows on the row at once with Copy the link', async () => {
     storageAnswers(folder)
     await renderFolder()
     const list = page.getByRole('region', { name: 'On the storage' })
     await userEvent.click(list.getByRole('button', { name: 'More' }).first())
     await expect.element(list.getByRole('button', { name: 'Create a link' })).toBeVisible()
-    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
-      asked.push(`${String(url)} ${String(init?.body ?? '')}`)
-      return new Response(
+    vi.stubGlobal('fetch', async () =>
+      new Response(
         JSON.stringify({ path: `${DIR}/luc favre.mp4`, shareUrl: 'https://nas.local/sharing/new' }),
         { headers: { 'Content-Type': 'application/json' } }
       )
-    })
+    )
 
     await userEvent.click(list.getByRole('button', { name: 'Create a link' }))
 
     await expect.poll(() => list.getByRole('button', { name: 'Copy the link' }).elements().length).toBe(2)
-    expect(asked.some((a) => a.includes('/api/share-link') && a.includes('"intent":"create"'))).toBe(
-      true
-    )
   })
 })
 

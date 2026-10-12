@@ -9,18 +9,9 @@ import { getProxyPath } from '../src/proxy'
 import { deleteMontage } from '../src/resetMontage'
 import { trashUnsorted } from '../src/trashUnsorted'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
-import { createTmpDir } from './fixtures'
+import { createTmpDir, manifestFile } from './fixtures'
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
-
-const file = (id: string, mtime: number, over: Partial<ManifestFile> = {}): ManifestFile => ({
-  id,
-  path: `/o/${id}.MP4`,
-  filename: `${id}.MP4`,
-  size: 10,
-  mtime,
-  ...over
-})
 
 const jump = (
   id: string,
@@ -35,14 +26,14 @@ const jump = (
 })
 
 const board = (): Manifest => {
-  const plane = file('plane', AT, { cropStart: 2, cropEnd: 9 })
-  const luc = file('luc', AT + 60)
-  const ana = file('ana', AT + 7200)
-  const ana2 = file('ana2', AT + 7260)
+  const plane = manifestFile('plane', AT, { cropStart: 2, cropEnd: 9 })
+  const luc = manifestFile('luc', AT + 60)
+  const ana = manifestFile('ana', AT + 7200)
+  const ana2 = manifestFile('ana2', AT + 7260)
   return {
     version: 1,
     createdAt: 'x',
-    files: [file('plane', AT), luc, ana, ana2],
+    files: [manifestFile('plane', AT), luc, ana, ana2],
     groups: [
       jump('lucs', [plane, luc], { processed: true }),
       jump('anas', [ana, ana2], { processed: true })
@@ -129,8 +120,10 @@ describe('copying files into another jump', () => {
 
   it('copies a copy as a copy of the original, into a third jump', () => {
     const manifest = board()
-    manifest.files.push(file('third', AT + 20000), file('third2', AT + 20060))
-    manifest.groups.push(jump('thirds', [file('third', AT + 20000), file('third2', AT + 20060)]))
+    manifest.files.push(manifestFile('third', AT + 20000), manifestFile('third2', AT + 20060))
+    manifest.groups.push(
+      jump('thirds', [manifestFile('third', AT + 20000), manifestFile('third2', AT + 20060)])
+    )
     copyFiles(manifest, new Set(['plane']), 'anas')
 
     copyFiles(manifest, new Set(['plane~1']), 'thirds')
@@ -274,7 +267,10 @@ describe('a jump holding a copy from earlier', () => {
 
   it('has only its copies to go by when it holds nothing else', () => {
     expect(
-      startOfFiles([file('x~1', AT, { copyOf: 'x' }), file('y~1', AT + 5, { copyOf: 'y' })])
+      startOfFiles([
+        manifestFile('x~1', AT, { copyOf: 'x' }),
+        manifestFile('y~1', AT + 5, { copyOf: 'y' })
+      ])
     ).toBe(AT)
   })
 })
@@ -303,7 +299,7 @@ describe('a jump holding a file brought in from well before', () => {
 
   it('does start earlier when the file brought in is part of the same run', () => {
     const manifest = board()
-    manifest.files.push(file('justBefore', AT + 7200 - 300))
+    manifest.files.push(manifestFile('justBefore', AT + 7200 - 300))
     moveFiles(manifest, new Set(['justBefore']), { targetGroupId: 'anas' })
 
     expect(startOfFiles(manifest.groups.find((g) => g.id === 'anas')!.files)).toBe(AT + 7200 - 300)

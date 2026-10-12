@@ -44,14 +44,14 @@ describe('finding where the jump is in each clip', () => {
     vi.unstubAllEnvs()
   })
 
-  it('is asked of clips not yet asked, and of nothing else', () => {
+  it('is asked of clips not yet asked, and of nothing else', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const photo = writeTempFile(outputDir, 'original_files/GOPR1100.JPG')
 
-    expect(needsMoments(clip(src, 'v1'))).toBe(true)
-    expect(needsMoments(clip(photo, 'p1'))).toBe(false)
-    expect(needsMoments({ ...clip(src, 'v1'), moments: null })).toBe(false)
-    expect(needsMoments({ ...clip(src, 'v1'), freed: true })).toBe(false)
+    expect(await needsMoments(clip(src, 'v1'))).toBe(true)
+    expect(await needsMoments(clip(photo, 'p1'))).toBe(false)
+    expect(await needsMoments({ ...clip(src, 'v1'), moments: null })).toBe(false)
+    expect(await needsMoments({ ...clip(src, 'v1'), freed: true })).toBe(false)
   })
 
   it('writes down that a clip has no jump in it, so it is not asked twice', async () => {
@@ -97,7 +97,7 @@ describe('finding where the jump is in each clip', () => {
   it('has the answer on the disk before the board is told', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifestPath = path.join(outputDir, 'manifest.json')
-    saveManifest(manifestPath, manifestOf([clip(src, 'abc123')]))
+    await saveManifest(manifestPath, manifestOf([clip(src, 'abc123')]))
     const onDisk: (boolean | null)[] = []
     const reads: Promise<void>[] = []
     const stop = subscribe((event) => {
@@ -119,10 +119,13 @@ describe('finding where the jump is in each clip', () => {
   it('does not undo what was changed while it read', async () => {
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifestPath = path.join(outputDir, 'manifest.json')
-    saveManifest(manifestPath, manifestOf([clip(src, 'abc123')]))
+    await saveManifest(manifestPath, manifestOf([clip(src, 'abc123')]))
 
     const pass = buildMissingMoments(outputDir)
-    saveManifest(manifestPath, manifestOf([{ ...clip(src, 'abc123'), cropStart: 4, cropEnd: 9 }]))
+    await saveManifest(
+      manifestPath,
+      manifestOf([{ ...clip(src, 'abc123'), cropStart: 4, cropEnd: 9 }])
+    )
     await pass
 
     const saved = (await loadManifestAsync(manifestPath))!

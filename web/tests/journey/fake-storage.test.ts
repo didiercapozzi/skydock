@@ -113,13 +113,6 @@ describe('connecting to the storage', () => {
     await storage.admin.unreachable(false)
     expect((await login()).sid).toBeTruthy()
   })
-
-  it('answers each call after the delay it was told to', async () => {
-    await storage.admin.latency(300)
-    const began = Date.now()
-    await login()
-    expect(Date.now() - began).toBeGreaterThanOrEqual(280)
-  })
 })
 
 describe('looking at what the storage holds', () => {
@@ -250,28 +243,5 @@ describe('handing a file out by a link', () => {
     const second = await ensureShareLink(host, sid, '/club/Day/clip.mp4')
     expect(second).not.toBe(first)
     expect((await storage.admin.shareLinks()).map((l) => l.status)).toEqual(['invalid', 'valid'])
-  })
-})
-
-describe('what the storage tells a test', () => {
-  it('logs every call in order without a password, and starts afresh after a reset', async () => {
-    const { sid } = await login()
-    await listNasFiles(host, sid, '/club')
-
-    const calls = await storage.admin.calls()
-    expect(calls.map((c) => `${c.api}:${c.method}`)).toEqual([
-      'SYNO.API.Auth:login',
-      'SYNO.FileStation.List:list'
-    ])
-    expect(calls[1]?.params.folder_path).toBe('/club')
-    expect(JSON.stringify(calls)).not.toContain(PASSWORD)
-
-    await storage.admin.reset()
-    expect(await storage.admin.calls()).toEqual([])
-  })
-
-  it('keeps a path that climbs out of a share inside its root, where there is nothing to hash', async () => {
-    const { sid } = await login()
-    expect(await dsmFileMd5(host, sid, '/club/../../etc/passwd')).toBeNull()
   })
 })

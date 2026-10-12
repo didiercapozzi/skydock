@@ -5,7 +5,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { following, job, publish, subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { durationIn, positionIn, runWatched } from '../src/tools'
+import { runWatched } from '../src/tools'
 
 const scripts: string[] = []
 
@@ -22,17 +22,6 @@ afterAll(() => {
 })
 
 describe('how far a file being processed has got', () => {
-  it('reads its position out of what it prints, the latest one when several arrive at once', () => {
-    expect(positionIn('frame=10\nout_time_us=2500000\nprogress=continue\n')).toBe(2.5)
-    expect(positionIn('out_time_us=1000000\nout_time_us=4000000\n')).toBe(4)
-    expect(positionIn('frame=10\n')).toBeNull()
-  })
-
-  it('reads how long the clip runs from what ffmpeg says on opening it', () => {
-    expect(durationIn('  Duration: 00:02:28.50, start: 0.000000, bitrate: 60 kb/s')).toBe(148.5)
-    expect(durationIn('Stream #0:0: Video: hevc')).toBeNull()
-  })
-
   it('says the percentage of a trimmed clip against the length of the trim', async () => {
     const heard: number[] = []
     const ran = await runWatched(

@@ -37,6 +37,8 @@ const shotFromName = (name: string) => {
 const kindOf = (name: string): StorageFile['kind'] =>
   isVideoFile(name) ? 'video' : PHOTO.test(name) ? 'photo' : 'other'
 
+const KIND_ORDER = { video: 0, photo: 1, other: 2 }
+
 const OWN_RECORDS = new Set(['skydock-montages.json', 'skydock-origins.json'])
 
 const listStorageFolder = async (
@@ -44,7 +46,6 @@ const listStorageFolder = async (
   dir: string,
   links?: Map<string, { url: string }>
 ): Promise<StorageFile[]> => {
-  const order = { video: 0, photo: 1, other: 2 }
   return (await listNasFiles(session.hostname, session.sessionId, dir))
     .filter((f) => !OWN_RECORDS.has(f.name))
     .map((f) => ({
@@ -55,7 +56,7 @@ const listStorageFolder = async (
     }))
     .sort(
       (a, b) =>
-        order[a.kind] - order[b.kind] ||
+        KIND_ORDER[a.kind] - KIND_ORDER[b.kind] ||
         (b.shot ?? b.mtime ?? 0) - (a.shot ?? a.mtime ?? 0) ||
         b.name.localeCompare(a.name)
     )

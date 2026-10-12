@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { stat } from 'node:fs/promises'
 
 const watchGrowth = (
   files: string[],
@@ -7,12 +7,18 @@ const watchGrowth = (
   everyMs = 250
 ) => {
   if (total <= 0) return () => {}
-  const timer = setInterval(() => {
-    const at = files.find((file) => fs.existsSync(file))
-    if (!at) return
-    fs.stat(at, (error, stats) => {
-      if (!error) onPart(Math.min(1, stats.size / total))
-    })
+  let looking = false
+  const timer = setInterval(async () => {
+    if (looking) return
+    looking = true
+    for (const file of files) {
+      const stats = await stat(file).catch(() => null)
+      if (stats) {
+        onPart(Math.min(1, stats.size / total))
+        break
+      }
+    }
+    looking = false
   }, everyMs)
   return () => clearInterval(timer)
 }

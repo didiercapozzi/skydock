@@ -1,40 +1,39 @@
-import * as fs from 'node:fs'
-import * as stream from 'node:stream'
+import { type FileHandle, open } from 'node:fs/promises'
+import { Writable } from 'node:stream'
 
 const EVERY_BYTES = 64 * 1024 ** 2
 
 const gentleWriter = (file: string) => {
-  let fd: number | null = null
+  let handle: FileHandle | undefined
   let since = 0
-  const open = () => (fd ??= fs.openSync(file, 'w'))
-  return new stream.Writable({
+  const opened = async () => (handle ??= await open(file, 'w'))
+  return new Writable({
     highWaterMark: 16 * 1024 ** 2,
     write(chunk: Buffer, _encoding, next) {
-      try {
-        const at = open()
-        fs.write(at, chunk, 0, chunk.length, null, (error) => {
-          if (error) return next(error)
+      opened()
+        .then(async (at) => {
+          await at.write(chunk)
           since += chunk.length
-          if (since < EVERY_BYTES) return next()
+          if (since < EVERY_BYTES) return
           since = 0
-          fs.fdatasync(at, (failed) => next(failed))
+          await at.datasync()
         })
-      } catch (e) {
-        next(e instanceof Error ? e : new Error(String(e)))
-      }
+        .then(() => next(), next)
     },
     final(done) {
-      if (fd === null) fd = fs.openSync(file, 'w')
-      fs.fdatasync(fd, () => done())
+      opened()
+        .then((at) => at.datasync())
+        .then(
+          () => done(),
+          () => done()
+        )
     },
     destroy(error, done) {
-      if (fd !== null) {
-        try {
-          fs.closeSync(fd)
-        } catch {}
-        fd = null
-      }
-      done(error)
+      const closing = handle?.close()
+      handle = undefined
+      Promise.resolve(closing)
+        .catch(() => {})
+        .then(() => done(error))
     }
   })
 }

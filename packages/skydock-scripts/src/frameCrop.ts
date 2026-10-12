@@ -130,7 +130,6 @@ const orientationAfter = (current: number | null | undefined, rotation: Rotation
 
 export {
   containCrop,
-  cropFilter,
   cropToPixels,
   fitRatio,
   isQuarterTurn,

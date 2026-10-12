@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { access, rm } from 'node:fs/promises'
 import * as path from 'node:path'
 import { moveFile } from './lib/fs'
 import { inJob } from './live'
@@ -8,6 +8,12 @@ import { slugOf } from './sending'
 import { passengerOf } from './workspace'
 import type { Manifest } from './types'
 import { getTrashDir } from './utils'
+
+const exists = (file: string) =>
+  access(file).then(
+    () => true,
+    () => false
+  )
 
 const dropFromBoard = (manifest: Manifest, ids: Set<string>) => {
   manifest.files = manifest.files.filter((f) => !f.id || !ids.has(f.id))
@@ -29,8 +35,10 @@ const trashUnsorted = async (
     throw new Error(
       `${copy.filename} is a copy — take it out of its jump instead; its original stays.`
     )
-  const groupOf = (id: string | undefined) =>
-    manifest.groups.find((g) => g.files.some((h) => h.id === id))
+  const groups = new Map<string, Manifest['groups'][number]>()
+  for (const g of manifest.groups)
+    for (const h of g.files) if (h.id && !groups.has(h.id)) groups.set(h.id, g)
+  const groupOf = (id: string | undefined) => (id ? groups.get(id) : undefined)
   const copiesOf = (f: { id?: string }) => manifest.files.filter((c) => c.copyOf === f.id)
   const held = going.find((f) =>
     copiesOf(f).some((c) => {
@@ -46,7 +54,7 @@ const trashUnsorted = async (
   const originals = path.join(outputDir, 'original_files')
   const places = new Set(
     going.map((f) => {
-      const group = manifest.groups.find((g) => g.files.some((h) => h.id === f.id))
+      const group = groupOf(f.id)
       if (group && isMontage(group)) return `montage-${slugOf(passengerOf(group)) || 'montage'}`
       const place = group?.destination ?? f.destination
       return place ? `dropzone-${slugOf(place) || 'dropzone'}` : 'unsorted'
@@ -61,9 +69,9 @@ const trashUnsorted = async (
       binning.working(file.filename)
       const within = path.relative(originals, file.path)
       const to = path.join(bin, within.startsWith('..') ? path.basename(file.path) : within)
-      if (fs.existsSync(file.path)) await moveFile(file.path, to)
+      if (await exists(file.path)) await moveFile(file.path, to)
       for (const made of [file.processed?.path, getProxyPath(file, outputDir)])
-        if (made) await fs.promises.rm(made, { force: true })
+        if (made) await rm(made, { force: true })
       binning.step()
     }
   })

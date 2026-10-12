@@ -48,14 +48,14 @@ const displayHint = () =>
     ? ''
     : ' — and there is no DISPLAY set here, so a window has nowhere to open'
 
-const startDetached = (parts: string[], target: string, command: string, setting: string) => {
+const startDetached = async (parts: string[], target: string, command: string, setting: string) => {
   const [program, ...rest] = parts
-  if (!program || !hasCommand(program))
-    return Promise.resolve({
+  if (!program || !(await hasCommand(program)))
+    return {
       opened: false,
       command,
       reason: `${program} is not on this machine — set ${setting} to what should open it, or open it by hand`
-    })
+    } satisfies OpenResult
 
   return new Promise<OpenResult>((resolve) => {
     let child: childProcess.ChildProcess
