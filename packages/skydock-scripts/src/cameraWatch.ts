@@ -39,10 +39,43 @@ const isGvfsRoot = (root: string) => {
   return gvfs !== null && path.resolve(root) === path.resolve(gvfs)
 }
 
-const windowsDrives = async () => {
-  const drives = Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`)
-  const present = await Promise.all(drives.map(pathExists))
-  return drives.filter((_, i) => present[i])
+const DRIVE_WAIT_MS = 1500
+const DRIVE_SILENT_MS = 5 * 60_000
+const silentDrives = new Map<string, number>()
+
+const answerWithin = (waiting: Promise<boolean>, ms: number) =>
+  new Promise<boolean | null>((resolve) => {
+    const timer = setTimeout(() => resolve(null), ms)
+    timer.unref()
+    void waiting.then(
+      (answer) => {
+        clearTimeout(timer)
+        resolve(answer)
+      },
+      () => {
+        clearTimeout(timer)
+        resolve(false)
+      }
+    )
+  })
+
+const windowsDrives = async (
+  probe: (drive: string) => Promise<boolean> = pathExists,
+  waitMs = DRIVE_WAIT_MS
+) => {
+  const now = Date.now()
+  const asked = Array.from(
+    { length: 26 },
+    (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`
+  ).filter((drive) => (silentDrives.get(drive) ?? 0) <= now)
+  const present = await Promise.all(
+    asked.map(async (drive) => {
+      const answer = await answerWithin(probe(drive), waitMs)
+      if (answer === null) silentDrives.set(drive, now + DRIVE_SILENT_MS)
+      return answer === true
+    })
+  )
+  return asked.filter((_, i) => present[i])
 }
 
 const cameraRoots = async () => {
@@ -595,6 +628,7 @@ const camerasSeenThroughKde = () => watch().kde
 const seenOnCamera = (camera: string) => watch().seenOn[camera] ?? { done: false, clips: [] }
 
 export {
+  windowsDrives,
   answerCamera,
   askKde,
   cameraKey,

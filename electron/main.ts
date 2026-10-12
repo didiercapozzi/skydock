@@ -113,7 +113,8 @@ const settingsFor = (outputDir: string) => {
     SKYDOCK_CONFIG_DIR: configDir(),
     SKYDOCK_CLIENT_DIR: path.join(resources, 'client'),
     SKYDOCK_TEMPLATES_DIR: path.join(resources, 'templates'),
-    ELECTRON_RUN_AS_NODE: '1'
+    ELECTRON_RUN_AS_NODE: '1',
+    UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE ?? '32'
   }
   for (const [tool, variable] of [
     ['ffmpeg', 'SKYDOCK_FFMPEG_PATH'],
@@ -360,12 +361,20 @@ const startServer = async (folder?: string, into?: BrowserWindow) => {
     stdio: ['pipe', 'pipe', 'pipe']
   })
   server = running
-  running.on('error', (e) =>
+  const journal = fs.createWriteStream(path.join(configDir(), 'server.log'), { flags: 'w' })
+  running.on('error', (e) => {
     console.error(`[SkyDock] the server could not be started: ${e.message}`)
-  )
-  running.on('exit', (code) => console.error(`[SkyDock] the server stopped (${code})`))
+    journal.write(`the server could not be started: ${e.message}\n`)
+  })
+  running.on('exit', (code) => {
+    console.error(`[SkyDock] the server stopped (${code})`)
+    journal.end(`the server stopped (${code})\n`)
+  })
   running.stderr.setEncoding('utf-8')
-  running.stderr.on('data', (said: string) => process.stderr.write(said))
+  running.stderr.on('data', (said: string) => {
+    process.stderr.write(said)
+    journal.write(said)
+  })
   running.stdout.setEncoding('utf-8')
   let shown = false
   let rest = ''
@@ -375,6 +384,7 @@ const startServer = async (folder?: string, into?: BrowserWindow) => {
     rest = lines.pop() ?? ''
     for (const line of lines) {
       console.log(line)
+      journal.write(`${line}\n`)
       const ready = /^SKYDOCK_READY (\d+)$/.exec(line.trim())
       if (!shown && ready) {
         shown = true
