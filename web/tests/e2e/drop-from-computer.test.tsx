@@ -6,7 +6,7 @@ import { page, userEvent } from 'vitest/browser'
 
 vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifest: vi.fn(() => null) }
+  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
 })
 
 import { droppedFiles, droppedIn, fromComputer, pathOf, whatIsComing } from '../../app/helpers/import'

@@ -3,7 +3,7 @@ import {
   getOutputDir,
   listShareLinks,
   liveShareLinks,
-  loadManifest
+  loadManifestAsync
 } from '@skydock/scripts'
 import { z } from 'zod'
 import {
@@ -26,7 +26,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   const where = routingEngine.parseSearchParams(searchParamsArgs, { request })
   const session = await ensureNasSession()
   if (!session) return answer({ ok: false, reason: 'The storage is not connected.' })
-  const manifest = loadManifest(`${getOutputDir()}/manifest.json`)
+  const manifest = await loadManifestAsync(`${getOutputDir()}/manifest.json`)
   if (!manifest) return answer({ ok: false, reason: 'Nothing has been scanned yet.' })
   const named =
     where.folder && withinStorage(manifest, session, `${where.folder}/.`) ? where.folder : null

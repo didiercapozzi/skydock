@@ -25,13 +25,13 @@ const processIntent: Intent = async ({ data, manifestPath, outputDir, refuse, la
   } catch (e) {
     return refuse(messageOf(e))
   }
-  return boardAnswer(latest())
+  return boardAnswer(await latest())
 }
 
 /* a page that came back while something was being processed waits here for it to finish */
 const processWait: Intent = async ({ latest }) => {
   await whenProcessed()
-  return boardAnswer(latest())
+  return boardAnswer(await latest())
 }
 
 /* Stops what is being processed, and answers once it has stopped, with the board as the run left
@@ -39,7 +39,7 @@ const processWait: Intent = async ({ latest }) => {
 const cancelProcess: Intent = async ({ refuse, latest }) => {
   if (!cancelProcessing()) return refuse('Nothing is being processed.')
   await whenProcessed()
-  return { ...boardAnswer(latest()), processCancelled: true }
+  return { ...boardAnswer(await latest()), processCancelled: true }
 }
 
 export { cancelProcess, processIntent, processWait }

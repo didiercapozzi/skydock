@@ -1,4 +1,4 @@
-import { loadManifest, scanMedia, messageOf } from '@skydock/scripts'
+import { loadManifestAsync, scanMedia, messageOf } from '@skydock/scripts'
 import { bringBackFromBin } from '../../../../packages/skydock-scripts/src/bin'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
@@ -12,7 +12,7 @@ const fromBinIntent: Intent = async ({ data, manifest, manifestPath, outputDir, 
   try {
     const { back, kept } = await bringBackFromBin({ paths, manifest, outputDir })
     if (back.length > 0) await scanMedia({ outputDir })
-    const after = loadManifest(manifestPath)
+    const after = await loadManifestAsync(manifestPath)
     if (!after) return refuse('The registry could not be read after bringing them back.')
     return { ...boardAnswer(after), fromBin: { back: back.length, kept } }
   } catch (e) {

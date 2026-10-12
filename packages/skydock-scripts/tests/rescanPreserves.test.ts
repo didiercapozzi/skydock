@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
 import { scanMedia } from '../src/scan'
 import { createTmpDir, execSyncMock, makeFfmpegMock, tellTools, writeTempFile } from './fixtures'
@@ -34,7 +34,7 @@ describe('a scan keeps the work already done', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const first = loadManifest(manifestPath)!
+    const first = (await loadManifestAsync(manifestPath))!
     const file = first.files[0]
     file.destination = 'Yverdon'
     file.cropStart = 1.5
@@ -64,7 +64,7 @@ describe('a scan keeps the work already done', () => {
     const result = await scanMedia({ outputDir })
     expect(result.added).toBe(1)
 
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     const kept = after.files.find((f) => f.filename === 'DJI_0001.MP4')!
     expect(kept.destination).toBe('Yverdon')
     expect(kept.cropStart).toBe(1.5)
@@ -77,7 +77,7 @@ describe('a scan keeps the work already done', () => {
     writeTempFile(origDir, 'DJI_0001.MP4')
     await scanMedia({ outputDir })
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const board = loadManifest(manifestPath)!
+    const board = (await loadManifestAsync(manifestPath))!
     const unseen = writeTempFile(path.join(outputDir, 'landing'), 'DJI_0002.MP4')
     board.files.push({ id: 'landed', path: unseen, filename: 'DJI_0002.MP4', size: 1, mtime: 1 })
     saveManifest(manifestPath, board)
@@ -85,11 +85,11 @@ describe('a scan keeps the work already done', () => {
     writeTempFile(origDir, 'DJI_0003.MP4')
     await scanMedia({ outputDir })
 
-    expect(
-      loadManifest(manifestPath)!
-        .files.map((f) => f.filename)
-        .sort()
-    ).toEqual(['DJI_0001.MP4', 'DJI_0002.MP4', 'DJI_0003.MP4'])
+    expect((await loadManifestAsync(manifestPath))!.files.map((f) => f.filename).sort()).toEqual([
+      'DJI_0001.MP4',
+      'DJI_0002.MP4',
+      'DJI_0003.MP4'
+    ])
   })
 
   it('lets the disk win on what the disk measures', async () => {
@@ -98,7 +98,7 @@ describe('a scan keeps the work already done', () => {
     await scanMedia({ outputDir })
 
     const manifestPath = path.join(outputDir, 'manifest.json')
-    const first = loadManifest(manifestPath)!
+    const first = (await loadManifestAsync(manifestPath))!
     const originalSize = first.files[0].size
     first.files[0].destination = 'Yverdon'
     saveManifest(manifestPath, first)
@@ -107,7 +107,7 @@ describe('a scan keeps the work already done', () => {
     writeTempFile(origDir, 'DJI_0002.MP4')
     await scanMedia({ outputDir })
 
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     const kept = after.files.find((f) => f.filename === 'DJI_0001.MP4')!
     expect(kept.size).toBe(originalSize + 500)
     expect(kept.destination).toBe('Yverdon')
@@ -122,8 +122,10 @@ describe('a scan keeps the work already done', () => {
       const when = new Date(2026, 7, 1, 10, minutes, 0)
       fs.utimesSync(target, when, when)
     }
-    const jumpOf = (name: string) =>
-      loadManifest(manifestPath())!.groups.find((g) => g.files.some((f) => f.filename === name))
+    const jumpOf = async (name: string) =>
+      (await loadManifestAsync(manifestPath()))!.groups.find((g) =>
+        g.files.some((f) => f.filename === name)
+      )
 
     const twoJumps = async () => {
       shoot('A1.MP4', 0)
@@ -131,7 +133,7 @@ describe('a scan keeps the work already done', () => {
       shoot('B1.MP4', 120)
       shoot('B2.MP4', 121)
       await scanMedia({ outputDir })
-      return loadManifest(manifestPath())!
+      return (await loadManifestAsync(manifestPath()))!
     }
 
     it('keeps a jump merged by hand, and a time corrected by hand, when new files are found', async () => {
@@ -147,15 +149,16 @@ describe('a scan keeps the work already done', () => {
       shoot('C2.MP4', 401)
       await scanMedia({ outputDir })
 
-      const after = loadManifest(manifestPath())!
-      expect(
-        jumpOf('A1.MP4')
-          ?.files.map((f) => f.filename)
-          .sort()
-      ).toEqual(['A1.MP4', 'A2.MP4', 'B1.MP4', 'B2.MP4'])
+      const after = (await loadManifestAsync(manifestPath()))!
+      expect((await jumpOf('A1.MP4'))?.files.map((f) => f.filename).sort()).toEqual([
+        'A1.MP4',
+        'A2.MP4',
+        'B1.MP4',
+        'B2.MP4'
+      ])
       for (const f of after.files.filter((f) => corrected.has(f.id)))
         expect(f.mtime).toBe(corrected.get(f.id))
-      expect(jumpOf('C1.MP4')?.files.map((f) => f.filename)).toEqual(['C1.MP4', 'C2.MP4'])
+      expect((await jumpOf('C1.MP4'))?.files.map((f) => f.filename)).toEqual(['C1.MP4', 'C2.MP4'])
     })
 
     it('keeps what a montage went through — its upload, its montage, its freeing', async () => {
@@ -180,7 +183,7 @@ describe('a scan keeps the work already done', () => {
       shoot('C2.MP4', 401)
       await scanMedia({ outputDir })
 
-      expect(jumpOf('A1.MP4')).toMatchObject({
+      expect(await jumpOf('A1.MP4')).toMatchObject({
         uploaded: { shareUrl: 'https://nas/sharing/luc' },
         montage: { template: 'epco' },
         freed: { bytes: 10 }
@@ -193,7 +196,11 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      expect(jumpOf('A3.MP4')?.files.map((f) => f.filename)).toEqual(['A1.MP4', 'A2.MP4', 'A3.MP4'])
+      expect((await jumpOf('A3.MP4'))?.files.map((f) => f.filename)).toEqual([
+        'A1.MP4',
+        'A2.MP4',
+        'A3.MP4'
+      ])
     })
 
     it('never adds a new file to a jump that is already filed', async () => {
@@ -204,8 +211,8 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      expect(jumpOf('A1.MP4')?.files.map((f) => f.filename)).toEqual(['A1.MP4', 'A2.MP4'])
-      expect(jumpOf('A3.MP4')).toBeUndefined()
+      expect((await jumpOf('A1.MP4'))?.files.map((f) => f.filename)).toEqual(['A1.MP4', 'A2.MP4'])
+      expect(await jumpOf('A3.MP4')).toBeUndefined()
     })
 
     it('leaves a new file with no neighbours loose', async () => {
@@ -214,8 +221,10 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      expect(jumpOf('LONE.MP4')).toBeUndefined()
-      expect(loadManifest(manifestPath())!.files.some((f) => f.filename === 'LONE.MP4')).toBe(true)
+      expect(await jumpOf('LONE.MP4')).toBeUndefined()
+      expect(
+        (await loadManifestAsync(manifestPath()))!.files.some((f) => f.filename === 'LONE.MP4')
+      ).toBe(true)
     })
   })
 
@@ -226,7 +235,7 @@ describe('a scan keeps the work already done', () => {
       writeTempFile(origDir, 'DJI_0002.MP4', Buffer.alloc(512, 7))
       await scanMedia({ outputDir })
       const manifestPath = path.join(outputDir, 'manifest.json')
-      const manifest = loadManifest(manifestPath)!
+      const manifest = (await loadManifestAsync(manifestPath))!
       manifest.files = manifest.files.map((f) =>
         f.filename === freedName ? { ...f, freed: true } : f
       )
@@ -240,7 +249,7 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      const after = loadManifest(manifestPath)!
+      const after = (await loadManifestAsync(manifestPath))!
       expect(after.files.find((f) => f.filename === 'DJI_0001.MP4')?.freed).toBeUndefined()
     })
 
@@ -251,7 +260,7 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      const after = loadManifest(manifestPath)!
+      const after = (await loadManifestAsync(manifestPath))!
       expect(after.files.find((f) => f.filename === 'DJI_0001.MP4')?.freed).toBe(true)
     })
   })
@@ -270,7 +279,7 @@ describe('a scan keeps the work already done', () => {
       at('B2.MP4', 4, 121)
       await scanMedia({ outputDir })
       const manifestPath = path.join(outputDir, 'manifest.json')
-      const manifest = loadManifest(manifestPath)!
+      const manifest = (await loadManifestAsync(manifestPath))!
       const [first, second] = manifest.groups
       const shared = first!.files[0]!
       copyFiles(manifest, new Set([shared.id!]), second!.id)
@@ -284,7 +293,7 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      const after = loadManifest(manifestPath)!
+      const after = (await loadManifestAsync(manifestPath))!
       const copy = after.groups.find((g) => g.id === target)?.files.find((f) => f.copyOf)
       expect(copy).toMatchObject({ id: `${shared.id}~1`, copyOf: shared.id, path: shared.path })
       expect(after.files.filter((f) => f.path === shared.path)).toHaveLength(2)
@@ -292,7 +301,7 @@ describe('a scan keeps the work already done', () => {
 
     it('stops saying a copy lives on the storage only once the file it points at is back', async () => {
       const { manifestPath, shared, at } = await twoJumps()
-      const manifest = loadManifest(manifestPath)!
+      const manifest = (await loadManifestAsync(manifestPath))!
       manifest.files = manifest.files.map((f) =>
         f.copyOf === shared.id || f.id === shared.id ? { ...f, freed: true } : f
       )
@@ -301,7 +310,7 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      const after = loadManifest(manifestPath)!
+      const after = (await loadManifestAsync(manifestPath))!
       expect(after.files.filter((f) => f.path === shared.path).some((f) => f.freed)).toBe(false)
     })
 
@@ -313,7 +322,7 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      const after = loadManifest(manifestPath)!
+      const after = (await loadManifestAsync(manifestPath))!
       const copy = after.groups.find((g) => g.id === target)?.files.find((f) => f.copyOf)
       expect(copy?.path).toBe(moved)
     })
@@ -324,7 +333,7 @@ describe('a scan keeps the work already done', () => {
 
       await scanMedia({ outputDir })
 
-      const after = loadManifest(manifestPath)!
+      const after = (await loadManifestAsync(manifestPath))!
       expect(after.files.some((f) => f.copyOf)).toBe(false)
     })
   })

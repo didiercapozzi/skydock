@@ -109,15 +109,15 @@ const settleWorkFolder = () => {
 
 const stopOn = (server: http.Server) => {
   let stopping = false
-  const stop = () => {
+  const stop = async () => {
     if (stopping) return
     stopping = true
     cancelProcessing()
     stopTools()
-    flushAllBoardChanges()
+    setTimeout(() => process.exit(0), 2000).unref()
+    await flushAllBoardChanges()
     server.close(() => process.exit(0))
     server.closeAllConnections()
-    setTimeout(() => process.exit(0), 2000).unref()
   }
   for (const signal of ['SIGTERM', 'SIGINT'] as const) process.on(signal, stop)
   if (process.env.SKYDOCK_STOP_WITH_PARENT === '1') {

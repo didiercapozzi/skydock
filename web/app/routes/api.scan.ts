@@ -1,8 +1,8 @@
 import {
   getManifestPath,
   getOutputDir,
-  loadManifest,
-  readRecord,
+  loadManifestAsync,
+  readRecordAsync,
   RECORD_UNREADABLE,
   scanMedia
 } from '@skydock/scripts'
@@ -18,14 +18,14 @@ const action = createValidatedFormAction()({
   schema: actionArgs,
   handler: async ({ data, errors }) => {
     const outputDir = getOutputDir()
-    if (readRecord(getManifestPath(outputDir)).unreadable) {
+    if ((await readRecordAsync(getManifestPath(outputDir))).unreadable) {
       errors.addGlobalError(RECORD_UNREADABLE)
       return errors.toResponse(422)
     }
     if (data.cameras !== false) copyAgain(outputDir)
     const result = await scanMedia({ outputDir })
     void catchUp(outputDir)
-    const manifest = loadManifest(getManifestPath(outputDir))
+    const manifest = await loadManifestAsync(getManifestPath(outputDir))
     return { scan: result, ...(manifest ? boardAnswer(manifest) : { groups: [] }) }
   }
 })

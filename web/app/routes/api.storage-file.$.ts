@@ -1,4 +1,4 @@
-import { ensureNasSession, getOutputDir, loadManifest } from '@skydock/scripts'
+import { ensureNasSession, getOutputDir, loadManifestAsync } from '@skydock/scripts'
 import { openStorageFile, withinStorage } from '../../../packages/skydock-scripts/src/storageFolder'
 import type { Route } from './+types/api.storage-file.$'
 
@@ -8,7 +8,7 @@ const loader = async ({ params, request }: Route.LoaderArgs) => {
   const filePath = `/${params['*'] ?? ''}`
   const session = await ensureNasSession()
   if (!session) return new Response('The storage is not connected.', { status: 503 })
-  const manifest = loadManifest(`${getOutputDir()}/manifest.json`)
+  const manifest = await loadManifestAsync(`${getOutputDir()}/manifest.json`)
   if (!manifest || !withinStorage(manifest, session, filePath))
     return new Response('Not a file SkyDock keeps on the storage.', { status: 403 })
 

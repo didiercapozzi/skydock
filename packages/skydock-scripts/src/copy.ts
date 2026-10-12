@@ -4,9 +4,9 @@ import * as streams from 'node:stream/promises'
 import { two } from './lib/clock'
 import { counted } from './lib/counted'
 import { gentleWriter } from './lib/gentle'
-import { findMediaFiles, sameBytes } from './lib/fs'
+import { findMediaFilesAsync, sameBytes } from './lib/fs'
 import { inJob } from './live'
-import { loadManifest } from './manifest'
+import { loadManifestAsync } from './manifest'
 import { shotTimes } from './scan'
 import type { Manifest, ManifestFile } from './types'
 import { getManifestPath, getOutputDir, isCliModule, sizeOf } from './utils'
@@ -54,17 +54,21 @@ const isNameFor = (candidate: string, name: string) => {
   return candidate === name || numbered.test(candidate)
 }
 
-const namesFor = (dir: string, name: string) => {
-  const there = fs.existsSync(dir) ? fs.readdirSync(dir) : []
-  return [name, ...there.filter((n) => n !== name && isNameFor(n, name))]
-}
+const namesIn = (dir: string) => fs.promises.readdir(dir).catch(() => [] as string[])
 
-const alreadyThere = async (src: string, srcStat: fs.Stats, dir: string) => {
-  for (const name of namesFor(dir, path.basename(src))) {
+const alreadyThere = async (
+  src: string,
+  srcStat: fs.Stats,
+  dir: string,
+  listed: (dir: string) => Promise<string[]> = namesIn
+) => {
+  const base = path.basename(src)
+  const there = await listed(dir)
+  for (const name of [base, ...there.filter((n) => n !== base && isNameFor(n, base))]) {
     const existing = path.join(dir, name)
     let stat: fs.Stats
     try {
-      stat = fs.statSync(existing)
+      stat = await fs.promises.stat(existing)
     } catch {
       continue
     }
@@ -95,9 +99,9 @@ const freedAlready = (
   dir: string
 ) => givenBack(inFolder(dir), path.basename(src), srcStat.size)
 
-const loadBoard = (outputDir: string) => {
+const loadBoard = async (outputDir: string) => {
   try {
-    return loadManifest(getManifestPath(outputDir))
+    return await loadManifestAsync(getManifestPath(outputDir))
   } catch {
     return null
   }
@@ -142,7 +146,7 @@ const copyOne = async (
 const copyCamera = async ({
   cameraDir,
   outputDir = getOutputDir(),
-  manifest = loadBoard(outputDir),
+  manifest,
   onProgress,
   onCopied,
   stop,
@@ -156,10 +160,11 @@ const copyCamera = async ({
   onProgress?: (progress: CopyProgress) => void
   onCopied?: (copied: Copied) => Promise<void> | void
 }) => {
-  const files = findMediaFiles(cameraDir).filter((file) => !only || only.has(file))
+  const files = (await findMediaFilesAsync(cameraDir)).filter((file) => !only || only.has(file))
   const shots = await shotTimes(files)
-  const board = manifest
-    ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]
+  const known = manifest === undefined ? await loadBoard(outputDir) : manifest
+  const board = known
+    ? [...known.files, ...known.groups.flatMap((g) => g.files)]
     : ([] as ManifestFile[])
   const inFolder = folderIndex(board)
   const progress: CopyProgress = { done: 0, total: files.length, copied: 0, skipped: 0 }
@@ -172,7 +177,7 @@ const copyCamera = async ({
     if (stop?.aborted) throw new CopyStopped('Stopped when asked.')
     let srcStat: fs.Stats
     try {
-      srcStat = fs.statSync(src)
+      srcStat = await fs.promises.stat(src)
     } catch {
       throw new CameraGone('The camera was disconnected during the copy.')
     }
@@ -219,7 +224,7 @@ const copyBack = async ({
       copying.working(path.basename(src))
       let srcStat: fs.Stats
       try {
-        srcStat = fs.statSync(src)
+        srcStat = await fs.promises.stat(src)
       } catch {
         throw new CameraGone('The camera was disconnected during the copy.')
       }
@@ -281,6 +286,7 @@ export {
   folderIndex,
   freedAlready,
   isNameFor,
-  loadBoard
+  loadBoard,
+  namesIn
 }
 export type { Copied, CopyProgress }

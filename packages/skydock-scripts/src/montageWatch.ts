@@ -1,6 +1,6 @@
 import * as fs from 'node:fs'
 import { publish } from './live'
-import { getGroupsPath, loadManifest } from './manifest'
+import { getGroupsPath, loadManifestAsync } from './manifest'
 import {
   isNamedMontage,
   montageArtifacts,
@@ -45,13 +45,13 @@ const stampOf = (target: string) => {
   }
 }
 
-const currentManifest = (outputDir: string) => {
+const currentManifest = async (outputDir: string) => {
   const state = watch()
   const manifestPath = getManifestPath(outputDir)
   const stamp = `${stampOf(manifestPath)}|${stampOf(getGroupsPath(manifestPath))}`
   if (stamp !== state.manifest.stamp) {
     try {
-      state.manifest = { stamp, value: loadManifest(manifestPath) }
+      state.manifest = { stamp, value: await loadManifestAsync(manifestPath) }
     } catch {
       return null
     }
@@ -59,8 +59,8 @@ const currentManifest = (outputDir: string) => {
   return state.manifest.value
 }
 
-const lookAtMontages = (outputDir: string) => {
-  const manifest = currentManifest(outputDir)
+const lookAtMontages = async (outputDir: string) => {
+  const manifest = await currentManifest(outputDir)
   if (!manifest) return
   const { seen } = watch()
   let facts: ReturnType<typeof statMontageArtifacts> | null = null
@@ -101,7 +101,16 @@ const lookAtMontages = (outputDir: string) => {
 const watchMontages = (outputDir: string) => {
   const state = watch()
   state.watchers++
-  state.timer ??= setInterval(() => lookAtMontages(outputDir), EVERY_MS)
+  let looking = false
+  state.timer ??= setInterval(async () => {
+    if (looking) return
+    looking = true
+    try {
+      await lookAtMontages(outputDir)
+    } finally {
+      looking = false
+    }
+  }, EVERY_MS)
   return () => {
     state.watchers--
     if (state.watchers > 0 || !state.timer) return

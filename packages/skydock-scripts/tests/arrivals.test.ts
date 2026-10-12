@@ -4,7 +4,7 @@ import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { gatherArrivals, putOnBoard } from '../src/arrivals'
 import { computeFileId } from '../src/fileId'
-import { flushBoardChanges, loadManifest, saveManifest } from '../src/manifest'
+import { flushBoardChanges, loadManifestAsync, saveManifest } from '../src/manifest'
 import { getManifestPath } from '../src/utils'
 import { createTmpDir } from './fixtures'
 
@@ -27,9 +27,9 @@ const landed = async (name: string, at: Date, fill: number) => {
   return { dest, id: await computeFileId(dest), shot: Math.floor(at.getTime() / 1000) }
 }
 
-const board = () => {
-  flushBoardChanges(getManifestPath(outputDir))
-  return loadManifest(getManifestPath(outputDir))!
+const board = async () => {
+  await flushBoardChanges(getManifestPath(outputDir))
+  return (await loadManifestAsync(getManifestPath(outputDir)))!
 }
 
 describe('a file off a camera', () => {
@@ -38,17 +38,19 @@ describe('a file off a camera', () => {
 
     putOnBoard(outputDir, one)
 
-    expect(board().files).toMatchObject([{ id: one.id, filename: 'GX010001.MP4', path: one.dest }])
-    expect(board().groups).toEqual([])
+    expect((await board()).files).toMatchObject([
+      { id: one.id, filename: 'GX010001.MP4', path: one.dest }
+    ])
+    expect((await board()).groups).toEqual([])
   })
 
   it('is put on the board once, however often it is handed over', async () => {
     const one = await landed('GX010001.MP4', new Date(2026, 7, 1, 10, 0, 0), 1)
     putOnBoard(outputDir, one)
-    board()
+    await board()
     putOnBoard(outputDir, one)
 
-    expect(board().files).toHaveLength(1)
+    expect((await board()).files).toHaveLength(1)
   })
 })
 
@@ -58,13 +60,13 @@ describe('what came off a card, once it is done', () => {
     const b = await landed('GX010002.MP4', new Date(2026, 7, 1, 10, 2, 0), 2)
     const c = await landed('GX010003.MP4', new Date(2026, 7, 1, 10, 3, 0), 3)
     for (const one of [a, b, c]) putOnBoard(outputDir, one)
-    const filed = board()
+    const filed = await board()
     filed.files = filed.files.map((f) => (f.id === c.id ? { ...f, destination: 'Yverdon' } : f))
     saveManifest(getManifestPath(outputDir), filed)
 
-    gatherArrivals(outputDir, [a.id, b.id, c.id])
+    await gatherArrivals(outputDir, [a.id, b.id, c.id])
 
-    expect(board().groups.map((g) => g.files.map((f) => f.id))).toEqual([[a.id, b.id]])
+    expect((await board()).groups.map((g) => g.files.map((f) => f.id))).toEqual([[a.id, b.id]])
   })
 })
 
@@ -79,6 +81,6 @@ describe('many files landing together', () => {
     for (const one of files) putOnBoard(outputDir, one)
 
     expect(fs.statSync(getManifestPath(outputDir)).mtimeMs).toBe(before)
-    expect(board().files).toHaveLength(20)
+    expect((await board()).files).toHaveLength(20)
   })
 })

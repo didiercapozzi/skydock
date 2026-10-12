@@ -26,6 +26,27 @@ const findMediaFiles = (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
   return results
 }
 
+const findMediaFilesAsync = async (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
+  const results: string[] = []
+
+  const search = async (currentDir: string, depth: number) => {
+    if (depth > maxDepth) return
+    const entries = await fs.promises
+      .readdir(currentDir, { withFileTypes: true })
+      .catch(() => [] as fs.Dirent[])
+    await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = path.join(currentDir, entry.name)
+        if (entry.isDirectory()) await search(fullPath, depth + 1)
+        else if (entry.isFile() && isMediaName(entry.name)) results.push(fullPath)
+      })
+    )
+  }
+
+  await search(dir, 0)
+  return results.sort()
+}
+
 const sameBytes = async (left: string, right: string) => {
   const size = 1024 * 1024
   const a = Buffer.alloc(size)
@@ -191,6 +212,7 @@ const moveFile = async (
 export {
   DEFAULT_MAX_FIND_DEPTH,
   findMediaFiles,
+  findMediaFilesAsync,
   hashFile,
   moveFile,
   mtimeOf,

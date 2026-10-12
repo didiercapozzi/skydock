@@ -76,7 +76,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       photos,
       clips
     })
-    const board = latest()
+    const board = await latest()
     const target = board.groups.find((g) => g.id === group.id)
     if (target)
       target.montage = {

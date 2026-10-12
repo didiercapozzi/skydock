@@ -25,7 +25,7 @@ let readable = true
 const film = () => path.join(folder, 'luc_favre_20260801.mp4')
 const look = async (times = 1) => {
   for (let i = 0; i < times; i++) {
-    lookAtMontages(outputDir)
+    await lookAtMontages(outputDir)
     await new Promise((resolve) => setTimeout(resolve, 0))
   }
 }

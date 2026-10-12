@@ -29,7 +29,7 @@ const freeMontageIntent: Intent = async ({
   if (busy) return busy
   try {
     const result = await freeMontage({ manifest, outputDir, groupId: data.groupId ?? '', session })
-    const saved = latest()
+    const saved = await latest()
     markFreed(saved, result)
     saveManifest(manifestPath, saved)
     const freedGroup = saved.groups.find((g) => g.id === result.groupId)

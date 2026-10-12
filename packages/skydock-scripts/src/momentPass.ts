@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import { jumpMoments } from './jumpMoments'
 import { following, job } from './live'
-import { changeBoardSoon, flushBoardChanges, loadManifest } from './manifest'
+import { changeBoardSoon, flushBoardChanges, loadManifestAsync } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { untilQuiet } from './lib/quiet'
 import { messageOf } from './lib/words'
@@ -14,7 +14,7 @@ const needsMoments = (file: ManifestFile) =>
   file.moments === undefined &&
   fs.existsSync(file.path)
 
-const ensureMoments = async (manifest: Manifest, onFound?: () => void) => {
+const ensureMoments = async (manifest: Manifest, onFound?: () => void | Promise<void>) => {
   let found = 0
   const todo = manifest.files.filter(needsMoments)
   const finding = todo.length > 0 ? job({ type: 'moments', label: '', total: todo.length }) : null
@@ -31,7 +31,7 @@ const ensureMoments = async (manifest: Manifest, onFound?: () => void) => {
       })
       file.moments = moments
       found++
-      onFound?.()
+      await onFound?.()
       reading.done(true, { moments })
       finding?.row({ key, at: 'done' })
     } catch (e) {
@@ -65,11 +65,11 @@ const buildMissingMoments = async (outputDir?: string) => {
   running = (async () => {
     let total = 0
     for (;;) {
-      const manifest = loadManifest(manifestPath)
+      const manifest = await loadManifestAsync(manifestPath)
       if (!manifest) break
-      const found = await ensureMoments(manifest, () => {
+      const found = await ensureMoments(manifest, async () => {
         recordMoments(manifestPath, manifest)
-        flushBoardChanges(manifestPath)
+        await flushBoardChanges(manifestPath)
       })
       total += found
       if (found === 0) break

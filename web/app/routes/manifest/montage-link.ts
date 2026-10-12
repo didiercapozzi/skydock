@@ -39,7 +39,7 @@ const montageLink: Intent = async ({ data, manifest, manifestPath, latest, refus
   } catch (e) {
     return refuse(messageOf(e))
   }
-  const board = latest()
+  const board = await latest()
   for (const group of board.groups) {
     if (!group.uploaded || folderOfUpload(group.uploaded) !== folder) continue
     if (shareUrl) {

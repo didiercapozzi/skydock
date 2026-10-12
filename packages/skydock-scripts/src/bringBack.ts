@@ -79,7 +79,7 @@ const bringBack = async ({
   manifest: Manifest
   session: NasSession
   fileId: string
-  latest?: () => Manifest
+  latest?: () => Manifest | Promise<Manifest>
   onStart?: (name: string, size: number) => void
   onBytes?: (landed: number, total: number) => void
 }) => {
@@ -96,7 +96,7 @@ const bringBack = async ({
   const id = await computeFileId(entry.path)
   const { size } = fs.statSync(entry.path)
   const original = id === entry.id
-  const board = latest()
+  const board = await latest()
   const put = (file: ManifestFile) =>
     file.id === fileId ? (original ? sameFileBack : copyBack)(file, id, size) : file
   board.files = board.files.map(put)

@@ -3,7 +3,7 @@ import {
   frozenMontages,
   getManifestPath,
   getOutputDir,
-  loadManifest,
+  loadManifestAsync,
   processingNow,
   idsOf
 } from '@skydock/scripts'
@@ -23,7 +23,7 @@ type Change = {
   refuse: (message: string) => Refusal
   refuseFrozen: () => Refusal
   refuseBusy: () => Refusal | null
-  latest: () => Manifest
+  latest: () => Promise<Manifest>
 }
 
 type Intent = (change: Change) => Promise<BoardAnswer | Refusal> | BoardAnswer | Refusal
@@ -45,7 +45,7 @@ const changeOn = (manifest: Manifest, data: ActionData, refuse: (message: string
     refuseFrozen: () => refuse(EDIT_LOCKED),
     refuseBusy: () =>
       processingNow() ? refuse('Something is being processed — wait for it to finish.') : null,
-    latest: () => loadManifest(getManifestPath(outputDir)) ?? manifest
+    latest: async () => (await loadManifestAsync(getManifestPath(outputDir))) ?? manifest
   }
 }
 

@@ -2,13 +2,13 @@ import * as fs from 'node:fs'
 import {
   getManifestPath,
   getOutputDir,
-  loadManifest,
+  loadManifestAsync,
   saveManifest
 } from '../packages/skydock-scripts/src/index'
 
 const part = process.argv[2]?.toLowerCase()
 const manifestPath = getManifestPath(getOutputDir())
-const manifest = loadManifest(manifestPath)
+const manifest = await loadManifestAsync(manifestPath)
 if (!manifest) throw new Error(`No board in ${manifestPath}`)
 
 const wanted = (name: string) => !part || name.toLowerCase().includes(part)

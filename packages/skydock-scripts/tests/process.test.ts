@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
 import { cancelProcessing, processingNow, processJumps } from '../src/process'
 import { setProxyEncoder } from '../src/proxy'
@@ -150,7 +150,7 @@ describe('where a montage lands', () => {
       passenger: luc,
       files: [clip('GX010001.MP4', 0)]
     })
-    const manifest = loadManifest(manifestPath)!
+    const manifest = (await loadManifestAsync(manifestPath))!
     const later = clip('GX010002.MP4', 3600)
     manifest.files = [...manifest.files, later]
     manifest.groups.push({
@@ -221,7 +221,7 @@ describe('where a dropzone lands', () => {
     }
     fs.rmSync(gone.path)
     const { manifestPath } = write({ destination: 'Yverdon', files: [clip('DJI_0002.MP4', 0)] })
-    const manifest = loadManifest(manifestPath)!
+    const manifest = (await loadManifestAsync(manifestPath))!
     manifest.files = [...manifest.files, gone]
     manifest.groups.push({
       id: 'freed',
@@ -241,11 +241,11 @@ describe('where a dropzone lands', () => {
   it('never gives a jump’s file the name a loose file of the same second already has', async () => {
     const lone: ManifestFile = { ...clip('DJI_0002.MP4', 0), id: 'lone', destination: 'Yverdon' }
     const { manifestPath } = write({ id: 'g1', files: [clip('GX010001.MP4', 0)] })
-    const manifest = loadManifest(manifestPath)!
+    const manifest = (await loadManifestAsync(manifestPath))!
     manifest.files = [...manifest.files, lone]
     saveManifest(manifestPath, manifest)
     await processJumps({ manifestPath, outputDir, destination: 'Yverdon' })
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     after.groups[0]!.destination = 'Yverdon'
     saveManifest(manifestPath, after)
 
@@ -264,7 +264,7 @@ describe('particular files of a dropzone', () => {
     const second = clip('DJI_0002.MP4', 60)
     const { manifestPath } = write({ destination: 'Yverdon', files: [first, second] })
     await processJumps({ manifestPath, outputDir })
-    const done = loadManifest(manifestPath)!
+    const done = (await loadManifestAsync(manifestPath))!
     const copy = done.files.find((f) => f.id === first.id)!
     copy.uploaded = {
       remotePath: '/n/a.mp4',
@@ -282,7 +282,7 @@ describe('particular files of a dropzone', () => {
 
     await processJumps({ manifestPath, outputDir, destination: 'Yverdon', fileIds: [second.id!] })
 
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     expect(after.files.find((f) => f.id === second.id)!.processed).toBeDefined()
     expect(after.files.find((f) => f.id === first.id)!.uploaded).toBeDefined()
     expect(ffmpegCalls().length).toBeLessThanOrEqual(1)
@@ -292,13 +292,13 @@ describe('particular files of a dropzone', () => {
     const lone: ManifestFile = { ...clip('DJI_0003.MP4', 0), id: 'lone', destination: 'Yverdon' }
     const other: ManifestFile = { ...clip('DJI_0004.MP4', 90), id: 'other', destination: 'Yverdon' }
     const { manifestPath } = write({ id: 'g9', files: [clip('GX010009.MP4', 300)] })
-    const manifest = loadManifest(manifestPath)!
+    const manifest = (await loadManifestAsync(manifestPath))!
     manifest.files = [...manifest.files, lone, other]
     saveManifest(manifestPath, manifest)
 
     await processJumps({ manifestPath, outputDir, destination: 'Yverdon', fileIds: ['other'] })
 
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     expect(after.files.find((f) => f.id === 'other')!.processed).toBeDefined()
     expect(after.files.find((f) => f.id === 'lone')!.processed).toBeUndefined()
   })
@@ -452,9 +452,9 @@ describe('while a processing is running', () => {
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
+    const meanwhile = (await loadManifestAsync(manifestPath))!
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       if (String(cmd).startsWith('exiftool')) {
-        const meanwhile = loadManifest(manifestPath)!
         meanwhile.destinations = [...(meanwhile.destinations ?? []), { name: 'Colombier' }]
         saveManifest(manifestPath, meanwhile)
       }
@@ -463,7 +463,7 @@ describe('while a processing is running', () => {
 
     await processJumps({ manifestPath, outputDir })
 
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     expect(after.destinations?.map((d) => d.name)).toContain('Colombier')
     expect(after.groups[0]?.processed).toBe(true)
     expect(after.files[0]?.processed?.path).toMatch(/luc_favre_20260808_090909\.mp4$/)
@@ -475,9 +475,9 @@ describe('while a processing is running', () => {
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [clip('GX010001.MP4', 0)]
     })
+    const meanwhile = (await loadManifestAsync(manifestPath))!
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       if (String(cmd).startsWith('exiftool')) {
-        const meanwhile = loadManifest(manifestPath)!
         meanwhile.groups[0]!.files[0]!.cropStart = 1
         meanwhile.groups[0]!.files[0]!.cropEnd = 3
         saveManifest(manifestPath, meanwhile)
@@ -487,7 +487,7 @@ describe('while a processing is running', () => {
 
     await processJumps({ manifestPath, outputDir })
 
-    expect(loadManifest(manifestPath)!.groups[0]?.processed).not.toBe(true)
+    expect((await loadManifestAsync(manifestPath))!.groups[0]?.processed).not.toBe(true)
   })
 
   it('says what it is working on, and refuses to start a second one on top of it', async () => {
@@ -570,8 +570,8 @@ describe('turning a file', () => {
 
     await processJumps({ manifestPath, outputDir })
 
-    const { loadManifest } = await import('../src/manifest')
-    expect(loadManifest(manifestPath)!.files[0]?.processed?.source.rotation).toBe(180)
+    const { loadManifestAsync } = await import('../src/manifest')
+    expect((await loadManifestAsync(manifestPath))!.files[0]?.processed?.source.rotation).toBe(180)
   })
 })
 
@@ -744,7 +744,7 @@ describe('processing a clip that two jumps hold', () => {
       path.join('Montages', 'Ana Roth', 'videos', 'ana_roth_20260808_110909.mp4'),
       path.join('Montages', 'Luc Favre', 'videos', 'luc_favre_20260808_090909.mp4')
     ])
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     const recorded = after.files
       .filter((f) => f.path === plane.path)
       .map((f) => path.basename(path.dirname(path.dirname(f.processed?.path ?? ''))))
@@ -764,7 +764,7 @@ describe('cancelling what is being processed', () => {
 
     await expect(run).rejects.toThrow(/cancelled/)
     expect(delivered()).toEqual([])
-    expect(loadManifest(manifestPath)?.groups[0]?.processed).toBeFalsy()
+    expect((await loadManifestAsync(manifestPath))?.groups[0]?.processed).toBeFalsy()
     expect(processingNow()).toBeNull()
   })
 

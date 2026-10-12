@@ -16,7 +16,7 @@ import { recordOnStorage } from './storage'
 const markEmailed: Intent = async ({ data, manifestPath, latest, refuse }) => {
   if (!data.emailed) return refuse('Say which montage was emailed.')
   const { folder, to, sent } = data.emailed
-  const board = latest()
+  const board = await latest()
   const group = board.groups.find((g) => g.uploaded && folderOfUpload(g.uploaded) === folder)
   const at = Math.floor(Date.now() / 1000)
   if (group) {

@@ -2,7 +2,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { loadManifest, saveManifest, subscribe } from '@skydock/scripts'
+import { loadManifestAsync, saveManifest, subscribe } from '@skydock/scripts'
 import type { LiveEvent } from '@skydock/scripts'
 import { computeFileId } from '../../../packages/skydock-scripts/src/fileId'
 import { action } from '../../app/routes/api.import'
@@ -234,7 +234,7 @@ describe('a file being copied in from the computer', () => {
     )
 
     const landed = path.join(tmpDir, 'original_files', '2026-08-01', 'long.mp4')
-    const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+    const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
     expect(saved?.files[0]?.id).toBe(await computeFileId(landed))
   })
 

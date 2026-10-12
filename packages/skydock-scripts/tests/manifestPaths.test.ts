@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { createTmpDir } from './fixtures'
 
 let outputDir: string
@@ -16,7 +16,7 @@ afterEach(() => {
 })
 
 describe('a work folder reached by another name', () => {
-  it('reads a clip written with the other name as the one that is here', () => {
+  it('reads a clip written with the other name as the one that is here', async () => {
     const here = path.join(outputDir, 'original_files', '2026-10-03', 'DJI_0001.MP4')
     fs.mkdirSync(path.dirname(here), { recursive: true })
     fs.writeFileSync(here, 'x')
@@ -30,13 +30,13 @@ describe('a work folder reached by another name', () => {
       groups: []
     })
 
-    const read = loadManifest(manifestPath)!.files[0]!
+    const read = (await loadManifestAsync(manifestPath))!.files[0]!
 
     expect(read.path).toBe(here)
     expect(read.proxy).toBe(gone)
   })
 
-  it('leaves a path alone that is nowhere here', () => {
+  it('leaves a path alone that is nowhere here', async () => {
     const manifestPath = path.join(outputDir, 'manifest.json')
     const written = '/elsewhere/output/original_files/2026-10-03/DJI_0002.MP4'
     saveManifest(manifestPath, {
@@ -46,6 +46,6 @@ describe('a work folder reached by another name', () => {
       groups: []
     })
 
-    expect(loadManifest(manifestPath)!.files[0]!.path).toBe(written)
+    expect((await loadManifestAsync(manifestPath))!.files[0]!.path).toBe(written)
   })
 })

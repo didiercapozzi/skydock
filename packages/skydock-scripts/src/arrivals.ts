@@ -1,7 +1,7 @@
 import { groupNewFiles, looseFiles } from './clustering'
 import type { Copied } from './copy'
 import { originalEntry } from './importFile'
-import { changeBoardSoon, flushBoardChanges, loadManifest, saveManifest } from './manifest'
+import { changeBoardSoon, flushBoardChanges, loadManifestAsync, saveManifest } from './manifest'
 import { getManifestPath, sortFilesByMtime } from './utils'
 
 const putOnBoard = (outputDir: string, { dest, id, shot }: Copied) => {
@@ -10,12 +10,12 @@ const putOnBoard = (outputDir: string, { dest, id, shot }: Copied) => {
   })
 }
 
-const gatherArrivals = (outputDir: string, ids: string[]) => {
+const gatherArrivals = async (outputDir: string, ids: string[]) => {
   const manifestPath = getManifestPath(outputDir)
-  flushBoardChanges(manifestPath)
+  await flushBoardChanges(manifestPath)
   if (ids.length === 0) return 0
   try {
-    const manifest = loadManifest(manifestPath)
+    const manifest = await loadManifestAsync(manifestPath)
     if (!manifest) return 0
     const here = new Set(manifest.files.flatMap((f) => (f.id ? [f.id] : [])))
     const loose = looseFiles(manifest).filter((f) => f.id && ids.includes(f.id))

@@ -3,7 +3,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { reclusterGroups, shiftGroupTo, startOfFiles } from '../src/clustering'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { copyFiles, moveFiles } from '../src/moveFiles'
 import { getProxyPath } from '../src/proxy'
 import { deleteMontage } from '../src/resetMontage'
@@ -150,14 +150,14 @@ describe('copying files into another jump', () => {
 })
 
 describe('a copy, kept through what happens to a board', () => {
-  it('comes back from saving and loading as the copy it was', () => {
+  it('comes back from saving and loading as the copy it was', async () => {
     dir = createTmpDir('skydock-copies-')
     const manifestPath = path.join(dir, 'manifest.json')
     const manifest = board()
     copyFiles(manifest, new Set(['plane']), 'anas')
 
     saveManifest(manifestPath, manifest)
-    const loaded = loadManifest(manifestPath)!
+    const loaded = (await loadManifestAsync(manifestPath))!
 
     expect(idsIn(loaded, 'anas')).toEqual(['plane~1', 'ana', 'ana2'])
     expect(loaded.groups.find((g) => g.id === 'anas')?.files[0]).toMatchObject({

@@ -2,7 +2,7 @@ import {
   flushBoardChanges,
   getManifestPath,
   getOutputDir,
-  readRecord,
+  readRecordAsync,
   RECORD_UNREADABLE
 } from '@skydock/scripts'
 import type { Route } from './+types/api.manifest'
@@ -93,8 +93,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       return errors.toResponse(422)
     }
     const manifestPath = getManifestPath(getOutputDir())
-    flushBoardChanges(manifestPath)
-    const { manifest, unreadable } = readRecord(manifestPath)
+    await flushBoardChanges(manifestPath)
+    const { manifest, unreadable } = await readRecordAsync(manifestPath)
     if (!manifest)
       return refuse(unreadable ? RECORD_UNREADABLE : 'No manifest found. Run a scan first.')
     return intents[data.intent](changeOn(manifest, data, refuse))

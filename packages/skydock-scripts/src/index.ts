@@ -39,8 +39,8 @@ import {
 import {
   flushAllBoardChanges,
   flushBoardChanges,
-  loadManifest,
-  readRecord,
+  loadManifestAsync,
+  readRecordAsync,
   RECORD_UNREADABLE,
   saveManifest,
   statProcessedOutputs
@@ -282,8 +282,8 @@ export {
   listShareLinks,
   liveShareLinks,
   listRemoteFiles,
-  loadManifest,
-  readRecord,
+  loadManifestAsync,
+  readRecordAsync,
   RECORD_UNREADABLE,
   flushAllBoardChanges,
   flushBoardChanges,

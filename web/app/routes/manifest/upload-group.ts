@@ -49,7 +49,8 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
       send({ scope, label, manifest, manifestPath, outputDir, session, latest })
     )
   } catch (err) {
-    if (err instanceof UploadCancelled) return { ...boardAnswer(latest()), uploadCancelled: true }
+    if (err instanceof UploadCancelled)
+      return { ...boardAnswer(await latest()), uploadCancelled: true }
     return refuse(err instanceof Error ? err.message : 'Upload failed.')
   }
 }
@@ -82,7 +83,7 @@ const send = async ({
       onPlan: report.onPlan,
       onProgress: report.onProgress
     })
-    const saved = latest()
+    const saved = await latest()
     const proved = new Map(result.files.map((verdict) => [verdict.localPath, verdict] as const))
     for (const file of [...saved.files, ...saved.groups.flatMap((g) => g.files)]) {
       const verdict = file.processed ? proved.get(file.processed.path) : undefined

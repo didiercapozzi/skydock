@@ -7,8 +7,8 @@ import {
   getOutputDir,
   learnStorage,
   listRemoteFiles,
-  loadManifest,
-  readRecord,
+  loadManifestAsync,
+  readRecordAsync,
   processingNow,
   uploadingNow,
   saveManifest,
@@ -78,13 +78,13 @@ const lookAtStorage = async (outputDir: string) => {
     const session = await ensureNasSession()
     if (!session) return { nas, remote, storage }
     nas = { connected: true, hostname: session.hostname, username: session.username }
-    let manifest = loadManifest(manifestPath)
+    let manifest = await loadManifestAsync(manifestPath)
     if (!manifest) return { nas, remote, storage }
     if (session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
       saveManifest(manifestPath, manifest)
     const settled = settleListsDir(manifest) ?? session
     remote = await listRemoteFiles(manifest, settled)
-    manifest = loadManifest(manifestPath) ?? manifest
+    manifest = (await loadManifestAsync(manifestPath)) ?? manifest
     const forgotten = forgetLostFiles(manifest, remote)
     if (forgotten.length > 0) {
       saveManifest(manifestPath, manifest)
@@ -133,10 +133,10 @@ const lookAtStorageSoon = (outputDir: string) =>
 const loader = async (_args: Route.LoaderArgs) => {
   const outputDir = getOutputDir()
   const manifestPath = getManifestPath(outputDir)
-  flushBoardChanges(manifestPath)
-  let record: ReturnType<typeof readRecord> = { manifest: null, unreadable: true }
+  await flushBoardChanges(manifestPath)
+  let record: Awaited<ReturnType<typeof readRecordAsync>> = { manifest: null, unreadable: true }
   try {
-    record = readRecord(manifestPath)
+    record = await readRecordAsync(manifestPath)
   } catch {}
   const { manifest, unreadable } = record
   const grouped = new Set(

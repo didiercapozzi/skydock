@@ -30,7 +30,7 @@ const trashUnsortedIntent: Intent = async ({
   } catch (e) {
     return refuse(messageOf(e))
   }
-  const board = latest()
+  const board = await latest()
   dropFromBoard(board, ids)
   saveManifest(manifestPath, board)
   return boardAnswer(board)

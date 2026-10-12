@@ -1,5 +1,5 @@
 import { publish } from './live'
-import { pairStamp, readRecord, writtenHere } from './manifest'
+import { pairStamp, readRecordAsync, writtenHere } from './manifest'
 import { getManifestPath } from './utils'
 
 const EVERY_MS = 2000
@@ -25,7 +25,7 @@ const watch = () =>
     told: null
   })
 
-const lookAtBoard = (outputDir: string) => {
+const lookAtBoard = async (outputDir: string) => {
   const state = watch()
   const manifestPath = getManifestPath(outputDir)
   const stamp = pairStamp(manifestPath)
@@ -46,7 +46,7 @@ const lookAtBoard = (outputDir: string) => {
     return
   }
   try {
-    const record = readRecord(manifestPath)
+    const record = await readRecordAsync(manifestPath)
     if (!record.manifest) return
   } catch {
     return
@@ -58,7 +58,16 @@ const lookAtBoard = (outputDir: string) => {
 const watchBoard = (outputDir: string) => {
   const state = watch()
   state.watchers++
-  state.timer ??= setInterval(() => lookAtBoard(outputDir), EVERY_MS)
+  let looking = false
+  state.timer ??= setInterval(async () => {
+    if (looking) return
+    looking = true
+    try {
+      await lookAtBoard(outputDir)
+    } finally {
+      looking = false
+    }
+  }, EVERY_MS)
   return () => {
     state.watchers--
     if (state.watchers > 0 || !state.timer) return

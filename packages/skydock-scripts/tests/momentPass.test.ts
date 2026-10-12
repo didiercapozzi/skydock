@@ -5,7 +5,7 @@ import * as path from 'node:path'
 import { buildMissingMoments, ensureMoments, needsMoments } from '../src/momentPass'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, tellTools, writeTempFile } from './fixtures'
 
@@ -99,12 +99,18 @@ describe('finding where the jump is in each clip', () => {
     const manifestPath = path.join(outputDir, 'manifest.json')
     saveManifest(manifestPath, manifestOf([clip(src, 'abc123')]))
     const onDisk: (boolean | null)[] = []
+    const reads: Promise<void>[] = []
     const stop = subscribe((event) => {
       if (event.kind === 'file-done')
-        onDisk.push(loadManifest(manifestPath)?.files[0]?.moments === null)
+        reads.push(
+          loadManifestAsync(manifestPath).then((board) => {
+            onDisk.push(board?.files[0]?.moments === null)
+          })
+        )
     })
 
     await buildMissingMoments(outputDir)
+    await Promise.all(reads)
     stop()
 
     expect(onDisk).toEqual([true])
@@ -119,7 +125,7 @@ describe('finding where the jump is in each clip', () => {
     saveManifest(manifestPath, manifestOf([{ ...clip(src, 'abc123'), cropStart: 4, cropEnd: 9 }]))
     await pass
 
-    const saved = loadManifest(manifestPath)!
+    const saved = (await loadManifestAsync(manifestPath))!
     expect(saved.files[0]?.cropStart).toBe(4)
     expect(saved.files[0]?.moments).toBeNull()
   })

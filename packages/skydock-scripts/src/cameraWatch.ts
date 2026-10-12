@@ -284,7 +284,7 @@ const copyNext = async (outputDir: string) => {
           stop: stop.signal,
           only
         })
-    const onBoard = gatherArrivals(outputDir, arrived)
+    const onBoard = await gatherArrivals(outputDir, arrived)
     if (result.copied > onBoard) await scanMedia({ outputDir })
     if (result.copied > 0) void catchUp(outputDir)
     last = { ...last, ...result }
@@ -301,7 +301,7 @@ const copyNext = async (outputDir: string) => {
   } catch (e) {
     const gone = e instanceof CameraGone
     const stopped = e instanceof CopyStopped
-    const onBoard = gatherArrivals(outputDir, arrived)
+    const onBoard = await gatherArrivals(outputDir, arrived)
     if (last.copied > onBoard) await scanMedia({ outputDir }).catch(() => undefined)
     const outcome = {
       state: gone ? ('gone' as const) : stopped ? ('stopped' as const) : ('failed' as const),
@@ -459,7 +459,8 @@ const countNew = async (mount: string, outputDir: string) => {
   const { listCamera, listCameraThroughKde } = await import('./cameraFiles')
   if (isKioCamera(mount)) {
     await lookThroughKde(mount, outputDir)
-    return listCameraThroughKde(mount, outputDir).files.filter((f) => f.state === 'missing').length
+    const seen = await listCameraThroughKde(mount, outputDir)
+    return seen.files.filter((f) => f.state === 'missing').length
   }
   const listed = await listCamera(mount, outputDir, getTrashDir())
   return listed.files.filter((f) => f.state === 'missing').length

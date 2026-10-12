@@ -19,7 +19,7 @@ const destinationLink: Intent = async ({ data, manifestPath, latest, refuse }) =
   const session = await ensureNasSession()
   if (!session || !data.link) return refuse(connectFirst())
   const { folder, make } = data.link
-  const board = latest()
+  const board = await latest()
   const place = (board.destinations ?? []).find(
     (d) => d.path && normalizeNasPath(d.path) === normalizeNasPath(folder)
   )

@@ -6,7 +6,7 @@ import type { Intent } from './change'
    board as the upload left it */
 const uploadWait: Intent = async ({ latest }) => {
   await whenUploaded()
-  return boardAnswer(latest())
+  return boardAnswer(await latest())
 }
 
 /* Stops what is being uploaded, at any moment, and answers once it has stopped: nothing of it is
@@ -14,7 +14,7 @@ const uploadWait: Intent = async ({ latest }) => {
 const cancelUpload: Intent = async ({ refuse, latest }) => {
   if (!cancelUploading()) return refuse('Nothing is being uploaded.')
   await whenUploaded()
-  return { ...boardAnswer(latest()), uploadCancelled: true }
+  return { ...boardAnswer(await latest()), uploadCancelled: true }
 }
 
 export { cancelUpload, uploadWait }

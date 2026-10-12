@@ -6,7 +6,7 @@ import * as path from 'node:path'
 import { writeArchive } from '../src/archive'
 import { computeFileId } from '../src/fileId'
 import { freeMontage } from '../src/freeMontage'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import type { NasSession } from '../src/nas'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, nasStubs, stubFetch } from './fixtures'
@@ -350,7 +350,7 @@ describe('freeing an uploaded montage', () => {
     const { scanMedia } = await import('../src/scan')
     await scanMedia({ outputDir })
 
-    const after = loadManifest(manifestPath)!
+    const after = (await loadManifestAsync(manifestPath))!
     expect(after.groups[0]?.files.map((f) => f.id)).toEqual(['v1', 'p1'])
     expect(after.files.every((f) => f.freed)).toBe(true)
   })

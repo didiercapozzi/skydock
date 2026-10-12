@@ -1,4 +1,4 @@
-import { getOutputDir, loadManifest, processingNow, messageOf } from '@skydock/scripts'
+import { getOutputDir, loadManifestAsync, processingNow, messageOf } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { deleteFromCameras, listCameras } from '../../../packages/skydock-scripts/src/cameraFiles'
@@ -81,7 +81,7 @@ const action = createValidatedFormAction()({
       errors.addGlobalError('Something is being processed — wait for it to finish.')
       return errors.toResponse(422)
     }
-    const manifest = loadManifest(`${getOutputDir()}/manifest.json`)
+    const manifest = await loadManifestAsync(`${getOutputDir()}/manifest.json`)
     if (!manifest) {
       errors.addGlobalError('Nothing has been scanned yet.')
       return errors.toResponse(422)

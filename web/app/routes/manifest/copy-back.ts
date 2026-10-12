@@ -1,4 +1,4 @@
-import { loadManifest, scanMedia, messageOf } from '@skydock/scripts'
+import { loadManifestAsync, scanMedia, messageOf } from '@skydock/scripts'
 import { copyBack } from '../../../../packages/skydock-scripts/src/copy'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
@@ -16,7 +16,7 @@ const copyBackIntent: Intent = async ({ data, manifestPath, outputDir, refuse })
   try {
     const back = await copyBack({ paths, outputDir })
     await scanMedia({ outputDir })
-    const after = loadManifest(manifestPath)
+    const after = await loadManifestAsync(manifestPath)
     if (!after) return refuse('The registry could not be read after copying.')
     return { ...boardAnswer(after), copiedBack: { copied: back.copied, skipped: back.skipped } }
   } catch (e) {

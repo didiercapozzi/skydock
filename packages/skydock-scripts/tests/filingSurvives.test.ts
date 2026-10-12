@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { reclusterGroups } from '../src/clustering'
 import { containCrop, fitRatio } from '../src/frameCrop'
 import type { Manifest, ManifestFile } from '../src/types'
@@ -50,27 +50,29 @@ afterEach(() => {
 })
 
 describe('filing survives being written down and read back', () => {
-  it('keeps every rectangle a drag can produce', () => {
+  it('keeps every rectangle a drag can produce', async () => {
     for (const at of [0, 0.003, 0.1, 0.3333333333, 0.5, 0.9999999, 1]) {
       const frame = containCrop({ x: at, y: at, width: 1 - at, height: 1 - at })
       saveManifest(manifestPath, filed({ frame }))
-      const back = loadManifest(manifestPath)
+      const back = await loadManifestAsync(manifestPath)
       expect(back?.groups, `a rectangle at ${at} lost the jumps`).toHaveLength(1)
       expect(back?.groups[0].destination, `a rectangle at ${at} lost the filing`).toBe('Yverdon')
     }
   })
 
-  it('keeps a rectangle fitted to any of the offered shapes', () => {
+  it('keeps a rectangle fitted to any of the offered shapes', async () => {
     for (const ratio of [16 / 9, 9 / 16, 1, 4 / 5, 2, 1440 / 2560]) {
       const frame = fitRatio(ratio, 3840, 2160)
       saveManifest(manifestPath, filed({ frame }))
-      expect(loadManifest(manifestPath)?.groups[0].destination, `shape ${ratio}`).toBe('Yverdon')
+      expect((await loadManifestAsync(manifestPath))?.groups[0].destination, `shape ${ratio}`).toBe(
+        'Yverdon'
+      )
     }
   })
 })
 
 describe('a manifest saved with a mark no longer kept', () => {
-  it('still loads, and loses only the mark', () => {
+  it('still loads, and loses only the mark', async () => {
     saveManifest(manifestPath, filed())
     const groupsPath = path.join(outputDir, 'groups.json')
     const saved = JSON.parse(fs.readFileSync(groupsPath, 'utf8'))
@@ -81,7 +83,7 @@ describe('a manifest saved with a mark no longer kept', () => {
       JSON.stringify(Array.isArray(saved) ? list : { ...saved, groups: list })
     )
 
-    const back = loadManifest(manifestPath)
+    const back = await loadManifestAsync(manifestPath)
 
     expect(back?.groups).toHaveLength(1)
     expect(back?.groups[0].destination).toBe('Yverdon')
@@ -98,33 +100,33 @@ describe('the saved jumps, when they cannot be read', () => {
     fs.writeFileSync(groupsPath, JSON.stringify(raw))
   }
 
-  it('keeps the jumps when a fraction is a hair out of range', () => {
+  it('keeps the jumps when a fraction is a hair out of range', async () => {
     corrupt((raw) => {
       const group = raw.groups[0] as { files: { frame?: unknown }[] }
       group.files[0].frame = { x: 0, y: 0, width: 1.0000000000000002, height: 1 }
     })
 
-    const back = loadManifest(manifestPath)
+    const back = await loadManifestAsync(manifestPath)
     expect(back?.groups).toHaveLength(1)
     expect(back?.groups[0].destination).toBe('Yverdon')
     expect(back?.groups[0].passenger?.lastname).toBe('Favre')
   })
 
-  it('are never read as jumps when they are shaped like something else', () => {
+  it('are never read as jumps when they are shaped like something else', async () => {
     saveManifest(manifestPath, filed())
     fs.writeFileSync(path.join(outputDir, 'groups.json'), JSON.stringify({ groups: 'banana' }))
 
-    expect(() => loadManifest(manifestPath)).toThrow(/jumps file/)
+    await expect(loadManifestAsync(manifestPath)).rejects.toThrow(/jumps file/)
   })
 
-  it('are never read as no jumps at all when the file is unreadable', () => {
+  it('are never read as no jumps at all when the file is unreadable', async () => {
     saveManifest(manifestPath, filed())
     fs.writeFileSync(path.join(outputDir, 'groups.json'), '{ this is not json')
 
-    expect(() => loadManifest(manifestPath)).toThrow()
+    await expect(loadManifestAsync(manifestPath)).rejects.toThrow()
   })
 
-  it('never lets a rescan mint fresh jumps out of filed ones', () => {
+  it('never lets a rescan mint fresh jumps out of filed ones', async () => {
     corrupt((raw) => {
       const group = raw.groups[0] as { files: { frame?: unknown }[] }
       group.files[0].frame = { x: -0.0001, y: 0, width: 1, height: 1 }
@@ -132,7 +134,7 @@ describe('the saved jumps, when they cannot be read', () => {
 
     let loaded: Manifest | null = null
     try {
-      loaded = loadManifest(manifestPath)
+      loaded = await loadManifestAsync(manifestPath)
     } catch {
       return
     }

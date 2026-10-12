@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { loadManifest, saveManifest, scanMedia } from '../packages/skydock-scripts/src/index'
+import { loadManifestAsync, saveManifest, scanMedia } from '../packages/skydock-scripts/src/index'
 
 const count = Number(process.argv[2] ?? 2000)
 const folder = path.resolve(process.argv[3] ?? path.join(os.tmpdir(), `skydock-big-${count}`))
@@ -22,7 +22,7 @@ for (let i = 0; i < count; i++) {
 process.env.SKYDOCK_OUTPUT_DIR = folder
 await scanMedia({ outputDir: folder })
 const manifestPath = path.join(folder, 'manifest.json')
-const board = loadManifest(manifestPath)
+const board = await loadManifestAsync(manifestPath)
 if (!board) throw new Error('The scan made no board')
 board.destinations = [{ name: 'Yverdon' }, { name: 'Colombier' }]
 board.groups.forEach((g, i) => {

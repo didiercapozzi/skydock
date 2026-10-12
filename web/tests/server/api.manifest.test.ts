@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   EDIT_LOCKED,
   getGroupProcessedDir,
-  loadManifest,
+  loadManifestAsync,
   runUpload,
   saveManifest,
   uploadingNow,
@@ -204,7 +204,9 @@ describe('changes made on the board', () => {
       )
 
       expect(res.globalErrors?.[0]).toBe(UPLOADED_LOCKED)
-      expect(loadManifest(path.join(tmpDir, 'manifest.json'))?.groups[0]?.files).toHaveLength(2)
+      expect(
+        (await loadManifestAsync(path.join(tmpDir, 'manifest.json')))?.groups[0]?.files
+      ).toHaveLength(2)
     })
 
     it('needs at least one file', async () => {
@@ -437,19 +439,20 @@ describe('changes made on the board', () => {
         },
         files: [file({ id: 'a' })]
       })
-    const emailedOf = () =>
-      loadManifest(path.join(tmpDir, 'manifest.json'))?.groups.find((g) => g.id === 'group_1')
-        ?.emailed
+    const emailedOf = async () =>
+      (await loadManifestAsync(path.join(tmpDir, 'manifest.json')))?.groups.find(
+        (g) => g.id === 'group_1'
+      )?.emailed
 
     it('is kept on the board while the storage cannot be reached, and taken back', async () => {
       writeManifest([uploaded('/SkyDock/Passengers/Luc Favre')])
       const folder = '/SkyDock/Passengers/Luc Favre'
 
       await send({ intent: 'mark-emailed', emailed: { folder, to: 'luc@x.ch', sent: true } })
-      expect(emailedOf()).toMatchObject({ to: 'luc@x.ch' })
+      expect(await emailedOf()).toMatchObject({ to: 'luc@x.ch' })
 
       await send({ intent: 'mark-emailed', emailed: { folder, sent: false } })
-      expect(emailedOf()).toBeUndefined()
+      expect(await emailedOf()).toBeUndefined()
     })
 
     it('refuses a montage that is nowhere', async () => {
@@ -516,7 +519,9 @@ describe('changes made on the board', () => {
       )
 
       expect(res.globalErrors?.[0]).toBe(UPLOADED_LOCKED)
-      expect(loadManifest(path.join(tmpDir, 'manifest.json'))?.files[0]?.cropStart).toBe(2)
+      expect(
+        (await loadManifestAsync(path.join(tmpDir, 'manifest.json')))?.files[0]?.cropStart
+      ).toBe(2)
     })
 
     it('keeps a jump’s upload and link when a page that never saw them saves', async () => {
@@ -577,19 +582,21 @@ describe('changes made on the board', () => {
       fs.writeFileSync(projectPath(), '<mlt/>')
     })
 
-    const refused = (res: unknown) => {
+    const refused = async (res: unknown) => {
       expect(refusal(res).globalErrors?.[0]).toBe(EDIT_LOCKED)
-      expect(loadManifest(path.join(tmpDir, 'manifest.json'))?.groups[0]).toEqual(luc())
+      expect((await loadManifestAsync(path.join(tmpDir, 'manifest.json')))?.groups[0]).toEqual(
+        luc()
+      )
     }
 
     it('refuses a crop on one of its clips', async () => {
       const cropped = luc()
       cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
-      refused(await send({ intent: 'save-groups', groups: [cropped, other()] }))
+      await refused(await send({ intent: 'save-groups', groups: [cropped, other()] }))
     })
 
     it('refuses a new name, which would move the folder the edit is in', async () => {
-      refused(
+      await refused(
         await send({
           intent: 'save-groups',
           groups: [{ ...luc(), passenger: { firstname: 'Luc', lastname: 'Favrè' } }, other()]
@@ -598,7 +605,7 @@ describe('changes made on the board', () => {
     })
 
     it('refuses another jump joining that passenger', async () => {
-      refused(
+      await refused(
         await send({
           intent: 'save-groups',
           groups: [
@@ -614,15 +621,15 @@ describe('changes made on the board', () => {
     })
 
     it('refuses files moving out of it or into it', async () => {
-      refused(await send({ intent: 'move-files', fileIds: ['a'], destination: 'Yverdon' }))
-      refused(await send({ intent: 'move-files', fileIds: ['c'], targetGroupId: 'group_1' }))
+      await refused(await send({ intent: 'move-files', fileIds: ['a'], destination: 'Yverdon' }))
+      await refused(await send({ intent: 'move-files', fileIds: ['c'], targetGroupId: 'group_1' }))
     })
 
     it('refuses re-timing and merging it', async () => {
-      refused(
+      await refused(
         await send({ intent: 'shift-group-time', groupId: 'group_1', anchorEpoch: 1_754_009_000 })
       )
-      refused(await send({ intent: 'merge-groups', leftId: 'group_2', rightId: 'group_1' }))
+      await refused(await send({ intent: 'merge-groups', leftId: 'group_2', rightId: 'group_1' }))
     })
 
     it('lets it be prepared again', async () => {
@@ -1001,7 +1008,7 @@ describe('changes made on the board', () => {
 
       expect(res.groups[0]?.files[0]?.moments?.opening).toBe(95.5)
       expect(res.groups[0]?.files[0]?.moments?.canopy).toBe(97)
-      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
       expect(saved?.files[0]?.moments?.opening).toBe(95.5)
     })
 
@@ -1018,7 +1025,7 @@ describe('changes made on the board', () => {
 
       expect(res.success).toBe(false)
       expect(res.globalErrors?.[0]).toContain('door, opening, canopy, ground')
-      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
       expect(saved?.files[0]?.moments?.opening).toBe(94)
     })
 
@@ -1040,7 +1047,7 @@ describe('changes made on the board', () => {
         landing: 185
       })
       expect(res.groups[0]?.files[0]?.foundMoments).toBeUndefined()
-      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
       expect(saved?.files[0]?.moments?.exit).toBe(38)
     })
 
@@ -1051,7 +1058,7 @@ describe('changes made on the board', () => {
       const res = answer(await send({ intent: 'redo-moments', fileIds: ['a'] }))
 
       expect(res.groups[0]?.files[0]?.moments).toBeUndefined()
-      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
       expect(saved?.files[0]?.moments).toBeUndefined()
       expect(saved?.files[0]?.foundMoments).toBeUndefined()
     })
@@ -1073,7 +1080,7 @@ describe('changes made on the board', () => {
 
       expect(res.groups).toHaveLength(1)
       expect(res.groups[0].destination).toBeUndefined()
-      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
       expect(saved?.destinations).toEqual([])
     })
 
@@ -1111,7 +1118,7 @@ describe('changes made on the board', () => {
 
       expect(res.success).toBe(false)
       expect(res.globalErrors?.[0]).toContain('on the storage')
-      const saved = loadManifest(path.join(tmpDir, 'manifest.json'))
+      const saved = await loadManifestAsync(path.join(tmpDir, 'manifest.json'))
       expect(saved?.groups[0]?.destination).toBe('Yverdon')
     })
 

@@ -47,29 +47,29 @@ afterEach(() => {
 })
 
 describe('the board’s record changing outside the page', () => {
-  it('says nothing for what is there when it begins looking', () => {
-    lookAtBoard(outputDir)
-    lookAtBoard(outputDir)
-    lookAtBoard(outputDir)
+  it('says nothing for what is there when it begins looking', async () => {
+    await lookAtBoard(outputDir)
+    await lookAtBoard(outputDir)
+    await lookAtBoard(outputDir)
 
     expect(told()).toEqual([])
   })
 
-  it('says once, after the change has stopped changing', () => {
-    lookAtBoard(outputDir)
+  it('says once, after the change has stopped changing', async () => {
+    await lookAtBoard(outputDir)
     writtenElsewhere('second')
 
-    lookAtBoard(outputDir)
+    await lookAtBoard(outputDir)
     expect(told()).toEqual([])
-    lookAtBoard(outputDir)
-    lookAtBoard(outputDir)
-    lookAtBoard(outputDir)
+    await lookAtBoard(outputDir)
+    await lookAtBoard(outputDir)
+    await lookAtBoard(outputDir)
 
     expect(told()).toHaveLength(1)
   })
 
-  it('does not say what this process wrote itself', () => {
-    lookAtBoard(outputDir)
+  it('does not say what this process wrote itself', async () => {
+    await lookAtBoard(outputDir)
     saveManifest(manifestPath, board('mine'))
 
     for (let i = 0; i < 4; i++) lookAtBoard(outputDir)
@@ -77,8 +77,8 @@ describe('the board’s record changing outside the page', () => {
     expect(told()).toEqual([])
   })
 
-  it('does not take the temporary files beside the record for a change', () => {
-    lookAtBoard(outputDir)
+  it('does not take the temporary files beside the record for a change', async () => {
+    await lookAtBoard(outputDir)
     fs.writeFileSync(`${manifestPath}.123.abc.tmp`, 'x')
     fs.writeFileSync(path.join(outputDir, 'manifest.json.before-moments'), 'x')
 
@@ -87,8 +87,8 @@ describe('the board’s record changing outside the page', () => {
     expect(told()).toEqual([])
   })
 
-  it('says nothing for a pair that cannot be read: it would be an older board', () => {
-    lookAtBoard(outputDir)
+  it('says nothing for a pair that cannot be read: it would be an older board', async () => {
+    await lookAtBoard(outputDir)
     writtenElsewhere('second')
     fs.writeFileSync(manifestPath, '{ not json')
 

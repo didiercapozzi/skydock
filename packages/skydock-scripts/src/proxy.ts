@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import type { ProxyFact } from './boardAnswer'
-import { changeBoardSoon, flushBoardChanges, loadManifest } from './manifest'
+import { changeBoardSoon, flushBoardChanges, loadManifestAsync } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { following, job } from './live'
 import { lastComplaint, run, runWatched } from './tools'
@@ -390,12 +390,12 @@ const buildMissingProxies = async (outputDir?: string) => {
     const manifestPath = getManifestPath(dir)
     const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
     for (;;) {
-      const manifest = loadManifest(manifestPath)
+      const manifest = await loadManifestAsync(manifestPath)
       if (!manifest) break
       const pass = await ensureProxies(manifest, dir, undefined, () =>
         recordProxies(manifestPath, manifest)
       )
-      flushBoardChanges(manifestPath)
+      await flushBoardChanges(manifestPath)
       report.built += pass.built
       report.skipped = pass.skipped
       report.failed = [...new Set([...report.failed, ...pass.failed])]

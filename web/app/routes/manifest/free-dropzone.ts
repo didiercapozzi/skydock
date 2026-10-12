@@ -25,7 +25,7 @@ const freeDropzoneIntent: Intent = async ({
   if (busy) return busy
   try {
     const result = await freeDropzone({ manifest, outputDir, destination, session })
-    const saved = latest()
+    const saved = await latest()
     markDropzoneFreed(saved, result)
     saveManifest(manifestPath, saved)
     return {

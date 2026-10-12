@@ -3,7 +3,7 @@ import { describe, it, expect, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { reclusterGroups } from '../src/clustering'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { moveFiles } from '../src/moveFiles'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir } from './fixtures'
@@ -84,14 +84,14 @@ describe('making a jump of files picked in Fresh files', () => {
 })
 
 describe('a jump keeps its name', () => {
-  it('through saving and loading the board', () => {
+  it('through saving and loading the board', async () => {
     dir = createTmpDir('skydock-jump-name-')
     const manifestPath = path.join(dir, 'manifest.json')
     const manifest = unsorted()
     moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: 'Sunset load' })
 
     saveManifest(manifestPath, manifest)
-    const loaded = loadManifest(manifestPath)
+    const loaded = await loadManifestAsync(manifestPath)
 
     expect(loaded?.groups.map((g) => g.name)).toEqual(['Sunset load'])
   })

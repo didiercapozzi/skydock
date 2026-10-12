@@ -7,7 +7,7 @@ import { boardRoute } from './board-route'
 
 vi.mock(import('@skydock/scripts'), async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifest: vi.fn(() => null) }
+  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
 })
 
 

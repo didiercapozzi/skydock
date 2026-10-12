@@ -8,7 +8,7 @@ import { computeFileId } from './fileId'
 import { watchGrowth } from './lib/growing'
 import { kioReader } from './kio'
 import type { KioFile, KioReader } from './kio'
-import { findMediaFiles, sameBytes } from './lib/fs'
+import { findMediaFilesAsync, sameBytes } from './lib/fs'
 import type { Manifest } from './types'
 import { shotTimes } from './scan'
 import { getOutputDir } from './utils'
@@ -57,10 +57,10 @@ const keyOf = (name: string) => {
   return `${stem.replace(/_\d+$/, '')}${ext}`.toLowerCase()
 }
 
-const hereAlready = (outputDir: string) => {
+const hereAlready = async (outputDir: string) => {
   const byKey = new Map<string, { path: string; size: number; mtime: number }[]>()
-  const add = (file: string) => {
-    const stat = fs.statSync(file)
+  const add = async (file: string) => {
+    const stat = await fs.promises.stat(file)
     const key = keyOf(path.basename(file))
     byKey.set(key, [
       ...(byKey.get(key) ?? []),
@@ -68,7 +68,7 @@ const hereAlready = (outputDir: string) => {
     ])
   }
   const originals = path.join(outputDir, 'original_files')
-  if (fs.existsSync(originals)) for (const file of findMediaFiles(originals)) add(file)
+  await Promise.all((await findMediaFilesAsync(originals)).map(add))
   const named = (name: string, size: number) =>
     (byKey.get(keyOf(name)) ?? []).filter(
       (here) => here.size === size && isNameFor(path.basename(here.path), name)
@@ -86,7 +86,7 @@ const copyOverKio = async ({
   camera,
   reader,
   outputDir = getOutputDir(),
-  manifest = loadBoard(outputDir),
+  manifest,
   onProgress,
   onClip,
   onCopied,
@@ -104,8 +104,9 @@ const copyOverKio = async ({
   fetch?: (clip: { url: string; name: string }) => boolean
 }) => {
   const clips = await clipsUnder(reader, `${camera}/DCIM`)
-  const here = hereAlready(outputDir)
-  const board = manifest ? [...manifest.files, ...manifest.groups.flatMap((g) => g.files)] : []
+  const here = await hereAlready(outputDir)
+  const known = manifest === undefined ? await loadBoard(outputDir) : manifest
+  const board = known ? [...known.files, ...known.groups.flatMap((g) => g.files)] : []
   const progress: CopyProgress = { done: 0, total: clips.length, copied: 0, skipped: 0 }
   onProgress?.({ ...progress, files: clips.map((clip) => ({ name: clip.name, size: 0 })) })
 
@@ -163,7 +164,7 @@ const fetchInto = async (
   said: KioFile | null,
   incoming: string,
   outputDir: string,
-  here: ReturnType<typeof hereAlready>,
+  here: Awaited<ReturnType<typeof hereAlready>>,
   onPart?: (part: number) => void
 ) => {
   const partial = path.join(incoming, `${crypto.randomBytes(6).toString('hex')}-${clip.name}`)
@@ -188,7 +189,7 @@ const fetchInto = async (
   const shot = (await shotTimes([partial])).get(partial) ?? Math.floor(Date.now() / 1000)
   const dest = landingFor(outputDir, clip.name, shot)
   fs.renameSync(partial, dest)
-  here.add(dest)
+  await here.add(dest)
   return { copied: true, at: dest, size, shot }
 }
 

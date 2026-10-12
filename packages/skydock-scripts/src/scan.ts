@@ -1,17 +1,11 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import {
-  findMediaFiles,
-  getManifestPath,
-  getOutputDir,
-  isCliModule,
-  sortFilesByMtime
-} from './utils'
+import { getManifestPath, getOutputDir, isCliModule, sortFilesByMtime } from './utils'
 import { readExifMap } from './lib/exif'
 import { job } from './live'
-import { MANIFEST_VERSION, readRecord, RECORD_UNREADABLE, saveManifest } from './manifest'
+import { MANIFEST_VERSION, readRecordAsync, RECORD_UNREADABLE, saveManifest } from './manifest'
 import { computeFileId } from './fileId'
-import { mtimeOf, writeJsonAtomic } from './lib/fs'
+import { findMediaFilesAsync, mtimeOf, writeJsonAtomic } from './lib/fs'
 import { z } from 'zod'
 import { groupNewFiles, reclusterGroups } from './clustering'
 import { catchUp } from './catchUp'
@@ -106,18 +100,20 @@ const NOTHING_KNOWN: KnownIds = {}
 
 const knownIdsPath = (originalDir: string) => path.join(path.dirname(originalDir), '.ids.json')
 
-const readKnownIds = (originalDir: string) => {
+const readKnownIds = async (originalDir: string) => {
   try {
-    return knownIdsSchema.parse(JSON.parse(fs.readFileSync(knownIdsPath(originalDir), 'utf8')))
+    return knownIdsSchema.parse(
+      JSON.parse(await fs.promises.readFile(knownIdsPath(originalDir), 'utf8'))
+    )
   } catch {
     return NOTHING_KNOWN
   }
 }
 
 const scanFiles = async (originalDir: string) => {
-  const known = readKnownIds(originalDir)
+  const known = await readKnownIds(originalDir)
   const seen: KnownIds = {}
-  const files = findMediaFiles(originalDir)
+  const files = await findMediaFilesAsync(originalDir)
   const manifestFiles: ManifestFile[] = new Array(files.length)
   const stats = await Promise.all(files.map((filepath) => fs.promises.stat(filepath)))
   const unchanged = (i: number) => {
@@ -308,7 +304,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
 
   const diskFiles = await scanFiles(originalDir)
 
-  const { manifest: existing, unreadable } = readRecord(manifestPath)
+  const { manifest: existing, unreadable } = await readRecordAsync(manifestPath)
   if (unreadable) throw new Error(RECORD_UNREADABLE)
 
   if (!existing) {

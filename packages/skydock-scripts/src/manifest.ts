@@ -21,15 +21,16 @@ const storedManifestSchema = jsonText.pipe(
   })
 )
 
-const readGroupsFile = (groupsPath: string) => {
-  if (!fs.existsSync(groupsPath)) return null
-  const parsed = groupsTextSchema.safeParse(fs.readFileSync(groupsPath, 'utf-8'))
+const parseGroups = (groupsPath: string, text: string) => {
+  const parsed = groupsTextSchema.safeParse(text)
   if (!parsed.success)
     throw new UnreadableGroups(
       `${groupsPath} cannot be read as a jumps file, so it will not be read as having none:\n${z.prettifyError(parsed.error)}`
     )
   return parsed.data
 }
+
+const readTextOrNull = (file: string) => fs.promises.readFile(file, 'utf-8').catch(() => null)
 
 const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => {
   if (!groupsFile) return []
@@ -85,29 +86,50 @@ const rebaseOnto = (value: unknown, root: string, seen = new Set<unknown>()) => 
   }
 }
 
-const readPair = (manifestPath: string, groupsPath: string) => {
-  if (!fs.existsSync(manifestPath)) return null
-  const stored = storedManifestSchema.safeParse(fs.readFileSync(manifestPath, 'utf-8'))
+const assemble = (manifestPath: string, text: string, groupsFile: GroupsFile | null) => {
+  const stored = storedManifestSchema.safeParse(text)
   if (!stored.success) return null
-  const groups = resolveGroups(stored.data.files, readGroupsFile(groupsPath))
-  const manifest: Manifest = { ...stored.data, groups }
+  const manifest: Manifest = {
+    ...stored.data,
+    groups: resolveGroups(stored.data.files, groupsFile)
+  }
   rebaseOnto(manifest, path.dirname(manifestPath))
   return manifest
+}
+
+const readPair = async (manifestPath: string, groupsPath: string) => {
+  const text = await readTextOrNull(manifestPath)
+  if (text === null) return null
+  const groupsText = await readTextOrNull(groupsPath)
+  return assemble(
+    manifestPath,
+    text,
+    groupsText === null ? null : parseGroups(groupsPath, groupsText)
+  )
 }
 
 const RECORD_UNREADABLE =
   'The board’s record could not be read — nothing was changed. Mend or put back manifest.json in the work folder.'
 
-const readRecord = (manifestPath: string) => {
-  const manifest = readPair(manifestPath, getGroupsPath(manifestPath))
-  return { manifest, unreadable: manifest === null && fs.existsSync(manifestPath) }
+const readRecordAsync = async (manifestPath: string) => {
+  const manifest = await readPair(manifestPath, getGroupsPath(manifestPath))
+  const there = await fs.promises.access(manifestPath).then(
+    () => true,
+    () => false
+  )
+  return { manifest, unreadable: manifest === null && there }
 }
 
-const loadManifest = (manifestPath: string) => readRecord(manifestPath).manifest
+const loadManifestAsync = async (manifestPath: string) =>
+  (await readRecordAsync(manifestPath)).manifest
 
 const BATCH_MS = 500
 
-type Waiting = { changes: Map<string, (board: Manifest) => void>; timer: NodeJS.Timeout | null }
+type Waiting = {
+  changes: Map<string, (board: Manifest) => void>
+  timer: NodeJS.Timeout | null
+  chain: Promise<void>
+}
 
 declare global {
   var skydockBoardChanges: Map<string, Waiting> | undefined
@@ -117,7 +139,7 @@ const waitingFor = (manifestPath: string) => {
   const all = (globalThis.skydockBoardChanges ??= new Map())
   let waiting = all.get(manifestPath)
   if (!waiting) {
-    waiting = { changes: new Map(), timer: null }
+    waiting = { changes: new Map(), timer: null, chain: Promise.resolve() }
     all.set(manifestPath, waiting)
   }
   return waiting
@@ -129,31 +151,32 @@ const flushBoardChanges = (manifestPath: string) => {
   const waiting = waitingFor(manifestPath)
   if (waiting.timer) clearTimeout(waiting.timer)
   waiting.timer = null
-  if (waiting.changes.size === 0) return
+  if (waiting.changes.size === 0) return waiting.chain
   const changes = [...waiting.changes.values()]
   waiting.changes.clear()
-  try {
-    const board = loadManifest(manifestPath)
-    if (!board) return
-    for (const change of changes) change(board)
-    saveManifest(manifestPath, board)
-  } catch (e) {
-    console.warn(
-      '[Manifest] could not record what was waiting:',
-      e instanceof Error ? e.message : e
-    )
-  }
+  waiting.chain = waiting.chain.then(async () => {
+    try {
+      const board = await loadManifestAsync(manifestPath)
+      if (!board) return
+      for (const change of changes) change(board)
+      saveManifest(manifestPath, board)
+    } catch (e) {
+      console.warn(
+        '[Manifest] could not record what was waiting:',
+        e instanceof Error ? e.message : e
+      )
+    }
+  })
+  return waiting.chain
 }
 
-const flushAllBoardChanges = () => {
-  for (const manifestPath of globalThis.skydockBoardChanges?.keys() ?? [])
-    flushBoardChanges(manifestPath)
-}
+const flushAllBoardChanges = () =>
+  Promise.all([...(globalThis.skydockBoardChanges?.keys() ?? [])].map(flushBoardChanges))
 
 const changeBoardSoon = (manifestPath: string, change: (board: Manifest) => void, key?: string) => {
   const waiting = waitingFor(manifestPath)
   waiting.changes.set(key ?? `#${unnamed++}`, change)
-  waiting.timer ??= setTimeout(() => flushBoardChanges(manifestPath), BATCH_MS)
+  waiting.timer ??= setTimeout(() => void flushBoardChanges(manifestPath), BATCH_MS)
 }
 
 const statProcessedOutputs = (manifest: Manifest) => {
@@ -230,8 +253,8 @@ export {
   flushAllBoardChanges,
   flushBoardChanges,
   getGroupsPath,
-  loadManifest,
-  readRecord,
+  loadManifestAsync,
+  readRecordAsync,
   MANIFEST_VERSION,
   RECORD_UNREADABLE,
   saveManifest,

@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { startOfFiles } from './clustering'
 import { counted } from './lib/counted'
-import { loadManifest, saveManifest } from './manifest'
+import { loadManifestAsync, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
@@ -454,7 +454,7 @@ const runProcess = async (options?: ProcessOptions) => {
   const outputDir = options?.outputDir || getOutputDir()
   const manifestPath = options?.manifestPath || getManifestPath(outputDir)
 
-  const manifest = loadManifest(manifestPath)
+  const manifest = await loadManifestAsync(manifestPath)
   if (!manifest) {
     console.error('[Process] ERROR: Manifest not found')
     return { copied: 0, processedGroups: 0 }
@@ -556,7 +556,7 @@ const runProcess = async (options?: ProcessOptions) => {
       )
     }
 
-    const current = loadManifest(manifestPath) ?? manifest
+    const current = (await loadManifestAsync(manifestPath)) ?? manifest
     for (const group of current.groups) {
       const asked = asAsked.get(group.id)
       if (asked === undefined || asked !== copiedAs(group)) continue

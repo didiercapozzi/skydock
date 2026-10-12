@@ -16,7 +16,7 @@ import { CameraGone, CopyStopped, copyBack, copyCamera } from '../src/copy'
 import { forgetCamera, knownCameras, rememberCamera } from '../src/knownCameras'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { scanMedia } from '../src/scan'
 import { readTransfers } from '../src/transfers'
 import { getManifestPath } from '../src/utils'
@@ -213,7 +213,7 @@ describe('copying a camera off', () => {
   const freeIt = async (filename: string) => {
     await scanMedia({ outputDir })
     const manifestPath = getManifestPath(outputDir)
-    const manifest = loadManifest(manifestPath)!
+    const manifest = (await loadManifestAsync(manifestPath))!
     manifest.files = manifest.files.map((f) =>
       f.filename === filename ? { ...f, freed: true } : f
     )
@@ -243,7 +243,7 @@ describe('copying a camera off', () => {
 
     expect(back).toMatchObject({ copied: 1, skipped: 0 })
     expect(fs.existsSync(day('GX010001.MP4'))).toBe(true)
-    const entry = loadManifest(getManifestPath(outputDir))!.files.find(
+    const entry = (await loadManifestAsync(getManifestPath(outputDir)))!.files.find(
       (f) => f.filename === 'GX010001.MP4'
     )
     expect(entry?.freed).toBeUndefined()
@@ -352,7 +352,7 @@ describe('copying a camera again while it stays plugged in', () => {
     copyAgain(outputDir, root, [root])
     await copied()
 
-    const board = loadManifest(getManifestPath(outputDir))!
+    const board = (await loadManifestAsync(getManifestPath(outputDir)))!
     expect(board.groups.map((g) => g.files.map((f) => f.filename))).toEqual([
       ['GX01.MP4', 'GX02.MP4']
     ])
@@ -546,7 +546,7 @@ describe('a camera plugged in', () => {
     expect(
       heard.filter((e) => e.kind === 'job' && e.type === 'camera-copy' && !e.outcome).length
     ).toBeGreaterThan(1)
-    expect(loadManifest(path.join(outputDir, 'manifest.json'))?.files).toHaveLength(2)
+    expect((await loadManifestAsync(path.join(outputDir, 'manifest.json')))?.files).toHaveLength(2)
   })
 
   it('is copied once while it stays plugged in, and again when it comes back', async () => {

@@ -11,13 +11,13 @@ import {
   seenOnCamera,
   keyOfMount
 } from './cameraWatch'
-import { alreadyThere, dayFoldersOf, folderIndex, freedAlready } from './copy'
+import { alreadyThere, dayFoldersOf, folderIndex, freedAlready, namesIn } from './copy'
 import { idFromHash } from './fileId'
 import { givenBack } from './kioCamera'
 import { listBin } from './bin'
-import { findMediaFiles, moveFile, mtimeOf } from './lib/fs'
+import { findMediaFilesAsync, moveFile, mtimeOf } from './lib/fs'
 import { inJob, job } from './live'
-import { loadManifest } from './manifest'
+import { loadManifestAsync } from './manifest'
 import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
 import { getManifestPath, getTrashDir, isVideoFile, sizeOf } from './utils'
@@ -132,8 +132,9 @@ const binnedCopies = (trashDir: string) =>
 type Content = { id: string; md5: string }
 
 const known = new Map<string, Promise<Content | null>>()
-const contentOf = (file: string) => {
-  const stat = fs.statSync(file)
+const contentOf = async (file: string) => {
+  const stat = await fs.promises.stat(file).catch(() => null)
+  if (!stat) return null
   const key = `${file}\0${stat.size}\0${stat.mtimeMs}`
   const found =
     known.get(key) ??
@@ -172,25 +173,35 @@ const standingOf = (
 
 const dcimOf = (mount: string) => path.join(mount, 'DCIM')
 
+const LISTING_PARALLEL = 16
+
 const listCamera = async (mount: string, outputDir: string, trashDir: string) => {
-  const files = fs.existsSync(dcimOf(mount)) ? findMediaFiles(dcimOf(mount)) : []
+  const files = await findMediaFilesAsync(dcimOf(mount))
   const folders = await dayFoldersOf(files, outputDir)
-  const board = boardOf(loadManifest(getManifestPath(outputDir)))
+  const board = boardOf(await loadManifestAsync(getManifestPath(outputDir)))
   const binned = binnedBy(binnedCopies(trashDir), contentOf)
-  const listed: CameraFile[] = []
-  for (const file of files) {
-    const stat = fs.statSync(file)
-    const dir = folders.get(file) ?? ''
-    const original = await alreadyThere(file, stat, dir)
-    const state = standingOf(board, original, () => freedAlready(board.inFolder, file, stat, dir))
-    listed.push({
-      path: file,
-      name: path.relative(dcimOf(mount), file),
-      size: stat.size,
-      mtime: Math.floor(stat.mtimeMs / 1000),
-      state: state === 'missing' && (await binned(file, stat.size)) ? 'binned' : state
-    })
+  const names = new Map<string, Promise<string[]>>()
+  const namesOnce = (dir: string) => {
+    const found = names.get(dir) ?? namesIn(dir)
+    names.set(dir, found)
+    return found
   }
+  const listed = (
+    await inParallel(files, LISTING_PARALLEL, async (file) => {
+      const stat = await fs.promises.stat(file).catch(() => null)
+      if (!stat) return null
+      const dir = folders.get(file) ?? ''
+      const original = await alreadyThere(file, stat, dir, namesOnce)
+      const state = standingOf(board, original, () => freedAlready(board.inFolder, file, stat, dir))
+      return {
+        path: file,
+        name: path.relative(dcimOf(mount), file),
+        size: stat.size,
+        mtime: Math.floor(stat.mtimeMs / 1000),
+        state: state === 'missing' && (await binned(file, stat.size)) ? ('binned' as const) : state
+      }
+    })
+  ).filter((file): file is CameraFile => file !== null)
   return {
     camera: cameraName(mount),
     mount,
@@ -202,9 +213,9 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
   }
 }
 
-const listCameraThroughKde = (camera: string, outputDir: string) => {
+const listCameraThroughKde = async (camera: string, outputDir: string) => {
   const seen = seenOnCamera(camera)
-  const board = boardOf(loadManifest(getManifestPath(outputDir)))
+  const board = boardOf(await loadManifestAsync(getManifestPath(outputDir)))
   const listed: CameraFile[] = seen.clips.map((clip) => ({
     path: clip.url,
     name: clip.url.slice(`${camera}/DCIM/`.length),

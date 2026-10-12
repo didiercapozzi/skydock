@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { Readable } from 'node:stream'
 import { importFile } from '../src/importFile'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import type { ImportTarget } from '../src/importFile'
 import type { Manifest } from '../src/types'
 import { createTmpDir } from './fixtures'
@@ -61,7 +61,7 @@ describe('adding a file from the computer', () => {
 
     const dest = path.join(outputDir, 'original_files', '2026-08-01', 'IMG_0042.JPG')
     expect(fs.readFileSync(dest, 'utf-8')).toBe('photo')
-    const after = loadManifest(manifestPath())!
+    const after = (await loadManifestAsync(manifestPath()))!
     expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['IMG_0042.JPG'])
     expect(after.groups[0]?.processed).toBeUndefined()
     expect(after.files[0]).toMatchObject({ path: dest, size: 5 })
@@ -70,7 +70,7 @@ describe('adding a file from the computer', () => {
   it('files it under a dropzone as a lone file', async () => {
     setup()
     await add('clip.mp4', 'video', { kind: 'destination', name: 'Yverdon' })
-    const after = loadManifest(manifestPath())!
+    const after = (await loadManifestAsync(manifestPath()))!
     expect(after.files[0]?.destination).toBe('Yverdon')
     expect(after.groups[0]?.files).toEqual([])
   })
@@ -78,7 +78,7 @@ describe('adding a file from the computer', () => {
   it('leaves it loose in the sorting area when dropped there', async () => {
     setup()
     await add('clip.mp4', 'video', { kind: 'sort' })
-    const after = loadManifest(manifestPath())!
+    const after = (await loadManifestAsync(manifestPath()))!
     expect(after.files[0]?.destination).toBeUndefined()
     expect(after.groups[0]?.files).toEqual([])
   })
@@ -99,7 +99,7 @@ describe('adding a file from the computer', () => {
     const again = await add('copy of clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
 
     expect(again).toMatchObject({ outcome: 'moved', from: 'Fresh files' })
-    const after = loadManifest(manifestPath())!
+    const after = (await loadManifestAsync(manifestPath()))!
     expect(after.files).toHaveLength(1)
     expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['clip.mp4'])
     expect(fs.existsSync(path.join(outputDir, '.incoming'))).toBe(false)
@@ -110,7 +110,7 @@ describe('adding a file from the computer', () => {
     await add('clip.mp4', 'same', { kind: 'destination', name: 'Yverdon' })
     const again = await add('clip.mp4', 'same', { kind: 'destination', name: 'Yverdon' })
     expect(again.outcome).toBe('there')
-    expect(loadManifest(manifestPath())!.files[0]?.destination).toBe('Yverdon')
+    expect((await loadManifestAsync(manifestPath()))!.files[0]?.destination).toBe('Yverdon')
   })
 
   it('takes it out of a montage into a dropzone, as a drag on the board would', async () => {
@@ -118,7 +118,7 @@ describe('adding a file from the computer', () => {
     await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
     const again = await add('clip.mp4', 'same', { kind: 'destination', name: 'Yverdon' })
     expect(again).toMatchObject({ outcome: 'moved', from: 'Luc Favre' })
-    const after = loadManifest(manifestPath())!
+    const after = (await loadManifestAsync(manifestPath()))!
     expect(after.files[0]?.destination).toBe('Yverdon')
     expect(after.groups).toHaveLength(0)
   })
@@ -149,7 +149,7 @@ describe('adding a file from the computer', () => {
     const again = await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g2' })
 
     expect(again).toMatchObject({ outcome: 'copied', stays: 'Luc Favre' })
-    const after = loadManifest(manifestPath())!
+    const after = (await loadManifestAsync(manifestPath()))!
     expect(after.groups.map((g) => g.files.map((f) => f.filename))).toEqual([
       ['briefing.mp4'],
       ['briefing.mp4']
@@ -189,7 +189,7 @@ describe('adding a file from the computer', () => {
     const again = await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g2' })
 
     expect(again).toMatchObject({ outcome: 'copied', stays: 'Luc Favre' })
-    expect(loadManifest(manifestPath())!.groups[0]?.files).toHaveLength(1)
+    expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
   })
 
   it('says so, and changes nothing, when the jump already holds that footage', async () => {
@@ -199,7 +199,7 @@ describe('adding a file from the computer', () => {
     const again = await add('briefing again.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
 
     expect(again.outcome).toBe('there')
-    expect(loadManifest(manifestPath())!.groups[0]?.files).toHaveLength(1)
+    expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
   })
 
   it('leaves it in a montage that has an edit, and says why', async () => {
@@ -212,7 +212,7 @@ describe('adding a file from the computer', () => {
     const again = await add('clip.mp4', 'same', { kind: 'sort' })
     expect(again).toMatchObject({ outcome: 'kept' })
     expect((again as { reason: string }).reason).toContain('drop it on a jump')
-    expect(loadManifest(manifestPath())!.groups[0]?.files).toHaveLength(1)
+    expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
   })
 
   it('takes only a name, never a path, and only videos and photos', async () => {

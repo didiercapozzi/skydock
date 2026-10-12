@@ -9,7 +9,7 @@ import { gentleWriter } from './lib/gentle'
 import { landingFor } from './copy'
 import { dropRow } from './dropJobs'
 import { copyBegins } from './lib/quiet'
-import { loadManifest, saveManifest } from './manifest'
+import { loadManifestAsync, saveManifest } from './manifest'
 import { shotTimes } from './scan'
 import { copyFiles, moveFiles, shotTimesFor } from './moveFiles'
 import { frozenMontages, isNamedMontage } from './montageArtifacts'
@@ -135,8 +135,8 @@ const importFile = async ({
     throw new Error('Drop it on a dropzone, a montage or the sorting area.')
 
   const manifestPath = path.join(outputDir, 'manifest.json')
-  const checkTarget = () => {
-    const manifest = loadManifest(manifestPath)
+  const checkTarget = async () => {
+    const manifest = await loadManifestAsync(manifestPath)
     if (!manifest) throw new Error('No manifest found. Run a scan first.')
     if (target.kind === 'group') {
       const group = manifest.groups.find((g) => g.id === target.groupId)
@@ -148,7 +148,7 @@ const importFile = async ({
     }
     return manifest
   }
-  checkTarget()
+  await checkTarget()
 
   const incoming = path.join(outputDir, '.incoming')
   fs.mkdirSync(incoming, { recursive: true })
@@ -165,7 +165,7 @@ const importFile = async ({
     fs.utimesSync(partial, when, when)
 
     const id = counted.id()
-    const manifest = checkTarget()
+    const manifest = await checkTarget()
     const existing = manifest.files.find((f) => f.id === id)
     if (existing) {
       fs.rmSync(partial, { force: true })

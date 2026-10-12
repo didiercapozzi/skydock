@@ -14,7 +14,7 @@ import {
 } from '../src/proxy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { loadManifest, saveManifest } from '../src/manifest'
+import { loadManifestAsync, saveManifest } from '../src/manifest'
 import type { Manifest, ManifestFile } from '../src/types'
 import { createTmpDir, execSyncMock, tellTools, writeTempFile } from './fixtures'
 
@@ -471,7 +471,7 @@ describe('what else happened while the proxies were being made', () => {
     setProxyEncoder(null)
   })
 
-  const filesNow = () => loadManifest(manifestPath)!.files
+  const filesNow = async () => (await loadManifestAsync(manifestPath))!.files
 
   it('keeps a file that arrived after the pass read the manifest', async () => {
     const one = writeTempFile(outputDir, 'original_files/GX010023.MP4')
@@ -482,7 +482,7 @@ describe('what else happened while the proxies were being made', () => {
     saveManifest(manifestPath, manifestOf([fileEntry(one, 'abc123'), fileEntry(two, 'def456')]))
     await pass
 
-    expect(filesNow().map((f) => f.id)).toEqual(['abc123', 'def456'])
+    expect((await filesNow()).map((f) => f.id)).toEqual(['abc123', 'def456'])
   })
 
   it('makes the small copy of a file that arrived while it was busy', async () => {
@@ -496,7 +496,7 @@ describe('what else happened while the proxies were being made', () => {
 
     expect(report.built).toBe(2)
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'def456.mp4'))).toBe(true)
-    expect(filesNow().map((f) => f.proxy)).toEqual([
+    expect((await filesNow()).map((f) => f.proxy)).toEqual([
       path.join(outputDir, 'proxies', 'abc123.mp4'),
       path.join(outputDir, 'proxies', 'def456.mp4')
     ])
@@ -514,7 +514,7 @@ describe('what else happened while the proxies were being made', () => {
     saveManifest(manifestPath, meanwhile)
     await pass
 
-    const saved = loadManifest(manifestPath)!
+    const saved = (await loadManifestAsync(manifestPath))!
     expect(saved.files[0]!.cropStart).toBe(4)
     expect(saved.groups.map((g) => g.id)).toEqual(['group_1'])
     expect(saved.files[0]!.proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))

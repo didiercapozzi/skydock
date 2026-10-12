@@ -52,7 +52,7 @@ const sendMontage = async (
       onPlan: report.onPlan,
       onProgress: report.onProgress
     })
-    const saved = latest()
+    const saved = await latest()
     const target = saved.groups.find((g) => g.id === group.id)
     if (target) {
       target.uploaded = result.record
@@ -96,7 +96,8 @@ const sendMontage = async (
       }
     })
   } catch (err) {
-    if (err instanceof UploadCancelled) return { ...boardAnswer(latest()), uploadCancelled: true }
+    if (err instanceof UploadCancelled)
+      return { ...boardAnswer(await latest()), uploadCancelled: true }
     return refuse(err instanceof Error ? err.message : 'Upload failed.')
   }
 }

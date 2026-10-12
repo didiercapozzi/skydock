@@ -2,7 +2,7 @@ import {
   createShareLink,
   ensureNasSession,
   getOutputDir,
-  loadManifest,
+  loadManifestAsync,
   removeShareLink,
   shareLinkFor,
   messageOf
@@ -24,7 +24,7 @@ const action = createValidatedFormAction()({
       errors.addGlobalError('Connect the storage first.')
       return errors.toResponse(422)
     }
-    const manifest = loadManifest(`${getOutputDir()}/manifest.json`)
+    const manifest = await loadManifestAsync(`${getOutputDir()}/manifest.json`)
     if (!manifest || !withinStorage(manifest, session, data.path)) {
       errors.addGlobalError('That file is not in a folder SkyDock delivers into.')
       return errors.toResponse(422)
