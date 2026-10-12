@@ -4,7 +4,7 @@ import type { Intent } from './change'
 
 /* One file's time corrected on its own (RULES, Times and dates). An uploaded file is past editing,
    and a montage with an edit takes no change at all. */
-const retimeFileIntent: Intent = ({
+const retimeFileIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -21,7 +21,7 @@ const retimeFileIntent: Intent = ({
     return refuse('This file is on the storage — uploaded is the end of editing.')
   if (!retimeFile(manifest, id, data.anchorEpoch))
     return refuse('That file is no longer on the board.')
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 

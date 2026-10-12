@@ -1,8 +1,8 @@
-import * as fs from 'node:fs'
+import { mkdir, readFile } from 'node:fs/promises'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { outputKeyOf } from './fileStatus'
-import { writeJsonAtomic } from './lib/fs'
+import { pathExists, statOrNull, writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
 import { groupsFileSchema, manifestSchema } from './types'
 import type { GroupsFile, Manifest, ManifestFile } from './types'
@@ -30,7 +30,7 @@ const parseGroups = (groupsPath: string, text: string) => {
   return parsed.data
 }
 
-const readTextOrNull = (file: string) => fs.promises.readFile(file, 'utf-8').catch(() => null)
+const readTextOrNull = (file: string) => readFile(file, 'utf-8').catch(() => null)
 
 const resolveGroups = (files: ManifestFile[], groupsFile: GroupsFile | null) => {
   if (!groupsFile) return []
@@ -72,28 +72,28 @@ const MANIFEST_VERSION = 2
 const FOLDERS = /^(.*?)\/(original_files|processed|proxies|\.send|\.trash)\/(.+)$/
 const PATH_KEYS = new Set(['path', 'localPath', 'proxy'])
 
-const rebaseOnto = (value: unknown, root: string, seen = new Set<unknown>()) => {
+const rebaseOnto = async (value: unknown, root: string, seen = new Set<unknown>()) => {
   if (value === null || typeof value !== 'object' || seen.has(value)) return
   seen.add(value)
   const holder = value as Record<string, unknown>
   for (const [key, inside] of Object.entries(holder)) {
     if (typeof inside === 'string' && PATH_KEYS.has(key) && !inside.startsWith(`${root}/`)) {
       const found = FOLDERS.exec(inside)
-      if (!found || fs.existsSync(inside)) continue
+      if (!found || (await pathExists(inside))) continue
       const here = `${root}/${found[2]}/${found[3]}`
-      if (fs.existsSync(here)) holder[key] = here
-    } else rebaseOnto(inside, root, seen)
+      if (await pathExists(here)) holder[key] = here
+    } else await rebaseOnto(inside, root, seen)
   }
 }
 
-const assemble = (manifestPath: string, text: string, groupsFile: GroupsFile | null) => {
+const assemble = async (manifestPath: string, text: string, groupsFile: GroupsFile | null) => {
   const stored = storedManifestSchema.safeParse(text)
   if (!stored.success) return null
   const manifest: Manifest = {
     ...stored.data,
     groups: resolveGroups(stored.data.files, groupsFile)
   }
-  rebaseOnto(manifest, path.dirname(manifestPath))
+  await rebaseOnto(manifest, path.dirname(manifestPath))
   return manifest
 }
 
@@ -113,11 +113,7 @@ const RECORD_UNREADABLE =
 
 const readRecordAsync = async (manifestPath: string) => {
   const manifest = await readPair(manifestPath, getGroupsPath(manifestPath))
-  const there = await fs.promises.access(manifestPath).then(
-    () => true,
-    () => false
-  )
-  return { manifest, unreadable: manifest === null && there }
+  return { manifest, unreadable: manifest === null && (await pathExists(manifestPath)) }
 }
 
 const loadManifestAsync = async (manifestPath: string) =>
@@ -158,10 +154,12 @@ const flushBoardChanges = (manifestPath: string) => {
   waiting.changes.clear()
   waiting.chain = waiting.chain.then(async () => {
     try {
-      const board = await loadManifestAsync(manifestPath)
-      if (!board) return
-      for (const change of changes) await change(board)
-      saveManifest(manifestPath, board)
+      await inTurn(manifestPath, async () => {
+        const board = await loadManifestAsync(manifestPath)
+        if (!board) return
+        for (const change of changes) await change(board)
+        await writeManifest(manifestPath, board)
+      })
     } catch (e) {
       console.warn(
         '[Manifest] could not record what was waiting:',
@@ -199,30 +197,23 @@ const recordPass = (
     key
   )
 
-const statProcessedOutputs = (manifest: Manifest) => {
+const statProcessedOutputs = async (manifest: Manifest) => {
   const outputs: Record<string, { exists: boolean; size: number }> = {}
   for (const file of manifest.files) {
     if (!file.processed) continue
-    try {
-      const stat = fs.statSync(file.processed.path)
-      outputs[outputKeyOf(file)] = { exists: true, size: stat.size }
-    } catch {
-      outputs[outputKeyOf(file)] = { exists: false, size: 0 }
-    }
+    const stat = await statOrNull(file.processed.path)
+    outputs[outputKeyOf(file)] = { exists: stat !== null, size: stat?.size ?? 0 }
   }
   return outputs
 }
 
-const stampOfFile = (target: string) => {
-  try {
-    const stat = fs.statSync(target)
-    return `${stat.size}:${stat.mtimeMs}`
-  } catch {
-    return 'none'
-  }
+const stampOfFile = async (target: string) => {
+  const stat = await statOrNull(target)
+  return stat ? `${stat.size}:${stat.mtimeMs}` : 'none'
 }
-const pairStamp = (manifestPath: string) =>
-  `${stampOfFile(manifestPath)}|${stampOfFile(getGroupsPath(manifestPath))}`
+
+const pairStamp = async (manifestPath: string) =>
+  `${await stampOfFile(manifestPath)}|${await stampOfFile(getGroupsPath(manifestPath))}`
 
 declare global {
   var skydockManifestWritten: Map<string, string> | undefined
@@ -230,9 +221,23 @@ declare global {
 
 const writtenHere = () => (globalThis.skydockManifestWritten ??= new Map())
 
-const saveManifest = (manifestPath: string, manifest: Manifest) => {
+const turnsOf = new Map<string, Promise<void>>()
+
+const inTurn = (manifestPath: string, work: () => Promise<void>) => {
+  const turn = (turnsOf.get(manifestPath) ?? Promise.resolve()).then(work)
+  turnsOf.set(
+    manifestPath,
+    turn.catch(() => {})
+  )
+  return turn
+}
+
+const saveManifest = (manifestPath: string, manifest: Manifest) =>
+  inTurn(manifestPath, () => writeManifest(manifestPath, manifest))
+
+const writeManifest = async (manifestPath: string, manifest: Manifest) => {
   manifestSchema.parse(manifest)
-  fs.mkdirSync(path.dirname(manifestPath), { recursive: true })
+  await mkdir(path.dirname(manifestPath), { recursive: true })
 
   const groupsFile: GroupsFile = {
     groups: manifest.groups.map((g) => ({
@@ -253,7 +258,7 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
     }))
   }
   groupsFileSchema.parse(groupsFile)
-  writeJsonAtomic(getGroupsPath(manifestPath), groupsFile)
+  await writeJsonAtomic(getGroupsPath(manifestPath), groupsFile)
 
   const raw = {
     version: manifest.version,
@@ -262,8 +267,8 @@ const saveManifest = (manifestPath: string, manifest: Manifest) => {
     destinations: manifest.destinations ?? undefined
   }
   manifestSchema.omit({ groups: true }).parse(raw)
-  writeJsonAtomic(manifestPath, raw)
-  writtenHere().set(manifestPath, pairStamp(manifestPath))
+  await writeJsonAtomic(manifestPath, raw)
+  writtenHere().set(manifestPath, await pairStamp(manifestPath))
 }
 
 export {

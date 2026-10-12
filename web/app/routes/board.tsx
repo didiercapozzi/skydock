@@ -147,7 +147,7 @@ const loader = async (_args: Route.LoaderArgs) => {
     groups: manifest?.groups ?? [],
     looseFiles,
     destinations: manifest?.destinations ?? [],
-    outputs: manifest ? statProcessedOutputs(manifest) : {},
+    outputs: manifest ? await statProcessedOutputs(manifest) : {},
     proxies: manifest ? await statProxies(manifest, outputDir) : {},
     disk: await diskSpace(outputDir),
     outputDir,

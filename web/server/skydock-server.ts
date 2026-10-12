@@ -1,4 +1,4 @@
-import { createReadStream, existsSync } from 'node:fs'
+import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import * as http from 'node:http'
 import * as path from 'node:path'
@@ -15,6 +15,7 @@ import {
   stopTools
 } from '@skydock/scripts'
 import { letGo, sendAnswer, writeOut } from './answer'
+import { watchStalls } from './stallWatchdog'
 
 const HOST = '127.0.0.1'
 
@@ -34,11 +35,11 @@ const TYPES: Record<string, string> = {
 
 const here = path.dirname(url.fileURLToPath(import.meta.url))
 
-const clientDir = () => {
+const clientDir = async () => {
   const told = process.env.SKYDOCK_CLIENT_DIR?.trim()
   if (told) return path.resolve(told)
   const beside = path.join(here, 'client')
-  return existsSync(beside) ? beside : path.join(here, '..', 'build', 'client')
+  return (await stat(beside).catch(() => null)) ? beside : path.join(here, '..', 'build', 'client')
 }
 
 const builtFile = async (root: string, pathname: string) => {
@@ -111,10 +112,10 @@ const answer = async (
   await sendAnswer(await handle(asRequest(req, gone.signal)), res)
 }
 
-const settleWorkFolder = () => {
+const settleWorkFolder = async () => {
   const outputDir = resolveOutputDir()
   process.env.SKYDOCK_OUTPUT_DIR = outputDir
-  rememberOutputDir(outputDir)
+  await rememberOutputDir(outputDir)
   return outputDir
 }
 
@@ -140,11 +141,18 @@ const stopOn = (server: http.Server) => {
 }
 
 const start = async () => {
-  const outputDir = settleWorkFolder()
+  const outputDir = await settleWorkFolder()
   const build = (await import('../build/server/index.js' as string)) as unknown as ServerBuild
   const handle = createRequestHandler(build, 'production')
-  const root = clientDir()
+  const root = await clientDir()
+  let lastRequest = ''
+  watchStalls((lagMs) =>
+    console.warn(
+      `[SkyDock] server thread blocked for ${lagMs} ms${lastRequest ? `, last request ${lastRequest}` : ''}`
+    )
+  )
   const server = http.createServer((req, res) => {
+    lastRequest = `${req.method} ${req.url}`
     answer(handle, root, req, res).catch((e: unknown) => {
       if (letGo(e)) return
       console.error('[SkyDock]', messageOf(e))

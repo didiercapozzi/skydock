@@ -104,7 +104,7 @@ describe('bringing a template in from a kdenlive archive', () => {
     )
 
     expect(made.missing).toEqual(['logo.png'])
-    expect(listTemplates(outputDir).templates.map((t) => t.name)).toContain('club')
+    expect((await listTemplates(outputDir)).templates.map((t) => t.name)).toContain('club')
   })
 
   it('takes the name it is given rather than the archive’s', async () => {
@@ -224,35 +224,37 @@ describe('bringing in the project and the files it uses, together', () => {
 })
 
 describe('the usual template', () => {
-  it('is none until one is said', () => {
-    expect(defaultTemplate(outputDir)).toBeNull()
-    expect(listTemplates(outputDir).templates.every((t) => !t.byDefault)).toBe(true)
+  it('is none until one is said', async () => {
+    expect(await defaultTemplate(outputDir)).toBeNull()
+    expect((await listTemplates(outputDir)).templates.every((t) => !t.byDefault)).toBe(true)
   })
 
-  it('is the one named, and the templates say which one it is', () => {
-    const said = setDefaultTemplate(outputDir, 'house')
+  it('is the one named, and the templates say which one it is', async () => {
+    const said = await setDefaultTemplate(outputDir, 'house')
 
-    expect(defaultTemplate(outputDir)).toBe('house')
+    expect(await defaultTemplate(outputDir)).toBe('house')
     expect(said.templates.find((t) => t.name === 'house')?.byDefault).toBe(true)
   })
 
-  it('is refused when nothing answers to that name', () => {
-    expect(() => setDefaultTemplate(outputDir, 'nobody')).toThrow(/no template called nobody/)
-    expect(defaultTemplate(outputDir)).toBeNull()
+  it('is refused when nothing answers to that name', async () => {
+    await expect(setDefaultTemplate(outputDir, 'nobody')).rejects.toThrow(
+      /no template called nobody/
+    )
+    expect(await defaultTemplate(outputDir)).toBeNull()
   })
 
-  it('is forgotten when none is said', () => {
-    setDefaultTemplate(outputDir, 'house')
-    setDefaultTemplate(outputDir, null)
+  it('is forgotten when none is said', async () => {
+    await setDefaultTemplate(outputDir, 'house')
+    await setDefaultTemplate(outputDir, null)
 
-    expect(defaultTemplate(outputDir)).toBeNull()
+    expect(await defaultTemplate(outputDir)).toBeNull()
   })
 
   it('is not itself a template', async () => {
-    setDefaultTemplate(outputDir, 'house')
+    await setDefaultTemplate(outputDir, 'house')
     await bringIn(zipOf(whole))
 
-    expect(listTemplates(outputDir).templates.map((t) => t.name)).toEqual(['club', 'house'])
+    expect((await listTemplates(outputDir)).templates.map((t) => t.name)).toEqual(['club', 'house'])
   })
 })
 

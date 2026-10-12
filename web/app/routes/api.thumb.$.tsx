@@ -88,7 +88,7 @@ const loader = async ({
   const inWork = path.join(work, splat)
   const onCamera = path.join(path.sep, splat)
   const inWorkStat = inWork.startsWith(`${work}${path.sep}`) ? await statOrNull(inWork) : null
-  const found = inWorkStat ?? (isOnCamera(onCamera) ? await statOrNull(onCamera) : null)
+  const found = inWorkStat ?? ((await isOnCamera(onCamera)) ? await statOrNull(onCamera) : null)
   if (!found || (!inWorkStat && !found.isFile())) {
     return new Response('Not found', { status: 404 })
   }

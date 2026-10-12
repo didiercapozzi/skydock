@@ -20,7 +20,7 @@ const loader = ({ request }: Route.LoaderArgs) => {
       }
       send(': listening\n\n')
       const unsubscribe = subscribe((event) => send(`data: ${JSON.stringify(event)}\n\n`))
-      watchCameras(getOutputDir())
+      void watchCameras(getOutputDir())
       clearStaleIncoming(getOutputDir())
       resumeProxies(getOutputDir())
       resumeMoments(getOutputDir())

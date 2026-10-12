@@ -24,41 +24,41 @@ afterEach(() => {
 })
 
 describe('whether a file is on a camera', () => {
-  it('accepts a file under the card DCIM folder', () => {
-    expect(isOnCamera(path.join(card, 'DCIM', '100MEDIA', 'a.mp4'), [card])).toBe(true)
+  it('accepts a file under the card DCIM folder', async () => {
+    expect(await isOnCamera(path.join(card, 'DCIM', '100MEDIA', 'a.mp4'), [card])).toBe(true)
   })
 
-  it('refuses a file on the card outside DCIM, or a file elsewhere', () => {
-    expect(isOnCamera(path.join(card, 'notes.txt'), [card])).toBe(false)
-    expect(isOnCamera(outside, [card])).toBe(false)
+  it('refuses a file on the card outside DCIM, or a file elsewhere', async () => {
+    expect(await isOnCamera(path.join(card, 'notes.txt'), [card])).toBe(false)
+    expect(await isOnCamera(outside, [card])).toBe(false)
   })
 
-  it('refuses the DCIM folder itself and a file that is not there', () => {
-    expect(isOnCamera(path.join(card, 'DCIM'), [card])).toBe(false)
-    expect(isOnCamera(path.join(card, 'DCIM', 'missing.mp4'), [card])).toBe(false)
+  it('refuses the DCIM folder itself and a file that is not there', async () => {
+    expect(await isOnCamera(path.join(card, 'DCIM'), [card])).toBe(false)
+    expect(await isOnCamera(path.join(card, 'DCIM', 'missing.mp4'), [card])).toBe(false)
   })
 
-  it('refuses a path that climbs out of DCIM with ..', () => {
-    expect(isOnCamera(path.join(card, 'DCIM', '..', '..', 'secret.txt'), [card])).toBe(false)
-    expect(isOnCamera(`${card}/DCIM/100MEDIA/../../notes.txt`, [card])).toBe(false)
+  it('refuses a path that climbs out of DCIM with ..', async () => {
+    expect(await isOnCamera(path.join(card, 'DCIM', '..', '..', 'secret.txt'), [card])).toBe(false)
+    expect(await isOnCamera(`${card}/DCIM/100MEDIA/../../notes.txt`, [card])).toBe(false)
   })
 
-  it('refuses a link inside DCIM that leads out', () => {
+  it('refuses a link inside DCIM that leads out', async () => {
     const link = path.join(card, 'DCIM', 'link.txt')
     fs.symlinkSync(outside, link)
-    expect(isOnCamera(link, [card])).toBe(false)
+    expect(await isOnCamera(link, [card])).toBe(false)
     const dirLink = path.join(card, 'DCIM', 'dirlink')
     fs.symlinkSync(root, dirLink)
-    expect(isOnCamera(path.join(dirLink, 'secret.txt'), [card])).toBe(false)
+    expect(await isOnCamera(path.join(dirLink, 'secret.txt'), [card])).toBe(false)
   })
 
-  it('refuses everything when no camera is given', () => {
-    expect(isOnCamera(path.join(card, 'DCIM', '100MEDIA', 'a.mp4'), [])).toBe(false)
+  it('refuses everything when no camera is given', async () => {
+    expect(await isOnCamera(path.join(card, 'DCIM', '100MEDIA', 'a.mp4'), [])).toBe(false)
   })
 
-  it('refuses a camera read through KDE', () => {
+  it('refuses a camera read through KDE', async () => {
     expect(
-      isOnCamera(path.join(card, 'DCIM', '100MEDIA', 'a.mp4'), ['mtp:/HERO5 Black/Disk'])
+      await isOnCamera(path.join(card, 'DCIM', '100MEDIA', 'a.mp4'), ['mtp:/HERO5 Black/Disk'])
     ).toBe(false)
   })
 })

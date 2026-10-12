@@ -31,7 +31,7 @@ const freeMontageIntent: Intent = async ({
     const result = await freeMontage({ manifest, outputDir, groupId: data.groupId ?? '', session })
     const saved = await latest()
     markFreed(saved, result)
-    saveManifest(manifestPath, saved)
+    await saveManifest(manifestPath, saved)
     const freedGroup = saved.groups.find((g) => g.id === result.groupId)
     const listed = freedGroup ? entryOfMontage(freedGroup, montagesRemoteDir(saved, session)) : null
     const listing = listed

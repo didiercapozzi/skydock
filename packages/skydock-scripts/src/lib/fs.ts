@@ -3,7 +3,10 @@ import * as fs from 'node:fs'
 import type { FileHandle } from 'node:fs/promises'
 import {
   access,
+  chmod,
+  chown,
   copyFile,
+  lstat,
   mkdir,
   open,
   readdir,
@@ -40,26 +43,8 @@ const removeIfEmpty = async (dir: string) => {
   } catch {}
 }
 
-const findMediaFilesAsync = async (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
-  const results: string[] = []
-
-  const search = async (currentDir: string, depth: number) => {
-    if (depth > maxDepth) return
-    const entries = await readdir(currentDir, { withFileTypes: true }).catch(
-      () => [] as fs.Dirent[]
-    )
-    await Promise.all(
-      entries.map(async (entry) => {
-        const fullPath = path.join(currentDir, entry.name)
-        if (entry.isDirectory()) await search(fullPath, depth + 1)
-        else if (entry.isFile() && isMediaName(entry.name)) results.push(fullPath)
-      })
-    )
-  }
-
-  await search(dir, 0)
-  return results.sort()
-}
+const findMediaFilesAsync = async (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) =>
+  (await walkFiles(dir, maxDepth)).filter((file) => isMediaName(path.basename(file))).sort()
 
 const sameBytes = async (left: string, right: string) => {
   const size = 1024 * 1024
@@ -88,65 +73,22 @@ const sameBytes = async (left: string, right: string) => {
   }
 }
 
-type WalkItem = {
-  full: string
-  dir: boolean
-  file: boolean
-}
-
-const pushEntries = (stack: WalkItem[], dir: string, entries: fs.Dirent[]) => {
-  for (let i = entries.length - 1; i >= 0; i--) {
-    const entry = entries[i]
-    if (!entry) continue
-    stack.push({
-      full: path.join(dir, entry.name),
-      dir: entry.isDirectory(),
-      file: entry.isFile()
-    })
-  }
-}
-
 const mtimeSeconds = (stat: { mtimeMs: number }) => Math.floor(stat.mtimeMs / 1000)
 
-const walkFiles = (dir: string) => {
-  const results: string[] = []
-  const stack: WalkItem[] = []
-  try {
-    pushEntries(stack, dir, fs.readdirSync(dir, { withFileTypes: true }))
-  } catch {
-    return results
+const walkFiles = async (dir: string, maxDepth = Infinity) => {
+  const walk = async (here: string, depth: number): Promise<string[]> => {
+    if (depth > maxDepth) return []
+    const entries = await readdir(here, { withFileTypes: true }).catch(() => [])
+    const found = await Promise.all(
+      entries.map((entry) => {
+        const full = path.join(here, entry.name)
+        if (entry.isDirectory()) return walk(full, depth + 1)
+        return entry.isFile() ? [full] : []
+      })
+    )
+    return found.flat()
   }
-  while (stack.length > 0) {
-    const item = stack.pop()
-    if (!item) continue
-    if (!item.dir) {
-      if (item.file) results.push(item.full)
-      continue
-    }
-    try {
-      pushEntries(stack, item.full, fs.readdirSync(item.full, { withFileTypes: true }))
-    } catch {
-      continue
-    }
-  }
-  return results
-}
-
-const walkFilesAsync = async (dir: string) => {
-  const results: string[] = []
-  const stack: WalkItem[] = []
-  const read = async (where: string) => {
-    const entries = await readdir(where, { withFileTypes: true }).catch(() => null)
-    if (entries) pushEntries(stack, where, entries)
-  }
-  await read(dir)
-  while (stack.length > 0) {
-    const item = stack.pop()
-    if (!item) continue
-    if (item.dir) await read(item.full)
-    else if (item.file) results.push(item.full)
-  }
-  return results
+  return walk(dir, 0)
 }
 
 const hashFile = async (filePath: string, algorithm = 'md5', onBytes?: (read: number) => void) => {
@@ -160,37 +102,36 @@ const hashFile = async (filePath: string, algorithm = 'md5', onBytes?: (read: nu
   return hash.digest('hex')
 }
 
-const openToHost = (dir: string, like: string) => {
-  const owner = fs.statSync(like)
+const openToHost = async (dir: string, like: string) => {
+  const owner = await stat(like)
   const root = process.getuid?.() === 0
-  const stack = [dir]
-  while (stack.length > 0) {
-    const here = stack.pop()!
+  const walk = async (here: string): Promise<void> => {
     try {
-      const stat = fs.lstatSync(here)
-      if (stat.isSymbolicLink()) continue
-      if (root && (stat.uid !== owner.uid || stat.gid !== owner.gid))
-        fs.chownSync(here, owner.uid, owner.gid)
-      fs.chmodSync(here, stat.isDirectory() ? 0o777 : stat.mode | 0o666)
-      if (stat.isDirectory())
-        for (const name of fs.readdirSync(here)) stack.push(path.join(here, name))
+      const seen = await lstat(here)
+      if (seen.isSymbolicLink()) return
+      if (root && (seen.uid !== owner.uid || seen.gid !== owner.gid))
+        await chown(here, owner.uid, owner.gid)
+      await chmod(here, seen.isDirectory() ? 0o777 : seen.mode | 0o666)
+      if (seen.isDirectory())
+        await Promise.all((await readdir(here)).map((name) => walk(path.join(here, name))))
     } catch {}
   }
+  await walk(dir)
 }
 
-const writeJsonAtomic = (target: string, value: unknown) => {
+const writeJsonAtomic = async (target: string, value: unknown) => {
   const tmp = `${target}.${process.pid}.${crypto.randomBytes(4).toString('hex')}.tmp`
   try {
-    const fd = fs.openSync(tmp, 'w')
+    const handle = await open(tmp, 'w')
     try {
-      fs.writeFileSync(fd, JSON.stringify(value, null, 2))
-      fs.fsyncSync(fd)
+      await handle.writeFile(JSON.stringify(value, null, 2))
+      await handle.sync()
     } finally {
-      fs.closeSync(fd)
+      await handle.close()
     }
-    fs.renameSync(tmp, target)
+    await rename(tmp, target)
   } catch (e) {
-    fs.rmSync(tmp, { force: true })
+    await rm(tmp, { force: true })
     throw e
   }
 }
@@ -246,6 +187,5 @@ export {
   sameBytes,
   statOrNull,
   walkFiles,
-  walkFilesAsync,
   writeJsonAtomic
 }

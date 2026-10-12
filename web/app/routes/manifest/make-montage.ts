@@ -42,7 +42,7 @@ const makeMontageIntent: Intent = async ({
         passenger,
         startsAt: data.anchorEpoch
       })
-      saveManifest(manifestPath, manifest)
+      await saveManifest(manifestPath, manifest)
       return await boardAnswer(manifest)
     }
     const { copied, passedOver, freed } = copyIntoMontage(manifest, ids, passenger)
@@ -52,7 +52,7 @@ const makeMontageIntent: Intent = async ({
           ? 'Freed from this machine — on the storage only, with no file here to copy.'
           : 'Those files are no longer here.'
       )
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     return { ...(await boardAnswer(manifest)), copied: { files: copied, passedOver } }
   } catch (e) {
     return refuse(messageOf(e))

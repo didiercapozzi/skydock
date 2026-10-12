@@ -32,7 +32,7 @@ const trashUnsortedIntent: Intent = async ({
   }
   const board = await latest()
   dropFromBoard(board, ids)
-  saveManifest(manifestPath, board)
+  await saveManifest(manifestPath, board)
   return boardAnswer(board)
 }
 

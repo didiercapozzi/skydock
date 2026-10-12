@@ -14,7 +14,7 @@ import type { Intent } from './change'
    an uploaded jump would leave the board saying it belongs nowhere while the storage says otherwise.
    Not while something is being processed, because what is being written is being written into that
    place's folder. */
-const removeDestinationIntent: Intent = ({
+const removeDestinationIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -41,7 +41,7 @@ const removeDestinationIntent: Intent = ({
     return refuse('Something there is on the storage — uploaded is the end of editing.')
 
   removeDestination(manifest, name)
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 

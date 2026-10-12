@@ -50,7 +50,7 @@ const montageLink: Intent = async ({ data, manifest, manifestPath, latest, refus
       delete group.publish
     }
   }
-  saveManifest(manifestPath, board)
+  await saveManifest(manifestPath, board)
   let known = true
   const listing = await recordOnStorage(
     session,

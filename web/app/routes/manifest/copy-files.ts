@@ -28,7 +28,7 @@ const copyFilesIntent: Intent = async ({
             ? 'Freed from this machine — it is on the storage only, with no file here to copy.'
             : 'Those files are no longer here.'
       )
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     return { ...(await boardAnswer(manifest)), copied: { files: copied, passedOver } }
   } catch (e) {
     return refuse(messageOf(e))

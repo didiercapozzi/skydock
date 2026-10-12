@@ -120,7 +120,7 @@ beforeEach(async () => {
   previous = process.env.SKYDOCK_OUTPUT_DIR
   process.env.SKYDOCK_OUTPUT_DIR = tmpDir
   process.env.SKYDOCK_CONFIG_DIR = tmpDir
-  saveManifest(path.join(tmpDir, 'manifest.json'), manifest)
+  await saveManifest(path.join(tmpDir, 'manifest.json'), manifest)
   await saveNasSession(
     {
       hostname: 'https://nas.local:5001',

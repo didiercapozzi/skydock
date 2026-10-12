@@ -35,7 +35,7 @@ const sendMontage = async (
     return refuse('This montage is being processed — upload it once that is done.')
   const session = await ensureNasSession()
   if (!session) return refuse(connectFirst())
-  const outputs = statProcessedOutputs(manifest)
+  const outputs = await statProcessedOutputs(manifest)
   const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
   const key = montageUploadKey(group.id)
@@ -59,7 +59,7 @@ const sendMontage = async (
       if (result.record.shareUrl) target.publish = { shareUrl: result.record.shareUrl }
     }
     report.done()
-    saveManifest(manifestPath, saved)
+    await saveManifest(manifestPath, saved)
     return pastCancelling(async () => {
       const listed = target ? entryOfMontage(target, montagesRemoteDir(saved, session)) : null
       const listing = listed

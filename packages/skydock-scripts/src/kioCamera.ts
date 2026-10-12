@@ -187,7 +187,7 @@ const fetchInto = async (
     return { copied: false, at: twin.path, size, shot: 0 }
   }
   const shot = (await shotTimes([partial])).get(partial) ?? Math.floor(Date.now() / 1000)
-  const dest = landingFor(outputDir, clip.name, shot)
+  const dest = await landingFor(outputDir, clip.name, shot)
   await rename(partial, dest)
   await here.add(dest)
   return { copied: true, at: dest, size, shot }

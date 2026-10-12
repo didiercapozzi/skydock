@@ -21,5 +21,5 @@ for (const file of [...manifest.files, ...manifest.groups.flatMap((g) => g.files
 }
 
 await copyFile(manifestPath, `${manifestPath}.before-moments`)
-saveManifest(manifestPath, manifest)
+await saveManifest(manifestPath, manifest)
 console.log(`${cleared.size} clip(s) forgot their jump. Press Scan on the board to find it again.`)

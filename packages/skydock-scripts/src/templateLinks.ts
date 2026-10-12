@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { writeFile } from 'node:fs/promises'
 import * as path from 'node:path'
 import { XMLBuilder } from 'fast-xml-parser'
 import { z } from 'zod'
@@ -6,9 +6,9 @@ import { XML_OPTIONS, attrsOf, walkAssets } from './lib/mlt'
 import { walkFiles } from './lib/fs'
 import { readTemplate } from './montage'
 
-const filesBeside = (dir: string) => {
+const filesBeside = async (dir: string) => {
   const by = new Map<string, string>()
-  for (const file of walkFiles(dir)) {
+  for (const file of await walkFiles(dir)) {
     const name = path.basename(file)
     const held = by.get(name)
     if (!held || file.split(path.sep).length < held.split(path.sep).length) by.set(name, file)
@@ -20,10 +20,10 @@ const wayTo = (dir: string, target: string) => path.relative(dir, target).split(
 
 type Relinked = { relinked: string[]; missing: string[] }
 
-const relinkTemplate = (projectPath: string): Relinked => {
-  const { document, mltNode, mlt } = readTemplate(projectPath)
+const relinkTemplate = async (projectPath: string): Promise<Relinked> => {
+  const { document, mltNode, mlt } = await readTemplate(projectPath)
   const dir = path.dirname(projectPath)
-  const beside = filesBeside(dir)
+  const beside = await filesBeside(dir)
   const relinked: string[] = []
   const missing: string[] = []
 
@@ -53,7 +53,7 @@ const relinkTemplate = (projectPath: string): Relinked => {
     .parse(
       new XMLBuilder({ ...XML_OPTIONS, format: true, suppressEmptyNode: true }).build(document)
     )
-  fs.writeFileSync(
+  await writeFile(
     projectPath,
     built.startsWith('<?xml') ? built : `<?xml version='1.0' encoding='utf-8'?>\n${built}`,
     'utf-8'

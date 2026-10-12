@@ -20,7 +20,7 @@ const takeBack =
     } catch (e) {
       return refuse(messageOf(e))
     }
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     return boardAnswer(manifest)
   }
 

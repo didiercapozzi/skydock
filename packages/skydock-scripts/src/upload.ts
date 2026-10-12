@@ -1,4 +1,4 @@
-import { pathExists, walkFilesAsync } from './lib/fs'
+import { pathExists, walkFiles } from './lib/fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
 import { parentOf } from './paths'
@@ -215,7 +215,7 @@ const resolveUploadTargets = async ({
   const pending = await Promise.all(
     targets.map(async (target) => {
       if (!target.destination || target.files || !(await pathExists(target.localDir))) return target
-      const left = (await walkFilesAsync(target.localDir)).filter((file) => !sent.has(file))
+      const left = (await walkFiles(target.localDir)).filter((file) => !sent.has(file))
       return { ...target, files: left }
     })
   )

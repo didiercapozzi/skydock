@@ -16,7 +16,7 @@ import {
 import type { Arriving } from '../../../packages/skydock-scripts/src/templates'
 import type { Route } from './+types/api.templates'
 
-const loader = () => Response.json(listTemplates(getOutputDir()))
+const loader = async () => Response.json(await listTemplates(getOutputDir()))
 
 const formSchema = z.object({
   name: z.string().trim().max(60).optional(),
@@ -51,7 +51,7 @@ const action = async ({ request }: Route.ActionArgs) => {
     if (said.data.byDefault !== undefined)
       return Response.json({
         ok: true,
-        ...setDefaultTemplate(outputDir, said.data.byDefault || null)
+        ...(await setDefaultTemplate(outputDir, said.data.byDefault || null))
       })
 
     const files = form.getAll('files').filter((entry): entry is File => entry instanceof File)
@@ -60,7 +60,7 @@ const action = async ({ request }: Route.ActionArgs) => {
 
     arrived = await held(files)
     const template = await importTemplate({ outputDir, files: arrived, name: said.data.name })
-    return Response.json({ ok: true, template, ...listTemplates(outputDir) })
+    return Response.json({ ok: true, template, ...(await listTemplates(outputDir)) })
   } catch (e) {
     return Response.json({ ok: false, error: messageOf(e) }, { status: 422 })
   } finally {

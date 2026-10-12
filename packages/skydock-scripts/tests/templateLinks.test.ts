@@ -35,72 +35,72 @@ afterEach(() => {
 })
 
 describe('a template that names its files where they were on another machine', () => {
-  it('points each one at the copy that came with it', () => {
+  it('points each one at the copy that came with it', async () => {
     put('template files/music.mp3')
     const project = wrote(
       '<chain id="c0"><property name="resource">/home/someone/club/template files/music.mp3</property></chain>'
     )
 
-    expect(relinkTemplate(project)).toEqual({ relinked: ['music.mp3'], missing: [] })
+    expect(await relinkTemplate(project)).toEqual({ relinked: ['music.mp3'], missing: [] })
     expect(said(project)).toContain('<property name="resource">template files/music.mp3</property>')
   })
 
-  it('finds it by its name even when it came in beside the project rather than in a folder', () => {
+  it('finds it by its name even when it came in beside the project rather than in a folder', async () => {
     put('logo.png')
     const project = wrote(
       '<chain id="c0"><property name="resource">/elsewhere/deep/branding/logo.png</property></chain>'
     )
 
-    relinkTemplate(project)
+    await relinkTemplate(project)
     expect(said(project)).toContain('<property name="resource">logo.png</property>')
   })
 
-  it('points the images inside its titles at theirs too, leaving the rest of the title alone', () => {
+  it('points the images inside its titles at theirs too, leaving the rest of the title alone', async () => {
     put('template files/logo.png')
     const project = wrote(
       '<producer id="p0"><property name="xmldata">&lt;kdenlivetitle&gt;&lt;item type="text"&gt;hello&lt;/item&gt;&lt;content url="/home/someone/club/template files/logo.png"/&gt;&lt;/kdenlivetitle&gt;</property></producer>'
     )
 
-    expect(relinkTemplate(project).relinked).toEqual(['logo.png'])
+    expect((await relinkTemplate(project)).relinked).toEqual(['logo.png'])
     const after = said(project)
     expect(after).toContain('content url="template files/logo.png"')
     expect(after).toContain('&lt;item type="text"&gt;hello&lt;/item&gt;')
   })
 
-  it('leaves a file nothing was brought in for exactly as it was, and says it is missing', () => {
+  it('leaves a file nothing was brought in for exactly as it was, and says it is missing', async () => {
     const project = wrote(
       '<chain id="c0"><property name="resource">/home/someone/club/music.mp3</property></chain>'
     )
 
-    expect(relinkTemplate(project)).toEqual({ relinked: [], missing: ['music.mp3'] })
+    expect(await relinkTemplate(project)).toEqual({ relinked: [], missing: ['music.mp3'] })
     expect(said(project)).toContain(
       '<property name="resource">/home/someone/club/music.mp3</property>'
     )
   })
 
-  it('leaves what is not a file at all: a colour, the empty clip, a producer naming nothing', () => {
+  it('leaves what is not a file at all: a colour, the empty clip, a producer naming nothing', async () => {
     const project = wrote(
       '<producer id="p0"><property name="resource">0x000000ff</property></producer>\n' +
         '<producer id="p1"><property name="resource">black</property></producer>\n' +
         '<producer id="p2"><property name="resource"/></producer>'
     )
 
-    expect(relinkTemplate(project)).toEqual({ relinked: [], missing: [] })
+    expect(await relinkTemplate(project)).toEqual({ relinked: [], missing: [] })
     expect(said(project)).toContain('0x000000ff')
     expect(said(project)).toContain('black')
   })
 
-  it('forgets the folder the other machine counted from, since every file now says its own way', () => {
+  it('forgets the folder the other machine counted from, since every file now says its own way', async () => {
     put('music.mp3')
     const project = wrote(
       '<chain id="c0"><property name="resource">/home/someone/club/music.mp3</property></chain>'
     )
 
-    relinkTemplate(project)
+    await relinkTemplate(project)
     expect(said(project)).not.toContain('/home/someone/club')
   })
 
-  it('changes nothing in one whose files already say their own way', () => {
+  it('changes nothing in one whose files already say their own way', async () => {
     put('template files/music.mp3')
     const project = wrote(
       '<chain id="c0"><property name="resource">template files/music.mp3</property></chain>',
@@ -108,11 +108,11 @@ describe('a template that names its files where they were on another machine', (
     )
     const before = said(project)
 
-    expect(relinkTemplate(project)).toEqual({ relinked: [], missing: [] })
+    expect(await relinkTemplate(project)).toEqual({ relinked: [], missing: [] })
     expect(said(project)).toBe(before)
   })
 
-  it('leaves a template that reads as whole reading as whole', () => {
+  it('leaves a template that reads as whole reading as whole', async () => {
     put('template files/music.mp3')
     put('template files/logo.png')
     const project = wrote(
@@ -120,8 +120,8 @@ describe('a template that names its files where they were on another machine', (
         '<producer id="p0"><property name="xmldata">&lt;content url="/home/someone/club/template files/logo.png"/&gt;</property></producer>'
     )
 
-    relinkTemplate(project)
-    const read = inspectTemplate(project)
+    await relinkTemplate(project)
+    const read = await inspectTemplate(project)
     expect(read.missing).toEqual([])
     expect(read.assets.map((a) => a.name).sort()).toEqual(['logo.png', 'music.mp3'])
   })

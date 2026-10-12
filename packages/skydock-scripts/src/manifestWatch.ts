@@ -28,7 +28,7 @@ const watch = () =>
 const lookAtBoard = async (outputDir: string) => {
   const state = watch()
   const manifestPath = getManifestPath(outputDir)
-  const stamp = pairStamp(manifestPath)
+  const stamp = await pairStamp(manifestPath)
   if (state.seen === null) {
     state.seen = stamp
     state.told = stamp

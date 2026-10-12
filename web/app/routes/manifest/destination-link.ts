@@ -43,7 +43,7 @@ const destinationLink: Intent = async ({ data, manifestPath, latest, refuse }) =
   } catch (e) {
     return refuse(messageOf(e))
   }
-  saveManifest(manifestPath, board)
+  await saveManifest(manifestPath, board)
   return boardAnswer(board)
 }
 

@@ -102,7 +102,7 @@ const saveGroups: Intent = async ({
         rotation: update.rotation
       }
   }
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 

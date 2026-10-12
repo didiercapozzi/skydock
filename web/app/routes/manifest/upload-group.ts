@@ -36,7 +36,7 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
     return refuse('It is being processed — upload it once that is done.')
   const session = await ensureNasSession()
   if (!session) return refuse(connectFirst())
-  const outputs = statProcessedOutputs(manifest)
+  const outputs = await statProcessedOutputs(manifest)
   const scopeFiles = [
     ...asked.flatMap((g) => g.files),
     ...(scope.destination ? manifest.files.filter((f) => f.destination === scope.destination) : [])
@@ -109,7 +109,7 @@ const send = async ({
     }
     saved.destinations = destinations
     report.done()
-    saveManifest(manifestPath, saved)
+    await saveManifest(manifestPath, saved)
     return {
       ...(await boardAnswer(saved)),
       remote: await pastCancelling(() => listRemoteFiles(saved, session)),

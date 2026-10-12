@@ -1,4 +1,5 @@
 import * as fs from 'node:fs'
+import { mkdir } from 'node:fs/promises'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
@@ -24,11 +25,25 @@ const readFile = (target: string) => {
   }
 }
 
-const saveSettings = (next: Settings, configDir?: string) => {
-  const target = settingsPath(configDir)
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  writeJsonAtomic(target, { ...readSettings(configDir), ...next })
+let turn: Promise<void> = Promise.resolve()
+
+const inSettingsTurn = <T>(work: () => Promise<T>) => {
+  const mine = turn.then(work)
+  turn = mine.then(
+    () => {},
+    () => {}
+  )
+  return mine
 }
+
+const writeSettings = async (next: Settings, configDir?: string) => {
+  const target = settingsPath(configDir)
+  await mkdir(path.dirname(target), { recursive: true })
+  await writeJsonAtomic(target, { ...readSettings(configDir), ...next })
+}
+
+const saveSettings = (next: Settings, configDir?: string) =>
+  inSettingsTurn(() => writeSettings(next, configDir))
 
 const resolveOutputDir = (configDir?: string) =>
   process.env.SKYDOCK_OUTPUT_DIR ||
@@ -36,10 +51,17 @@ const resolveOutputDir = (configDir?: string) =>
   process.env.SKYDOCK_DEFAULT_OUTPUT_DIR ||
   getOutputDir()
 
-const rememberOutputDir = (dir: string, configDir?: string) => {
+const rememberOutputDir = async (dir: string, configDir?: string) => {
   if (readSettings(configDir).outputDir === dir) return
-  saveSettings({ outputDir: dir }, configDir)
+  await saveSettings({ outputDir: dir }, configDir)
 }
 
-export { readSettings, rememberOutputDir, resolveOutputDir, saveSettings }
+export {
+  inSettingsTurn,
+  readSettings,
+  rememberOutputDir,
+  resolveOutputDir,
+  saveSettings,
+  writeSettings
+}
 export type { Settings }

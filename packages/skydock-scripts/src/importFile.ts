@@ -162,12 +162,12 @@ const importFile = async ({
       await rm(partial, { force: true })
       const result = await placeExisting(manifest, outputDir, existing, target)
       if (result.outcome === 'moved' || result.outcome === 'copied')
-        saveManifest(manifestPath, manifest)
+        await saveManifest(manifestPath, manifest)
       return result
     }
 
     const mtime = (await shotTimes([partial])).get(partial) ?? Math.floor(when.getTime() / 1000)
-    const dest = landingFor(outputDir, filename, mtime)
+    const dest = await landingFor(outputDir, filename, mtime)
     const { size } = await stat(partial)
     await rename(partial, dest)
 
@@ -183,7 +183,7 @@ const importFile = async ({
       )
       group.processed = undefined
     }
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     return { filename: file.filename, outcome: 'added' }
   } finally {
     copyEnds()

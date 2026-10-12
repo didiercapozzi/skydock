@@ -64,7 +64,11 @@ describe('changes made on the board', () => {
     }
   })
 
-  const writeManifest = (groups: ManifestGroup[], files: ManifestFile[] = [], version = 1) => {
+  const writeManifest = async (
+    groups: ManifestGroup[],
+    files: ManifestFile[] = [],
+    version = 1
+  ) => {
     const manifest: Manifest = {
       version,
       createdAt: new Date().toISOString(),
@@ -72,7 +76,7 @@ describe('changes made on the board', () => {
       groups,
       destinations: [{ name: 'Yverdon' }]
     }
-    saveManifest(path.join(tmpDir, 'manifest.json'), manifest)
+    await saveManifest(path.join(tmpDir, 'manifest.json'), manifest)
     return manifest
   }
 
@@ -89,7 +93,7 @@ describe('changes made on the board', () => {
 
   describe('merging two jumps', () => {
     it('makes two jumps one, keeping every file', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           files: [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })]
@@ -106,7 +110,7 @@ describe('changes made on the board', () => {
     })
 
     it('re-times the merged jump onto the start it was given', async () => {
-      writeManifest([
+      await writeManifest([
         group({ id: 'group_1', files: [file({ id: 'a', mtime: 1_754_000_000 })] }),
         group({ id: 'group_2', files: [file({ id: 'c', mtime: 1_754_000_100 })] })
       ])
@@ -128,7 +132,7 @@ describe('changes made on the board', () => {
 
   describe('re-timing a jump', () => {
     it('moves every file by the same amount, so the jump keeps its shape', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           files: [file({ id: 'a', mtime: 1_754_000_000 }), file({ id: 'b', mtime: 1_754_000_090 })]
@@ -145,7 +149,7 @@ describe('changes made on the board', () => {
 
   describe('moving files', () => {
     it('re-files a file into another jump', async () => {
-      writeManifest([
+      await writeManifest([
         group({ id: 'group_1', files: [file({ id: 'a' }), file({ id: 'b' })] }),
         group({ id: 'group_2', files: [file({ id: 'c' })] })
       ])
@@ -164,7 +168,7 @@ describe('changes made on the board', () => {
         id: 'b',
         processed: { path: '/out/b.mp4', size: 10, at: 1, source: { id: 'b', size: 10, mtime: 1 } }
       })
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), moved] })])
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), moved] })])
 
       const res = answer(
         await send({ intent: 'move-files', fileIds: ['b'], destination: 'Yverdon' })
@@ -180,7 +184,7 @@ describe('changes made on the board', () => {
         id: 'b',
         uploaded: { remotePath: '/nas/b.mp4', md5: 'x', size: 10, localPath: '/out/b.mp4', at: 1 }
       })
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), up] })])
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' }), up] })])
 
       const res = refusal(
         await send({ intent: 'move-files', fileIds: ['b'], destination: 'Yverdon' })
@@ -195,7 +199,7 @@ describe('changes made on the board', () => {
 
   describe('uploading a dropzone', () => {
     it('refuses a montage, which is uploaded from its own page', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
@@ -222,7 +226,7 @@ describe('changes made on the board', () => {
       })
 
     it('is stopped when cancelled, and the board hears once it has stopped', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const upload = going()
       upload.catch(() => undefined)
 
@@ -234,13 +238,13 @@ describe('changes made on the board', () => {
     })
 
     it('has nothing to cancel when nothing is uploading', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(await send({ intent: 'cancel-upload' }))
       expect(res.globalErrors?.[0]).toContain('Nothing is being uploaded')
     })
 
     it('is waited for by a page that comes back to it', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const upload = going()
       upload.catch(() => undefined)
       const waiting = send({ intent: 'upload-wait' })
@@ -257,7 +261,7 @@ describe('changes made on the board', () => {
 
   describe('the montage', () => {
     it('is only for a montage', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           destination: 'Yverdon',
@@ -270,7 +274,7 @@ describe('changes made on the board', () => {
     })
 
     it('will not start one before the files have been processed', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
@@ -283,7 +287,7 @@ describe('changes made on the board', () => {
     })
 
     it('is made once: asked again for a montage that has a project, it is refused', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
@@ -308,7 +312,7 @@ describe('changes made on the board', () => {
         fs.writeFileSync(at, 'x')
         return file({ id, path: at })
       }
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
@@ -332,7 +336,7 @@ describe('changes made on the board', () => {
 
   describe('preparing a montage that has an edit', () => {
     it('is allowed, and leaves its project where it is', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
@@ -354,7 +358,7 @@ describe('changes made on the board', () => {
 
   describe('opening the project', () => {
     it('has nothing to open before a montage was made', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
@@ -369,7 +373,7 @@ describe('changes made on the board', () => {
 
   describe('freeing space', () => {
     it('refuses while the storage cannot be reached, and deletes nothing', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           montageJump: true,
@@ -408,7 +412,7 @@ describe('changes made on the board', () => {
       )?.emailed
 
     it('is kept on the board while the storage cannot be reached, and taken back', async () => {
-      writeManifest([uploaded('/SkyDock/Passengers/Luc Favre')])
+      await writeManifest([uploaded('/SkyDock/Passengers/Luc Favre')])
       const folder = '/SkyDock/Passengers/Luc Favre'
 
       await send({ intent: 'mark-emailed', emailed: { folder, to: 'luc@x.ch', sent: true } })
@@ -419,7 +423,7 @@ describe('changes made on the board', () => {
     })
 
     it('refuses a montage that is nowhere', async () => {
-      writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
       const res = refusal(
         await send({
           intent: 'mark-emailed',
@@ -432,7 +436,7 @@ describe('changes made on the board', () => {
 
   describe('saving the board', () => {
     it('refuses a new dropzone named like the montages’ folder, whatever its case', async () => {
-      writeManifest([])
+      await writeManifest([])
 
       const res = refusal(
         await send({
@@ -447,7 +451,7 @@ describe('changes made on the board', () => {
 
     it('applies a crop to a lone file without touching the rest of it', async () => {
       const lone = file({ id: 'z', destination: 'Yverdon', size: 999 })
-      writeManifest([], [lone])
+      await writeManifest([], [lone])
 
       await send({
         intent: 'save-groups',
@@ -469,7 +473,7 @@ describe('changes made on the board', () => {
         cropStart: 2,
         uploaded: { remotePath: '/nas/z.mp4', md5: 'x', size: 10, localPath: '/out/z.mp4', at: 1 }
       })
-      writeManifest([], [up])
+      await writeManifest([], [up])
 
       const res = refusal(
         await send({ intent: 'save-groups', groups: [], fileUpdates: [{ ...up, cropStart: 5 }] })
@@ -483,7 +487,7 @@ describe('changes made on the board', () => {
 
     it('keeps a jump’s upload and link when a page that never saw them saves', async () => {
       const a = file({ id: 'a' })
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           files: [a],
@@ -509,7 +513,7 @@ describe('changes made on the board', () => {
         cropStart: 2,
         uploaded: { remotePath: '/nas/z.mp4', md5: 'x', size: 10, localPath: '/out/z.mp4', at: 1 }
       })
-      writeManifest([], [up])
+      await writeManifest([], [up])
 
       const res = answer(await send({ intent: 'save-groups', groups: [], fileUpdates: [up] }))
 
@@ -533,8 +537,8 @@ describe('changes made on the board', () => {
       return path.join(dir, `${baseName}.kdenlive`)
     }
 
-    beforeEach(() => {
-      writeManifest([luc(), other()])
+    beforeEach(async () => {
+      await writeManifest([luc(), other()])
       fs.mkdirSync(path.dirname(projectPath()), { recursive: true })
       fs.writeFileSync(projectPath(), '<mlt/>')
     })
@@ -607,7 +611,7 @@ describe('changes made on the board', () => {
     it('can still be reset, which takes the edit with it and keeps the name and crops', async () => {
       const cropped = luc()
       cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
-      writeManifest([cropped, other()])
+      await writeManifest([cropped, other()])
       const res = answer(await send({ intent: 'reset-montage', groupId: 'group_1' }))
       expect(fs.existsSync(projectPath())).toBe(false)
       const g = res.groups.find((x) => x.id === 'group_1')
@@ -634,7 +638,7 @@ describe('changes made on the board', () => {
   })
 
   it('makes a jump in Fresh files from loose files picked by hand', async () => {
-    writeManifest([], [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })])
+    await writeManifest([], [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })])
 
     const res = answer(await send({ intent: 'move-files', fileIds: ['a', 'b'], newGroup: true }))
 
@@ -645,7 +649,7 @@ describe('changes made on the board', () => {
   })
 
   it('makes the jump with the name and the start it was given', async () => {
-    writeManifest([], [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })])
+    await writeManifest([], [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })])
 
     const res = answer(
       await send({
@@ -663,7 +667,7 @@ describe('changes made on the board', () => {
 
   describe('resetting Fresh files', () => {
     it('forgets the jumps made and named by hand, and the trims, leaving what is filed alone', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'g1',
           name: 'Sunset load',
@@ -699,7 +703,7 @@ describe('changes made on the board', () => {
       ])
 
     it('leaves them where they were and gives the other jump copies of its own', async () => {
-      two()
+      await two()
 
       const res = answer(await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' }))
 
@@ -710,7 +714,7 @@ describe('changes made on the board', () => {
     })
 
     it('says so when the jump already holds them', async () => {
-      two()
+      await two()
       await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' })
 
       const again = refusal(
@@ -721,7 +725,7 @@ describe('changes made on the board', () => {
     })
 
     it('ends a copy that is sent back, leaving the original in its jump', async () => {
-      two()
+      await two()
       await send({ intent: 'copy-files', fileIds: ['a'], targetGroupId: 'g2' })
 
       const res = answer(await send({ intent: 'move-files', fileIds: ['a~1'] }))
@@ -744,7 +748,7 @@ describe('changes made on the board', () => {
       ])
 
     it('moves files still in Fresh files into a montage of that name', async () => {
-      board()
+      await board()
 
       const res = answer(
         await send({ intent: 'make-montage', fileIds: ['a', 'b'], name: 'Luc Favre' })
@@ -757,7 +761,7 @@ describe('changes made on the board', () => {
     })
 
     it('copies files a dropzone holds, adjusted as they are, and leaves the dropzone its own', async () => {
-      board()
+      await board()
 
       const res = answer(
         await send({ intent: 'make-montage', fileIds: ['c'], name: 'Boogie 2026' })
@@ -770,7 +774,7 @@ describe('changes made on the board', () => {
     })
 
     it('joins a montage that has the name already, however it is written', async () => {
-      board()
+      await board()
       await send({ intent: 'make-montage', fileIds: ['a'], name: 'Luc Favre' })
 
       const res = answer(await send({ intent: 'make-montage', fileIds: ['c'], name: 'luc favre' }))
@@ -781,7 +785,7 @@ describe('changes made on the board', () => {
     })
 
     it('asks for a name', async () => {
-      board()
+      await board()
       const res = refusal(await send({ intent: 'make-montage', fileIds: ['a'], name: '  ' }))
       expect(res.globalErrors?.[0]).toContain('name')
     })
@@ -789,7 +793,7 @@ describe('changes made on the board', () => {
 
   describe('deleting a jump', () => {
     it('removes the jump and leaves every file loose in Fresh files', async () => {
-      writeManifest([
+      await writeManifest([
         group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] }),
         group({ id: 'g2', files: [file({ id: 'c' })] })
       ])
@@ -802,7 +806,7 @@ describe('changes made on the board', () => {
     })
 
     it('keeps the crop a file had in the jump', async () => {
-      writeManifest(
+      await writeManifest(
         [group({ id: 'g1', files: [file({ id: 'a', cropStart: 2, cropEnd: 5 })] })],
         [file({ id: 'a' })]
       )
@@ -813,7 +817,7 @@ describe('changes made on the board', () => {
     })
 
     it('takes a filed jump back to Fresh files too', async () => {
-      writeManifest([group({ id: 'g1', destination: 'Yverdon', files: [file({ id: 'a' })] })])
+      await writeManifest([group({ id: 'g1', destination: 'Yverdon', files: [file({ id: 'a' })] })])
 
       const res = answer(await send({ intent: 'delete-jump', groupId: 'g1' }))
 
@@ -826,7 +830,7 @@ describe('changes made on the board', () => {
         id: 'a',
         uploaded: { remotePath: '/x/a.mp4', md5: 'm', size: 10, localPath: '/p/a.mp4', at: 1 }
       })
-      writeManifest([group({ id: 'g1', files: [up] })])
+      await writeManifest([group({ id: 'g1', files: [up] })])
 
       const res = refusal(await send({ intent: 'delete-jump', groupId: 'g1' }))
 
@@ -841,7 +845,7 @@ describe('changes made on the board', () => {
         id: 'a',
         uploaded: { remotePath: '/x/a.mp4', md5: 'm', size: 10, localPath: '/p/a.mp4', at: 1 }
       })
-      writeManifest([group({ id: 'g1', files: [up] })])
+      await writeManifest([group({ id: 'g1', files: [up] })])
 
       const res = refusal(
         await send({ intent: 'retime-file', fileIds: ['a'], anchorEpoch: 1_754_003_600 })
@@ -852,7 +856,7 @@ describe('changes made on the board', () => {
     })
 
     it('refuses more than one file at a time', async () => {
-      writeManifest([group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] })])
+      await writeManifest([group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] })])
 
       const res = refusal(
         await send({ intent: 'retime-file', fileIds: ['a', 'b'], anchorEpoch: 1_754_003_600 })
@@ -863,7 +867,7 @@ describe('changes made on the board', () => {
 
     it('moves that file alone', async () => {
       const grouped = [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })]
-      writeManifest(
+      await writeManifest(
         [group({ id: 'g1', files: grouped })],
         [...grouped, file({ id: 'c', mtime: 1_754_000_120 })]
       )
@@ -890,7 +894,7 @@ describe('changes made on the board', () => {
     it('takes the file off the board and moves it out of the originals', async () => {
       const a = onDisk('a')
       const b = onDisk('b')
-      writeManifest([group({ id: 'g1', files: [a, b] })])
+      await writeManifest([group({ id: 'g1', files: [a, b] })])
 
       const res = answer(await send({ intent: 'trash-unsorted', fileIds: ['a'] }))
 
@@ -910,7 +914,7 @@ describe('changes made on the board', () => {
       ])
 
     it('is moved to where the footage says it should be', async () => {
-      marked()
+      await marked()
 
       const res = answer(
         await send({
@@ -927,7 +931,7 @@ describe('changes made on the board', () => {
     })
 
     it('is refused where it would put the jump out of order', async () => {
-      marked()
+      await marked()
 
       const res = refusal(
         await send({
@@ -944,7 +948,7 @@ describe('changes made on the board', () => {
     })
 
     it('is put back where the camera measured it', async () => {
-      marked()
+      await marked()
       await send({
         intent: 'set-moment',
         fileIds: ['a'],
@@ -966,7 +970,7 @@ describe('changes made on the board', () => {
     })
 
     it('is forgotten on request, in development', async () => {
-      marked()
+      await marked()
       await send({ intent: 'set-moment', fileIds: ['a'], moment: { which: 'exit', seconds: 40 } })
 
       const res = answer(await send({ intent: 'redo-moments', fileIds: ['a'] }))
@@ -978,7 +982,7 @@ describe('changes made on the board', () => {
     })
 
     it('has nothing to go back to when none was moved', async () => {
-      marked()
+      await marked()
 
       const res = refusal(await send({ intent: 'reset-moments', fileIds: ['a'] }))
 
@@ -988,7 +992,7 @@ describe('changes made on the board', () => {
 
   describe('removing a place', () => {
     it('is refused while anything there is on the storage', async () => {
-      writeManifest([
+      await writeManifest([
         group({
           id: 'group_1',
           destination: 'Yverdon',
@@ -1017,7 +1021,7 @@ describe('changes made on the board', () => {
     })
 
     it('takes Passengers off like any other place', async () => {
-      writeManifest(
+      await writeManifest(
         [group({ id: 'group_1', destination: 'Passengers', files: [file({ id: 'a' })] })],
         [],
         2
@@ -1029,7 +1033,7 @@ describe('changes made on the board', () => {
     })
 
     it('is refused for a place that is not there', async () => {
-      writeManifest([])
+      await writeManifest([])
 
       const res = refusal(await send({ intent: 'remove-destination', destination: 'Colombier' }))
 
@@ -1040,7 +1044,7 @@ describe('changes made on the board', () => {
 
   describe('a look at the board', () => {
     it('answers with the record as it is now and writes nothing', async () => {
-      writeManifest([group({ id: 'g1', files: [file({ id: 'a' })] })])
+      await writeManifest([group({ id: 'g1', files: [file({ id: 'a' })] })])
       const manifestPath = path.join(tmpDir, 'manifest.json')
       const before = fs.statSync(manifestPath).mtimeMs
 
@@ -1051,8 +1055,8 @@ describe('changes made on the board', () => {
     })
 
     it('shows what somebody else changed in the record', async () => {
-      writeManifest([group({ id: 'g1' })])
-      writeManifest([group({ id: 'g1' }), group({ id: 'g2' })])
+      await writeManifest([group({ id: 'g1' })])
+      await writeManifest([group({ id: 'g1' }), group({ id: 'g2' })])
 
       const res = answer(await send({ intent: 'look-at-board' }))
 

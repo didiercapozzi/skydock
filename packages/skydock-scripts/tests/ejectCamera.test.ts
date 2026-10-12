@@ -13,8 +13,8 @@ const tools = (over: Partial<Tools> = {}, answers: boolean[] = []) => {
   const made: Tools = {
     run: run as Tools['run'],
     platform: 'linux',
-    mounts: () => ['/media/card'],
-    mountOf: (mount) => ({ point: mount, source: '/dev/sdb1' }),
+    mounts: async () => ['/media/card'],
+    mountOf: async (mount) => ({ point: mount, source: '/dev/sdb1' }),
     ...over
   }
   return { made, asked }
@@ -48,19 +48,23 @@ describe('ejecting a camera', () => {
   })
 
   test('never lets go of the disk the machine runs from', async () => {
-    const { made, asked } = tools({ mountOf: () => ({ point: '/', source: '/dev/nvme0n1p2' }) })
+    const { made, asked } = tools({
+      mountOf: async () => ({ point: '/', source: '/dev/nvme0n1p2' })
+    })
     await ejectCamera('/media/card', made)
     expect(asked).toEqual(['umount /media/card'])
   })
 
   test('lets go of a folder on a bigger mount as that folder, never by the disk that holds other cameras too', async () => {
-    const { made, asked } = tools({ mountOf: () => ({ point: '/media', source: '/dev/sdb1' }) })
+    const { made, asked } = tools({
+      mountOf: async () => ({ point: '/media', source: '/dev/sdb1' })
+    })
     await ejectCamera('/media/card', made)
     expect(asked).toEqual(['umount /media/card'])
   })
 
   test('hands a camera over MTP back to the desktop that holds it, and only one that is plugged in', async () => {
-    const { made, asked } = tools({ mounts: () => ['mtp:/HERO5 Black/Disk'] })
+    const { made, asked } = tools({ mounts: async () => ['mtp:/HERO5 Black/Disk'] })
     expect(await ejectCamera('mtp:/Something Else/Disk', made)).toEqual({
       ok: false,
       reason: 'This camera is not plugged in any more.'
@@ -70,7 +74,7 @@ describe('ejecting a camera', () => {
   })
 
   test('uses the way a Mac ejects a drive', async () => {
-    const { made, asked } = tools({ platform: 'darwin', mounts: () => ['/Volumes/CARD'] })
+    const { made, asked } = tools({ platform: 'darwin', mounts: async () => ['/Volumes/CARD'] })
     await ejectCamera('/Volumes/CARD', made)
     expect(asked).toEqual(['diskutil eject /Volumes/CARD'])
   })

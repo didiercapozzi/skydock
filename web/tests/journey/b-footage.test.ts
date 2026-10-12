@@ -400,11 +400,13 @@ describe.skipIf(!canMount)('cameras plugged in', () => {
     await asking().getByRole('button', { name: 'Choose which files…' }).click()
     await j.page.waitForURL(/\/camera\//)
     await j.see('Plugged in')
-    expect(
-      remembered(j.world)
-        .map((c) => c.name)
-        .sort()
-    ).toEqual(['Choose Cam', 'Osmo Action'])
+    await expect
+      .poll(() =>
+        remembered(j.world)
+          .map((c) => c.name)
+          .sort()
+      )
+      .toEqual(['Choose Cam', 'Osmo Action'])
     expect(landedOriginals(j.world).filter((f) => f.includes('GX0100'))).toEqual([])
 
     await j.page.getByRole('button', { name: 'Pick 100MEDIA/GX010001.MP4' }).click()

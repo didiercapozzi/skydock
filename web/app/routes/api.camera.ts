@@ -1,7 +1,11 @@
 import { getOutputDir, loadManifestAsync, processingNow, messageOf } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
-import { deleteFromCameras, listCameras } from '../../../packages/skydock-scripts/src/cameraFiles'
+import {
+  deleteFromCameras,
+  listCameras,
+  lookAtCameras
+} from '../../../packages/skydock-scripts/src/cameraFiles'
 import { ejectCamera } from '../../../packages/skydock-scripts/src/ejectCamera'
 import {
   answerCamera,
@@ -9,7 +13,7 @@ import {
   stopCameraCopy
 } from '../../../packages/skydock-scripts/src/cameraWatch'
 
-const loader = async () => Response.json({ cameras: await listCameras(getOutputDir()) })
+const loader = async () => Response.json({ cameras: await lookAtCameras(getOutputDir()) })
 
 const actionArgs = z.object({
   paths: z.array(z.string()).optional(),
@@ -33,15 +37,15 @@ const action = createValidatedFormAction()({
       return { stopping: true }
     }
     if (data.remember) {
-      answerCamera(getOutputDir(), { remember: data.remember.key, ...data.remember })
+      await answerCamera(getOutputDir(), { remember: data.remember.key, ...data.remember })
       return { remembered: data.remember.key }
     }
     if (data.forget) {
-      answerCamera(getOutputDir(), { forget: data.forget })
+      await answerCamera(getOutputDir(), { forget: data.forget })
       return { forgotten: data.forget }
     }
     if (data.auto) {
-      answerCamera(getOutputDir(), { auto: data.auto })
+      await answerCamera(getOutputDir(), { auto: data.auto })
       return { auto: data.auto }
     }
     if (data.eject) {
@@ -58,12 +62,12 @@ const action = createValidatedFormAction()({
         return errors.toResponse(422)
       }
       if (
-        copyAgain(
+        (await copyAgain(
           getOutputDir(),
           data.copyFiles.mount,
           undefined,
           new Set(data.copyFiles.paths)
-        ) === 0
+        )) === 0
       ) {
         errors.addGlobalError('This camera is not plugged in any more.')
         return errors.toResponse(422)
@@ -71,7 +75,7 @@ const action = createValidatedFormAction()({
       return { copying: data.copyFiles.mount }
     }
     if (data.copy) {
-      if (copyAgain(getOutputDir(), data.copy) === 0) {
+      if ((await copyAgain(getOutputDir(), data.copy)) === 0) {
         errors.addGlobalError('This camera is not plugged in any more.')
         return errors.toResponse(422)
       }

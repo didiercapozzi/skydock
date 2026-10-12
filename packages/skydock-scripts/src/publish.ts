@@ -6,7 +6,7 @@ import * as https from 'node:https'
 import * as path from 'node:path'
 import { json } from 'node:stream/consumers'
 import { z } from 'zod'
-import { hashFile, walkFilesAsync } from './lib/fs'
+import { hashFile, walkFiles } from './lib/fs'
 import { alreadyUp, sameSizeUnknown, worthReading } from './originEntry'
 import type { OriginIndex } from './originEntry'
 import { nowSeconds, stampOf } from './lib/clock'
@@ -239,7 +239,7 @@ const planUpload = async ({
   files?: string[]
   origins?: Origins
 }) => {
-  const files = only ?? (await walkFilesAsync(localDir))
+  const files = only ?? (await walkFiles(localDir))
   const sizes = new Map<string, number>()
   await mapWithLimit(files, 16, async (file) => {
     sizes.set(file, (await stat(file)).size)

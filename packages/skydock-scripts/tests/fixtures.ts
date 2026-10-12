@@ -36,14 +36,22 @@ const tellTools = (missing: string[] = []) => {
   }
 }
 
-const onPlatform = (name: string, look: () => void) => {
+const onPlatform = <T>(name: string, look: () => T) => {
   const real = Object.getOwnPropertyDescriptor(process, 'platform')!
   Object.defineProperty(process, 'platform', { value: name, configurable: true })
+  const restore = () => Object.defineProperty(process, 'platform', real)
+  let result: T
   try {
-    look()
-  } finally {
-    Object.defineProperty(process, 'platform', real)
+    result = look()
+  } catch (e) {
+    restore()
+    throw e
   }
+  if (!(result instanceof Promise)) {
+    restore()
+    return result
+  }
+  return result.finally(restore) as T
 }
 
 const execSyncMock = vi.fn()
@@ -62,14 +70,17 @@ const execFileViaSyncMock = (
   options: unknown,
   callback: (error: Error | null, stdout: string, stderr: string) => void
 ) => {
-  try {
-    const out = execSyncMock(asLine(program, args), options)
-    queueMicrotask(() => callback(null, out ? String(out) : '', ''))
-  } catch (e) {
+  const fail = (e: unknown) => {
     const stderr = (e as { stderr?: Buffer | string }).stderr
-    queueMicrotask(() =>
-      callback(e instanceof Error ? e : new Error(String(e)), '', stderr ? String(stderr) : '')
+    callback(e instanceof Error ? e : new Error(String(e)), '', stderr ? String(stderr) : '')
+  }
+  try {
+    Promise.resolve(execSyncMock(asLine(program, args), options)).then(
+      (out) => callback(null, out ? String(out) : '', ''),
+      fail
     )
+  } catch (e) {
+    queueMicrotask(() => fail(e))
   }
 }
 
@@ -244,6 +255,7 @@ const cameraWatching = (over: Partial<NonNullable<typeof globalThis.skydockCamer
     keys: {},
     fresh: {},
     checking: new Set(),
+    looking: false,
     prompts: [],
     only: {},
     saidKnown: '',

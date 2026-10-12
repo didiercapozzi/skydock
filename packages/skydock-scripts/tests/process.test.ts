@@ -406,10 +406,10 @@ describe('while a processing is running', () => {
       files: [clip('GX010001.MP4', 0)]
     })
     const meanwhile = (await loadManifestAsync(manifestPath))!
-    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+    execSyncMock.mockImplementation(async (cmd: string | Buffer, opts?: { encoding?: string }) => {
       if (String(cmd).startsWith('exiftool')) {
         meanwhile.destinations = [...(meanwhile.destinations ?? []), { name: 'Colombier' }]
-        saveManifest(manifestPath, meanwhile)
+        await saveManifest(manifestPath, meanwhile)
       }
       return tools(cmd, opts)
     })
@@ -429,11 +429,11 @@ describe('while a processing is running', () => {
       files: [clip('GX010001.MP4', 0)]
     })
     const meanwhile = (await loadManifestAsync(manifestPath))!
-    execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
+    execSyncMock.mockImplementation(async (cmd: string | Buffer, opts?: { encoding?: string }) => {
       if (String(cmd).startsWith('exiftool')) {
         meanwhile.groups[0]!.files[0]!.cropStart = 1
         meanwhile.groups[0]!.files[0]!.cropEnd = 3
-        saveManifest(manifestPath, meanwhile)
+        await saveManifest(manifestPath, meanwhile)
       }
       return tools(cmd, opts)
     })

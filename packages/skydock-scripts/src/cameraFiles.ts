@@ -1,4 +1,4 @@
-import { access, constants, realpath } from 'node:fs/promises'
+import { access, constants, readdir, realpath } from 'node:fs/promises'
 import * as path from 'node:path'
 import type { CameraFile } from './cameraEntry'
 import {
@@ -141,45 +141,135 @@ const dcimOf = (mount: string) => path.join(mount, 'DCIM')
 
 const LISTING_PARALLEL = 16
 const DELETING_PARALLEL = 4
+const CHUNK = 50
 
 const secondsOf = (stat: { mtimeMs: number }) => Math.floor(stat.mtimeMs / 1000)
 
-const listCamera = async (mount: string, outputDir: string, trashDir: string) => {
-  const files = await findMediaFilesAsync(dcimOf(mount))
-  const folders = await dayFoldersOf(files, outputDir)
+const readCard = async (
+  mount: string,
+  outputDir: string,
+  trashDir: string,
+  onChunk: (files: CameraFile[]) => void
+) => {
+  const found = await mapWithLimit(
+    await findMediaFilesAsync(dcimOf(mount)),
+    LISTING_PARALLEL,
+    async (file) => ({ file, stat: await statOrNull(file) })
+  )
+  const newestFirst = found
+    .flatMap(({ file, stat }) => (stat ? [{ file, stat }] : []))
+    .sort((a, b) => secondsOf(b.stat) - secondsOf(a.stat))
   const board = boardOf(await loadManifestAsync(getManifestPath(outputDir)))
   const binned = binnedBy(await binnedCopies(trashDir), contentOf)
   const names = new Map<string, Promise<string[]>>()
   const namesOnce = (dir: string) => {
-    const found = names.get(dir) ?? namesIn(dir)
-    names.set(dir, found)
-    return found
+    const known = names.get(dir) ?? namesIn(dir)
+    names.set(dir, known)
+    return known
   }
-  const listed = (
-    await mapWithLimit(files, LISTING_PARALLEL, async (file) => {
-      const stat = await statOrNull(file)
-      if (!stat) return null
-      const dir = folders.get(file) ?? ''
-      const original = await alreadyThere(file, stat, dir, namesOnce)
-      const state = standingOf(board, original, () => freedAlready(board.inFolder, file, stat, dir))
-      return {
-        path: file,
-        name: path.relative(dcimOf(mount), file),
-        size: stat.size,
-        mtime: secondsOf(stat),
-        state: state === 'missing' && (await binned(file, stat.size)) ? ('binned' as const) : state
-      }
+  for (let at = 0; at < newestFirst.length; at += CHUNK) {
+    const chunk = newestFirst.slice(at, at + CHUNK)
+    const folders = await dayFoldersOf(
+      chunk.map(({ file }) => file),
+      outputDir
+    )
+    onChunk(
+      await mapWithLimit(chunk, LISTING_PARALLEL, async ({ file, stat }) => {
+        const dir = folders.get(file) ?? ''
+        const original = await alreadyThere(file, stat, dir, namesOnce)
+        const state = standingOf(board, original, () =>
+          freedAlready(board.inFolder, file, stat, dir)
+        )
+        return {
+          path: file,
+          name: path.relative(dcimOf(mount), file),
+          size: stat.size,
+          mtime: secondsOf(stat),
+          state:
+            state === 'missing' && (await binned(file, stat.size)) ? ('binned' as const) : state
+        }
+      })
+    )
+  }
+}
+
+const describeCard = async (mount: string, files: CameraFile[], looking: boolean) => ({
+  camera: cameraName(mount),
+  mount,
+  key: await keyOfMount(mount),
+  over: overMtp(mount) ? ('mtp' as const) : ('drive' as const),
+  deletable: true,
+  looking,
+  files
+})
+
+const listCamera = async (mount: string, outputDir: string, trashDir: string) => {
+  const files: CameraFile[] = []
+  await readCard(mount, outputDir, trashDir, (chunk) => files.push(...chunk))
+  return describeCard(mount, files, false)
+}
+
+type Reading = {
+  files: CameraFile[]
+  done: boolean
+  signature: string
+  ready: Promise<unknown>
+}
+
+const reading = new Map<string, Reading>()
+
+const signatureOf = async (mount: string, outputDir: string, trashDir: string) => {
+  const dcim = dcimOf(mount)
+  const inside = await readdir(dcim, { withFileTypes: true }).catch(() => [])
+  const watched = [
+    getManifestPath(outputDir),
+    trashDir,
+    dcim,
+    ...inside.filter((e) => e.isDirectory()).map((e) => path.join(dcim, e.name))
+  ]
+  return (await Promise.all(watched.map((where) => statOrNull(where))))
+    .map((stat) => (stat ? `${stat.mtimeMs}:${stat.size}` : '-'))
+    .join('|')
+}
+
+const startReading = (mount: string, outputDir: string, trashDir: string) => {
+  let reached = () => {}
+  const first = new Promise<void>((resolve) => {
+    reached = resolve
+  })
+  const held: Reading = { files: [], done: false, signature: '', ready: first }
+  const worker = (async () => {
+    held.signature = await signatureOf(mount, outputDir, trashDir)
+    await readCard(mount, outputDir, trashDir, (chunk) => {
+      held.files.push(...chunk)
+      reached()
     })
-  ).filter((file): file is CameraFile => file !== null)
-  return {
-    camera: cameraName(mount),
-    mount,
-    key: keyOfMount(mount),
-    over: overMtp(mount) ? ('mtp' as const) : ('drive' as const),
-    deletable: true,
-    looking: false,
-    files: listed.sort((a, b) => b.mtime - a.mtime)
-  }
+    held.done = true
+  })().catch((e: unknown) => {
+    if (reading.get(mount) === held) reading.delete(mount)
+    throw e
+  })
+  held.ready = Promise.race([first, worker])
+  reading.set(mount, held)
+  return held
+}
+
+const listCameraProgressively = async (
+  mount: string,
+  outputDir: string,
+  trashDir: string
+): ReturnType<typeof listCamera> => {
+  const held = reading.get(mount)
+  if (
+    held?.done &&
+    !cameraCopying() &&
+    held.signature === (await signatureOf(mount, outputDir, trashDir))
+  )
+    return describeCard(mount, held.files, false)
+  if (reading.get(mount) !== held) return listCameraProgressively(mount, outputDir, trashDir)
+  const going = held && !held.done ? held : startReading(mount, outputDir, trashDir)
+  await going.ready
+  return describeCard(mount, going.files.slice(), !going.done)
 }
 
 const listCameraThroughKde = async (camera: string, outputDir: string) => {
@@ -199,7 +289,7 @@ const listCameraThroughKde = async (camera: string, outputDir: string) => {
   return {
     camera: cameraName(camera),
     mount: camera,
-    key: keyOfMount(camera),
+    key: await keyOfMount(camera),
     over: 'mtp' as const,
     deletable: false,
     looking: !seen.done,
@@ -207,15 +297,25 @@ const listCameraThroughKde = async (camera: string, outputDir: string) => {
   }
 }
 
-const listCameras = async (
+const listAll = async (
   outputDir: string,
-  mounts = mountedCameras(),
-  trashDir = getTrashDir()
-) =>
-  Promise.all([
-    ...mounts.map((mount) => listCamera(mount, outputDir, trashDir)),
+  mounts: string[] | undefined,
+  trashDir: string,
+  listOne: typeof listCamera
+) => {
+  const mounted = mounts ?? (await mountedCameras())
+  for (const mount of reading.keys()) if (!mounted.includes(mount)) reading.delete(mount)
+  return Promise.all([
+    ...mounted.map((mount) => listOne(mount, outputDir, trashDir)),
     ...camerasSeenThroughKde().map((camera) => listCameraThroughKde(camera, outputDir))
   ])
+}
+
+const listCameras = (outputDir: string, mounts?: string[], trashDir = getTrashDir()) =>
+  listAll(outputDir, mounts, trashDir, listCamera)
+
+const lookAtCameras = (outputDir: string, mounts?: string[], trashDir = getTrashDir()) =>
+  listAll(outputDir, mounts, trashDir, listCameraProgressively)
 
 const canWriteIn = (dir: string) =>
   access(dir, constants.W_OK).then(
@@ -228,7 +328,7 @@ const deleteNow = async ({
   manifest,
   deleting,
   trashDir = getTrashDir(),
-  mounts = mountedCameras(),
+  mounts: given,
   writable = canWriteIn
 }: {
   paths: string[]
@@ -241,6 +341,7 @@ const deleteNow = async ({
   if (paths.length === 0) throw new Error('Select at least one file on the camera.')
   if (cameraCopying())
     throw new Error('A camera is being copied — wait for it to finish, then delete.')
+  const mounts = given ?? (await mountedCameras())
   const dcims = await Promise.all(
     mounts.map(async (mount) => ({ mount, dcim: await realpath(dcimOf(mount)).catch(() => null) }))
   )
@@ -377,10 +478,12 @@ const deleteFromCameras = async (
       ...(outputDir && paths.length > 0 ? { record: { kind: 'delete' as const, outputDir } } : {})
     },
     async (deleting) => {
+      reading.clear()
       const { outcomes: _outcomes, ...result } = await deleteNow({ ...options, deleting })
+      reading.clear()
       return result
     }
   )
 }
 
-export { deleteFromCameras, listCamera, listCameraThroughKde, listCameras }
+export { deleteFromCameras, listCamera, listCameraThroughKde, listCameras, lookAtCameras }

@@ -22,7 +22,7 @@ const markEmailed: Intent = async ({ data, manifestPath, latest, refuse }) => {
   if (group) {
     if (sent) group.emailed = { at, ...(to ? { to } : {}) }
     else delete group.emailed
-    saveManifest(manifestPath, board)
+    await saveManifest(manifestPath, board)
   }
   const session = await ensureNasSession()
   let listing = {}

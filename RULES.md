@@ -208,7 +208,9 @@ not copied yet, copied here but not uploaded, copied here and then put in the bi
 copied read by the same rule the copy uses to pass a file over, and in the bin read by the file's bytes,
 never its name, which the copy may have changed: only a file of the bin of the very same size is read
 through to be compared, so the rest of the card is not read at all, and what was read is remembered
-while it stays the same. Any file already copied here — not
+while it stays the same. A card read as a drive lists its files newest first as they are reached, saying it
+is still reading, and offers to copy the new ones, or to pick every file that can go, only once all have been
+reached; coming back to its page does not read it again unless it has changed. Any file already copied here — not
 uploaded yet, on the storage, or one whose copy here was put in the bin — can be picked and deleted from the
 camera, to make room on the card, once it is proved by its bytes to be the one the board holds; a file not
 copied yet has a tick too, to be copied alone, and only it has no way to be deleted, since until it is copied

@@ -586,7 +586,7 @@ const runProcess = async (options?: ProcessOptions) => {
       delete file.uploaded
     }
 
-    if (groups.length > 0 || processedPaths.size > 0) saveManifest(manifestPath, current)
+    if (groups.length > 0 || processedPaths.size > 0) await saveManifest(manifestPath, current)
 
     console.log(`[Process] Done. Copied ${copied} file(s).`)
 

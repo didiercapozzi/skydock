@@ -14,14 +14,14 @@ type Said = { ok: true } | { ok: false; reason: string }
 type Tools = {
   run: typeof run
   platform: NodeJS.Platform
-  mounts: () => string[]
-  mountOf: (mount: string) => { point: string; source: string } | null
+  mounts: () => Promise<string[]>
+  mountOf: (mount: string) => Promise<{ point: string; source: string } | null>
 }
 
 const REAL: Tools = {
   run,
   platform: process.platform,
-  mounts: () => [...mountedCameras(), ...camerasSeenThroughKde()],
+  mounts: async () => [...(await mountedCameras()), ...camerasSeenThroughKde()],
   mountOf
 }
 
@@ -39,7 +39,7 @@ const firstThatWorks = async (tools: Tools, commands: [string, string[]][]): Pro
 }
 
 const ejectCamera = async (mount: string, tools: Tools = REAL): Promise<Said> => {
-  if (!tools.mounts().includes(mount))
+  if (!(await tools.mounts()).includes(mount))
     return { ok: false, reason: 'This camera is not plugged in any more.' }
   if (cameraCopying())
     return { ok: false, reason: 'A camera is being copied — wait for it to finish, or stop it.' }
@@ -60,7 +60,7 @@ const ejectCamera = async (mount: string, tools: Tools = REAL): Promise<Said> =>
   if (isKioCamera(mount))
     return firstThatWorks(tools, [['gio', ['mount', '-u', `mtp://${kioCameraName(mount)}/`]]])
   if (overMtp(mount)) return firstThatWorks(tools, [['gio', ['mount', '-u', mount]]])
-  const found = tools.mountOf(mount)
+  const found = await tools.mountOf(mount)
   const device =
     found && found.point === path.resolve(mount) && found.point !== path.parse(found.point).root
       ? found.source

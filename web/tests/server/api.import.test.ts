@@ -26,13 +26,13 @@ const useWorkFolder = (prefix: string) => {
   let was: string | undefined
   let wasConfig: string | undefined
 
-  beforeEach(() => {
+  beforeEach(async () => {
     folder.path = createTmpDir(prefix)
     was = process.env.SKYDOCK_OUTPUT_DIR
     wasConfig = process.env.SKYDOCK_CONFIG_DIR
     process.env.SKYDOCK_OUTPUT_DIR = folder.path
     process.env.SKYDOCK_CONFIG_DIR = folder.path
-    saveManifest(path.join(folder.path, 'manifest.json'), {
+    await saveManifest(path.join(folder.path, 'manifest.json'), {
       version: 1,
       createdAt: '2026-08-01',
       files: [],

@@ -164,7 +164,7 @@ const scanFiles = async (originalDir: string) => {
   }
   reading?.finish()
   try {
-    writeJsonAtomic(knownIdsPath(originalDir), seen)
+    await writeJsonAtomic(knownIdsPath(originalDir), seen)
   } catch {}
 
   return sortFilesByMtime(manifestFiles)
@@ -310,7 +310,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   if (!existing) {
     const createdAt = new Date().toISOString()
     const manifest = createFreshManifest(diskFiles, createdAt)
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
 
     if (diskFiles.length === 0) {
       console.log('[Scan] Nothing in original_files yet. Copy a camera off, then scan again.')
@@ -346,7 +346,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   console.log(
     `[Scan] Merging: +${added} new, -${removed} removed, ~${moved} moved, ${returned} back, ${existing.files.length} existing.`
   )
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
 
   console.log(
     `[Scan] Manifest: ${manifest.files.length} file(s) in ${manifest.groups.length} group(s).`

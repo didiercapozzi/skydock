@@ -12,7 +12,7 @@ const boardAnswer = async (manifest: Manifest) => {
     groups: manifest.groups,
     looseFiles: manifest.files.filter((f) => !grouped.has(f.id ?? f.path)),
     destinations: manifest.destinations ?? [],
-    outputs: statProcessedOutputs(manifest),
+    outputs: await statProcessedOutputs(manifest),
     proxies: await statProxies(manifest, getOutputDir()),
     montages: await statMontageArtifacts(manifest, getOutputDir())
   }

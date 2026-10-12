@@ -18,8 +18,8 @@ type DropzoneFreeResult = {
   kept: number
 }
 
-const freeableIn = (manifest: Manifest, destination: string) => {
-  const outputs = statProcessedOutputs(manifest)
+const freeableIn = async (manifest: Manifest, destination: string) => {
+  const outputs = await statProcessedOutputs(manifest)
   const inJumps = new Set(manifest.groups.flatMap((g) => g.files.map((f) => f.path)))
   return freeablePlace(
     manifest.groups.filter((g) => g.destination === destination && !isNamedMontage(g)),
@@ -54,7 +54,7 @@ const freeDropzone = async ({
   destination: string
   session: NasSession
 }) => {
-  const { jumps, files, kept } = freeableIn(manifest, destination)
+  const { jumps, files, kept } = await freeableIn(manifest, destination)
   if (files.length === 0)
     throw new Error(`Nothing of ${destination} is on the storage yet — upload it first.`)
   return inJob(

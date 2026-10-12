@@ -22,7 +22,7 @@ const action = createValidatedFormAction()({
       errors.addGlobalError(RECORD_UNREADABLE)
       return errors.toResponse(422)
     }
-    if (data.cameras !== false) copyAgain(outputDir)
+    if (data.cameras !== false) await copyAgain(outputDir)
     const result = await scanMedia({ outputDir })
     void catchUp(outputDir)
     const manifest = await loadManifestAsync(getManifestPath(outputDir))

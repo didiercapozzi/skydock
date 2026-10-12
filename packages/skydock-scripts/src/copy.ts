@@ -1,10 +1,11 @@
 import * as fs from 'node:fs'
+import { mkdir, rename, rm, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { two } from './lib/clock'
 import { counted } from './lib/counted'
 import { gentleWriter } from './lib/gentle'
-import { findMediaFilesAsync, sameBytes } from './lib/fs'
+import { findMediaFilesAsync, pathExists, sameBytes } from './lib/fs'
 import { inJob } from './live'
 import { loadManifestAsync } from './manifest'
 import { shotTimes } from './scan'
@@ -35,15 +36,15 @@ const dayFolder = (epoch: number) => {
   return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`
 }
 
-const originalsDay = (outputDir: string, shot: number) => {
+const originalsDay = async (outputDir: string, shot: number) => {
   const dir = path.join(outputDir, 'original_files', dayFolder(shot))
-  fs.mkdirSync(dir, { recursive: true })
+  await mkdir(dir, { recursive: true })
   return dir
 }
 
-const landingFor = (outputDir: string, name: string, shot: number) => {
-  const dir = originalsDay(outputDir, shot)
-  return path.join(dir, freeName(dir, name))
+const landingFor = async (outputDir: string, name: string, shot: number) => {
+  const dir = await originalsDay(outputDir, shot)
+  return path.join(dir, await freeName(dir, name))
 }
 
 const isNameFor = (candidate: string, name: string) => {
@@ -107,11 +108,11 @@ const loadBoard = async (outputDir: string) => {
   }
 }
 
-const freeName = (dir: string, name: string) => {
+const freeName = async (dir: string, name: string) => {
   const { name: stem, ext } = path.parse(name)
-  if (!fs.existsSync(path.join(dir, name))) return name
+  if (!(await pathExists(path.join(dir, name)))) return name
   for (let n = 2; ; n++)
-    if (!fs.existsSync(path.join(dir, `${stem}_${n}${ext}`))) return `${stem}_${n}${ext}`
+    if (!(await pathExists(path.join(dir, `${stem}_${n}${ext}`)))) return `${stem}_${n}${ext}`
 }
 
 class CameraGone extends Error {}
@@ -124,7 +125,7 @@ const copyOne = async (
   destDir: string,
   onPart?: (part: number) => void
 ) => {
-  const dest = path.join(destDir, freeName(destDir, path.basename(src)))
+  const dest = path.join(destDir, await freeName(destDir, path.basename(src)))
   const partial = `${dest}.part`
   const bytes = counted((done) => onPart?.(srcStat.size > 0 ? Math.min(1, done / srcStat.size) : 0))
   try {
@@ -133,11 +134,12 @@ const copyOne = async (
       bytes.through,
       gentleWriter(partial)
     )
-    fs.utimesSync(partial, srcStat.atime, srcStat.mtime)
-    fs.renameSync(partial, dest)
+    await utimes(partial, srcStat.atime, srcStat.mtime)
+    await rename(partial, dest)
   } catch (e) {
-    fs.rmSync(partial, { force: true })
-    if (!fs.existsSync(src)) throw new CameraGone('The camera was disconnected during the copy.')
+    await rm(partial, { force: true })
+    if (!(await pathExists(src)))
+      throw new CameraGone('The camera was disconnected during the copy.')
     throw e
   }
   return { dest, id: bytes.id() }
@@ -187,7 +189,7 @@ const copyCamera = async ({
     const shot = shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000)
     let last: 'copied' | 'skipped' | 'failed' = 'skipped'
     try {
-      const destDir = originalsDay(outputDir, shot)
+      const destDir = await originalsDay(outputDir, shot)
       const there =
         freedAlready(inFolder, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
       if (there) progress.skipped++
@@ -231,7 +233,10 @@ const copyBack = async ({
       } catch {
         throw new CameraGone('The camera was disconnected during the copy.')
       }
-      const destDir = originalsDay(outputDir, shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000))
+      const destDir = await originalsDay(
+        outputDir,
+        shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000)
+      )
       if (await alreadyThere(src, srcStat, destDir)) progress.skipped++
       else {
         await copyOne(src, srcStat, destDir)
@@ -249,7 +254,7 @@ const copyFromCameras = async (options: CopyOptions) => {
   let copied = 0
   let skipped = 0
   for (const cameraDir of options.cameraDirs) {
-    if (!fs.existsSync(cameraDir)) continue
+    if (!(await pathExists(cameraDir))) continue
     const result = await copyCamera({ cameraDir, outputDir: options.outputDir })
     copied += result.copied
     skipped += result.skipped
@@ -258,14 +263,19 @@ const copyFromCameras = async (options: CopyOptions) => {
   return { copied, skipped }
 }
 
-if (isCliModule('copy')) {
-  const cameraDirs = process.argv.slice(2).filter((a) => !a.startsWith('-') && fs.existsSync(a))
+const cliMain = async () => {
+  const asked = process.argv.slice(2).filter((a) => !a.startsWith('-'))
+  const cameraDirs = (
+    await mapWithLimit(asked, 16, async (a) => ((await pathExists(a)) ? a : ''))
+  ).filter(Boolean)
   if (cameraDirs.length === 0) {
     console.error('Usage: skydock-copy <camera_dir> [camera_dir ...]')
     process.exit(1)
   }
-  void copyFromCameras({ cameraDirs })
+  await copyFromCameras({ cameraDirs })
 }
+
+if (isCliModule('copy')) void cliMain()
 
 const dayFoldersOf = async (files: string[], outputDir: string) => {
   const shots = await shotTimes(files)

@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { pathExists } from '../../../../packages/skydock-scripts/src/lib/fs'
 import { openInPlayer } from '../../../../packages/skydock-scripts/src/player'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
@@ -16,7 +16,7 @@ const playFile: Intent = async ({ data, manifest, refuse }) => {
     (f) => f.id === id
   )
   if (!file) return refuse('That file is no longer on the board.')
-  if (!fs.existsSync(file.path))
+  if (!(await pathExists(file.path)))
     return refuse(
       `${file.filename} is not on this machine any more — it is on the storage, and plays from the storage's own list.`
     )

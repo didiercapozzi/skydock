@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { readdir } from 'node:fs/promises'
 import * as path from 'node:path'
 import {
   getGroupProcessedDir,
@@ -9,6 +9,7 @@ import {
   waitingForProxy,
   messageOf
 } from '@skydock/scripts'
+import { pathExists } from '../../../../packages/skydock-scripts/src/lib/fs'
 import { openInEditor } from '../../../../packages/skydock-scripts/src/editor'
 import { mediaSeconds } from '../../../../packages/skydock-scripts/src/lib/media'
 import { createMontageProject } from '../../../../packages/skydock-scripts/src/montage'
@@ -26,8 +27,8 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
     return refuse('Only a named montage gets a project — give it a name first.')
   if (!group.processed) return refuse('Process this montage before making its project.')
   const { dir: groupDir, baseName } = getGroupProcessedDir(outputDir, group)
-  if (!fs.existsSync(groupDir)) return refuse('Processed folder not found. Process it again.')
-  if (fs.readdirSync(groupDir).some((f) => f.endsWith('.kdenlive')))
+  if (!(await pathExists(groupDir))) return refuse('Processed folder not found. Process it again.')
+  if ((await readdir(groupDir)).some((f) => f.endsWith('.kdenlive')))
     return refuse('This montage already has a project — open it in kdenlive.')
   const waiting = waitingForProxy(group.files, await statProxies(manifest, outputDir))
   if (waiting.length > 0)
@@ -35,18 +36,17 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       `${waiting.length === 1 ? '1 clip is' : `${waiting.length} clips are`} still getting a proxy — the project is made once each one has it, or has failed to.`
     )
   try {
-    const copiesIn = (media: string) => {
+    const copiesIn = async (media: string) => {
       const dir = path.join(groupDir, media)
-      return fs.existsSync(dir)
-        ? fs
-            .readdirSync(dir, { withFileTypes: true })
+      return (await pathExists(dir))
+        ? (await readdir(dir, { withFileTypes: true }))
             .filter((e) => e.isFile())
             .map((e) => path.join(dir, e.name))
             .sort()
         : []
     }
-    const videos = copiesIn('videos')
-    const photos = videos.length === 0 ? copiesIn('photos') : []
+    const videos = await copiesIn('videos')
+    const photos = videos.length === 0 ? await copiesIn('photos') : []
     const copies = new Map(
       group.files.flatMap((f) => (f.processed ? [[path.basename(f.processed.path), f]] : []))
     )
@@ -55,9 +55,9 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
       const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(file).name}.mp4`)
       const measured = copies.get(path.basename(file))
       const source = measured && manifest.files.find((f) => f.id === measured.id)
-      if (!fs.existsSync(proxy) && measured && source?.proxy)
+      if (!(await pathExists(proxy)) && measured && source?.proxy)
         await writeCutProxy({ ...measured, proxy: source.proxy }, file, outputDir, group.id)
-      const hasProxy = fs.existsSync(proxy)
+      const hasProxy = await pathExists(proxy)
       const seconds = measured?.moments ? await mediaSeconds(hasProxy ? proxy : file) : null
       clips.push({
         path: file,
@@ -67,7 +67,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
         ...(seconds !== null ? { seconds } : {})
       })
     }
-    const made = createMontageProject({
+    const made = await createMontageProject({
       groupDir,
       outputDir,
       baseName,
@@ -86,7 +86,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
         clips: made.clips,
         at: Math.floor(Date.now() / 1000)
       }
-    saveManifest(manifestPath, board)
+    await saveManifest(manifestPath, board)
     const opened = await openInEditor(made.projectPath)
     return {
       ...(await boardAnswer(board)),

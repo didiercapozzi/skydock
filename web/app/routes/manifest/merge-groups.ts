@@ -3,7 +3,7 @@ import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
 /* Two jumps become one, and the one may be re-timed in the same move so that it starts, by its own run, at the anchor. */
-const mergeGroupsIntent: Intent = ({
+const mergeGroupsIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -17,7 +17,7 @@ const mergeGroupsIntent: Intent = ({
   const merged = manifest.groups.find((g) => g.id === data.leftId)
   if (merged && data.anchorEpoch !== undefined && Number.isFinite(data.anchorEpoch))
     shiftGroupTo(manifest, merged, data.anchorEpoch)
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 

@@ -158,7 +158,7 @@ const proveOnStorage = async (
     return { group, dir }
   }
 
-  const outputs = statProcessedOutputs(manifest)
+  const outputs = await statProcessedOutputs(manifest)
   const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
   if (gate.blocked) throw new Error(`${gate.message} — it changed since it was uploaded.`)
 

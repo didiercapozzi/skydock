@@ -24,7 +24,7 @@ const gatherArrivals = async (outputDir: string, ids: string[]) => {
     const loose = looseFiles(manifest).filter((f) => f.id && ids.includes(f.id))
     if (loose.length > 0) {
       groupNewFiles(manifest, sortFilesByMtime(loose))
-      saveManifest(manifestPath, manifest)
+      await saveManifest(manifestPath, manifest)
     }
     return ids.filter((id) => here.has(id)).length
   } catch {

@@ -276,7 +276,7 @@ describe('a camera KDE reaches, plugged in', () => {
     onCamera('DCIM/190GOPRO/GOPR0001.MP4')
 
     await askKde(async () => [CAMERA])
-    lookForCameras(outputDir, path.join(device, 'no-mounts'))
+    await lookForCameras(outputDir, path.join(device, 'no-mounts'))
 
     expect(globalThis.skydockCameraWatch?.seen.has(CAMERA)).toBe(true)
   })

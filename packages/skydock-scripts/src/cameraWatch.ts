@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { readdir, readFile, realpath } from 'node:fs/promises'
 import * as path from 'node:path'
 import { CameraGone, CopyStopped, copyCamera } from './copy'
 import type { Copied, CopyProgress } from './copy'
@@ -16,8 +16,9 @@ import {
   touchCamera
 } from './knownCameras'
 import { scanMedia } from './scan'
+import { pathExists } from './lib/fs'
 import { messageOf } from './lib/words'
-import { getTrashDir } from './utils'
+import { getTrashDir, mapWithLimit } from './utils'
 
 const DEFAULT_ROOTS: Record<string, string[]> = {
   darwin: ['/Volumes'],
@@ -38,12 +39,13 @@ const isGvfsRoot = (root: string) => {
   return gvfs !== null && path.resolve(root) === path.resolve(gvfs)
 }
 
-const windowsDrives = () =>
-  Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`).filter(
-    (drive) => fs.existsSync(drive)
-  )
+const windowsDrives = async () => {
+  const drives = Array.from({ length: 26 }, (_, i) => `${String.fromCharCode(65 + i)}:${path.sep}`)
+  const present = await Promise.all(drives.map(pathExists))
+  return drives.filter((_, i) => present[i])
+}
 
-const cameraRoots = () => {
+const cameraRoots = async () => {
   const told = process.env.SKYDOCK_CAMERA_ROOTS
   if (told !== undefined)
     return told
@@ -57,66 +59,67 @@ const cameraRoots = () => {
 }
 
 const EVERY_MS = 2000
+const PARALLEL = 16
 
 const unescapeMount = (field: string) =>
   field.replace(/\\([0-7]{3})/g, (_, octal: string) =>
     String.fromCharCode(Number.parseInt(octal, 8))
   )
 
-const mountsAt = (mountinfo = '/proc/self/mountinfo') => {
-  let text: string
-  try {
-    text = fs.readFileSync(mountinfo, 'utf-8')
-  } catch {
-    return []
-  }
-  return text.split('\n').flatMap((line) => {
+const readMountinfo = (mountinfo = '/proc/self/mountinfo') =>
+  readFile(mountinfo, 'utf-8').catch(() => '')
+
+const mountsAt = async (mountinfo?: string) =>
+  (await readMountinfo(mountinfo)).split('\n').flatMap((line) => {
     const point = line.split(' ')[4]
     return point ? [unescapeMount(point)] : []
   })
+
+const foldersUnder = async (roots: string[]) =>
+  (
+    await Promise.all(
+      roots.map(async (root) => {
+        try {
+          if (isGvfsRoot(root))
+            return (await readdir(root))
+              .filter((name) => CAMERA_ON_GVFS.test(name))
+              .map((name) => path.join(root, name))
+          return (await readdir(root, { withFileTypes: true }))
+            .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
+            .map((entry) => path.join(root, entry.name))
+        } catch {
+          return []
+        }
+      })
+    )
+  ).flat()
+
+const camerasAt = async (point: string) => {
+  if (await pathExists(path.join(point, 'DCIM'))) return [point]
+  const stores = await foldersUnder([point])
+  const holding = await mapWithLimit(stores, PARALLEL, (store) =>
+    pathExists(path.join(store, 'DCIM'))
+  )
+  return stores.filter((_, i) => holding[i])
 }
 
-const mountsUnder = (roots: string[], mountinfo?: string) =>
-  mountsAt(mountinfo).filter((point) =>
-    roots.some((root) => point.startsWith(`${root}${path.sep}`))
-  )
-
-const foldersUnder = (roots: string[]) =>
-  roots.flatMap((root) => {
-    try {
-      if (isGvfsRoot(root))
-        return fs
-          .readdirSync(root)
-          .filter((name) => CAMERA_ON_GVFS.test(name))
-          .map((name) => path.join(root, name))
-      return fs
-        .readdirSync(root, { withFileTypes: true })
-        .filter((entry) => entry.isDirectory() || entry.isSymbolicLink())
-        .map((entry) => path.join(root, entry.name))
-    } catch {
-      return []
-    }
-  })
-
-const mountedCameras = (mountinfo?: string) => {
-  const roots = cameraRoots().map((root) => path.resolve(root))
+const mountedCameras = async (mountinfo?: string) => {
+  const roots = (await cameraRoots()).map((root) => path.resolve(root))
   if (roots.length === 0) return []
-  const live = new Set(mountsAt(mountinfo))
+  const points = await mountsAt(mountinfo)
+  const live = new Set(points)
   const drives =
     process.platform === 'win32'
       ? roots
       : process.platform === 'darwin'
-        ? foldersUnder(roots)
+        ? await foldersUnder(roots)
         : [
-            ...mountsUnder(roots, mountinfo),
-            ...foldersUnder(roots.filter((root) => live.has(root)))
+            ...points.filter((point) =>
+              roots.some((root) => point.startsWith(`${root}${path.sep}`))
+            ),
+            ...(await foldersUnder(roots.filter((root) => live.has(root))))
           ]
-  return [...new Set(drives.flatMap(camerasAt))]
-}
-
-const camerasAt = (point: string) => {
-  if (fs.existsSync(path.join(point, 'DCIM'))) return [point]
-  return foldersUnder([point]).filter((store) => fs.existsSync(path.join(store, 'DCIM')))
+  return [...new Set((await mapWithLimit(drives, PARALLEL, (drive) => camerasAt(drive))).flat())]
 }
 
 const overMtp = (mount: string) => {
@@ -128,30 +131,24 @@ const overMtp = (mount: string) => {
 const cameraName = (mount: string) =>
   isKioCamera(mount) ? kioCameraName(mount) : path.basename(mount) || mount.replace(/[\\/]+$/, '')
 
-const diskIds = () => {
+const diskIds = async () => {
   const folder = process.env.SKYDOCK_DISK_IDS ?? '/dev/disk/by-uuid'
   try {
-    return new Map(
-      fs.readdirSync(folder).flatMap((id) => {
-        try {
-          return [[fs.realpathSync(path.join(folder, id)), id] as const]
-        } catch {
-          return []
-        }
-      })
+    const ids = await readdir(folder)
+    const found = await mapWithLimit(ids, PARALLEL, (id) =>
+      realpath(path.join(folder, id)).then(
+        (real) => [real, id] as const,
+        () => null
+      )
     )
+    return new Map(found.filter((entry) => entry !== null))
   } catch {
     return new Map<string, string>()
   }
 }
 
-const mountOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
-  let text: string
-  try {
-    text = fs.readFileSync(mountinfo, 'utf-8')
-  } catch {
-    return null
-  }
+const mountOf = async (mount: string, mountinfo?: string) => {
+  const text = await readMountinfo(mountinfo)
   const here = path.resolve(mount)
   let best: { point: string; source: string } | null = null
   for (const line of text.split('\n')) {
@@ -169,16 +166,15 @@ const mountOf = (mount: string, mountinfo = '/proc/self/mountinfo') => {
   return best
 }
 
-const deviceOf = (mount: string, mountinfo?: string) => mountOf(mount, mountinfo)?.source ?? null
+const deviceOf = async (mount: string, mountinfo?: string) =>
+  (await mountOf(mount, mountinfo))?.source ?? null
 
-const cameraKey = (mount: string, mountinfo?: string) => {
+const cameraKey = async (mount: string, mountinfo?: string) => {
   if (!isKioCamera(mount) && process.platform === 'linux') {
-    const device = deviceOf(mount, mountinfo)
-    let real: string | null = null
-    try {
-      real = device ? fs.realpathSync(device) : null
-    } catch {}
-    const id = (real && diskIds().get(real)) || (device && diskIds().get(device)) || null
+    const device = await deviceOf(mount, mountinfo)
+    const real = device ? await realpath(device).catch(() => null) : null
+    const ids = await diskIds()
+    const id = (real && ids.get(real)) || (device && ids.get(device)) || null
     if (id) return `id:${id}`
   }
   return `name:${cameraName(mount)}`
@@ -202,6 +198,7 @@ type Watch = {
   keys: Record<string, string>
   fresh: Record<string, number | null>
   checking: Set<string>
+  looking: boolean
   prompts: string[]
   only: Record<string, Set<string>>
   saidKnown: string
@@ -226,6 +223,7 @@ const watch = () =>
     keys: {},
     fresh: {},
     checking: new Set(),
+    looking: false,
     prompts: [],
     only: {},
     saidKnown: ''
@@ -372,14 +370,15 @@ const lookThroughKde = async (camera: string, outputDir: string) => {
   }
 }
 
-const usbDevices = () => {
+const usbDevices = async () => {
   const root = '/dev/bus/usb'
   try {
-    return fs
-      .readdirSync(root)
-      .flatMap((bus) => fs.readdirSync(path.join(root, bus)).map((device) => `${bus}/${device}`))
-      .sort()
-      .join(' ')
+    const devices = await Promise.all(
+      (await readdir(root)).map(async (bus) =>
+        (await readdir(path.join(root, bus))).map((device) => `${bus}/${device}`)
+      )
+    )
+    return devices.flat().sort().join(' ')
   } catch {
     return null
   }
@@ -390,17 +389,18 @@ const ASK_EVERY_MS = 30_000
 
 const askKde = async (find = camerasThroughKde) => {
   const state = watch()
-  if (state.asking || state.copying || cameraRoots().length === 0) return
-  const usb = usbDevices()
-  const at = Date.now()
-  if (usb !== state.usb) {
-    state.usb = usb
-    state.askUntil = at + ASK_FOR_MS
-  }
-  if (usb === null ? at - state.askedAt < ASK_EVERY_MS : at > state.askUntil) return
+  if (state.asking || state.copying) return
   state.asking = true
-  state.askedAt = at
   try {
+    if ((await cameraRoots()).length === 0) return
+    const usb = await usbDevices()
+    const at = Date.now()
+    if (usb !== state.usb) {
+      state.usb = usb
+      state.askUntil = at + ASK_FOR_MS
+    }
+    if (usb === null ? at - state.askedAt < ASK_EVERY_MS : at > state.askUntil) return
+    state.askedAt = at
     state.kde = await find()
   } catch {
   } finally {
@@ -408,24 +408,25 @@ const askKde = async (find = camerasThroughKde) => {
   }
 }
 
-const isOnCamera = (file: string, mounts = mountedCameras()) => {
+const isOnCamera = async (file: string, mounts?: string[]) => {
   try {
-    const real = fs.realpathSync(file)
-    return mounts.some((mount) => {
-      if (isKioCamera(mount)) return false
-      const dcim = fs.realpathSync(path.join(mount, 'DCIM'))
-      return real.startsWith(`${dcim}${path.sep}`)
-    })
+    const real = await realpath(file)
+    for (const mount of mounts ?? (await mountedCameras())) {
+      if (isKioCamera(mount)) continue
+      const dcim = await realpath(path.join(mount, 'DCIM'))
+      if (real.startsWith(`${dcim}${path.sep}`)) return true
+    }
+    return false
   } catch {
     return false
   }
 }
 
-const keyOfMount = (mount: string) => watch().keys[mount] ?? cameraKey(mount)
+const keyOfMount = async (mount: string) => watch().keys[mount] ?? cameraKey(mount)
 
-const describe = (mount: string, known: ReturnType<typeof knownCameras>) => {
+const describe = async (mount: string, known: ReturnType<typeof knownCameras>) => {
   const state = watch()
-  const key = state.keys[mount] ?? cameraKey(mount)
+  const key = await keyOfMount(mount)
   const met = known.find((c) => c.key === key)
   return {
     camera: cameraName(mount),
@@ -438,10 +439,10 @@ const describe = (mount: string, known: ReturnType<typeof knownCameras>) => {
   }
 }
 
-const sayCameras = (force = false) => {
+const sayCameras = async (force = false) => {
   const state = watch()
   const known = knownCameras()
-  const mounted = [...state.seen].sort().map((mount) => describe(mount, known))
+  const mounted = await Promise.all([...state.seen].sort().map((mount) => describe(mount, known)))
   const prompts = state.prompts.filter((mount) => state.seen.has(mount))
   const said = JSON.stringify({ mounted, known, prompts })
   if (!force && said === state.saidKnown) return
@@ -477,13 +478,13 @@ const check = async (mount: string) => {
     state.fresh[mount] = null
   } finally {
     state.checking.delete(mount)
-    if (state.seen.has(mount)) sayCameras()
+    if (state.seen.has(mount)) void sayCameras()
   }
 }
 
-const meet = (mount: string, mountinfo?: string) => {
+const meet = async (mount: string, mountinfo?: string) => {
   const state = watch()
-  const key = cameraKey(mount, mountinfo)
+  const key = await cameraKey(mount, mountinfo)
   state.keys[mount] = key
   const met = knownCameras().find((c) => c.key === key)
   if (!met) {
@@ -491,37 +492,43 @@ const meet = (mount: string, mountinfo?: string) => {
     void check(mount)
     return
   }
-  touchCamera(key)
+  await touchCamera(key)
   if (met.auto) state.queue.push(mount)
   else void check(mount)
 }
 
-const lookForCameras = (outputDir: string, mountinfo?: string) => {
+const lookForCameras = async (outputDir: string, mountinfo?: string) => {
   const state = watch()
-  state.outputDir = outputDir
-  void askKde()
-  const now = new Set([...mountedCameras(mountinfo), ...state.kde])
-  for (const camera of now)
-    if (!state.seen.has(camera)) {
-      state.seen.add(camera)
-      meet(camera, mountinfo)
-    }
-  for (const camera of state.seen)
-    if (!now.has(camera)) {
-      const key = state.keys[camera]
-      if (key) touchCamera(key)
-      state.seen.delete(camera)
-      delete state.seenOn[camera]
-      delete state.keys[camera]
-      delete state.fresh[camera]
-      delete state.only[camera]
-      state.prompts = state.prompts.filter((mount) => mount !== camera)
-    }
-  sayCameras()
-  if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
+  if (state.looking) return
+  state.looking = true
+  try {
+    state.outputDir = outputDir
+    void askKde()
+    const now = new Set([...(await mountedCameras(mountinfo)), ...state.kde])
+    for (const camera of now)
+      if (!state.seen.has(camera)) {
+        state.seen.add(camera)
+        await meet(camera, mountinfo)
+      }
+    for (const camera of state.seen)
+      if (!now.has(camera)) {
+        const key = state.keys[camera]
+        if (key) await touchCamera(key)
+        state.seen.delete(camera)
+        delete state.seenOn[camera]
+        delete state.keys[camera]
+        delete state.fresh[camera]
+        delete state.only[camera]
+        state.prompts = state.prompts.filter((mount) => mount !== camera)
+      }
+    await sayCameras()
+    if (!state.copying && state.queue.length > 0) void copyNext(outputDir)
+  } finally {
+    state.looking = false
+  }
 }
 
-const answerCamera = (
+const answerCamera = async (
   outputDir: string,
   answer:
     | { remember: string; auto: boolean; copy: boolean }
@@ -535,32 +542,33 @@ const answerCamera = (
     const name =
       knownCameras().find((c) => c.key === answer.remember)?.name ??
       (mount ? cameraName(mount) : answer.remember)
-    rememberCamera({ key: answer.remember, name, auto: answer.auto })
+    await rememberCamera({ key: answer.remember, name, auto: answer.auto })
     state.prompts = state.prompts.filter((m) => m !== mount)
-    if (mount && answer.copy) copyAgain(outputDir, mount, [mount])
+    if (mount && answer.copy) void copyAgain(outputDir, mount, [mount])
   } else if ('forget' in answer) {
-    forgetCamera(answer.forget)
-  } else setCameraAuto(answer.auto.key, answer.auto.on)
-  sayCameras(true)
+    await forgetCamera(answer.forget)
+  } else await setCameraAuto(answer.auto.key, answer.auto.on)
+  await sayCameras(true)
 }
 
-const watchCameras = (outputDir: string) => {
+const watchCameras = async (outputDir: string) => {
   const state = watch()
+  const roots = await cameraRoots()
   if (state.timer) clearInterval(state.timer)
   state.timer = null
-  if (cameraRoots().length === 0) return
-  lookForCameras(outputDir)
-  state.timer = setInterval(() => lookForCameras(outputDir), EVERY_MS)
+  if (roots.length === 0) return
+  state.timer = setInterval(() => void lookForCameras(outputDir), EVERY_MS)
+  await lookForCameras(outputDir)
 }
 
-const copyAgain = (
+const copyAgain = async (
   outputDir: string,
   camera?: string,
-  mounts = mountedCameras(),
+  mounts?: string[],
   only?: Set<string>
 ) => {
   const state = watch()
-  const now = [...mounts, ...state.kde]
+  const now = [...(mounts ?? (await mountedCameras())), ...state.kde]
   const wanted = camera
     ? now.filter((c) => c === camera)
     : now.filter((c) => !state.prompts.includes(c))

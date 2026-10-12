@@ -29,16 +29,16 @@ afterEach(() => {
 })
 
 describe('where the work is kept', () => {
-  it('is what this run was told, before anything else', () => {
-    rememberOutputDir('/chosen/before', configDir)
+  it('is what this run was told, before anything else', async () => {
+    await rememberOutputDir('/chosen/before', configDir)
     set('SKYDOCK_OUTPUT_DIR', '/told/now')
 
     expect(resolveOutputDir(configDir)).toBe('/told/now')
   })
 
-  it('is the folder chosen before, once nothing says otherwise', () => {
+  it('is the folder chosen before, once nothing says otherwise', async () => {
     set('SKYDOCK_DEFAULT_OUTPUT_DIR', '/suggested')
-    rememberOutputDir('/movies/SkyDock', configDir)
+    await rememberOutputDir('/movies/SkyDock', configDir)
 
     expect(resolveOutputDir(configDir)).toBe('/movies/SkyDock')
   })
@@ -49,17 +49,17 @@ describe('where the work is kept', () => {
     expect(resolveOutputDir(configDir)).toBe('/movies/SkyDock')
   })
 
-  it('is remembered once, and asked for no more', () => {
-    rememberOutputDir('/movies/SkyDock', configDir)
+  it('is remembered once, and asked for no more', async () => {
+    await rememberOutputDir('/movies/SkyDock', configDir)
 
     expect(readSettings(configDir).outputDir).toBe('/movies/SkyDock')
     expect(fs.existsSync(path.join(configDir, 'settings.json'))).toBe(true)
   })
 
-  it('keeps what else the settings hold when the folder is remembered', () => {
+  it('keeps what else the settings hold when the folder is remembered', async () => {
     fs.writeFileSync(path.join(configDir, 'settings.json'), JSON.stringify({ zoom: 1.5 }))
 
-    rememberOutputDir('/movies/SkyDock', configDir)
+    await rememberOutputDir('/movies/SkyDock', configDir)
 
     expect(JSON.parse(fs.readFileSync(path.join(configDir, 'settings.json'), 'utf-8'))).toEqual({
       zoom: 1.5,

@@ -1,39 +1,43 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { createReadStream } from 'node:fs'
+import type { FileHandle } from 'node:fs/promises'
+import { copyFile, mkdir, open, rename, rm, writeFile } from 'node:fs/promises'
 import * as path from 'node:path'
 import { Unzip, UnzipInflate } from 'fflate'
 import { inJob } from './live'
-import { openToHost, walkFiles } from './lib/fs'
+import { openToHost, pathExists, walkFiles } from './lib/fs'
 import { availableTemplates, defaultTemplate, DEFAULT_MARK, inspectTemplate } from './montage'
 import { relinkTemplate } from './templateLinks'
 import type { TemplateFact } from './templateEntry'
 import { run } from './tools'
 
-const setDefaultTemplate = (outputDir: string, name: string | null) => {
+const setDefaultTemplate = async (outputDir: string, name: string | null) => {
   const root = path.join(outputDir, 'templates')
   const mark = path.join(root, DEFAULT_MARK)
   if (name === null) {
-    fs.rmSync(mark, { force: true })
-    return { templates: listTemplates(outputDir).templates }
+    await rm(mark, { force: true })
+    return listTemplates(outputDir)
   }
-  if (!availableTemplates(outputDir).some((t) => t.name === name))
+  if (!(await availableTemplates(outputDir)).some((t) => t.name === name))
     throw new Error(`There is no template called ${name}.`)
-  fs.mkdirSync(root, { recursive: true })
-  fs.writeFileSync(mark, `${name}\n`)
-  return { templates: listTemplates(outputDir).templates }
+  await mkdir(root, { recursive: true })
+  await writeFile(mark, `${name}\n`)
+  return listTemplates(outputDir)
 }
 
-const listTemplates = (outputDir: string) => {
-  const byDefault = defaultTemplate(outputDir)
-  const templates = availableTemplates(outputDir).map((template): TemplateFact => {
-    const fact = { name: template.name, byDefault: template.name === byDefault }
-    try {
-      const { version, assets, missing } = inspectTemplate(template.path)
-      return { ...fact, version, assets: assets.length, missing }
-    } catch {
-      return { ...fact, version: null, assets: 0, missing: [] }
-    }
-  })
+const listTemplates = async (outputDir: string) => {
+  const byDefault = await defaultTemplate(outputDir)
+  const templates = await Promise.all(
+    (await availableTemplates(outputDir)).map(async (template): Promise<TemplateFact> => {
+      const fact = { name: template.name, byDefault: template.name === byDefault }
+      try {
+        const { version, assets, missing } = await inspectTemplate(template.path)
+        return { ...fact, version, assets: assets.length, missing }
+      } catch {
+        return { ...fact, version: null, assets: 0, missing: [] }
+      }
+    })
+  )
   return { templates }
 }
 
@@ -49,6 +53,12 @@ const escapes = (entry: string) =>
 
 const unzipInto = async (archive: string, dir: string) => {
   const failures: string[] = []
+  let queue: Promise<void> = Promise.resolve()
+  const enqueue = (step: () => Promise<void>) => {
+    queue = queue.then(step).catch((e: Error) => {
+      failures.push(e.message)
+    })
+  }
   const unzip = new Unzip()
   unzip.register(UnzipInflate)
   unzip.onfile = (file) => {
@@ -58,17 +68,29 @@ const unzipInto = async (archive: string, dir: string) => {
     }
     if (file.name.endsWith('/')) return
     const target = path.join(dir, file.name)
-    fs.mkdirSync(path.dirname(target), { recursive: true })
-    const fd = fs.openSync(target, 'w')
+    let handle: FileHandle | undefined
+    enqueue(async () => {
+      await mkdir(path.dirname(target), { recursive: true })
+      handle = await open(target, 'w')
+    })
     file.ondata = (error, chunk, final) => {
       if (error) failures.push(`${file.name}: ${error.message}`)
-      else fs.writeSync(fd, chunk)
-      if (error || final) fs.closeSync(fd)
+      enqueue(async () => {
+        try {
+          if (!error) await handle?.write(chunk)
+        } finally {
+          if (error || final) await handle?.close()
+        }
+      })
     }
     file.start()
   }
-  for await (const chunk of fs.createReadStream(archive)) unzip.push(chunk, false)
+  for await (const chunk of createReadStream(archive)) {
+    unzip.push(chunk, false)
+    await queue
+  }
   unzip.push(new Uint8Array(0), true)
+  await queue
   if (failures.length > 0) throw new Error(failures[0])
 }
 
@@ -113,7 +135,7 @@ const importTemplate = async ({
   if (!folder) throw new Error('Give the template a name.')
 
   const staging = path.join(root, `.incoming-${crypto.randomUUID()}`)
-  fs.mkdirSync(staging, { recursive: true })
+  await mkdir(staging, { recursive: true })
   const replaced = path.join(root, `.replaced-${crypto.randomUUID()}`)
   const home = path.join(root, folder)
   await inJob(
@@ -128,8 +150,8 @@ const importTemplate = async ({
               throw new Error(`${file.filename} is not a name.`)
             const target = path.join(staging, ...inside)
             importing.working(path.basename(file.filename))
-            await fs.promises.mkdir(path.dirname(target), { recursive: true })
-            await fs.promises.copyFile(file.at, target)
+            await mkdir(path.dirname(target), { recursive: true })
+            await copyFile(file.at, target)
             importing.step()
           }
         } else {
@@ -138,7 +160,7 @@ const importTemplate = async ({
           else await untarInto(archive.at, staging)
         }
 
-        const inside = walkFiles(staging)
+        const inside = (await walkFiles(staging))
           .filter((f) => f.endsWith('.kdenlive'))
           .sort(
             (a, b) => a.split(path.sep).length - b.split(path.sep).length || a.localeCompare(b)
@@ -148,23 +170,24 @@ const importTemplate = async ({
             'There is no kdenlive project in what was brought in — a template is a .kdenlive and the files it uses, or the archive kdenlive packs them into.'
           )
         const held = path.dirname(inside)
-        relinkTemplate(inside)
-        openToHost(held, outputDir)
+        await relinkTemplate(inside)
+        await openToHost(held, outputDir)
 
-        if (fs.existsSync(home)) fs.renameSync(home, replaced)
+        if (await pathExists(home)) await rename(home, replaced)
         try {
-          fs.renameSync(held, home)
+          await rename(held, home)
         } catch (e) {
-          if (fs.existsSync(replaced) && !fs.existsSync(home)) fs.renameSync(replaced, home)
+          if ((await pathExists(replaced)) && !(await pathExists(home)))
+            await rename(replaced, home)
           throw e
         }
       } finally {
-        await fs.promises.rm(staging, { recursive: true, force: true })
-        await fs.promises.rm(replaced, { recursive: true, force: true })
+        await rm(staging, { recursive: true, force: true })
+        await rm(replaced, { recursive: true, force: true })
       }
     }
   )
-  const made = listTemplates(outputDir).templates.find((t) => t.name === folder)
+  const made = (await listTemplates(outputDir)).templates.find((t) => t.name === folder)
   if (!made) throw new Error('The template was brought in but cannot be read as one.')
   return made
 }

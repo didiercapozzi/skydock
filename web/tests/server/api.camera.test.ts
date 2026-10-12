@@ -72,7 +72,7 @@ describe('the cameras this machine has met', () => {
   })
 
   it('remembers a camera with its answer, without copying when it is not plugged in', async () => {
-    rememberCamera({ key: 'name:HERO5 Black', name: 'HERO5 Black', auto: false })
+    await rememberCamera({ key: 'name:HERO5 Black', name: 'HERO5 Black', auto: false })
 
     const res = await post({ remember: { key: 'name:HERO5 Black', auto: true, copy: false } })
 
@@ -82,7 +82,7 @@ describe('the cameras this machine has met', () => {
   })
 
   it('switches a camera copying its new files by itself on and off', async () => {
-    rememberCamera({ key: 'name:HERO5 Black', name: 'HERO5 Black', auto: false })
+    await rememberCamera({ key: 'name:HERO5 Black', name: 'HERO5 Black', auto: false })
 
     await post({ auto: { key: 'name:HERO5 Black', on: true } })
     expect(knownCameras(dir)[0]?.auto).toBe(true)
@@ -92,8 +92,8 @@ describe('the cameras this machine has met', () => {
   })
 
   it('forgets a camera, and only that one', async () => {
-    rememberCamera({ key: 'name:HERO5 Black', name: 'HERO5 Black', auto: false })
-    rememberCamera({ key: 'name:OsmoNano', name: 'OsmoNano', auto: true })
+    await rememberCamera({ key: 'name:HERO5 Black', name: 'HERO5 Black', auto: false })
+    await rememberCamera({ key: 'name:OsmoNano', name: 'OsmoNano', auto: true })
 
     const res = await post({ forget: 'name:HERO5 Black' })
 

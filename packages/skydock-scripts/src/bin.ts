@@ -111,7 +111,7 @@ const bringBackFromBin = async ({
       if (known.has(await computeFileId(file))) kept.push(path.basename(file))
       else {
         const shot = times.get(file) ?? (await mtimeOf(file))
-        await moveFile(file, landingFor(outputDir, path.basename(file), shot))
+        await moveFile(file, await landingFor(outputDir, path.basename(file), shot))
         back.push(path.basename(file))
       }
       bringing.step()

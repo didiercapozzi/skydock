@@ -11,7 +11,7 @@ import type { Intent } from './change'
    It belongs to the file rather than to the jump that holds it: the door was left at one instant,
    whatever anybody later does with the footage. Unlike a trim, it is not undone by processing again
    and does not make a copy stale — nothing is cut differently for it until somebody says so. */
-const setMomentIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+const setMomentIntent: Intent = async ({ data, manifest, manifestPath, refuse }) => {
   const id = data.fileIds?.[0]
   if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Move one mark at a time.')
   const moment = data.moment
@@ -33,13 +33,13 @@ const setMomentIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
       one.moments = moved
       one.foundMoments = found
     }
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 
 /* The marks put back where the camera measured them, whatever was moved by hand since. Only a file
    that was moved has anything to go back to. */
-const resetMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+const resetMomentsIntent: Intent = async ({ data, manifest, manifestPath, refuse }) => {
   const id = data.fileIds?.[0]
   if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Put back one clip at a time.')
   const file = manifest.files.find((f) => f.id === id)
@@ -51,14 +51,14 @@ const resetMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) =>
       one.moments = found
       delete one.foundMoments
     }
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 
 /* For development only: a clip forgets where its jump is, marks moved by hand and all, and the pass
    that finds it runs again at once, with its progress shown as ever — for trying the finding out on
    real footage. Refused anywhere else, since it throws away what somebody may have corrected. */
-const redoMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) => {
+const redoMomentsIntent: Intent = async ({ data, manifest, manifestPath, refuse }) => {
   if (!import.meta.env.DEV) return refuse('This is only for development.')
   const id = data.fileIds?.[0]
   if (!id || (data.fileIds?.length ?? 0) > 1) return refuse('Redo one clip at a time.')
@@ -69,7 +69,7 @@ const redoMomentsIntent: Intent = ({ data, manifest, manifestPath, refuse }) => 
       delete one.moments
       delete one.foundMoments
     }
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   void buildMissingMoments(path.dirname(manifestPath)).catch((e: unknown) => {
     console.error('[Moments] pass failed:', e)
   })

@@ -32,5 +32,5 @@ board.groups.forEach((g, i) => {
     g.passenger = { firstname: `Guest`, lastname: String(i) }
   }
 })
-saveManifest(manifestPath, board)
+await saveManifest(manifestPath, board)
 console.log(`${count} files, ${board.groups.length} jumps, in ${folder}`)

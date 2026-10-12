@@ -33,7 +33,7 @@ const watch = () =>
 const currentManifest = async (outputDir: string) => {
   const state = watch()
   const manifestPath = getManifestPath(outputDir)
-  const stamp = pairStamp(manifestPath)
+  const stamp = await pairStamp(manifestPath)
   if (stamp !== state.manifest.stamp) {
     try {
       state.manifest = { stamp, value: await loadManifestAsync(manifestPath) }

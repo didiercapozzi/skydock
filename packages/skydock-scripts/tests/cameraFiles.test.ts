@@ -3,7 +3,7 @@ import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { deleteFromCameras, listCameras } from '../src/cameraFiles'
+import { deleteFromCameras, listCameras, lookAtCameras } from '../src/cameraFiles'
 import { copyCamera } from '../src/copy'
 import { subscribe } from '../src/live'
 import { readTransfers } from '../src/transfers'
@@ -414,5 +414,36 @@ describe('deleting from a camera', () => {
     cameraWatching({ copying: true })
 
     await expect(remove(root, manifest)).rejects.toThrow(/being copied/)
+  })
+})
+
+describe('a card read as a drive', () => {
+  it('answers first with the newest files and says it is still reading, then lists them all newest first', async () => {
+    const clips = 120
+    const root = card(
+      Object.fromEntries(
+        Array.from({ length: clips }, (_, at) => [`GX${String(at).padStart(3, '0')}.MP4`, at % 250])
+      )
+    )
+    for (let at = 0; at < clips; at++) {
+      const when = new Date(DAY.getTime() + at * 1000)
+      fs.utimesSync(onCard(root, `GX${String(at).padStart(3, '0')}.MP4`), when, when)
+    }
+
+    const [first] = await lookAtCameras(outputDir, [root], trashDir)
+
+    expect(first?.looking).toBe(true)
+    expect(first?.files.length).toBeGreaterThan(0)
+    expect(first?.files.length).toBeLessThan(clips)
+    expect(path.basename(first?.files[0]?.name ?? '')).toBe('GX119.MP4')
+
+    await expect
+      .poll(async () => (await lookAtCameras(outputDir, [root], trashDir))[0]?.looking)
+      .toBe(false)
+    const [whole] = await lookAtCameras(outputDir, [root], trashDir)
+    expect(whole?.files).toHaveLength(clips)
+    expect(whole?.files.map((f) => f.mtime)).toEqual(
+      [...(whole?.files ?? [])].map((f) => f.mtime).sort((a, b) => b - a)
+    )
   })
 })

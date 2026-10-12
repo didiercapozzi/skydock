@@ -53,6 +53,8 @@ const STANDING = {
 
 const STATES = ['missing', 'copied', 'binned', 'stored'] as const
 
+const LOOKING_POLL_MS = 1000
+
 const pickLabel = (name: string) => t`Pick ${name}`
 
 const DeleteBar = ({ path }: { path: string }) => {
@@ -177,7 +179,7 @@ const CameraFiles = ({
   const looking = listing?.looking === true
   useEffect(() => {
     if (!looking) return
-    const again = setTimeout(() => setReadAgain((n) => n + 1), 3000)
+    const again = setTimeout(() => setReadAgain((n) => n + 1), LOOKING_POLL_MS)
     return () => clearTimeout(again)
   }, [looking, answered])
   const gone = new Set(
@@ -365,7 +367,7 @@ const CameraFiles = ({
               : t`Pick every new file`}
           </Mini>
         )}
-        {pickable.length > 0 && (
+        {pickable.length > 0 && !looking && (
           <Mini
             onClick={() =>
               setPicked(

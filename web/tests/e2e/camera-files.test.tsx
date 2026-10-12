@@ -373,6 +373,39 @@ describe('a camera still being gone over', () => {
     await expect.element(page.getByText('GOPR0001.MP4')).toBeVisible()
     await expect.element(page.getByText(/still going over the camera — 1 file so far/)).toBeVisible()
   })
+
+  test('a card read as a drive lists its newest files first, offers nothing to copy or delete in bulk until all are read, then fills in', async () => {
+    const answers = [
+      { looking: true, files: [onCard('DJI_0003.MP4', 'missing'), onCard('DJI_0002.MP4', 'copied')] },
+      {
+        looking: false,
+        files: [
+          onCard('DJI_0003.MP4', 'missing'),
+          onCard('DJI_0002.MP4', 'copied'),
+          onCard('DJI_0001.MP4', 'stored')
+        ]
+      }
+    ]
+    vi.stubGlobal('fetch', async () => {
+      const answer = answers.length > 1 ? answers.shift()! : answers[0]!
+      return Response.json({ cameras: [{ ...listing.cameras[0], ...answer }] })
+    })
+    await render(
+      createElement(CameraFiles, { mount: MOUNT, stamp: 1, onNote: () => {}, onCopyBack: () => {} })
+    )
+
+    await expect.element(page.getByText(/still going over the camera — 2 files so far/)).toBeVisible()
+    await expect.element(page.getByRole('button', { name: /^Copy .* here$/ })).not.toBeInTheDocument()
+    await expect
+      .element(page.getByRole('button', { name: 'Pick every file that can go' }))
+      .not.toBeInTheDocument()
+
+    await expect
+      .element(page.getByText('DJI_0001.MP4'), { timeout: 5000 })
+      .toBeVisible()
+    await expect.element(page.getByRole('button', { name: /^Copy 1 file here$/ })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Pick every file that can go' })).toBeVisible()
+  })
 })
 
 describe('looking at a file from the camera', () => {

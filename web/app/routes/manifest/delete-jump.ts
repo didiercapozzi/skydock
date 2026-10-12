@@ -27,7 +27,7 @@ const deleteJumpIntent: Intent = async ({
   if (busyWith({ groupIds: [data.groupId ?? ''] }) === 'uploading')
     return refuse('It is being uploaded — delete it once the upload is done.')
   await deleteJump(manifest, group.id)
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }
 
