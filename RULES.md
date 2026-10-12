@@ -242,7 +242,8 @@ A file leaves the camera's list the moment it has gone. What passes is moved off
 kept as it sat on the card. What decides is what the file is, by its contents, and what the records say of it: it is a file the board holds, by its bytes — copied here, uploaded or not, or freed once the storage held it. Nothing is asked of the storage when a file is deleted, so there is nothing to wait for. A file the board does not know, or one whose copy in the bin is a different file, stays and is named. The files are read a few at a time and moved one at a time, and each file being deleted
 shows a bar on its own row, first for reading it through and then for moving it into the
 bin, so a long delete is seen to be going. Nothing is deleted from a camera while one is being copied or
-anything is being processed.
+anything is being processed. A card mounted read-only cannot be deleted from: that is said at once,
+nothing is moved and the bin is not touched.
 
 **2. Scan.** SkyDock reads each file's capture time and groups files shot close together into jumps.
 A scan can be asked for at any time; one run after more cameras were copied off picks up the new files,
@@ -264,7 +265,7 @@ the way to ask again.
 
 A scan also makes a **proxy** of every clip: a small copy, the same length at the same speed, which the
 board plays instead of the full clip and which the editor later opens on. Proxies are made in the
-background; everything works without them, and a clip without one simply plays as it is. Each clip
+background; everything works without them, and a clip without one simply plays as it is. The small copy is made 640 wide as the clip is shown, so a clip stored sideways is made small by the edge that ends up across and a portrait clip is not made bigger than a landscape one; a clip already 1000 wide or less is its own small copy. Each clip
 says whether it has one — only while it has none, since a clip with one is the ordinary case. Proxies are working files: never listed, never sorted, never uploaded. The small square the board
 draws a file by is cut from the proxy once there is one — the same frame, at a third of the cost —
 and kept, so a jump opened again is drawn from what was already cut rather than from the footage. A
@@ -400,7 +401,8 @@ Filing a jump answers one question: where does it go?
   A montage cannot be processed until it has a name, because the name is the folder. **Where its film
   and its backups go is chosen when it is uploaded**, among the destinations (Uploading a montage).
 - **A backup folder chosen before backups went into destinations** becomes a destination called
-  Backup, so a backup can go where it always went.
+  Backup, so a backup can go where it always went. It is called Backup 2, Backup 3 ... when Backup is
+  already another folder.
 - **A name can be changed afterwards**, because a name read off a form can be read wrong. Changing one
   says what it costs: what was processed belongs to the old folder and must be processed again, and what
   was already uploaded stays on the storage under the old name and no longer counts as uploaded here.
@@ -436,6 +438,9 @@ output/
 ├── .thumbs/                  the frames the board draws, cut once and kept
 └── .projects/                every version of each montage's editing project, kept and never deleted
 ```
+
+A jump filed nowhere is delivered straight under `processed/`, in a folder of its own named after the
+jump and its date, with its videos and photos kept apart inside it.
 
 The board's own record of the work sits at the top of the output folder, with what each original was
 found to be last time (so a Rescan reads through only what is new). It is written whole or not at all: a
@@ -700,7 +705,7 @@ with an edit takes nothing in.
 onto the board: onto a montage to join it, onto a dropzone to be filed there loose, onto
 Fresh files to wait there, or anywhere on a place's page to go to that place. It is copied into the
 originals under the day it was taken, keeping its name unless a different file already has it that
-day. From then on it is a file like any other. Several at once go together, to the same place.
+day. Only the file's name is taken from a drop, never a path. From then on it is a file like any other. Several at once go together, to the same place.
 
 **A whole folder can be dropped** as readily as a file, and is not itself copied: every video and
 photo inside it is, and inside the folders inside it, however deep they go. A card copied to the
@@ -789,9 +794,10 @@ panel open, so whatever is done with it next is a single press away.
 whose jump is being found, shows how far through it is on the file itself — a bar and a percentage where its status stands, on a row and on
 a thumbnail alike — moving as the work goes, with nothing reloaded and nothing asked: the board keeps
 one line open to the machine and hears it. A clip is flagged as having its proxy the moment it lands.
-A board opened, or reconnected, in the middle of a run starts with what is already under way. The
+A board opened, or reconnected, in the middle of a run starts with what is already under way. A page
+that goes away stops being told what happens. The
 figure is a percentage of what is being written, so a trimmed clip counts against its trim — or, while
-a jump is being found, of the clip being read through. Finding it never holds up the rest of the
+a jump is being found, of the clip being read through. A bar is never full before the file is whole, so a figure stops at 99. Finding it never holds up the rest of the
 board: the clips are read one after another in the background, and the board goes on answering. Finding
 the jump is a pass of its own, beside the proxies' and never waiting on them: a clip is read for its
 jump while another is still being transcoded. The moment a jump is found it is on the clip — a small
@@ -943,7 +949,8 @@ cropped the same way as one in a jump, with no jump to give its frame or turn to
 from it begins, and stepping to another clip opens that clip on its own trim, frame and turn — never
 those of the one just left. Dragging along the timeline moves the picture with the pointer, the frame following as
 fast as it can be drawn and never left stuck when the pointer stops. Drag the ends of the timeline, or
-set the start and end at the playhead. Either end on its own is a trim: an end with no start runs
+set the start and end at the playhead. The timeline zooms with the wheel up to ten times, and
+Reset brings it back to whole, shown only while it is zoomed; the playhead never leaves the clip. Either end on its own is a trim: an end with no start runs
 from the clip's beginning, a start with no end runs to the clip's end. Trimming moves no
 pixels: the clip is copied with its ends cut off, losing nothing.
 
@@ -1054,7 +1061,8 @@ Every file is in one of three states, each of which SkyDock can verify:
 - **local** — nothing current has been made from it. Either it was never processed, or it was cropped,
   turned, re-timed or replaced since. The board shows the second case as **changed**, because "never
   processed" and "processed, then altered" are different situations to be in.
-- **processed** — a copy exists that was made from the file exactly as it is now.
+- **processed** — a copy exists that was made from the file exactly as it is now. A copy whose size
+  was never recorded is trusted while it is there; a copy of another size on disk is not current.
 - **uploaded** — that copy is on the storage, proved by matching checksums on both sides. A file that
   went up inside an archive counts as uploaded while the archive is there.
 
@@ -1152,7 +1160,8 @@ board says which to wait for.
 since nothing is lost: the file being sent is cut off, nothing more is sent, and nothing of the upload
 is recorded — no file reads as uploaded, no link is kept. What had already gone up stays on the
 storage and is found there by the next upload, which does not send it again. A zip that was being made
-is thrown away, never left where it could pass for a finished one.
+is thrown away, never left where it could pass for a finished one. A zip already made is reused while
+nothing in it changed, and made again when it must hold another file.
 
 **And the same footage under another name.** Every name changes on the way out, and the same footage
 is delivered under a second name often enough: a clip whose time was put right, a montage renamed,
@@ -1176,7 +1185,8 @@ somewhere else, does not move it, since a list that moved would start again empt
 it was kept before is read from there, and moved to where it now lives the first time it changes. It
 is read before an upload and written after it, keeping every entry it did not make — another
 machine's included — and a list that cannot be read is never written over. If it cannot be written,
-the upload still stands and the board says the list did not follow.
+the upload still stands and the board says the list did not follow. What SkyDock keeps about the
+storage itself is never listed among a folder's files.
 
 **The storage's own listing is the truth; the list only remembers.** It saves reading a file again
 and reaches folders this machine did not list, but it never says a file is up there that the storage
@@ -1301,7 +1311,8 @@ as kdenlive makes one, to be stretched or cut on the timeline. Crops and turns a
 from its proxy with the real clip recorded as what the edit is of, so the editor opens ready to work and
 renders from the footage. The film's destination and format are filled in, so what is left is the edit
 and pressing render — and the format is the editor's ordinary MP4, H.264 video with AAC sound, which
-plays wherever the film is sent and needs no particular graphics card.
+plays wherever the film is sent and needs no particular graphics card. A name, or a file name, with an
+ampersand or another markup character in it comes out of the project exactly as it was typed.
 
 **The project waits for the proxies.** The editor opens on them, and a project made before they exist
 opens on the full clips — the slowest way there is to edit. So it cannot be made while any clip in the
@@ -1319,7 +1330,7 @@ timeline, where a mark stays behind the moment the clip it was about moves.
 
 **Making the project opens it.** Writing the project and opening the editor are one press, and a montage
 with a project offers a way back into it. Which command opens the editor is told to SkyDock when it
-starts. When the editor
+starts; left untold, it is kdenlive, looked for where each system keeps it. When the editor
 cannot be reached from where SkyDock runs, the board says so and still names the project's path, which
 copies when clicked. A project that would not open is refused with the reason.
 
@@ -1459,8 +1470,8 @@ the zips go to a destination called Backup when there is one, and nothing else i
 where the film and the photos go is the club's to choose. The project folder is
 this montage's own.
 
-**Refusals**, each named: no name; files still to process; no film yet, naming the film looked for; a
-film still being written; nothing put anywhere; a destination with no folder on the storage; another
+**Refusals**, each named: no name; files still to process; no film yet, naming the film looked for;
+several films in the folder, none named after the montage; a film still being written; nothing put anywhere; a destination with no folder on the storage; another
 upload going, naming it. A montage
 with no video at all is uploaded without a film. A film rendered under a different name, when it is
 the only one there, is taken as the film, and goes up named after the montage.

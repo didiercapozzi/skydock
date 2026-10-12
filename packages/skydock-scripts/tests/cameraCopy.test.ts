@@ -9,8 +9,7 @@ import {
   copyAgain,
   lookForCameras,
   mountedCameras,
-  overMtp,
-  watchCameras
+  overMtp
 } from '../src/cameraWatch'
 import { CameraGone, CopyStopped, copyBack, copyCamera } from '../src/copy'
 import { forgetCamera, knownCameras, rememberCamera } from '../src/knownCameras'
@@ -39,6 +38,17 @@ const card = (name: string, clips: Record<string, { bytes: number; fill: number;
 
 const DAY = new Date(2026, 7, 1, 10, 0, 0)
 const day = (...parts: string[]) => path.join(outputDir, 'original_files', '2026-08-01', ...parts)
+
+const mountinfo = (points: string[]) => {
+  const file = path.join(media, 'mountinfo')
+  fs.writeFileSync(
+    file,
+    points
+      .map((p, i) => `${100 + i} 1 8:${i} / ${p.replace(/ /g, '\\040')} rw - vfat /dev/sd${i} rw`)
+      .join('\n')
+  )
+  return file
+}
 
 beforeEach(() => {
   media = createTmpDir('skydock-media-')
@@ -217,7 +227,7 @@ describe('copying a camera off', () => {
     manifest.files = manifest.files.map((f) =>
       f.filename === filename ? { ...f, freed: true } : f
     )
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     fs.rmSync(day(filename))
   }
 
@@ -343,7 +353,12 @@ describe('copying a camera again while it stays plugged in', () => {
   })
 
   it('puts the files on the board as they land, and gathers them into jumps at the end', async () => {
-    saveManifest(getManifestPath(outputDir), { version: 2, createdAt: 'x', files: [], groups: [] })
+    await saveManifest(getManifestPath(outputDir), {
+      version: 2,
+      createdAt: 'x',
+      files: [],
+      groups: []
+    })
     const root = card('GOPRO', {
       'GX01.MP4': { bytes: 32, fill: 1, at: DAY },
       'GX02.MP4': { bytes: 32, fill: 2, at: new Date(DAY.getTime() + 60_000) }
@@ -363,14 +378,14 @@ describe('copying a camera again while it stays plugged in', () => {
 
     copyAgain(outputDir, root, [root])
     await copied()
-    const first = readTransfers(outputDir)
+    const first = await readTransfers(outputDir)
     expect(first).toHaveLength(1)
     expect(first[0]).toMatchObject({ kind: 'camera', state: 'done' })
     expect(first[0]!.items.map((i) => [i.name, i.result])).toEqual([['GX01.MP4', 'done']])
 
     copyAgain(outputDir, root, [root])
     await copied()
-    expect(readTransfers(outputDir)).toHaveLength(1)
+    expect(await readTransfers(outputDir)).toHaveLength(1)
   })
 
   it('asks for nothing of a camera that is not plugged in', () => {
@@ -383,23 +398,12 @@ describe('copying a camera again while it stays plugged in', () => {
     copyAgain(outputDir, root, [root])
     copyAgain(outputDir, root, [root])
 
-    expect(globalThis.skydockCameraWatch?.queue).toEqual([])
     await copied()
+    expect(await readTransfers(outputDir)).toHaveLength(1)
   })
 })
 
 describe('which drives are cameras', () => {
-  const mountinfo = (points: string[]) => {
-    const file = path.join(media, 'mountinfo')
-    fs.writeFileSync(
-      file,
-      points
-        .map((p, i) => `${100 + i} 1 8:${i} / ${p.replace(/ /g, '\\040')} rw - vfat /dev/sd${i} rw`)
-        .join('\n')
-    )
-    return file
-  }
-
   it('is a drive mounted where cameras are, with a DCIM folder at its root', () => {
     process.env.SKYDOCK_CAMERA_ROOTS = media
     const camera = card('GOPRO', { 'GX010001.MP4': { bytes: 1, fill: 1, at: DAY } })
@@ -512,14 +516,6 @@ describe('a camera plugged in', () => {
         }
       })
     })
-  const plugged = (points: string[]) => {
-    const file = path.join(media, 'mountinfo')
-    fs.writeFileSync(
-      file,
-      points.map((p, i) => `${100 + i} 1 8:${i} / ${p} rw - vfat x rw`).join('\n')
-    )
-    return file
-  }
 
   beforeEach(() => {
     heard.length = 0
@@ -536,7 +532,7 @@ describe('a camera plugged in', () => {
     subscribe((e) => heard.push(e))
     const done = ending()
 
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
 
     expect(await done).toMatchObject({
       label: 'GOPRO',
@@ -552,22 +548,22 @@ describe('a camera plugged in', () => {
   it('is copied once while it stays plugged in, and again when it comes back', async () => {
     const camera = card('GOPRO', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
     const first = ending()
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     await first
 
     let more = 0
     const stop = subscribe((e) => {
       if (e.kind === 'job' && e.type === 'camera-copy') more++
     })
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     await new Promise((r) => setTimeout(r, 50))
     stop()
     expect(more).toBe(0)
 
-    lookForCameras(outputDir, plugged([]))
+    lookForCameras(outputDir, mountinfo([]))
     fs.writeFileSync(path.join(camera, 'DCIM', '100GOPRO', 'GX010002.MP4'), Buffer.alloc(8, 9))
     const again = ending()
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     expect(await again).toMatchObject({ outcome: { copied: 1, skipped: 1 } })
   })
 
@@ -577,7 +573,7 @@ describe('a camera plugged in', () => {
     fs.writeFileSync(path.join(drive, 'photos', 'a.jpg'), 'x')
     subscribe((e) => heard.push(e))
 
-    lookForCameras(outputDir, plugged([drive]))
+    lookForCameras(outputDir, mountinfo([drive]))
     await new Promise((r) => setTimeout(r, 50))
 
     expect(heard.filter((e) => e.kind === 'job' && e.type === 'camera-copy')).toEqual([])
@@ -585,55 +581,10 @@ describe('a camera plugged in', () => {
   })
 })
 
-describe('watching for cameras', () => {
-  afterEach(() => {
-    const state = globalThis.skydockCameraWatch
-    if (state?.timer) clearInterval(state.timer)
-    vi.useRealTimers()
-  })
-
-  it('takes over from a look left running before, rather than running beside it', () => {
-    vi.useFakeTimers()
-    process.env.SKYDOCK_CAMERA_ROOTS = media
-    let oldLooks = 0
-    globalThis.skydockCameraWatch = {
-      timer: setInterval(() => oldLooks++, 2000),
-      seen: new Set(),
-      queue: [],
-      copying: false,
-      said: '',
-      kde: [],
-      asking: false,
-      askUntil: 0,
-      askedAt: 0,
-      seenOn: {},
-      keys: {},
-      fresh: {},
-      checking: new Set(),
-      prompts: [],
-      only: {},
-      saidKnown: ''
-    }
-
-    watchCameras(outputDir)
-    vi.advanceTimersByTime(10_000)
-
-    expect(oldLooks).toBe(0)
-  })
-})
-
 describe('cameras this machine knows', () => {
   const clips = {
     'GX010001.MP4': { bytes: 32, fill: 1, at: DAY },
     'GX010002.MP4': { bytes: 32, fill: 2, at: new Date(DAY.getTime() + 60_000) }
-  }
-  const plugged = (points: string[]) => {
-    const file = path.join(media, 'mountinfo')
-    fs.writeFileSync(
-      file,
-      points.map((p, i) => `${100 + i} 1 8:${i} / ${p} rw - vfat x rw`).join('\n')
-    )
-    return file
   }
   const last = (heard: LiveEvent[]) =>
     [...heard]
@@ -651,7 +602,7 @@ describe('cameras this machine knows', () => {
     const heard: LiveEvent[] = []
     subscribe((e) => heard.push(e))
 
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     await quiet()
 
     expect(last(heard)).toMatchObject({
@@ -668,7 +619,7 @@ describe('cameras this machine knows', () => {
     const heard: LiveEvent[] = []
     subscribe((e) => heard.push(e))
 
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     await quiet()
 
     expect(last(heard)).toMatchObject({
@@ -680,7 +631,7 @@ describe('cameras this machine knows', () => {
 
   it('leaves a camera nobody has answered out of a rescan of every camera', async () => {
     const camera = card('GOPRO', clips)
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     await quiet()
 
     expect(copyAgain(outputDir, undefined, [camera])).toBe(0)
@@ -700,7 +651,7 @@ describe('cameras this machine knows', () => {
       })
     })
 
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
 
     expect(await done).toMatchObject({ outcome: { copied: 2 } })
   })
@@ -710,7 +661,7 @@ describe('cameras this machine knows', () => {
     const camera = card('GOPRO', clips)
     const heard: LiveEvent[] = []
     subscribe((e) => heard.push(e))
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     await quiet()
     const done = new Promise((resolve) => {
       const stop = subscribe((e) => {
@@ -736,7 +687,7 @@ describe('cameras this machine knows', () => {
 
   it('remembers a camera answered, copying now when asked, and forgets it again', async () => {
     const camera = card('GOPRO', clips)
-    lookForCameras(outputDir, plugged([camera]))
+    lookForCameras(outputDir, mountinfo([camera]))
     await quiet()
     const done = new Promise((resolve) => {
       const stop = subscribe((e) => {

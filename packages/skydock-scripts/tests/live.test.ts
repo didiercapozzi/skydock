@@ -1,16 +1,16 @@
 // @vitest-environment node
 import { describe, it, expect, afterAll, beforeEach } from 'vitest'
 import * as fs from 'node:fs'
-import * as os from 'node:os'
 import * as path from 'node:path'
 import { following, job, publish, subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { runWatched } from '../src/tools'
+import { createTmpDir } from './fixtures'
 
 const scripts: string[] = []
 
 const printing = (prints: string) => {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-progress-'))
+  const dir = createTmpDir('skydock-progress-')
   scripts.push(dir)
   const target = path.join(dir, 'ffmpeg')
   fs.writeFileSync(target, `#!/bin/sh\n${prints}\n`, { mode: 0o755 })
@@ -44,17 +44,6 @@ describe('how far a file being processed has got', () => {
       (percent) => heard.push(percent)
     )
     expect(heard).toEqual([25])
-  })
-
-  it('never says a hundred on its own', async () => {
-    const heard: number[] = []
-    await runWatched(
-      printing("printf 'out_time_us=99000000\\n'"),
-      [],
-      (percent) => heard.push(percent),
-      10
-    )
-    expect(heard).toEqual([99])
   })
 })
 

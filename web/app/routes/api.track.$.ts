@@ -1,7 +1,7 @@
 import { getOutputDir, jumpTrack } from '@skydock/scripts'
 import type { JumpTrack } from '@skydock/scripts'
-import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { statOrNull } from '../../../packages/skydock-scripts/src/lib/fs'
 import { limited } from '../../../packages/skydock-scripts/src/lib/queue'
 
 const held = new Map<string, JumpTrack | null>()
@@ -21,7 +21,7 @@ const trackOf = async (filePath: string, mtime: number) => {
 
 const loader = async ({ params }: { params: Record<string, string | undefined> }) => {
   const filePath = path.join(getOutputDir(), params['*'] ?? '')
-  const stat = fs.existsSync(filePath) ? fs.statSync(filePath) : null
+  const stat = await statOrNull(filePath)
   if (!stat?.isFile()) return new Response('Not found', { status: 404 })
   return Response.json(
     { track: await trackOf(filePath, stat.mtimeMs) },

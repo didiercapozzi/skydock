@@ -269,8 +269,8 @@ const copyNext = async (outputDir: string) => {
       copying.row({ key: String(progress.done), at: 'now', part: progress.part ?? 0 })
   }
   const arrived: string[] = []
-  const onCopied = (copied: Copied) => {
-    putOnBoard(outputDir, copied)
+  const onCopied = async (copied: Copied) => {
+    await putOnBoard(outputDir, copied)
     arrived.push(copied.id)
   }
   try {

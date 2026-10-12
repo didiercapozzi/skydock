@@ -1,17 +1,10 @@
-import { walkFiles } from './lib/fs'
-import * as fs from 'node:fs'
+import { pathExists, walkFilesAsync } from './lib/fs'
 import * as path from 'node:path'
 import { getDestinationDir, getGroupProcessedDir, isFlatGroup } from './process'
 import { parentOf } from './paths'
 import { remoteMatches } from './fileStatus'
 import type { RemoteListing } from './fileStatus'
-import {
-  deliveryFolders,
-  originsDirOf,
-  placeFolders,
-  readOriginIndex,
-  recordOrigins
-} from './originIndex'
+import { originsDirOf, placeFolders, readOriginIndex, recordOrigins } from './originIndex'
 import { originsOf } from './originEntry'
 import type { OriginIndex } from './originEntry'
 import { checkJump, publishJump, refuseTaken } from './publish'
@@ -72,7 +65,7 @@ const listRemoteFiles = async (manifest: Manifest, session: NasSession) => {
         uploadedFiles(g.uploaded).map((f) => parentOf(f.remotePath))
       ),
       ...manifest.groups.flatMap((g) => g.uploaded?.sent?.flatMap((item) => item.to) ?? []),
-      ...deliveryFolders(manifest)
+      ...placeFolders(manifest)
     ])
   ]
   const sizes: Record<string, number | null> = {}
@@ -180,7 +173,7 @@ const dedupeTargets = (targets: UploadTarget[]) => {
   return [...byRemote.values(), ...unresolved]
 }
 
-const resolveUploadTargets = ({
+const resolveUploadTargets = async ({
   outputDir,
   manifest,
   scope,
@@ -219,11 +212,13 @@ const resolveUploadTargets = ({
         : []
     )
   )
-  const pending = targets.map((target) => {
-    if (!target.destination || target.files || !fs.existsSync(target.localDir)) return target
-    const left = walkFiles(target.localDir).filter((file) => !sent.has(file))
-    return { ...target, files: left }
-  })
+  const pending = await Promise.all(
+    targets.map(async (target) => {
+      if (!target.destination || target.files || !(await pathExists(target.localDir))) return target
+      const left = (await walkFilesAsync(target.localDir)).filter((file) => !sent.has(file))
+      return { ...target, files: left }
+    })
+  )
   return dedupeTargets(
     pending.filter((target) => target.files === undefined || target.files.length > 0)
   )
@@ -254,7 +249,8 @@ const uploadTargets = async ({
         ? `Choose a NAS folder for ${missing.destination}, or set a default upload folder.`
         : 'Choose an upload folder first.'
     )
-  const absent = targets.find((t) => !fs.existsSync(t.localDir))
+  const present = await Promise.all(targets.map((t) => pathExists(t.localDir)))
+  const absent = targets.find((_, index) => !present[index])
   if (absent) throw new Error(`Processed files not found for ${absent.label}. Process it again.`)
 
   const shareUrls: { target: UploadTarget; shareUrl: string }[] = []
@@ -377,9 +373,9 @@ const uploadScope = async ({
   const remote = await listRemoteFiles(manifest, session)
   return uploadTargets({
     session,
-    targets: resolveUploadTargets({ outputDir, manifest, scope, remote }),
+    targets: await resolveUploadTargets({ outputDir, manifest, scope, remote }),
     origins: originsOf(manifest),
-    folders: deliveryFolders(manifest),
+    folders: placeFolders(manifest),
     onProgress,
     onCheck,
     onPlan

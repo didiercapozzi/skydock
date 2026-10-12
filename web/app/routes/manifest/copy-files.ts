@@ -6,7 +6,7 @@ import type { Intent } from './change'
 /* Files copied into another jump, staying where they are as well (RULES, Jumps). A montage with an
    edit takes nothing in, a copy included: its project names its clips, and a new one is not among
    them. What is copied *from* may be frozen — copying changes nothing about it. */
-const copyFilesIntent: Intent = ({
+const copyFilesIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -29,7 +29,7 @@ const copyFilesIntent: Intent = ({
             : 'Those files are no longer here.'
       )
     saveManifest(manifestPath, manifest)
-    return { ...boardAnswer(manifest), copied: { files: copied, passedOver } }
+    return { ...(await boardAnswer(manifest)), copied: { files: copied, passedOver } }
   } catch (e) {
     return refuse(messageOf(e))
   }

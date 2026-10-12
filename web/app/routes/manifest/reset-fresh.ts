@@ -12,7 +12,10 @@ const resetFreshIntent: Intent = async ({ data, manifest, manifestPath, refuse, 
     data.resetWhat === 'times' ? await resetFreshTimes(manifest) : await resetFresh(manifest)
   if (!reset) return refuse('There is nothing in Fresh files to reset.')
   saveManifest(manifestPath, manifest)
-  return { ...boardAnswer(manifest), reset: { ...reset, what: data.resetWhat ?? 'everything' } }
+  return {
+    ...(await boardAnswer(manifest)),
+    reset: { ...reset, what: data.resetWhat ?? 'everything' }
+  }
 }
 
 export { resetFreshIntent }

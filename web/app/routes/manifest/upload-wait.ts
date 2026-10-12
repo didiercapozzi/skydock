@@ -14,7 +14,7 @@ const uploadWait: Intent = async ({ latest }) => {
 const cancelUpload: Intent = async ({ refuse, latest }) => {
   if (!cancelUploading()) return refuse('Nothing is being uploaded.')
   await whenUploaded()
-  return { ...boardAnswer(await latest()), uploadCancelled: true }
+  return { ...(await boardAnswer(await latest())), uploadCancelled: true }
 }
 
 export { cancelUpload, uploadWait }

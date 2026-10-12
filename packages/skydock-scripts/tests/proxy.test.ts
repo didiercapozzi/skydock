@@ -5,7 +5,6 @@ import * as path from 'node:path'
 import {
   buildMissingProxies,
   ensureProxies,
-  getCutProxyDir,
   getProxyPath,
   needsProxy,
   resumeProxies,
@@ -16,48 +15,13 @@ import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifestAsync, saveManifest } from '../src/manifest'
 import type { Manifest, ManifestFile } from '../src/types'
-import { createTmpDir, execSyncMock, tellTools, writeTempFile } from './fixtures'
+import { createTmpDir, execSyncMock, fakeTools, tellTools, writeTempFile } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
   const { execFileSyncMock, execFileViaSyncMock } = await import('./fixtures')
   return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
-
-const CONTAINERS = new Set(['mp4', 'mov', 'mkv', 'webm', 'avi'])
-
-const ffmpegWouldRefuse = (line: string, out: string) => {
-  if (/(^|\s)-f\s+\w+/.test(line)) return null
-  const extension = out.split('.').pop()?.toLowerCase() ?? ''
-  return CONTAINERS.has(extension)
-    ? null
-    : `Unable to choose an output format for '${out}'; use a standard extension for the filename or specify the format manually.`
-}
-
-const toolsPresent =
-  (width = 3840) =>
-  (cmd: string | Buffer, opts?: { encoding?: string }) => {
-    const line = String(cmd)
-    if (line.startsWith('ffprobe')) {
-      const shape = `width=${width}\nheight=1080\n`
-      return opts?.encoding ? shape : Buffer.from(shape)
-    }
-    if (line.startsWith('ffmpeg')) {
-      const quoted = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1])
-      const out = quoted[quoted.length - 1]
-      if (!out) return Buffer.from('')
-      const refusal = ffmpegWouldRefuse(line, out)
-      if (refusal !== null) {
-        const failure = new Error('ffmpeg exited with code 234') as Error & { stderr: Buffer }
-        failure.stderr = Buffer.from(`${refusal}\nError opening output file ${out}.\n`)
-        throw failure
-      }
-      fs.mkdirSync(path.dirname(out), { recursive: true })
-      fs.writeFileSync(out, Buffer.from('proxy'))
-      return Buffer.from('')
-    }
-    return Buffer.from('')
-  }
 
 const manifestOf = (files: ManifestFile[]): Manifest => ({
   version: 1,
@@ -90,18 +54,18 @@ describe('proxies', () => {
     setProxyEncoder(null)
   })
 
-  it('is for clips, not pictures', async () => {
+  it('is for clips, not pictures', () => {
     expect(needsProxy(fileEntry('/a/GX010023.MP4', 'v1'))).toBe(true)
     expect(needsProxy(fileEntry('/a/GOPR1100.JPG', 'p1'))).toBe(false)
   })
 
-  it('names a proxy after what the clip is, not where it sits', async () => {
+  it('names a proxy after what the clip is, not where it sits', () => {
     const proxy = getProxyPath(fileEntry('/anywhere/GX010023.MP4', 'abc123'), outputDir)
     expect(proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
   })
 
-  it('builds one per clip and records it on the file', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
+  it('makes a small copy of every clip and marks the clip as having one', async () => {
+    execSyncMock.mockImplementation(fakeTools())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
 
@@ -113,7 +77,7 @@ describe('proxies', () => {
   })
 
   it('says as it happens that a proxy is being made, and what the clip plays once it lands', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
     const heard: LiveEvent[] = []
@@ -138,7 +102,7 @@ describe('proxies', () => {
   })
 
   it('are finished by the next server, what was left half written cleared first', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     await saveManifest(
       path.join(outputDir, 'manifest.json'),
@@ -149,12 +113,14 @@ describe('proxies', () => {
 
     resumeProxies(outputDir)
 
-    await expect.poll(() => fs.existsSync(path.join(outputDir, 'proxies', 'abc123.mp4'))).toBe(true)
+    await expect
+      .poll(() => fs.existsSync(path.join(outputDir, 'proxies', 'abc123.mp4')), { timeout: 10_000 })
+      .toBe(true)
     expect(fs.existsSync(stale)).toBe(false)
   })
 
   it('are made again when they were taken from under a running server', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     await saveManifest(
       path.join(outputDir, 'manifest.json'),
@@ -164,10 +130,12 @@ describe('proxies', () => {
 
     resumeProxies(outputDir)
 
-    await expect.poll(() => fs.existsSync(path.join(outputDir, 'proxies', 'abc123.mp4'))).toBe(true)
+    await expect
+      .poll(() => fs.existsSync(path.join(outputDir, 'proxies', 'abc123.mp4')), { timeout: 10_000 })
+      .toBe(true)
   })
 
-  it('clears what was left half written once per server, not each time a board connects', async () => {
+  it('clears what was left half written once per server, not each time a board connects', () => {
     const stale = writeTempFile(outputDir, 'proxies/abc123.mp4.part')
     globalThis.skydockProxiesResumed = true
 
@@ -177,7 +145,7 @@ describe('proxies', () => {
   })
 
   it('passes over a clip that already has one', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
     const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
     const manifest = manifestOf([fileEntry(src, 'abc123')])
     await ensureProxies(manifest, outputDir)
@@ -191,7 +159,7 @@ describe('proxies', () => {
   })
 
   it('leaves a clip that is already small alone, and says it is its own proxy', async () => {
-    execSyncMock.mockImplementation(toolsPresent(640))
+    execSyncMock.mockImplementation(fakeTools({ width: 640 }))
     const src = writeTempFile(outputDir, 'original_files/small.mp4')
     const manifest = manifestOf([fileEntry(src, 'small1')])
 
@@ -202,7 +170,7 @@ describe('proxies', () => {
   })
 
   it('says the moment a clip is found to be its own proxy, so the board stops waiting for it', async () => {
-    execSyncMock.mockImplementation(toolsPresent(640))
+    execSyncMock.mockImplementation(fakeTools({ width: 640 }))
     const src = writeTempFile(outputDir, 'original_files/small.mp4')
     const heard: LiveEvent[] = []
     const stop = subscribe((event) => event.kind === 'file-done' && heard.push(event))
@@ -268,7 +236,7 @@ describe('proxies', () => {
       reason: 'No space left on device'
     })
 
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
     await ensureProxies(manifest, outputDir)
     expect((await statProxies(manifest, outputDir))[src]).toMatchObject({ state: 'ready' })
     expect((await statProxies(manifest, outputDir))[src]?.reason).toBeUndefined()
@@ -322,27 +290,13 @@ describe('proxies stay out of what gets delivered', () => {
   beforeEach(() => {
     setProxyEncoder('cpu')
     outputDir = createTmpDir('skydock-proxy-delivery-')
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
   })
 
   afterEach(() => {
     fs.rmSync(outputDir, { recursive: true, force: true })
     vi.clearAllMocks()
     setProxyEncoder(null)
-  })
-
-  it('writes a jump\u2019s cut proxies under the output folder, not beside the copies', async () => {
-    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
-    const manifest = manifestOf([fileEntry(src, 'abc123')])
-    await ensureProxies(manifest, outputDir)
-    const file = manifest.files[0]
-
-    const cut = path.join(getCutProxyDir(outputDir, 'group_1'), 'luc_favre_20260829_113015.mp4')
-    fs.mkdirSync(path.dirname(cut), { recursive: true })
-    fs.copyFileSync(file.proxy!, cut)
-
-    expect(cut.startsWith(path.join(outputDir, 'proxies'))).toBe(true)
-    expect(cut).not.toContain(path.join('processed', 'Montages'))
   })
 
   it('keeps the proxies out of what is handed over', async () => {
@@ -361,7 +315,7 @@ describe('what the board is told about each proxy', () => {
   beforeEach(() => {
     setProxyEncoder('cpu')
     outputDir = createTmpDir('skydock-proxy-facts-')
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
   })
 
   afterEach(() => {
@@ -398,7 +352,7 @@ describe('what the board is told about each proxy', () => {
   })
 
   it('tells a clip that is its own proxy from one still waiting', async () => {
-    execSyncMock.mockImplementation(toolsPresent(640))
+    execSyncMock.mockImplementation(fakeTools({ width: 640 }))
     const src = writeTempFile(outputDir, 'original_files/small.mp4')
     const manifest = manifestOf([fileEntry(src, 'small1')])
     await ensureProxies(manifest, outputDir)
@@ -424,7 +378,7 @@ describe('a build still in progress', () => {
   beforeEach(() => {
     setProxyEncoder('cpu')
     outputDir = createTmpDir('skydock-proxy-progress-')
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
   })
 
   afterEach(() => {
@@ -469,7 +423,7 @@ describe('what else happened while the proxies were being made', () => {
     setProxyEncoder('cpu')
     outputDir = createTmpDir('skydock-proxy-meanwhile-')
     manifestPath = path.join(outputDir, 'manifest.json')
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
   })
 
   afterEach(() => {
@@ -561,7 +515,7 @@ describe('the graphics card or the processor', () => {
   }
 
   it('takes the graphics card when it works', async () => {
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
     const cmd = await runOne()
     expect(cmd).toContain('h264_nvenc')
   })
@@ -570,7 +524,7 @@ describe('the graphics card or the processor', () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       const line = String(cmd)
       if (line.includes('-f lavfi')) throw new Error('Device creation failed')
-      return toolsPresent()(cmd, opts)
+      return fakeTools()(cmd, opts)
     })
     const cmd = await runOne()
     expect(cmd).toContain('libx264')
@@ -579,8 +533,24 @@ describe('the graphics card or the processor', () => {
 
   it('can be told which one to use', async () => {
     process.env.SKYDOCK_PROXY_ENCODER = 'cpu'
-    execSyncMock.mockImplementation(toolsPresent())
+    execSyncMock.mockImplementation(fakeTools())
     expect(await runOne()).toContain('libx264')
+  })
+
+  it('sizes a clip stored sideways by the edge that ends up across, on the card', async () => {
+    execSyncMock.mockImplementation(fakeTools({ width: 1440, height: 2560, rotation: -90 }))
+    expect(await runOne()).toContain('h=640')
+  })
+
+  it('sizes a clip stored the right way up by its width, on the card', async () => {
+    execSyncMock.mockImplementation(fakeTools())
+    expect(await runOne()).toContain('w=640')
+  })
+
+  it('sizes a clip stored sideways by the edge that ends up across, on the processor', async () => {
+    setProxyEncoder('cpu')
+    execSyncMock.mockImplementation(fakeTools({ width: 1440, height: 2560, rotation: -90 }))
+    expect(await runOne()).toContain('scale=640:-2')
   })
 })
 

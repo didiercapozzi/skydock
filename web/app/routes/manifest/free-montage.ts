@@ -43,7 +43,7 @@ const freeMontageIntent: Intent = async ({
         )
       : {}
     return {
-      ...boardAnswer(saved),
+      ...(await boardAnswer(saved)),
       ...listing,
       freed: { bytes: result.bytes, files: result.fileIds.length, groupId: result.groupId }
     }

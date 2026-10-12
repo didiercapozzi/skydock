@@ -323,7 +323,7 @@ describe('freeing an uploaded montage', () => {
     const { manifest, onStorage } = await setup()
     withStorage(onStorage)
     await free(manifest)
-    saveManifest(path.join(outputDir, 'manifest.json'), manifest)
+    await saveManifest(path.join(outputDir, 'manifest.json'), manifest)
     const card = path.join(outputDir, 'card', 'DCIM', '100GOPRO')
     fs.mkdirSync(card, { recursive: true })
     const clip = path.join(card, 'GX01.MP4')
@@ -345,7 +345,7 @@ describe('freeing an uploaded montage', () => {
     withStorage(onStorage)
     await free(manifest)
     const manifestPath = path.join(outputDir, 'manifest.json')
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
 
     const { scanMedia } = await import('../src/scan')
     await scanMedia({ outputDir })

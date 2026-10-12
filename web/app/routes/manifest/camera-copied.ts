@@ -3,8 +3,8 @@ import type { Intent } from './change'
 
 /* A camera plugged in has been copied off and scanned on the machine: the board looks again, and
    hears what came off (RULES, The workflow). */
-const cameraCopied: Intent = ({ data, manifest }) => ({
-  ...boardAnswer(manifest),
+const cameraCopied: Intent = async ({ data, manifest }) => ({
+  ...(await boardAnswer(manifest)),
   cameraCopied: data.cameraCopied
 })
 

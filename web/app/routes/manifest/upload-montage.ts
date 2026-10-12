@@ -75,7 +75,7 @@ const sendMontage = async (
         'storageProblem' in listing ? listing.storageProblem : undefined
       ].filter(Boolean)
       return {
-        ...boardAnswer(saved),
+        ...(await boardAnswer(saved)),
         ...listing,
         ...(problems.length > 0 ? { storageProblem: problems.join('; ') } : {}),
         remote: await listRemoteFiles(saved, session),
@@ -97,7 +97,7 @@ const sendMontage = async (
     })
   } catch (err) {
     if (err instanceof UploadCancelled)
-      return { ...boardAnswer(await latest()), uploadCancelled: true }
+      return { ...(await boardAnswer(await latest())), uploadCancelled: true }
     return refuse(err instanceof Error ? err.message : 'Upload failed.')
   }
 }

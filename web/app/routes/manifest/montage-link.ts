@@ -64,7 +64,7 @@ const montageLink: Intent = async ({ data, manifest, manifestPath, latest, refus
     earlierMontagesDirs(manifest)
   )
   if (!known) return refuse('This montage is not on the storage’s list — upload it first.')
-  return { ...boardAnswer(board), ...listing }
+  return { ...(await boardAnswer(board)), ...listing }
 }
 
 export { montageLink }

@@ -41,7 +41,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
   const facts = board.montageFacts[group.id]
   const linked = Boolean(group.uploaded?.shareUrl ?? group.publish?.shareUrl)
   const needsLink =
-    Boolean(group.uploaded) && !linked && progress.steps[progress.at]?.name === 'Emailed'
+    Boolean(group.uploaded) && !linked && progress.steps[progress.at]?.name === 'Sent'
   const actions = (compact: boolean) => (
     <MontageCardActions
       group={group}
@@ -51,16 +51,16 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       blocked={model.gateFor(group.files)}
       proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
       named={hasCompletePassenger(group.passenger)}
-      onProcess={() => model.takeStep(group, 'Processed')}
+      onProcess={() => model.takeStep(group, 'Prepared')}
       onCancelProcess={model.cancelProcess}
-      onMontage={() => model.takeStep(group, 'Edited')}
-      onOpenMontage={() => model.takeStep(group, 'Rendered')}
+      onMontage={() => model.takeStep(group, 'Project')}
+      onOpenMontage={() => model.takeStep(group, 'Film')}
       onUpload={() => model.takeStep(group, 'Uploaded')}
       onEmail={
-        group.uploaded && linked && progress.steps[progress.at]?.name === 'Emailed'
+        group.uploaded && linked && progress.steps[progress.at]?.name === 'Sent'
           ? {
               name: group.passenger?.firstname ?? '',
-              open: () => model.takeStep(group, 'Emailed')
+              open: () => model.takeStep(group, 'Sent')
             }
           : undefined
       }
@@ -390,7 +390,7 @@ const MontageMenu = ({
         <MenuItem
           icon='open'
           disabled={busy}
-          onClick={act(() => model.takeStep(group, 'Rendered'))}>
+          onClick={act(() => model.takeStep(group, 'Film'))}>
           {t`Open in kdenlive`}
         </MenuItem>
       )}
@@ -399,7 +399,7 @@ const MontageMenu = ({
           icon='scan'
           disabled={busy}
           title={t`Make the copies again from the originals — the project, the film and the archives are left alone`}
-          onClick={act(() => model.takeStep(group, 'Processed'))}>
+          onClick={act(() => model.takeStep(group, 'Prepared'))}>
           {t`Process again`}
         </MenuItem>
       )}

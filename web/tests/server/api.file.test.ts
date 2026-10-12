@@ -55,19 +55,23 @@ describe('playing a file', () => {
     expect(body.byteLength).toBe(512)
   })
 
-  test('plays to the end', async () => {
+  test('knows a picture by its extension, whatever its case', async () => {
+    fs.writeFileSync(`${TEST_DIR}/pic.JPG`, 'jpegdata')
     const res = await loader({
-      params: makeParams('test-stream/test-video.mp4'),
+      params: makeParams('test-stream/pic.JPG'),
       request: makeRequest()
     })
-    const reader = res.body!.getReader()
-    let totalBytes = 0
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-      totalBytes += value.byteLength
-    }
-    expect(totalBytes).toBe(1024)
+    expect(res.headers.get('Content-Type')).toBe('image/jpeg')
+  })
+
+  test('plays to the end of the clip when the range is open', async () => {
+    const res = await loader({
+      params: makeParams('test-stream/test-video.mp4'),
+      request: makeRequest({ range: 'bytes=1000-' })
+    })
+    expect(res.status).toBe(206)
+    expect(res.headers.get('Content-Range')).toBe('bytes 1000-1023/1024')
+    expect((await res.arrayBuffer()).byteLength).toBe(24)
   })
 
   test('gives the last bytes of a clip when asked for them from its end', async () => {

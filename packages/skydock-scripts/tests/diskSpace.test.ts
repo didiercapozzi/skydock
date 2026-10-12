@@ -1,8 +1,8 @@
+import * as os from 'node:os'
 import { afterEach, describe, expect, it } from 'vitest'
 import { diskSpace, levelOf, lookAtDisk } from '../src/diskSpace'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { createTmpDir } from './fixtures'
 
 const GB = 1024 ** 3
 
@@ -21,18 +21,18 @@ describe('the room left on the disk', () => {
   })
 
   it('is read off the disk the output folder is on', async () => {
-    const space = await diskSpace(createTmpDir('skydock-disk-'))
+    const space = await diskSpace(os.tmpdir())
     expect(space?.free).toBeGreaterThanOrEqual(0)
     expect(space?.total).toBeGreaterThan(0)
   })
 
   it('is told to the board once, and not again while it stays the same', async () => {
-    const dir = createTmpDir('skydock-disk-')
     const heard: LiveEvent[] = []
-    subscribe((e) => heard.push(e))
+    const unsubscribe = subscribe((e) => heard.push(e))
 
-    await lookAtDisk(dir)
-    await lookAtDisk(dir)
+    await lookAtDisk(os.tmpdir())
+    await lookAtDisk(os.tmpdir())
+    unsubscribe()
 
     expect(heard.filter((e) => e.kind === 'disk')).toHaveLength(1)
   })

@@ -44,27 +44,30 @@ afterEach(() => {
 
 describe('the transfers kept', () => {
   it('are none before anything was done', async () => {
-    expect(await loader().json()).toEqual({ transfers: [] })
+    expect(await (await loader()).json()).toEqual({ transfers: [] })
   })
 
   it('are listed, the latest first, and forgotten when asked', async () => {
-    recordTransfer({ kind: 'upload', label: 'Luc', state: 'done', items: [] }, tmpDir)
-    recordTransfer({ kind: 'camera', label: 'GoPro', state: 'failed', items: [] }, tmpDir)
+    await recordTransfer({ kind: 'upload', label: 'Luc', state: 'done', items: [] }, tmpDir)
+    await recordTransfer({ kind: 'camera', label: 'GoPro', state: 'failed', items: [] }, tmpDir)
 
-    const said = await loader().json()
+    const said = await (await loader()).json()
     expect(said.transfers.map((t: { label: string }) => t.label)).toEqual(['GoPro', 'Luc'])
 
     await clear()
-    expect(await loader().json()).toEqual({ transfers: [] })
+    expect(await (await loader()).json()).toEqual({ transfers: [] })
   })
 
   it('forgets one and keeps the others', async () => {
-    const luc = recordTransfer({ kind: 'upload', label: 'Luc', state: 'done', items: [] }, tmpDir)
-    recordTransfer({ kind: 'camera', label: 'GoPro', state: 'failed', items: [] }, tmpDir)
+    const luc = await recordTransfer(
+      { kind: 'upload', label: 'Luc', state: 'done', items: [] },
+      tmpDir
+    )
+    await recordTransfer({ kind: 'camera', label: 'GoPro', state: 'failed', items: [] }, tmpDir)
 
     await remove(luc.id)
 
-    const said = await loader().json()
+    const said = await (await loader()).json()
     expect(said.transfers.map((t: { label: string }) => t.label)).toEqual(['GoPro'])
   })
 })

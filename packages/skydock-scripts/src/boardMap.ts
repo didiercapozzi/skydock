@@ -190,16 +190,5 @@ const groupedByRule = (map: BoardMap) => {
   )
 }
 
-export {
-  commentAbove,
-  firstSentence,
-  groupedByRule,
-  intentFiles,
-  intentsNamed,
-  mapOfTheBoard,
-  refusalsIn,
-  ruleCited,
-  sharedRefusals,
-  tidy
-}
+export { firstSentence, groupedByRule, mapOfTheBoard, sharedRefusals }
 export type { BoardMap, MappedIntent, Refusal }

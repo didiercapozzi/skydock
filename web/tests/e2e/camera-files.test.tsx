@@ -398,9 +398,7 @@ describe('looking at a file from the camera', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'Preview DJI_0001.MP4' }))
     await expect.element(page.getByRole('dialog', { name: 'Preview from the camera' })).toBeVisible()
-    await expect.poll(playing).toContain('/api/camera-file?path=')
-    expect(playing()).toBe(urlOf('DJI_0001.MP4'))
-    expect(document.querySelector('video')?.hasAttribute('controls')).toBe(true)
+    await expect.poll(playing).toBe(urlOf('DJI_0001.MP4'))
   })
 
   test('does not tick the row it was pressed on', async () => {

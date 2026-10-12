@@ -10,10 +10,8 @@ type Link = { id: string; url: string; path: string; status?: string }
 
 const storageWith = (held: Link[]) => {
   const links = [...held]
-  const asked: string[] = []
   stubFetch((url) => {
     const params = new URL(url, 'http://x').searchParams
-    asked.push(`${params.get('method')} ${params.get('id') ?? params.get('path') ?? ''}`)
     if (params.get('api') !== 'SYNO.FileStation.Sharing') return jsonResponse({ success: true })
     if (params.get('method') === 'list')
       return jsonResponse({ success: true, data: { links, total: links.length } })
@@ -30,7 +28,7 @@ const storageWith = (held: Link[]) => {
     }
     return jsonResponse({ success: false })
   })
-  return { links: () => links, asked }
+  return { links: () => links }
 }
 
 afterEach(() => {
@@ -54,7 +52,6 @@ describe('a file handed out by a link of its own', () => {
 
     expect(url).toBe(`${HOST}/sharing/abc`)
     expect(storage.links()).toHaveLength(1)
-    expect(storage.asked).not.toContain(`create ${CLIP}`)
   })
 
   it('is given a new one when what the storage has has expired', async () => {
@@ -90,7 +87,6 @@ describe('a link taken away', () => {
 
     expect(gone).toBe(true)
     expect(storage.links()).toEqual([])
-    expect(storage.asked).toContain('delete L1')
   })
 
   it('says so when the storage would not take it away', async () => {

@@ -28,9 +28,13 @@ type Change = {
 
 type Intent = (change: Change) => Promise<BoardAnswer | Refusal> | BoardAnswer | Refusal
 
-const changeOn = (manifest: Manifest, data: ActionData, refuse: (message: string) => Refusal) => {
+const changeOn = async (
+  manifest: Manifest,
+  data: ActionData,
+  refuse: (message: string) => Refusal
+) => {
   const outputDir = getOutputDir()
-  const frozen = frozenMontages(manifest, outputDir)
+  const frozen = await frozenMontages(manifest, outputDir)
   const frozenFiles = new Set(
     manifest.groups.filter((g) => frozen.has(g.id)).flatMap((g) => idsOf(g.files))
   )

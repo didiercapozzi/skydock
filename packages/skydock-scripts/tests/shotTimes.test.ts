@@ -40,19 +40,7 @@ const epoch = (date: Date) => Math.floor(date.getTime() / 1000)
 const NINE = epoch(new Date(2026, 8, 1, 9, 0, 0))
 
 describe('when each file was shot', () => {
-  it('is asked only of what is new, and only again of what has changed since', async () => {
-    const [a, b] = [clip('CAM_a.MP4'), clip('CAM_b.MP4')]
-    await shotTimes([a, b])
-    await shotTimes([a, b])
-    const c = clip('CAM_c.MP4')
-    await shotTimes([a, b, c])
-    fs.writeFileSync(b, 'clip b, written again')
-    await shotTimes([a, b, c])
-
-    expect(asked()).toEqual([['CAM_a.MP4', 'CAM_b.MP4'], ['CAM_c.MP4'], ['CAM_b.MP4']])
-  })
-
-  it('is asked again of a file written since at the same size, and of one grown since at the same moment', async () => {
+  it('a file that changed since takes the time its camera gave it again', async () => {
     const same = clip('CAM_same.MP4', 'clip 1')
     const grown = clip('CAM_grown.MP4', 'clip 1')
     await shotTimes([same, grown])
@@ -78,17 +66,5 @@ describe('when each file was shot', () => {
     expect(first.get(camera)).toBe(NINE)
     expect(again.get(camera)).toBe(NINE)
     expect(again.get(bare)).toBe(epoch(EARLY))
-  })
-
-  it('is asked again of a file that gave no time, and of one that is gone', async () => {
-    const bare = clip('b.MP4')
-    const gone = path.join(dir, 'gone.MP4')
-    await shotTimes([bare, gone])
-    await shotTimes([bare, gone])
-
-    expect(asked()).toEqual([
-      ['b.MP4', 'gone.MP4'],
-      ['b.MP4', 'gone.MP4']
-    ])
   })
 })

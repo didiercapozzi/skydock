@@ -185,7 +185,7 @@ const upload = async (
   const server = await startUploadServer()
   stubDsm(storage)
   process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
-  saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
+  await saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
   try {
     const result = await uploadMontage({
       outputDir: built.outputDir,
@@ -388,7 +388,7 @@ describe('cancelling a montage upload', () => {
     const server = await startUploadServer(() => cancelUploading())
     stubDsm()
     process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
-    saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
+    await saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
     try {
       const upload = runUpload({ key: 'montage:g1', label: 'Luc Favre' }, () =>
         uploadMontage({
@@ -438,7 +438,7 @@ describe('uploading a montage — what is refused', () => {
     const server = await startUploadServer()
     stubDsm()
     process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
-    saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
+    await saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
     await expect(
       uploadMontage({
         outputDir: built.outputDir,
@@ -477,21 +477,21 @@ describe('uploading a montage — the awkward cases', () => {
 })
 
 describe('what the board knows of a montage’s project and film', () => {
-  it('sees the project and the film once they are there', () => {
+  it('sees the project and the film once they are there', async () => {
     const { outputDir, manifest, group } = scene()
-    const found = montageArtifacts(outputDir, group)
+    const found = await montageArtifacts(outputDir, group)
     expect(found.project).toBe(true)
     expect(found.film?.size).toBe(128)
-    expect(statMontageArtifacts(manifest, outputDir).g1.project).toBe(true)
+    expect((await statMontageArtifacts(manifest, outputDir)).g1.project).toBe(true)
   })
 
-  it('reports no film before the render', () => {
+  it('reports no film before the render', async () => {
     const { outputDir, group } = scene({ film: null })
-    expect(montageArtifacts(outputDir, group).film).toBeNull()
+    expect((await montageArtifacts(outputDir, group)).film).toBeNull()
   })
 
-  it('leaves a jump that is not a montage out of it', () => {
+  it('leaves a jump that is not a montage out of it', async () => {
     const { outputDir, manifest } = scene({ noPassenger: true })
-    expect(statMontageArtifacts(manifest, outputDir)).toEqual({})
+    expect(await statMontageArtifacts(manifest, outputDir)).toEqual({})
   })
 })

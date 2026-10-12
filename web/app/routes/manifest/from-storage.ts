@@ -51,7 +51,7 @@ const bringBackIntent: Intent = async ({
       }
     )
     saveManifest(manifestPath, board)
-    return { ...boardAnswer(board), broughtBack: back }
+    return { ...(await boardAnswer(board)), broughtBack: back }
   } catch (e) {
     return refuse(messageOf(e))
   }

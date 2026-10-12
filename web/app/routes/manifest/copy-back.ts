@@ -18,7 +18,10 @@ const copyBackIntent: Intent = async ({ data, manifestPath, outputDir, refuse })
     await scanMedia({ outputDir })
     const after = await loadManifestAsync(manifestPath)
     if (!after) return refuse('The registry could not be read after copying.')
-    return { ...boardAnswer(after), copiedBack: { copied: back.copied, skipped: back.skipped } }
+    return {
+      ...(await boardAnswer(after)),
+      copiedBack: { copied: back.copied, skipped: back.skipped }
+    }
   } catch (e) {
     return refuse(messageOf(e))
   }

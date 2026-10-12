@@ -17,7 +17,7 @@ const clip = (id: string): ManifestFile => ({
   mtime: 1_785_000_000
 })
 
-let stream: { onmessage: ((message: { data: string }) => void) | null; close: () => void } | null
+let stream: { onmessage: ((message: { data: string }) => void) | null } | null
 const says = (event: LiveEvent) => stream?.onmessage?.({ data: JSON.stringify(event) })
 
 beforeEach(() => {
@@ -26,7 +26,7 @@ beforeEach(() => {
     'EventSource',
     class {
       onmessage: ((message: { data: string }) => void) | null = null
-      close = vi.fn()
+      close = () => {}
       constructor() {
         stream = this
       }

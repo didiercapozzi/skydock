@@ -1,13 +1,15 @@
-import * as fs from 'node:fs'
+import { rm } from 'node:fs/promises'
 import { dayOfFiles, freshIds, groupFromFiles, splitByGap } from './clustering'
 import { shotTimes } from './scan'
 import { isFiled } from './filed'
 import type { Manifest } from './types'
 
+const isFreshIn = (fresh: Set<string>) => (f: { id?: string }) => Boolean(f.id && fresh.has(f.id))
+
 const resetFreshTimes = async (manifest: Manifest) => {
   const fresh = freshIds(manifest)
   if (fresh.size === 0) return null
-  const isFresh = (f: { id?: string }) => Boolean(f.id && fresh.has(f.id))
+  const isFresh = isFreshIn(fresh)
   const times = await shotTimes(manifest.files.filter(isFresh).map((f) => f.path))
   const jumps = manifest.groups.filter((g) => !isFiled(g))
   for (const file of [...manifest.files, ...jumps.flatMap((g) => g.files)])
@@ -22,15 +24,11 @@ const resetFreshTimes = async (manifest: Manifest) => {
 const resetFresh = async (manifest: Manifest) => {
   const fresh = freshIds(manifest)
   if (fresh.size === 0) return null
-  const isFresh = (f: { id?: string }) => Boolean(f.id && fresh.has(f.id))
+  const isFresh = isFreshIn(fresh)
 
   for (const file of manifest.files) {
     const made = isFresh(file) ? file.processed?.path : undefined
-    if (made && fs.existsSync(made)) {
-      try {
-        fs.unlinkSync(made)
-      } catch {}
-    }
+    if (made) await rm(made, { force: true }).catch(() => undefined)
   }
 
   const kept = manifest.files.filter((f) => !(isFresh(f) && f.copyOf))

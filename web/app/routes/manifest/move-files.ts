@@ -29,7 +29,7 @@ const moveFilesIntent: Intent = async ({
       name: data.name,
       startsAt: data.anchorEpoch
     }
-    moveFiles(manifest, ids, { ...to, shot: await shotTimesFor(manifest, ids, to) })
+    await moveFiles(manifest, ids, { ...to, shot: await shotTimesFor(manifest, ids, to) })
   } catch (e) {
     return refuse(messageOf(e))
   }

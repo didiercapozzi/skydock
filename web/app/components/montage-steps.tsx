@@ -9,11 +9,11 @@ import { Icon } from './icons'
 import type { ManifestGroup } from './types'
 
 const STEP_ACTION: Partial<Record<MontageStep, MessageDescriptor>> = {
-  Processed: msg`Process`,
-  Edited: msg`Make the project`,
-  Rendered: msg`Open in kdenlive`,
+  Prepared: msg`Process`,
+  Project: msg`Make the project`,
+  Film: msg`Open in kdenlive`,
   Uploaded: msg`Upload…`,
-  Emailed: msg`Email the link…`
+  Sent: msg`Email the link…`
 }
 
 const StepButton = ({
@@ -27,7 +27,7 @@ const StepButton = ({
 }) => {
   const action = STEP_ACTION[step]
   if (!action) return null
-  const Button = step === 'Emailed' ? Go : Mini
+  const Button = step === 'Sent' ? Go : Mini
   return (
     <Button
       disabled={busy}
@@ -39,20 +39,20 @@ const StepButton = ({
 
 const STEP_ABOUT: Record<MontageStep, MessageDescriptor> = {
   Named: msg`It needs a name first — a person, an event. The name becomes its folder, its file names and its film.`,
-  Processed: msg`Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder.`,
-  Edited: msg`Lays the clips out in kdenlive. You edit there — the board notices the film by itself.`,
-  Rendered: msg`Edit it in kdenlive and render the film there. The board notices the film by itself.`,
+  Prepared: msg`Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder.`,
+  Project: msg`Lays the clips out in kdenlive. You edit there — the board notices the film by itself.`,
+  Film: msg`Edit it in kdenlive and render the film there. The board notices the film by itself.`,
   Uploaded: msg`The film is rendered. Send it, the photos and the originals where you choose.`,
-  Emailed: msg`The film is on the storage and the link works. The email is written already.`
+  Sent: msg`The film is on the storage and the link works. The email is written already.`
 }
 
 const STEP_WORD: Record<MontageStep, MessageDescriptor> = {
   Named: msg`Named`,
-  Processed: msg`Prepared`,
-  Edited: msg`Project`,
-  Rendered: msg`Film`,
+  Prepared: msg`Prepared`,
+  Project: msg`Project`,
+  Film: msg`Film`,
   Uploaded: msg`Uploaded`,
-  Emailed: msg`Sent`
+  Sent: msg`Sent`
 }
 
 const Tick = ({ size = 9 }: { size?: number }) => (
@@ -184,20 +184,20 @@ const StepMeter = ({
 
 const STEP_HINT: Record<MontageStep, { later: MessageDescriptor; done: MessageDescriptor }> = {
   Named: { later: msg`Give it a name`, done: msg`Named` },
-  Processed: { later: msg`Prepare the files`, done: msg`Files ready` },
-  Edited: { later: msg`Make the project`, done: msg`Project made` },
-  Rendered: { later: msg`Render in kdenlive`, done: msg`Film rendered` },
+  Prepared: { later: msg`Prepare the files`, done: msg`Files ready` },
+  Project: { later: msg`Make the project`, done: msg`Project made` },
+  Film: { later: msg`Render in kdenlive`, done: msg`Film rendered` },
   Uploaded: { later: msg`Upload to the storage`, done: msg`On the storage` },
-  Emailed: { later: msg`Email the link`, done: msg`Link sent` }
+  Sent: { later: msg`Email the link`, done: msg`Link sent` }
 }
 
 const STEP_TITLE: Record<MontageStep, MessageDescriptor> = {
   Named: msg`Give it a name`,
-  Processed: msg`Prepare the files`,
-  Edited: msg`Make the editing project`,
-  Rendered: msg`Render the film in kdenlive`,
+  Prepared: msg`Prepare the files`,
+  Project: msg`Make the editing project`,
+  Film: msg`Render the film in kdenlive`,
   Uploaded: msg`Upload it to the storage`,
-  Emailed: msg`Email the link`
+  Sent: msg`Email the link`
 }
 
 const StepLine = ({
@@ -330,7 +330,7 @@ const NextStep = ({
         <div className='flex items-center gap-3.5 rounded-corner bg-accent-soft px-4 py-3'>
           <span className='grid size-control-lg flex-none place-items-center rounded-corner bg-pane text-accent-ink'>
             <Icon
-              name={step ? (step.name === 'Emailed' ? 'mail' : 'next') : 'check'}
+              name={step ? (step.name === 'Sent' ? 'mail' : 'next') : 'check'}
               size={20}
             />
           </span>
@@ -338,20 +338,20 @@ const NextStep = ({
             <div className='flex flex-wrap items-baseline gap-x-2'>
               <b className='font-display text-title font-semibold'>
                 {step
-                  ? step.name === 'Emailed' && who && linked
+                  ? step.name === 'Sent' && who && linked
                     ? t`Send ${who} the link`
                     : i18n._(STEP_TITLE[step.name])
                   : t`Every step done`}
               </b>
               {step && (
                 <span className='text-micro font-bold tracking-eyebrow text-accent-ink uppercase'>
-                  {step.name === 'Emailed' ? t`Last step` : t`Step ${n} of ${total}`}
+                  {step.name === 'Sent' ? t`Last step` : t`Step ${n} of ${total}`}
                 </span>
               )}
             </div>
             <p className={`m-0 text-body text-ink-2 ${explained ? '' : 'truncate'}`}>
               {step
-                ? step.name === 'Emailed' && !linked
+                ? step.name === 'Sent' && !linked
                   ? t`The film is on the storage, but it has no link to send — make one from the panel.`
                   : i18n._(STEP_ABOUT[step.name])
                 : t`Every step done — whoever it is for has their film.`}

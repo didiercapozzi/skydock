@@ -12,8 +12,6 @@ const INDEX_NAME = 'skydock-origins.json'
 const placeFolders = (manifest: Manifest) =>
   (manifest.destinations ?? []).flatMap((place) => (place.path ? [place.path] : []))
 
-const deliveryFolders = (manifest: Manifest) => placeFolders(manifest)
-
 const partsOf = (remotePath: string) => normalizeNasPath(remotePath).split('/').filter(Boolean)
 
 const shareOf = (remotePath: string) => {
@@ -38,12 +36,12 @@ const originsDirOf = (folders: string[]) => {
 const listsDirOf = (session: NasSession, folders: string[]) =>
   session.listsDir ?? originsDirOf(folders)
 
-const settleListsDir = (manifest: Manifest, configDir?: string) => {
-  const stored = loadNasSession(configDir)
+const settleListsDir = async (manifest: Manifest, configDir?: string) => {
+  const stored = await loadNasSession(configDir)
   const folders = placeFolders(manifest)
   if (!stored || stored.listsDir || folders.length === 0) return stored
   const settled = { ...stored, listsDir: originsDirOf(folders) }
-  saveNasSession(settled, configDir)
+  await saveNasSession(settled, configDir)
   return settled
 }
 
@@ -106,14 +104,4 @@ const learnStorage = async (
   )
 }
 
-export {
-  deliveryFolders,
-  INDEX_NAME,
-  learnStorage,
-  originsDirOf,
-  placeFolders,
-  readOriginIndex,
-  recordOrigins,
-  settleListsDir
-}
-export type { OriginEntry, OriginIndex }
+export { learnStorage, originsDirOf, placeFolders, readOriginIndex, recordOrigins, settleListsDir }

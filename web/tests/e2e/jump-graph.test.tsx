@@ -86,7 +86,7 @@ describe('the jump on a graph', () => {
     })
 
     expect(moved).toHaveBeenCalled()
-    const asked = moved.mock.calls[moved.mock.calls.length - 1][0]
+    const asked = moved.mock.calls.at(-1)![0]
     expect(asked).toBeGreaterThan(80)
     expect(asked).toBeLessThan(120)
   })
@@ -102,7 +102,7 @@ describe('the jump on a graph', () => {
       targetPosition: { x: box.width * 0.5, y: box.height / 2 }
     })
 
-    const asked = moved.mock.calls[moved.mock.calls.length - 1][0]
+    const asked = moved.mock.calls.at(-1)![0]
     expect(asked).toBeGreaterThan(120)
     expect(asked).toBeLessThan(130)
   })
@@ -174,20 +174,14 @@ describe('the jump on a graph — zooming and sliding', () => {
         onSeek: moved
       })
     )
-    const el = graph().element() as HTMLElement
-    const box = el.getBoundingClientRect()
-    const at = (x: number) => ({
-      clientX: box.left + x,
-      clientY: box.top + 10,
-      pointerId: 1,
-      ctrlKey: true,
-      bubbles: true
-    })
+    const box = (graph().element() as HTMLElement).getBoundingClientRect()
 
-    el.dispatchEvent(new PointerEvent('pointerdown', at(box.width * 0.5)))
-    await new Promise((resolve) => setTimeout(resolve, 50))
-    el.dispatchEvent(new PointerEvent('pointermove', at(box.width * 0.5 + box.width * 0.2)))
-    el.dispatchEvent(new PointerEvent('pointerup', at(box.width * 0.7)))
+    await userEvent.keyboard('{Control>}')
+    await userEvent.dragAndDrop(graph(), graph(), {
+      sourcePosition: { x: box.width * 0.5, y: 10 },
+      targetPosition: { x: box.width * 0.7, y: 10 }
+    })
+    await userEvent.keyboard('{/Control}')
 
     await vi.waitFor(() => expect(slid).toHaveBeenCalled())
     expect(slid.mock.calls.at(-1)![0]).toBeCloseTo(40, 0)

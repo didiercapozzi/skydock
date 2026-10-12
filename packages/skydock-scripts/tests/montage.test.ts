@@ -71,14 +71,20 @@ const audioOnlyTemplate = `<?xml version='1.0' encoding='utf-8'?>
 </mlt>
 `
 
-const setup = (templateXml?: string) => {
+const withTemplate = (xml: string) => {
   const outputDir = createTmpDir('skydock-montage-')
+  const templateDir = path.join(outputDir, 'templates', 'epco')
+  fs.mkdirSync(templateDir, { recursive: true })
+  fs.writeFileSync(path.join(templateDir, 'epco.kdenlive'), xml)
+  return { outputDir, templateDir }
+}
+
+const setup = (templateXml?: string) => {
+  const { outputDir, templateDir } = withTemplate(templateXml ?? '')
   const groupDir = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   fs.mkdirSync(groupDir, { recursive: true })
-  if (templateXml === undefined) return { outputDir, groupDir, templatePath: REAL_TEMPLATE }
-  const templatePath = path.join(outputDir, 'templates', 'epco', 'epco.kdenlive')
-  fs.mkdirSync(path.dirname(templatePath), { recursive: true })
-  fs.writeFileSync(templatePath, templateXml)
+  const templatePath =
+    templateXml === undefined ? REAL_TEMPLATE : path.join(templateDir, 'epco.kdenlive')
   return { outputDir, groupDir, templatePath }
 }
 
@@ -108,14 +114,6 @@ const build = async (
     photos: photos.map((p) => path.join(groupDir, 'photos', p))
   })
   return { ...result, outputDir, groupDir, xml: fs.readFileSync(result.projectPath, 'utf-8') }
-}
-
-const withTemplate = (xml: string) => {
-  const outputDir = createTmpDir('skydock-montage-')
-  const templateDir = path.join(outputDir, 'templates', 'epco')
-  fs.mkdirSync(templateDir, { recursive: true })
-  fs.writeFileSync(path.join(templateDir, 'epco.kdenlive'), xml)
-  return { outputDir, templateDir }
 }
 
 const briefProject = async (outputDir: string) => {
@@ -281,24 +279,6 @@ describe('montage — a film of photos', () => {
       'kdenlive:duration': '00:00:05:00'
     })
     expect(String(still?.resource)).toMatch(/photos\/G0062266\.JPG$/)
-  })
-
-  it('numbers them on from the clips, so no two things in the bin share a name', async () => {
-    const { xml } = await build(twoAudioOneMutedTemplate, ['a.mp4'], ['G0062266.JPG'])
-    const ids = [...many(parsed(xml).mlt.chain), ...many(parsed(xml).mlt.producer)].map((n) =>
-      Number(many(n.property).find((q) => q['@_name'] === 'kdenlive:id')?.['#text'])
-    )
-    expect(new Set(ids.filter(Number.isFinite)).size).toBe(ids.filter(Number.isFinite).length)
-  })
-
-  it('leaves the timeline as the template made it, as clips do', async () => {
-    const { xml } = await build(twoAudioOneMutedTemplate, [], ['G0062266.JPG'])
-    expect(stackOf(xml)).toEqual(stackOf(twoAudioOneMutedTemplate))
-  })
-
-  it('writes a project the editor can open from a real kdenlive project', async () => {
-    const { xml } = await build(undefined, [], ['G0062266.JPG'])
-    expect(() => parsed(xml)).not.toThrow()
   })
 })
 

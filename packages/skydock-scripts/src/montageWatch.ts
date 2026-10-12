@@ -1,12 +1,6 @@
-import * as fs from 'node:fs'
 import { publish } from './live'
-import { getGroupsPath, loadManifestAsync } from './manifest'
-import {
-  isNamedMontage,
-  montageArtifacts,
-  secondsOf,
-  statMontageArtifacts
-} from './montageArtifacts'
+import { loadManifestAsync, pairStamp } from './manifest'
+import { factOf, isNamedMontage, montageArtifacts, secondsOf } from './montageArtifacts'
 import type { Manifest } from './types'
 import { getManifestPath, hasCommand } from './utils'
 import { passengerOf } from './workspace'
@@ -36,19 +30,10 @@ const watch = () =>
     manifest: { stamp: '', value: null }
   })
 
-const stampOf = (target: string) => {
-  try {
-    const stat = fs.statSync(target)
-    return `${stat.size}:${stat.mtimeMs}`
-  } catch {
-    return 'none'
-  }
-}
-
 const currentManifest = async (outputDir: string) => {
   const state = watch()
   const manifestPath = getManifestPath(outputDir)
-  const stamp = `${stampOf(manifestPath)}|${stampOf(getGroupsPath(manifestPath))}`
+  const stamp = pairStamp(manifestPath)
   if (stamp !== state.manifest.stamp) {
     try {
       state.manifest = { stamp, value: await loadManifestAsync(manifestPath) }
@@ -63,10 +48,9 @@ const lookAtMontages = async (outputDir: string) => {
   const manifest = await currentManifest(outputDir)
   if (!manifest) return
   const { seen } = watch()
-  let facts: ReturnType<typeof statMontageArtifacts> | null = null
   for (const group of manifest.groups) {
     if (!isNamedMontage(group) || group.freed) continue
-    const found = montageArtifacts(outputDir, group)
+    const found = await montageArtifacts(outputDir, group)
     secondsOf(found)
     const film = found.film ? `${found.film.size}:${found.film.mtime}` : 'none'
     const signature = `${found.project}|${film}`
@@ -83,10 +67,8 @@ const lookAtMontages = async (outputDir: string) => {
     seen.set(group.id, state)
     if (state.unchanged < SETTLED_AFTER || state.told === signature) continue
 
-    facts ??= statMontageArtifacts(manifest, outputDir)
-    const fact = facts[group.id]
-    if (!fact) continue
-    if (fact.film && fact.film.seconds === null && hasCommand('ffprobe')) continue
+    const fact = factOf(found, outputDir)
+    if (fact.film && fact.film.seconds === null && (await hasCommand('ffprobe'))) continue
     publish({
       kind: 'montage',
       groupId: group.id,

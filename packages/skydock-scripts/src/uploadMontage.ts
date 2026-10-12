@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { link, mkdir, copyFile, rename, rm } from 'node:fs/promises'
 import * as path from 'node:path'
 import { PHOTO_LEVEL, VIDEO_LEVEL, writeArchive } from './archive'
 import type { ArchiveProgress } from './archive'
@@ -10,22 +10,26 @@ import { filmNameOf, isNamedMontage, montageArtifacts } from './montageArtifacts
 import type { Manifest, ManifestGroup, SendPart, SendPlan } from './types'
 import { destBaseOf, uploadTargets } from './upload'
 import type { UploadTarget } from './upload'
+import { pathExists } from './lib/fs'
 import { isVideoFile, sizeOf } from './utils'
 import { passengerName } from './workspace'
 import { originsOf } from './originEntry'
-import { deliveryFolders } from './originIndex'
+import { placeFolders } from './originIndex'
 import { stopIfUploadCancelled } from './uploading'
 
 const SETTLE_MS = 1500
 
 const settled = async (film: string) => {
-  const before = sizeOf(film)
+  const before = await sizeOf(film)
   await new Promise((resolve) => setTimeout(resolve, SETTLE_MS))
-  const after = sizeOf(film)
+  const after = await sizeOf(film)
   return before === after && after > 0
 }
 
-const resolveFilm = async (artifacts: ReturnType<typeof montageArtifacts>, hasVideos: boolean) => {
+const resolveFilm = async (
+  artifacts: Awaited<ReturnType<typeof montageArtifacts>>,
+  hasVideos: boolean
+) => {
   const canonical = path.join(artifacts.dir, filmNameOf(artifacts.baseName))
   if (!artifacts.film) {
     if (!hasVideos) return null
@@ -37,7 +41,7 @@ const resolveFilm = async (artifacts: ReturnType<typeof montageArtifacts>, hasVi
       throw new Error(
         `Several films here — keep one and delete the rest: ${artifacts.strayFilms.join(', ')}`
       )
-    fs.renameSync(path.join(artifacts.dir, artifacts.strayFilms[0]), canonical)
+    await rename(path.join(artifacts.dir, artifacts.strayFilms[0]), canonical)
   }
   if (!(await settled(canonical)))
     throw new Error('The film is still being written — wait for the render to finish.')
@@ -47,9 +51,9 @@ const resolveFilm = async (artifacts: ReturnType<typeof montageArtifacts>, hasVi
 const readyOf = (dir: string) => path.join(dir, '.send')
 
 const linkInto = async (file: string, to: string) => {
-  await fs.promises.mkdir(path.dirname(to), { recursive: true })
-  await fs.promises.rm(to, { force: true })
-  await fs.promises.link(file, to).catch(() => fs.promises.copyFile(file, to))
+  await mkdir(path.dirname(to), { recursive: true })
+  await rm(to, { force: true })
+  await link(file, to).catch(() => copyFile(file, to))
   return to
 }
 
@@ -82,12 +86,13 @@ const uploadMontage = async ({
   if (!group.processed) throw new Error('Process this montage before uploading it.')
   if (group.freed)
     throw new Error('This montage lives only on the storage now — nothing here to upload.')
-  const artifacts = montageArtifacts(outputDir, group)
-  if (!fs.existsSync(artifacts.dir)) throw new Error('Processed files not found. Process it again.')
+  const artifacts = await montageArtifacts(outputDir, group)
+  if (!(await pathExists(artifacts.dir)))
+    throw new Error('Processed files not found. Process it again.')
 
   const videos = group.files.filter((f) => isVideoFile(f.path))
   const film = await resolveFilm(artifacts, videos.length > 0)
-  const items = sendItems(group, outputDir, plan.zips, film).filter(
+  const items = (await sendItems(group, outputDir, plan.zips, film)).filter(
     (item) => (plan.placed[item.key] ?? []).length > 0
   )
   if (items.length === 0) throw new Error('Put at least one thing in a destination.')
@@ -102,7 +107,7 @@ const uploadMontage = async ({
   }
 
   const ready = readyOf(artifacts.dir)
-  fs.mkdirSync(ready, { recursive: true })
+  await mkdir(ready, { recursive: true })
   const built = new Map<string, string[]>()
   for (const item of items) {
     stopIfUploadCancelled()
@@ -153,7 +158,7 @@ const uploadMontage = async ({
     session,
     targets,
     origins: originsOf(manifest),
-    folders: deliveryFolders(manifest),
+    folders: placeFolders(manifest),
     onProgress,
     onCheck,
     onPlan

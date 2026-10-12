@@ -14,7 +14,7 @@ const fromBinIntent: Intent = async ({ data, manifest, manifestPath, outputDir, 
     if (back.length > 0) await scanMedia({ outputDir })
     const after = await loadManifestAsync(manifestPath)
     if (!after) return refuse('The registry could not be read after bringing them back.')
-    return { ...boardAnswer(after), fromBin: { back: back.length, kept } }
+    return { ...(await boardAnswer(after)), fromBin: { back: back.length, kept } }
   } catch (e) {
     return refuse(messageOf(e))
   }

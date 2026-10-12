@@ -1,6 +1,10 @@
-import * as fs from 'node:fs'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { z } from 'zod'
+import { pathExists } from './lib/fs'
+import { jsonText } from './lib/json'
+import { mediaSeconds } from './lib/media'
 import { run, runWatched } from './tools'
 import { ffmpegPath, ffprobePath, hasCommand } from './utils'
 
@@ -13,8 +17,19 @@ const KINDS = [
 
 type Kind = (typeof KINDS)[number]['kind']
 
+const PROBED = z.object({
+  streams: z
+    .array(
+      z.object({
+        index: z.number().optional(),
+        tags: z.object({ handler_name: z.string().optional() }).optional()
+      })
+    )
+    .default([])
+})
+
 const telemetryStream = async (clip: string) => {
-  const asked = await run(ffprobePath(), [
+  const asked = await run(await ffprobePath(), [
     '-v',
     'error',
     '-select_streams',
@@ -26,9 +41,9 @@ const telemetryStream = async (clip: string) => {
     clip
   ])
   if (!asked.ok) return null
-  const parsed: unknown = JSON.parse(asked.stdout)
-  const streams =
-    (parsed as { streams?: { index?: number; tags?: { handler_name?: string } }[] }).streams ?? []
+  const parsed = jsonText.pipe(PROBED).safeParse(asked.stdout)
+  if (!parsed.success) return null
+  const { streams } = parsed.data
   for (const { handler, kind } of KINDS) {
     const found = streams.find((s) => (s.tags?.handler_name ?? '').includes(handler))
     if (found?.index !== undefined) return { index: found.index, kind }
@@ -36,22 +51,9 @@ const telemetryStream = async (clip: string) => {
   return null
 }
 
-const secondsOf = async (clip: string) => {
-  const said = await run(ffprobePath(), [
-    '-v',
-    'error',
-    '-show_entries',
-    'format=duration',
-    '-of',
-    'csv=p=0',
-    clip
-  ])
-  const seconds = said.ok ? Number.parseFloat(said.stdout.trim()) : 0
-  return Number.isFinite(seconds) ? seconds : 0
-}
-
 const telemetryOf = async (clip: string, onPercent?: (percent: number) => void) => {
-  if (!fs.existsSync(clip) || !hasCommand('ffmpeg') || !hasCommand('ffprobe')) return null
+  if (!(await pathExists(clip)) || !(await hasCommand('ffmpeg')) || !(await hasCommand('ffprobe')))
+    return null
   let stream: { index: number; kind: Kind } | null = null
   try {
     stream = await telemetryStream(clip)
@@ -59,13 +61,13 @@ const telemetryOf = async (clip: string, onPercent?: (percent: number) => void) 
     return null
   }
   if (!stream) return null
-  const seconds = await secondsOf(clip)
-  if (seconds <= 0) return null
-  const staging = fs.mkdtempSync(path.join(os.tmpdir(), 'skydock-felt-'))
+  const seconds = await mediaSeconds(clip)
+  if (!seconds || seconds <= 0) return null
+  const staging = await mkdtemp(path.join(os.tmpdir(), 'skydock-felt-'))
   const written = path.join(staging, 'felt.bin')
   try {
     const copied = await runWatched(
-      ffmpegPath(),
+      await ffmpegPath(),
       [
         '-v',
         'error',
@@ -84,11 +86,11 @@ const telemetryOf = async (clip: string, onPercent?: (percent: number) => void) 
       seconds
     )
     if (!copied.ok) return null
-    return { kind: stream.kind, seconds, data: fs.readFileSync(written) }
+    return { kind: stream.kind, seconds, data: await readFile(written) }
   } catch {
     return null
   } finally {
-    fs.rmSync(staging, { recursive: true, force: true })
+    await rm(staging, { recursive: true, force: true })
   }
 }
 
@@ -279,7 +281,6 @@ export {
   gpsIn,
   POSITION,
   READERS,
-  secondsOf,
   telemetryOf,
   VECTOR_READERS
 }

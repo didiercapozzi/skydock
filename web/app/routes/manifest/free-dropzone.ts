@@ -29,7 +29,7 @@ const freeDropzoneIntent: Intent = async ({
     markDropzoneFreed(saved, result)
     saveManifest(manifestPath, saved)
     return {
-      ...boardAnswer(saved),
+      ...(await boardAnswer(saved)),
       freedPlace: {
         place: destination,
         bytes: result.bytes,

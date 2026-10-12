@@ -4,14 +4,8 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-vi.mock(import('@skydock/scripts'), async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
-})
-
 import { droppedFiles, droppedIn, fromComputer, pathOf, whatIsComing } from '../../app/helpers/import'
 import { boardRoute } from './board-route'
-
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
 

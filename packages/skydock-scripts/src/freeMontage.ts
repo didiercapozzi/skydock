@@ -1,26 +1,24 @@
-import * as fs from 'node:fs'
+import { readdir, rm } from 'node:fs/promises'
 import * as path from 'node:path'
-import { z } from 'zod'
-import { isArchiveFresh, sameContents } from './archive'
+import { isArchiveFresh, readContents, sameContents } from './archive'
 import { outputKeyOf, uploadGate } from './fileStatus'
 import { computeFileId } from './fileId'
-import { hashFile } from './lib/fs'
-import { jsonText } from './lib/json'
+import { hashFile, moveFile, pathExists, statOrNull } from './lib/fs'
 import { statProcessedOutputs } from './manifest'
 import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
 import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
-import { sendItems } from './sending'
+import { sendItems, slugOf } from './sending'
 import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile, SendPart } from './types'
 import { uploadedFiles } from './upload'
-import { getTrashDir, isVideoFile, sizeOf } from './utils'
+import { getTrashDir, isVideoFile, mapWithLimit } from './utils'
 import { lastSegment } from './paths'
 import { inJob } from './live'
-import { slugOf } from './sending'
-import { moveFile } from './lib/fs'
 import { passengerName } from './workspace'
+
+type StoredRecord = NonNullable<ManifestFile['uploaded']>
 
 type FreeResult = { groupId: string; fileIds: string[]; bytes: number; at: number }
 
@@ -32,28 +30,55 @@ const inside = (root: string, target: string) => {
 
 const removeFile = async (root: string, target: string | undefined) => {
   if (!target || !inside(root, target)) return 0
-  const size = await fs.promises.stat(target).then(
-    (stat) => stat.size,
-    () => null
-  )
-  if (size === null) return 0
-  await fs.promises.rm(target, { force: true })
-  return size
+  const stat = await statOrNull(target)
+  if (!stat) return 0
+  await rm(target, { force: true })
+  return stat.size
 }
 
 const sizeUnder = async (target: string): Promise<number> => {
-  const stat = await fs.promises.stat(target)
+  const stat = await statOrNull(target)
+  if (!stat) return 0
   if (!stat.isDirectory()) return stat.size
-  const entries = await fs.promises.readdir(target)
-  const sizes = await Promise.all(entries.map((entry) => sizeUnder(path.join(target, entry))))
+  const entries = await readdir(target)
+  const sizes = await mapWithLimit(entries, 16, (entry) => sizeUnder(path.join(target, entry)))
   return sizes.reduce((sum, size) => sum + size, 0)
 }
 
 const removeTree = async (root: string, target: string) => {
-  if (!inside(root, target) || !fs.existsSync(target)) return 0
+  if (!inside(root, target)) return 0
   const size = await sizeUnder(target)
-  await fs.promises.rm(target, { recursive: true, force: true })
+  await rm(target, { recursive: true, force: true })
   return size
+}
+
+const proofOf = async (file: StoredRecord, session: NasSession) => {
+  const label = lastSegment(file.remotePath)
+  const local = await statOrNull(file.localPath)
+  if (local?.size !== file.size) return `${label} changed here since it was uploaded`
+  const [here, there] = await Promise.all([
+    hashFile(file.localPath).catch(() => null),
+    dsmFileMd5(session.hostname, session.sessionId, file.remotePath)
+  ])
+  if (here === null || here.toLowerCase() !== file.md5.toLowerCase())
+    return `${label} changed here since it was uploaded`
+  if (there === null) return `${label} could not be checked on the storage`
+  if (there.toLowerCase() !== file.md5.toLowerCase())
+    return `${label} on the storage is not the file that was sent`
+  return null
+}
+
+const changedSince = async <T>(
+  zip: string,
+  items: T[],
+  pathOf: (item: T) => string | undefined
+) => {
+  const zipped = (await statOrNull(zip))?.mtimeMs ?? -Infinity
+  const stats = await mapWithLimit(items, 16, async (item) => {
+    const file = pathOf(item)
+    return file ? await statOrNull(file) : null
+  })
+  return items.filter((_, i) => !stats[i] || stats[i].mtimeMs > zipped)
 }
 
 const proveOnStorage = async (
@@ -82,10 +107,17 @@ const proveOnStorage = async (
   const wasFreed =
     group.freedBefore !== undefined ||
     (uploadedFiles(record).length > 0 &&
-      uploadedFiles(record).every((file) => !fs.existsSync(file.localPath)) &&
-      group.files.every((f) => !f.processed || !fs.existsSync(f.processed.path)))
+      (await Promise.all(uploadedFiles(record).map((file) => pathExists(file.localPath)))).every(
+        (exists) => !exists
+      ) &&
+      (
+        await Promise.all(
+          group.files.map((f) => (f.processed ? pathExists(f.processed.path) : false))
+        )
+      ).every((exists) => !exists))
   if (wasFreed) {
-    const here = group.files.filter((f) => !f.freed && fs.existsSync(f.path))
+    const present = await Promise.all(group.files.map((f) => pathExists(f.path)))
+    const here = group.files.filter((f, i) => !f.freed && present[i])
     const problems: string[] = []
     const checks = await Promise.all(
       uploadedFiles(record).map(async (file) => {
@@ -138,70 +170,38 @@ const proveOnStorage = async (
   if (videos.length > 0 && !filmSent) problems.push('the film was never uploaded')
 
   const sent = uploadedFiles(record)
-  const proofs = await Promise.all(
-    sent.map(async (file) => {
-      const label = lastSegment(file.remotePath)
-      step(label)
-      if (!fs.existsSync(file.localPath) || sizeOf(file.localPath) !== file.size)
-        return `${label} changed here since it was uploaded`
-      const [here, there] = await Promise.all([
-        hashFile(file.localPath),
-        dsmFileMd5(session.hostname, session.sessionId, file.remotePath)
-      ])
-      if (here.toLowerCase() !== file.md5.toLowerCase())
-        return `${label} changed here since it was uploaded`
-      if (there === null) return `${label} could not be checked on the storage`
-      if (there.toLowerCase() !== file.md5.toLowerCase())
-        return `${label} on the storage is not the file that was sent`
-      return null
-    })
-  )
+  const proofs = await mapWithLimit(sent, 4, (file) => {
+    step(lastSegment(file.remotePath))
+    return proofOf(file, session)
+  })
   problems.push(...proofs.flatMap((p) => (p ? [p] : [])))
 
-  const expected = (holds: SendPart[]) =>
-    sendItems(group, outputDir, [{ ending: 'check', parts: holds }]).find((item) => item.zip)
-      ?.entries ?? []
+  const expected = async (holds: SendPart[]) =>
+    (await sendItems(group, outputDir, [{ ending: 'check', parts: holds }])).find(
+      (item) => item.zip
+    )?.entries ?? []
 
   const sentNames = new Set(sent.map((f) => path.basename(f.localPath)))
   if (videos.length > 0) {
-    if (record.rushes?.holds) {
-      const zipped = fs.existsSync(record.rushes.localPath)
-        ? fs.statSync(record.rushes.localPath).mtimeMs
-        : -Infinity
-      const changed = videos
-        .filter((v) => !fs.existsSync(v.path) || fs.statSync(v.path).mtimeMs > zipped)
-        .map((v) => v.filename)
-      if (!sameContents(record.rushes.localPath, expected(record.rushes.holds)))
+    if (record.rushes) {
+      const rushes = record.rushes
+      const entries = rushes.holds
+        ? await expected(rushes.holds)
+        : [
+            ...videos.map((f) => ({ file: f.path, name: f.filename })),
+            ...((await readContents(rushes.localPath)) ?? [])
+              .filter((n) => !videos.some((v) => v.filename === n))
+              .map((n) => ({ file: path.join(path.dirname(rushes.localPath), n), name: n }))
+          ]
+      if (!(await sameContents(rushes.localPath, entries)))
         problems.push('the backup zip does not hold exactly these originals')
-      else if (changed.length > 0)
-        problems.push(`${changed.join(', ')} changed since the backup zip was made — upload again`)
-    } else if (record.rushes) {
-      const listed = (() => {
-        try {
-          return jsonText
-            .pipe(z.array(z.string()))
-            .safeParse(fs.readFileSync(`${record.rushes.localPath}.contents`, 'utf-8'))
-        } catch {
-          return null
-        }
-      })()
-      const names = listed?.success ? listed.data : []
-      const entries = [
-        ...videos.map((f) => ({ file: f.path, name: f.filename })),
-        ...names
-          .filter((n) => !videos.some((v) => v.filename === n))
-          .map((n) => ({ file: path.join(path.dirname(record.rushes!.localPath), n), name: n }))
-      ]
-      const zipped = fs.existsSync(record.rushes.localPath)
-        ? fs.statSync(record.rushes.localPath).mtimeMs
-        : -Infinity
-      const changed = videos
-        .filter((v) => !fs.existsSync(v.path) || fs.statSync(v.path).mtimeMs > zipped)
-        .map((v) => v.filename)
-      if (!sameContents(record.rushes.localPath, entries))
-        problems.push('the backup zip does not hold exactly these originals')
-      else if (changed.length > 0)
-        problems.push(`${changed.join(', ')} changed since the backup zip was made — upload again`)
+      else {
+        const changed = await changedSince(rushes.localPath, videos, (v) => v.path)
+        if (changed.length > 0)
+          problems.push(
+            `${changed.map((v) => v.filename).join(', ')} changed since the backup zip was made — upload again`
+          )
+      }
     } else if (!videos.every((v) => sentNames.has(v.filename))) {
       problems.push('not every original is in the backup')
     }
@@ -212,14 +212,8 @@ const proveOnStorage = async (
     const copies = photos.flatMap((f) => (f.processed ? [path.basename(f.processed.path)] : []))
     if (record.photos?.holds) {
       const zip = record.photos.localPath
-      const built = fs.existsSync(zip) ? fs.statSync(zip).mtimeMs : -Infinity
-      const stale = photos.some(
-        (f) =>
-          !f.processed ||
-          !fs.existsSync(f.processed.path) ||
-          fs.statSync(f.processed.path).mtimeMs > built
-      )
-      if (!sameContents(zip, expected(record.photos.holds)) || stale)
+      const stale = await changedSince(zip, photos, (f) => f.processed?.path)
+      if (!(await sameContents(zip, await expected(record.photos.holds))) || stale.length > 0)
         problems.push('the photos zip does not hold exactly these photos')
     } else if (!record.photos) {
       if (copies.length !== photos.length || !copies.every((name) => sentNames.has(name)))
@@ -228,7 +222,10 @@ const proveOnStorage = async (
       const entries = photos.flatMap((f) =>
         f.processed ? [{ file: f.processed.path, name: path.basename(f.processed.path) }] : []
       )
-      if (entries.length !== photos.length || !isArchiveFresh(record.photos.localPath, entries))
+      if (
+        entries.length !== photos.length ||
+        !(await isArchiveFresh(record.photos.localPath, entries))
+      )
         problems.push('the photos zip does not hold exactly these photos')
     }
   }
@@ -285,14 +282,12 @@ const freeMontage = async ({
       }
       bytes += await removeTree(proxies, getCutProxyDir(outputDir, group.id))
       freeing.working(lastSegment(dir))
-      if (fs.existsSync(dir)) {
-        const stamp = new Date().toISOString().replace(/[:.]/g, '-')
-        const bin = path.join(trashDir, `montage-${slugOf(label) || 'montage'}-${stamp}`)
-        for (const entry of fs.readdirSync(dir))
-          if (entry.endsWith('.kdenlive'))
-            await moveFile(path.join(dir, entry), path.join(bin, entry))
-        bytes += await removeTree(path.join(outputDir, 'processed'), dir)
-      }
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+      const bin = path.join(trashDir, `montage-${slugOf(label) || 'montage'}-${stamp}`)
+      for (const entry of await readdir(dir).catch(() => []))
+        if (entry.endsWith('.kdenlive'))
+          await moveFile(path.join(dir, entry), path.join(bin, entry))
+      bytes += await removeTree(path.join(outputDir, 'processed'), dir)
 
       const result = {
         groupId: group.id,
@@ -306,11 +301,12 @@ const freeMontage = async ({
   )
 }
 
+const freedAmong = (ids: Set<string>) => (f: ManifestFile) =>
+  f.id && ids.has(f.id) ? { ...f, freed: true } : f
+
 const markFreed = (manifest: Manifest, result: FreeResult) => {
   const ids = new Set(result.fileIds)
-  manifest.files = manifest.files.map((f: ManifestFile) =>
-    f.id && ids.has(f.id) ? { ...f, freed: true } : f
-  )
+  manifest.files = manifest.files.map(freedAmong(ids))
   manifest.groups = manifest.groups.map((g) =>
     g.id === result.groupId
       ? {
@@ -323,4 +319,4 @@ const markFreed = (manifest: Manifest, result: FreeResult) => {
   )
 }
 
-export { freeMontage, markFreed, removeFile, removeTree }
+export { freeMontage, freedAmong, markFreed, proofOf, removeFile, removeTree }

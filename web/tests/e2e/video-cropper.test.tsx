@@ -9,22 +9,24 @@ import { VideoCropper } from '../../app/components/video-cropper'
 const renderCropper = async (props: Partial<Parameters<typeof VideoCropper>[0]> = {}) => {
   const onSeek = vi.fn()
   const onCropChange = vi.fn()
+  const onApply = vi.fn()
   const onZoomChange = vi.fn()
-  await render(
-    createElement(VideoCropper, {
-      duration: 10,
-      currentTime: 2,
-      cropStart: null,
-      cropEnd: null,
-      zoom: 1,
-      onSeek,
-      onCropChange,
-      onApply: () => {},
-      onZoomChange,
-      ...props
-    })
-  )
-  return { onSeek, onCropChange, onZoomChange }
+  const propsOf = (more: typeof props = {}) => ({
+    duration: 10,
+    currentTime: 2,
+    cropStart: null,
+    cropEnd: null,
+    zoom: 1,
+    onSeek,
+    onCropChange,
+    onApply,
+    onZoomChange,
+    ...props,
+    ...more
+  })
+  const screen = await render(createElement(VideoCropper, propsOf()))
+  const rerender = (more: typeof props) => screen.rerender(createElement(VideoCropper, propsOf(more)))
+  return { onSeek, onCropChange, onApply, onZoomChange, rerender }
 }
 
 const part = (selector: string) => {
@@ -49,26 +51,44 @@ describe('trimming — the playhead', () => {
     expect(lastCall<number>(onSeek)).toBeCloseTo(5, 0)
   })
 
+  test('the playhead never leaves the clip, at either edge of the bar', async () => {
+    const { onSeek } = await renderCropper({ currentTime: 5 })
+    const track = page.elementLocator(bar())
+    const edge = bar().getBoundingClientRect()
+    await userEvent.click(track, { position: { x: 1, y: edge.height / 2 } })
+    await expect.poll(() => lastCall<number>(onSeek)).toBeCloseTo(0, 1)
+    await userEvent.click(track, { position: { x: edge.width - 2, y: edge.height / 2 } })
+    await expect.poll(() => lastCall<number>(onSeek)).toBeCloseTo(10, 1)
+  })
 })
 
 describe('trimming — zooming the timeline', () => {
   test('the wheel zooms in, about the pointer', async () => {
     const { onZoomChange } = await renderCropper({ currentTime: 5 })
-    const rect = bar().getBoundingClientRect()
-    const wheel = new WheelEvent('wheel', {
-      bubbles: true,
-      cancelable: true,
-      clientX: rect.left + rect.width / 2,
-      deltaY: -100
-    })
-    const preventDefault = vi.spyOn(wheel, 'preventDefault')
-    bar().dispatchEvent(wheel)
-    expect(preventDefault).toHaveBeenCalled()
+    await userEvent.wheel(page.elementLocator(bar()), { direction: 'up', times: 3 })
+    await expect.poll(() => onZoomChange.mock.calls.length).toBeGreaterThan(0)
     const zoom = lastCall<number>(onZoomChange)
     expect(zoom).toBeGreaterThan(1)
-    await page.screenshot({ path: './playwright-screenshots/video-cropper-wheel.png' })
+    expect(zoom).toBeLessThanOrEqual(10)
   })
 
+  test('zoomed ten times, the wheel goes no further', async () => {
+    const { onZoomChange } = await renderCropper({ cropStart: 2, cropEnd: 8, zoom: 10 })
+    await userEvent.wheel(page.elementLocator(bar()), { direction: 'up', times: 10 })
+    await expect.poll(() => onZoomChange.mock.calls.length).toBeGreaterThan(0)
+    expect(lastCall<number>(onZoomChange)).toBe(10)
+  })
+
+  test('Reset brings the timeline back to whole', async () => {
+    const { onZoomChange } = await renderCropper({ zoom: 6 })
+    await userEvent.click(page.getByText('Reset'))
+    expect(onZoomChange).toHaveBeenCalledWith(1)
+  })
+
+  test('Reset is shown only while the timeline is zoomed', async () => {
+    await renderCropper({ zoom: 1 })
+    expect(document.querySelector('[data-action="reset-zoom"]')).toBeNull()
+  })
 })
 
 describe('trimming — dragging the ends', () => {
@@ -126,6 +146,54 @@ describe('trimming — the filmstrip', () => {
     expect(thumbs[7]?.src).toContain('seek=15.0')
   })
 
+  test('shows no frames when it has no way to fetch them', async () => {
+    await renderCropper({ duration: 16, currentTime: 0 })
+    expect(document.querySelectorAll('[data-thumb]')).toHaveLength(0)
+    expect(document.querySelector('[data-thumbs]')).toBeNull()
+  })
+
+  test('a zoomed clip played on brings in the one picture that comes into view, not every picture again', async () => {
+    const asked = new Set<string>()
+    const thumbSrc = (seek: number) => {
+      asked.add(seek.toFixed(1))
+      return `/api/thumb/clip.mp4?seek=${seek.toFixed(1)}&width=160`
+    }
+    const { rerender } = await renderCropper({ duration: 60, currentTime: 25, zoom: 2, thumbSrc })
+
+    for (let time = 25.1; time <= 45; time += 0.1) await rerender({ currentTime: time })
+
+    expect(asked.size).toBeLessThanOrEqual(14)
+  })
+
+  test('none is asked for at or beyond the end of the clip', async () => {
+    const asked: number[] = []
+    await renderCropper({
+      duration: 15,
+      currentTime: 0,
+      thumbSrc: (seek) => {
+        asked.push(seek)
+        return `/api/thumb/clip.mp4?seek=${seek.toFixed(1)}&width=160`
+      }
+    })
+
+    expect(Math.max(...asked)).toBeLessThan(15)
+  })
+})
+
+describe('trimming — start and end at the playhead', () => {
+  test('Start here and End here take the playhead’s moment', async () => {
+    const { onCropChange } = await renderCropper({ currentTime: 3.5 })
+    await userEvent.click(page.getByText('Start here'))
+    await expect.poll(() => onCropChange.mock.calls.some(([range]) => range.cropStart === 3.5)).toBe(true)
+    await userEvent.click(page.getByText('End here'))
+    await expect.poll(() => onCropChange.mock.calls.some(([range]) => range.cropEnd === 3.5)).toBe(true)
+  })
+
+  test('Apply hands the trim over to be saved', async () => {
+    const { onApply } = await renderCropper({ currentTime: 5, cropStart: 2, cropEnd: 8 })
+    await userEvent.click(page.getByText('Apply'))
+    expect(onApply).toHaveBeenCalledWith({ cropStart: 2, cropEnd: 8 })
+  })
 })
 
 const Zoomable = () => {

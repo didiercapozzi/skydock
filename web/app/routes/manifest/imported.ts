@@ -3,8 +3,9 @@ import type { Intent } from './change'
 
 /* files were just added — from the computer, one request each, or off a camera as each lands: the
    board looks again, and hears how a drop went when there is a drop to hear about */
-const imported: Intent = ({ data, manifest }) => {
-  return { ...boardAnswer(manifest), imported: data.imported }
-}
+const imported: Intent = async ({ data, manifest }) => ({
+  ...(await boardAnswer(manifest)),
+  imported: data.imported
+})
 
 export { imported }

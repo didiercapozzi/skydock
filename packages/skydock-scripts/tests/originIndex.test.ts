@@ -241,7 +241,7 @@ describe('where the lists stay', () => {
     await settleListsDir(manifestWith(FOLDERS), configDir)
     await settleListsDir(manifestWith([...FOLDERS, '/usbshare2/Skydive/Backup']), configDir)
 
-    expect(loadNasSession(configDir)?.listsDir).toBe('/home/Photos/Skydive')
+    expect((await loadNasSession(configDir))?.listsDir).toBe('/home/Photos/Skydive')
   })
 
   it('writes the list where it was fixed, whatever the folders now are', async () => {

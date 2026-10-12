@@ -17,4 +17,19 @@ const boardRoute = (loader: () => unknown) => ({
   ]
 })
 
-export { boardRoute }
+const boardOf = (over: Record<string, unknown> = {}) => ({
+  groups: [] as unknown[],
+  looseFiles: [] as unknown[],
+  destinations: [] as unknown[],
+  outputs: {},
+  proxies: {},
+  montages: {},
+  remote: null,
+  storage: null,
+  hasManifest: true,
+  processing: null,
+  nas: { connected: false, hostname: null, backupFolder: null },
+  ...over
+})
+
+export { boardOf, boardRoute }

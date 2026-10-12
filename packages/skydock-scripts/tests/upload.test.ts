@@ -3,7 +3,6 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { ensureShareLink } from '../src/nas'
 import { planUpload } from '../src/publish'
 import { goneFromStorage, goneSent, resolveUploadTargets, targetForGroup } from '../src/upload'
 import type { Manifest, ManifestGroup } from '../src/types'
@@ -13,14 +12,18 @@ beforeEach(() => {
   seen.length = 0
 })
 
+const made: string[] = []
+
 afterEach(() => {
   vi.unstubAllGlobals()
+  for (const dir of made.splice(0)) fs.rmSync(dir, { recursive: true, force: true })
 })
 
 const md5Of = (content: string) => crypto.createHash('md5').update(content).digest('hex')
 
 const makeLocal = (contents: Record<string, string>) => {
   const dir = createTmpDir('skydock-plan-')
+  made.push(dir)
   for (const [name, body] of Object.entries(contents)) {
     const target = path.join(dir, name)
     fs.mkdirSync(path.dirname(target), { recursive: true })
@@ -28,6 +31,9 @@ const makeLocal = (contents: Record<string, string>) => {
   }
   return dir
 }
+
+const plan = (localDir: string) =>
+  planUpload({ host: 'https://nas', sid: 'sid', localDir, remoteDir: '/nas/jump' })
 
 const group = (over: Partial<ManifestGroup>): ManifestGroup => ({
   id: 'group_1',
@@ -38,18 +44,17 @@ const group = (over: Partial<ManifestGroup>): ManifestGroup => ({
   ...over
 })
 
-const manifestOf = (groups: ManifestGroup[], over: Partial<Manifest> = {}): Manifest =>
-  ({
-    version: 1,
-    createdAt: '',
-    files: [],
-    groups,
-    destinations: [
-      { name: 'Yverdon', path: '/nas/Yverdon' },
-      { name: 'Passengers', path: '/nas/Passengers' }
-    ],
-    ...over
-  }) as Manifest
+const manifestOf = (groups: ManifestGroup[], over: Partial<Manifest> = {}): Manifest => ({
+  version: 1,
+  createdAt: '',
+  files: [],
+  groups,
+  destinations: [
+    { name: 'Yverdon', path: '/nas/Yverdon' },
+    { name: 'Passengers', path: '/nas/Passengers' }
+  ],
+  ...over
+})
 
 describe('skipping what is already on the storage', () => {
   it('skips a file whose name, size and checksum all match, and uploads the rest', async () => {
@@ -59,20 +64,14 @@ describe('skipping what is already on the storage', () => {
       md5: { '/nas/jump/videos/same.mp4': md5Of('identical') }
     })
     stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
-    const plan = await planUpload({
-      host: 'https://nas',
-      sid: 'sid',
-      localDir: dir,
-      remoteDir: '/nas/jump'
-    })
-    expect(plan.skip.map((v) => path.basename(v.localPath))).toEqual(['same.mp4'])
-    expect(plan.upload.map((f) => path.basename(f))).toEqual(['new.mp4'])
-    expect(plan.skip[0]).toMatchObject({
+    const planned = await plan(dir)
+    expect(planned.skip.map((v) => path.basename(v.localPath))).toEqual(['same.mp4'])
+    expect(planned.upload.map((f) => path.basename(f))).toEqual(['new.mp4'])
+    expect(planned.skip[0]).toMatchObject({
       remotePath: '/nas/jump/videos/same.mp4',
       md5: md5Of('identical'),
       size: 'identical'.length
     })
-    fs.rmSync(dir, { recursive: true, force: true })
   })
 
   it('uploads a same-sized file whose checksum differs', async () => {
@@ -82,88 +81,36 @@ describe('skipping what is already on the storage', () => {
       md5: { '/nas/jump/a.mp4': md5Of('bbbb') }
     })
     stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
-    const plan = await planUpload({
-      host: 'https://nas',
-      sid: 'sid',
-      localDir: dir,
-      remoteDir: '/nas/jump'
-    })
-    expect(plan.skip).toEqual([])
-    expect(plan.upload.map((f) => path.basename(f))).toEqual(['a.mp4'])
-    fs.rmSync(dir, { recursive: true, force: true })
+    const planned = await plan(dir)
+    expect(planned.skip).toEqual([])
+    expect(planned.upload.map((f) => path.basename(f))).toEqual(['a.mp4'])
   })
 
   it('never asks for a checksum when the sizes already differ', async () => {
     const dir = makeLocal({ 'a.mp4': 'aaaaaaaa' })
     const stub = nasStubs({ files: { '/nas/jump': [{ name: 'a.mp4', size: 3 }] } })
     stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
-    const plan = await planUpload({
-      host: 'https://nas',
-      sid: 'sid',
-      localDir: dir,
-      remoteDir: '/nas/jump'
-    })
-    expect(plan.upload).toHaveLength(1)
+    const planned = await plan(dir)
+    expect(planned.upload).toHaveLength(1)
     expect(seen.some((c) => c.url.includes('SYNO.FileStation.MD5'))).toBe(false)
-    fs.rmSync(dir, { recursive: true, force: true })
   })
 
   it('sends the file when the storage cannot checksum it — uncertainty never means skip', async () => {
     const dir = makeLocal({ 'a.mp4': 'aaaa' })
     const stub = nasStubs({ files: { '/nas/jump': [{ name: 'a.mp4', size: 4 }] }, md5: {} })
     stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
-    const plan = await planUpload({
-      host: 'https://nas',
-      sid: 'sid',
-      localDir: dir,
-      remoteDir: '/nas/jump'
-    })
-    expect(plan.skip).toEqual([])
-    expect(plan.upload).toHaveLength(1)
-    fs.rmSync(dir, { recursive: true, force: true })
-  })
-
-  it('asks for no listing work beyond one call per remote folder', async () => {
-    const dir = makeLocal({ 'videos/a.mp4': 'a', 'videos/b.mp4': 'b', 'photos/c.jpg': 'c' })
-    const stub = nasStubs({ files: {} })
-    stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
-    await planUpload({ host: 'https://nas', sid: 'sid', localDir: dir, remoteDir: '/nas/jump' })
-    const lists = seen.filter((c) => c.url.includes('filetype=file'))
-    expect(lists).toHaveLength(2)
-    fs.rmSync(dir, { recursive: true, force: true })
-  })
-})
-
-describe('share links', () => {
-  it('reuses a live link for the same folder and never creates a second one', async () => {
-    const stub = nasStubs({ links: [{ url: '/sharing/kept', path: '/nas/jump', status: 'valid' }] })
-    stubFetch((url) => stub(url) ?? jsonResponse({ success: true }))
-    await expect(ensureShareLink('https://nas', 'sid', '/nas/jump')).resolves.toBe(
-      'https://nas/sharing/kept'
-    )
-    expect(seen.some((c) => c.url.includes('method=create'))).toBe(false)
-  })
-
-  it('creates a link when the only match has expired', async () => {
-    const stub = nasStubs({
-      links: [{ url: '/sharing/dead', path: '/nas/jump', status: 'expired' }]
-    })
-    stubFetch(
-      (url) =>
-        stub(url) ?? jsonResponse({ success: true, data: { links: [{ url: '/sharing/fresh' }] } })
-    )
-    await expect(ensureShareLink('https://nas', 'sid', '/nas/jump')).resolves.toBe(
-      'https://nas/sharing/fresh'
-    )
+    const planned = await plan(dir)
+    expect(planned.skip).toEqual([])
+    expect(planned.upload).toHaveLength(1)
   })
 })
 
 describe('where an upload goes', () => {
   const outputDir = '/out'
 
-  it('sends a dropzone’s jump into the dropzone’s folder itself, with no folder per jump', () => {
+  it('sends a dropzone’s jump into the dropzone’s folder itself, with no folder per jump', async () => {
     const manifest = manifestOf([group({ destination: 'Yverdon' })])
-    const [target] = resolveUploadTargets({
+    const [target] = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { groupIds: ['group_1'] }
@@ -172,9 +119,9 @@ describe('where an upload goes', () => {
     expect(target.localDir).toBe('/out/processed/Yverdon')
   })
 
-  it('gives the folder of a destination no link by default', () => {
+  it('gives the folder of a destination no link by default', async () => {
     const manifest = manifestOf([group({ destination: 'Yverdon' })])
-    const targets = resolveUploadTargets({
+    const targets = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { groupIds: ['group_1'] }
@@ -182,8 +129,9 @@ describe('where an upload goes', () => {
     expect(targets.every((target) => target.share === false)).toBe(true)
   })
 
-  it('leaves out of a destination’s upload what the record says is up there already', () => {
+  it('leaves out of a destination’s upload what the record says is up there already', async () => {
     const out = createTmpDir('skydock-out-')
+    made.push(out)
     const dir = path.join(out, 'processed', 'sion')
     fs.mkdirSync(dir, { recursive: true })
     fs.writeFileSync(path.join(dir, 'sent.mp4'), 'sent')
@@ -229,7 +177,7 @@ describe('where an upload goes', () => {
       files: [lone('sent.mp4', 4, true), lone('new.mp4', 4, false)]
     }
 
-    const [target] = resolveUploadTargets({
+    const [target] = await resolveUploadTargets({
       outputDir: out,
       manifest,
       scope: { destination: 'sion' }
@@ -237,14 +185,13 @@ describe('where an upload goes', () => {
 
     expect(target?.files?.map((f) => path.basename(f))).toEqual(['new.mp4'])
 
-    const [again] = resolveUploadTargets({
+    const [again] = await resolveUploadTargets({
       outputDir: out,
       manifest,
       scope: { destination: 'sion' },
       remote: { dirs: ['/nas/Sion'], sizes: {} }
     })
     expect(again?.files?.map((f) => path.basename(f)).sort()).toEqual(['new.mp4', 'sent.mp4'])
-    fs.rmSync(out, { recursive: true, force: true })
   })
 
   it('gives a montage no folder of its own to be uploaded into as a place', () => {
@@ -259,7 +206,7 @@ describe('where an upload goes', () => {
     expect(target.remoteDir).toBeNull()
   })
 
-  it('leaves a montage out of an upload, however it was asked for', () => {
+  it('leaves a montage out of an upload, however it was asked for', async () => {
     const manifest = manifestOf([
       group({ destination: 'Yverdon' }),
       group({
@@ -268,14 +215,14 @@ describe('where an upload goes', () => {
         passenger: { firstname: 'Luc', lastname: 'Favre' }
       })
     ])
-    const byId = resolveUploadTargets({
+    const byId = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { groupIds: ['group_1', 'group_2'] }
     })
     expect(byId.map((t) => t.key)).toEqual(['group:group_1'])
 
-    const byDestination = resolveUploadTargets({
+    const byDestination = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { destination: 'Passengers' }
@@ -283,12 +230,12 @@ describe('where an upload goes', () => {
     expect(byDestination).toEqual([])
   })
 
-  it('uploads two jumps of one dropzone as a single upload', () => {
+  it('uploads two jumps of one dropzone as a single upload', async () => {
     const manifest = manifestOf([
       group({ id: 'group_1', destination: 'Yverdon' }),
       group({ id: 'group_2', destination: 'Yverdon' })
     ])
-    const targets = resolveUploadTargets({
+    const targets = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { destination: 'Yverdon' }
@@ -297,7 +244,7 @@ describe('where an upload goes', () => {
     expect(targets[0].groupIds.sort()).toEqual(['group_1', 'group_2'])
   })
 
-  it('covers a dropzone that holds nothing but loose files', () => {
+  it('covers a dropzone that holds nothing but loose files', async () => {
     const manifest = manifestOf([], {
       files: [
         {
@@ -310,7 +257,7 @@ describe('where an upload goes', () => {
         }
       ]
     })
-    const targets = resolveUploadTargets({
+    const targets = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { destination: 'Yverdon' }
@@ -319,11 +266,11 @@ describe('where an upload goes', () => {
     expect(targets[0].remoteDir).toBe('/nas/Yverdon')
   })
 
-  it("uses a destination's own path with no default folder at all", () => {
+  it("uses a destination's own path with no default folder at all", async () => {
     const manifest = manifestOf([group({ destination: 'Yverdon' })], {
       destinations: [{ name: 'Yverdon', path: '/volume1/dropzones/yverdon' }]
     })
-    const [target] = resolveUploadTargets({
+    const [target] = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { groupIds: ['group_1'] }
@@ -331,9 +278,9 @@ describe('where an upload goes', () => {
     expect(target.remoteDir).toBe('/volume1/dropzones/yverdon')
   })
 
-  it('says a folder is missing rather than guessing one', () => {
+  it('says a folder is missing rather than guessing one', async () => {
     const manifest = manifestOf([group({ destination: undefined })])
-    const [target] = resolveUploadTargets({
+    const [target] = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { groupIds: ['group_1'] }

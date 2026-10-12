@@ -26,7 +26,7 @@ const action = createValidatedFormAction()({
     const result = await scanMedia({ outputDir })
     void catchUp(outputDir)
     const manifest = await loadManifestAsync(getManifestPath(outputDir))
-    return { scan: result, ...(manifest ? boardAnswer(manifest) : { groups: [] }) }
+    return { scan: result, ...(manifest ? await boardAnswer(manifest) : { groups: [] }) }
   }
 })
 

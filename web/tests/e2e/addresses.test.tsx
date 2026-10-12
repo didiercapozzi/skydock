@@ -1,15 +1,9 @@
 import { createElement } from 'react'
 import { createRoutesStub } from 'react-router'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { boardRoute } from './board-route'
-
-vi.mock(import('@skydock/scripts'), async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
-})
-
 
 const OUTPUT = '/home/capo/Movies/SkyDock'
 const AT = Math.floor(new Date(2026, 8, 20, 10, 0, 0).getTime() / 1000)

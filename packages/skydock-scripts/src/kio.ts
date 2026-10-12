@@ -60,7 +60,7 @@ const kept: { reader: KioReader | null } = { reader: null }
 const kioReader = async () => {
   if (kept.reader || process.platform !== 'linux') return kept.reader
   for (const name of PROGRAMS) {
-    const program = toolPath(name)
+    const program = await toolPath(name)
     if (!program) continue
     if ((await run(program, ['--noninteractive', 'ls', 'mtp:/'])).ok) {
       kept.reader = readerFor(program)

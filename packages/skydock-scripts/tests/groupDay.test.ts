@@ -18,21 +18,27 @@ const group = (id: string, files: ManifestFile[]): ManifestGroup => ({
 })
 
 describe('the day a jump is filed under', () => {
-  it('stays put when a file from an earlier day is dropped into the jump', () => {
+  it('keeps a stored day as a sortable key, and nothing for any other shape', () => {
+    expect(isoDay('13.09.2026')).toBe('2026-09-13')
+    expect(isoDay(' 13.09.2026 ')).toBe('2026-09-13')
+    expect(isoDay('2026-09-12')).toBe('')
+    expect(isoDay('')).toBe('')
+  })
+
+  it('stays put when a file from an earlier day is dropped into the jump', async () => {
     const older = file('a1', '2026-08-30T15:00:00')
     const files = [older, file('b1', '2026-09-13T10:00:00'), file('b2', '2026-09-13T10:04:00')]
-    const jump = group('gB', files.slice(1))
     const manifest: Manifest = {
       version: 1,
       createdAt: '2026-09-13',
       files,
-      groups: [jump],
+      groups: [group('gB', files.slice(1))],
       destinations: []
     }
 
-    moveFiles(manifest, new Set(['a1']), { targetGroupId: 'gB' })
+    await moveFiles(manifest, new Set(['a1']), { targetGroupId: 'gB' })
 
-    expect(isoDay(jump.day)).toBe('2026-09-13')
+    expect(isoDay(manifest.groups[0].day)).toBe('2026-09-13')
     expect(manifest.groups[0].files.map((f) => f.id)).toEqual(['a1', 'b1', 'b2'])
   })
 

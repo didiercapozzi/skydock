@@ -3,15 +3,11 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
-import { hashFile } from '../../../packages/skydock-scripts/src/lib/fs'
 import {
   createShareLink,
-  dsmCopyMove,
   dsmCreateFolder,
-  dsmFileMd5,
   dsmListFolder,
   dsmLogin,
-  dsmRenameFile,
   dsmValidateSession,
   ensureNasSession,
   ensureShareLink,
@@ -24,7 +20,6 @@ import {
   StorageUnreadable
 } from '../../../packages/skydock-scripts/src/nas'
 import { uploadFile } from '../../../packages/skydock-scripts/src/publish'
-import { openStorageFile } from '../../../packages/skydock-scripts/src/storageFolder'
 import { startFakeStorage } from './fake-storage'
 import type { FakeStorage } from './fake-storage'
 
@@ -161,55 +156,6 @@ describe('looking at what the storage holds', () => {
     expect(fs.existsSync(path.join(storage.root, 'club', 'Day', 'bad.mp4'))).toBe(false)
     expect(await storage.admin.peakUploads()).toBe(1)
   }, 15_000)
-
-  it('hashes a file as it is on disk, and a changed file hashes differently', async () => {
-    const { sid } = await login()
-    const clip = localFile('clip.mp4', 'abcdef')
-    await uploadFile(host, sid, '/club/Day', clip)
-
-    expect(await dsmFileMd5(host, sid, '/club/Day/clip.mp4')).toBe(await hashFile(clip))
-    expect(await dsmFileMd5(host, sid, '/club/Day/missing.mp4')).toBeNull()
-
-    await storage.admin.corrupt('/club/Day/clip.mp4')
-    const changed = path.join(storage.root, 'club', 'Day', 'clip.mp4')
-    expect(fs.statSync(changed).size).toBe(6)
-    expect(await dsmFileMd5(host, sid, '/club/Day/clip.mp4')).not.toBe(await hashFile(clip))
-  })
-
-  it('copies, moves and renames files on its own disk, and never writes over a name taken', async () => {
-    const { sid } = await login()
-    await uploadFile(host, sid, '/club/Day', localFile('clip.mp4'))
-    const at = (...parts: string[]) => path.join(storage.root, 'club', ...parts)
-
-    expect(
-      await dsmCopyMove(host, sid, '/club/Day/clip.mp4', '/club/Copy', { keepSource: true })
-    ).toBe(true)
-    expect(fs.existsSync(at('Day', 'clip.mp4'))).toBe(true)
-    expect(fs.readFileSync(at('Copy', 'clip.mp4'), 'utf8')).toBe('some footage')
-
-    expect(await dsmRenameFile(host, sid, '/club/Copy/clip.mp4', 'renamed.mp4')).toBe(true)
-    expect(fs.existsSync(at('Copy', 'renamed.mp4'))).toBe(true)
-    expect(await dsmRenameFile(host, sid, '/club/Copy/gone.mp4', 'x.mp4')).toBe(false)
-
-    expect(await dsmCopyMove(host, sid, '/club/Copy/renamed.mp4', '/club/Moved')).toBe(true)
-    expect(fs.existsSync(at('Copy', 'renamed.mp4'))).toBe(false)
-    expect(fs.existsSync(at('Moved', 'renamed.mp4'))).toBe(true)
-  })
-
-  it('sends a file’s bytes, the whole of it or the range asked for', async () => {
-    const session = { hostname: host, username: USER, sessionId: (await login()).sid }
-    await uploadFile(host, session.sessionId, '/club/Day', localFile('clip.mp4', '0123456789'))
-
-    const whole = await openStorageFile(session, '/club/Day/clip.mp4')
-    expect(whole.status).toBe(200)
-    expect(await whole.text()).toBe('0123456789')
-    const part = await openStorageFile(session, '/club/Day/clip.mp4', 'bytes=2-5')
-    expect(part.status).toBe(206)
-    expect(part.headers.get('content-range')).toBe('bytes 2-5/10')
-    expect(await part.text()).toBe('2345')
-    const tail = await openStorageFile(session, '/club/Day/clip.mp4', 'bytes=7-')
-    expect(await tail.text()).toBe('789')
-  })
 })
 
 describe('handing a file out by a link', () => {

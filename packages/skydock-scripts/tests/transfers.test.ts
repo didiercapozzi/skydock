@@ -31,21 +31,21 @@ const item = (name: string, result: TransferItem['result'] = 'done'): TransferIt
 })
 
 describe('the history of transfers', () => {
-  it('is empty until something has been sent', () => {
-    expect(readTransfers(outputDir)).toEqual([])
+  it('is empty until something has been sent', async () => {
+    expect(await readTransfers(outputDir)).toEqual([])
   })
 
-  it('keeps each transfer with what it was of and how it ended, the latest first', () => {
-    recordTransfer(
+  it('keeps each transfer with what it was of and how it ended, the latest first', async () => {
+    await recordTransfer(
       { kind: 'upload', label: 'Luc Favre', state: 'done', items: [item('a.mp4')] },
       outputDir
     )
-    recordTransfer(
+    await recordTransfer(
       { kind: 'camera', label: 'OsmoNano', state: 'failed', reason: 'card gone', items: [] },
       outputDir
     )
 
-    const [latest, earlier] = readTransfers(outputDir)
+    const [latest, earlier] = await readTransfers(outputDir)
 
     expect(latest).toMatchObject({
       kind: 'camera',
@@ -58,22 +58,25 @@ describe('the history of transfers', () => {
     expect(latest!.id).not.toBe(earlier!.id)
   })
 
-  it('keeps the latest few, forgetting the oldest', () => {
+  it('keeps the latest few, forgetting the oldest', async () => {
     for (let n = 0; n < KEPT + 5; n++)
-      recordTransfer({ kind: 'import', label: `drop ${n}`, state: 'done', items: [] }, outputDir)
+      await recordTransfer(
+        { kind: 'import', label: `drop ${n}`, state: 'done', items: [] },
+        outputDir
+      )
 
-    const kept = readTransfers(outputDir)
+    const kept = await readTransfers(outputDir)
 
     expect(kept).toHaveLength(KEPT)
     expect(kept[0]!.label).toBe(`drop ${KEPT + 4}`)
     expect(kept.at(-1)!.label).toBe('drop 5')
   })
 
-  it('keeps what did something and counts the files that were only there already', () => {
+  it('keeps what did something and counts the files that were only there already', async () => {
     const done = Array.from({ length: 10 }, (_, n) => item(`new${n}.MP4`))
     const there = Array.from({ length: ITEMS_KEPT + 100 }, (_, n) => item(`old${n}.MP4`, 'skipped'))
 
-    const made = recordTransfer(
+    const made = await recordTransfer(
       { kind: 'camera', label: 'GoPro', state: 'done', items: [...done, ...there], passedOver: 7 },
       outputDir
     )
@@ -84,10 +87,10 @@ describe('the history of transfers', () => {
     expect(made.more).toBeUndefined()
   })
 
-  it('says how many that did something are not listed, when even those are too many', () => {
+  it('says how many that did something are not listed, when even those are too many', async () => {
     const many = Array.from({ length: ITEMS_KEPT + 25 }, (_, n) => item(`f${n}.MP4`))
 
-    const made = recordTransfer(
+    const made = await recordTransfer(
       { kind: 'import', label: 'Yverdon', state: 'done', items: many },
       outputDir
     )
@@ -96,33 +99,42 @@ describe('the history of transfers', () => {
     expect(made.more).toBe(25)
   })
 
-  it('reads a file it cannot make sense of as no history, rather than failing', () => {
+  it('reads a file it cannot make sense of as no history, rather than failing', async () => {
     fs.mkdirSync(path.dirname(getTransfersPath(outputDir)), { recursive: true })
     fs.writeFileSync(getTransfersPath(outputDir), '{not json')
 
-    expect(readTransfers(outputDir)).toEqual([])
+    expect(await readTransfers(outputDir)).toEqual([])
   })
 
-  it('is forgotten when cleared, and nothing else is touched', () => {
-    recordTransfer({ kind: 'upload', label: 'x', state: 'done', items: [] }, outputDir)
+  it('is forgotten when cleared, and nothing else is touched', async () => {
+    await recordTransfer({ kind: 'upload', label: 'x', state: 'done', items: [] }, outputDir)
     const other = path.join(outputDir, 'manifest.json')
     fs.writeFileSync(other, '{}')
 
-    clearTransfers(outputDir)
+    await clearTransfers(outputDir)
 
-    expect(readTransfers(outputDir)).toEqual([])
+    expect(await readTransfers(outputDir)).toEqual([])
     expect(fs.existsSync(other)).toBe(true)
   })
 
-  it('forgets one transfer and keeps the others', () => {
-    const first = recordTransfer(
+  it('keeps both of two transfers that end together', async () => {
+    await Promise.all([
+      recordTransfer({ kind: 'upload', label: 'a', state: 'done', items: [] }, outputDir),
+      recordTransfer({ kind: 'camera', label: 'b', state: 'done', items: [] }, outputDir)
+    ])
+
+    expect(await readTransfers(outputDir)).toHaveLength(2)
+  })
+
+  it('forgets one transfer and keeps the others', async () => {
+    const first = await recordTransfer(
       { kind: 'upload', label: 'a', state: 'done', items: [] },
       outputDir
     )
-    recordTransfer({ kind: 'camera', label: 'b', state: 'done', items: [] }, outputDir)
+    await recordTransfer({ kind: 'camera', label: 'b', state: 'done', items: [] }, outputDir)
 
-    removeTransfer(first.id, outputDir)
+    await removeTransfer(first.id, outputDir)
 
-    expect(readTransfers(outputDir).map((t) => t.label)).toEqual(['b'])
+    expect((await readTransfers(outputDir)).map((t) => t.label)).toEqual(['b'])
   })
 })

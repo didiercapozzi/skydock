@@ -1,8 +1,7 @@
-import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
+import { pathExists } from './lib/fs'
 import { startDetached, tokenize } from './openOutside'
-import type { OpenResult } from './openOutside'
 
 const EDITOR_COMMAND = 'SKYDOCK_EDITOR_COMMAND'
 
@@ -18,27 +17,32 @@ const WINDOWS_PLACES = () =>
     [process.env.LOCALAPPDATA, 'Programs', 'kdenlive', 'bin', 'kdenlive.exe']
   ].flatMap(([home, ...rest]) => (home ? [path.join(home, ...(rest as string[]))] : []))
 
-const editorHere = () => {
+const firstThere = async (places: string[]) => {
+  for (const place of places) if (await pathExists(place)) return place
+  return undefined
+}
+
+const editorHere = async () => {
   if (process.platform === 'darwin')
-    return ['open', '-a', MAC_APPS.find((app) => fs.existsSync(app)) ?? 'kdenlive']
-  if (process.platform === 'win32')
-    return [WINDOWS_PLACES().find((place) => fs.existsSync(place)) ?? 'kdenlive.exe']
+    return ['open', '-a', (await firstThere(MAC_APPS)) ?? 'kdenlive']
+  if (process.platform === 'win32') return [(await firstThere(WINDOWS_PLACES())) ?? 'kdenlive.exe']
   return ['kdenlive']
 }
 
-const editorCommand = () => process.env[EDITOR_COMMAND]?.trim() || editorHere().join(' ')
+const editorCommand = async () =>
+  process.env[EDITOR_COMMAND]?.trim() || (await editorHere()).join(' ')
 
-const editorParts = () => {
+const editorParts = async () => {
   const told = process.env[EDITOR_COMMAND]?.trim()
   return told ? tokenize(told) : editorHere()
 }
 
 const openInEditor = async (projectPath: string) => {
-  const command = editorCommand()
-  if (!fs.existsSync(projectPath))
+  const command = await editorCommand()
+  if (!(await pathExists(projectPath)))
     return { opened: false, command, reason: `No project at ${projectPath}` }
 
-  const parts = editorParts()
+  const parts = await editorParts()
   if (!parts)
     return {
       opened: false,
@@ -48,5 +52,4 @@ const openInEditor = async (projectPath: string) => {
   return await startDetached(parts, projectPath, command, EDITOR_COMMAND)
 }
 
-export { editorCommand, editorParts, openInEditor, tokenize }
-export type { OpenResult }
+export { editorCommand, editorParts, openInEditor }

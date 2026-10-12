@@ -1,7 +1,7 @@
-import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { getExtension, VIDEO_EXTENSIONS_SET } from './constants'
+import { pathExists, statOrNull } from './lib/fs'
 import type { ManifestFile } from './types'
 
 const TOOL_ENV: Record<string, string> = {
@@ -18,38 +18,34 @@ const programNames = (name: string) =>
         .map((ext) => `${name}${ext.toLowerCase()}`)
     : [name]
 
-const onPath = (name: string) => {
+const onPath = async (name: string) => {
   for (const dir of (process.env.PATH ?? '').split(path.delimiter).filter(Boolean))
     for (const called of programNames(name)) {
       const target = path.join(dir, called)
-      try {
-        if (fs.statSync(target).isFile()) return target
-      } catch {}
+      if ((await statOrNull(target))?.isFile()) return target
     }
   return null
 }
 
-const toolPath = (name: string) => {
+const toolPath = async (name: string) => {
   const told = TOOL_ENV[name] ? process.env[TOOL_ENV[name]]?.trim() : undefined
-  if (told) return fs.existsSync(told) ? told : null
-  if (name.includes('/') || name.includes(path.sep)) return fs.existsSync(name) ? name : null
+  if (told) return (await pathExists(told)) ? told : null
+  if (name.includes('/') || name.includes(path.sep)) return (await pathExists(name)) ? name : null
   return onPath(name)
 }
 
-const hasCommand = (cmd: string) => toolPath(cmd) !== null
+const hasCommand = async (cmd: string) => (await toolPath(cmd)) !== null
 
-const systemTool = (name: string) => {
-  const found = onPath(name)
-  return found !== null && found !== toolPath(name) ? found : null
+const systemTool = async (name: string) => {
+  const found = await onPath(name)
+  return found !== null && found !== (await toolPath(name)) ? found : null
 }
 
-const ffmpegPath = () => toolPath('ffmpeg') ?? 'ffmpeg'
+const ffmpegPath = async () => (await toolPath('ffmpeg')) ?? 'ffmpeg'
 
-const ffprobePath = () => toolPath('ffprobe') ?? 'ffprobe'
+const ffprobePath = async () => (await toolPath('ffprobe')) ?? 'ffprobe'
 
-const exiftoolPath = () => toolPath('exiftool') ?? 'exiftool'
-
-const checkExiftool = () => hasCommand('exiftool')
+const exiftoolPath = async () => (await toolPath('exiftool')) ?? 'exiftool'
 
 const isVideoFile = (filePath: string) => VIDEO_EXTENSIONS_SET.has(getExtension(filePath))
 
@@ -177,13 +173,7 @@ const withRetry = async <T>(fn: () => Promise<T>, maxAttempts: number, delayMs =
   throw lastError ?? new Error('Retry failed with no attempts')
 }
 
-const sizeOf = (file: string) => {
-  try {
-    return fs.statSync(file).size
-  } catch {
-    return 0
-  }
-}
+const sizeOf = async (file: string) => (await statOrNull(file))?.size ?? 0
 
 export {
   systemTool,
@@ -191,7 +181,6 @@ export {
   ffmpegPath,
   ffprobePath,
   exiftoolPath,
-  checkExiftool,
   formatDay,
   isoDay,
   getExtension,

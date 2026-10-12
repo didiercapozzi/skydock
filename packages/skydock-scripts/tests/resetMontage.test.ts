@@ -97,17 +97,17 @@ afterEach(() => {
 })
 
 describe('resetting a montage', () => {
-  it('deletes everything made from it — copies, edit, film and cut proxies', () => {
+  it('deletes everything made from it — copies, edit, film and cut proxies', async () => {
     const { manifest, folder } = setup()
-    resetMontage(manifest, outputDir, 'g1')
+    await resetMontage(manifest, outputDir, 'g1')
     expect(fs.existsSync(folder('Luc Favre'))).toBe(false)
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'cut', 'g1'))).toBe(false)
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'cut', 'g2'))).toBe(false)
   })
 
-  it('keeps every decision: the name, the place, the crops, the frames, the corrected times', () => {
+  it('keeps every decision: the name, the place, the crops, the frames, the corrected times', async () => {
     const { manifest } = setup()
-    resetMontage(manifest, outputDir, 'g1')
+    await resetMontage(manifest, outputDir, 'g1')
     const g1 = manifest.groups.find((g) => g.id === 'g1')!
     expect(g1.passenger).toEqual(luc)
     expect(g1.montageJump).toBe(true)
@@ -115,9 +115,9 @@ describe('resetting a montage', () => {
     expect(g1.files[0]?.frame).toEqual({ x: 0.1, y: 0, width: 0.9, height: 0.9 })
   })
 
-  it('takes it back to before processing, uploaded record and all', () => {
+  it('takes it back to before processing, uploaded record and all', async () => {
     const { manifest } = setup()
-    resetMontage(manifest, outputDir, 'g1')
+    await resetMontage(manifest, outputDir, 'g1')
     for (const id of ['g1', 'g2']) {
       const g = manifest.groups.find((x) => x.id === id)!
       expect(g.processed).toBeUndefined()
@@ -127,9 +127,9 @@ describe('resetting a montage', () => {
     expect(manifest.files.find((f) => f.id === 'GX01.MP4')?.processed).toBeUndefined()
   })
 
-  it('leaves another passenger, and the originals, exactly as they were', () => {
+  it('leaves another passenger, and the originals, exactly as they were', async () => {
     const { manifest, folder } = setup()
-    resetMontage(manifest, outputDir, 'g1')
+    await resetMontage(manifest, outputDir, 'g1')
     expect(fs.existsSync(path.join(folder('Ana Roth'), 'edit.kdenlive'))).toBe(true)
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'cut', 'g3'))).toBe(true)
     expect(manifest.groups.find((g) => g.id === 'g3')?.processed).toBe(true)
@@ -138,9 +138,9 @@ describe('resetting a montage', () => {
 })
 
 describe('deleting a montage', () => {
-  it('sends its files back to be sorted, loose, with nothing made from them', () => {
+  it('sends its files back to be sorted, loose, with nothing made from them', async () => {
     const { manifest, folder } = setup()
-    deleteMontage(manifest, outputDir, 'g1')
+    await deleteMontage(manifest, outputDir, 'g1')
     expect(manifest.groups.map((g) => g.id)).not.toEqual(expect.arrayContaining(['g1', 'g2']))
     const back = manifest.files.filter((f) => ['GX01.MP4', 'GX02.MP4'].includes(f.id!))
     expect(back).toHaveLength(2)
@@ -152,9 +152,9 @@ describe('deleting a montage', () => {
     expect(fs.existsSync(folder('Luc Favre'))).toBe(false)
   })
 
-  it('forgets the crops, the frames and the corrected times', () => {
+  it('forgets the crops, the frames and the corrected times', async () => {
     const { manifest } = setup()
-    deleteMontage(manifest, outputDir, 'g1')
+    await deleteMontage(manifest, outputDir, 'g1')
     const file = manifest.files.find((f) => f.id === 'GX01.MP4')!
     expect(file.cropStart).toBeUndefined()
     expect(file.cropEnd).toBeUndefined()
@@ -162,30 +162,30 @@ describe('deleting a montage', () => {
     expect(file.mtime).toBe(CAMERA)
   })
 
-  it('deletes a montage that was edited, rendered and uploaded, leaving the storage alone', () => {
+  it('deletes a montage that was edited, rendered and uploaded, leaving the storage alone', async () => {
     const { manifest, folder } = setup()
     fs.mkdirSync(folder('Luc Favre'), { recursive: true })
     fs.writeFileSync(path.join(folder('Luc Favre'), 'luc_favre_20260801.kdenlive'), '<mlt/>')
     fs.writeFileSync(path.join(folder('Luc Favre'), 'luc_favre_20260801.mp4'), 'film')
     manifest.groups.find((g) => g.id === 'g1')!.uploaded = { at: 1, shareUrl: 'https://nas/x' }
 
-    deleteMontage(manifest, outputDir, 'g1')
+    await deleteMontage(manifest, outputDir, 'g1')
 
     expect(fs.existsSync(folder('Luc Favre'))).toBe(false)
     expect(manifest.groups.some((g) => g.id === 'g1')).toBe(false)
     expect(manifest.files.find((f) => f.id === 'GX01.MP4')).toBeDefined()
   })
 
-  it('leaves another passenger alone', () => {
+  it('leaves another passenger alone', async () => {
     const { manifest, folder } = setup()
-    deleteMontage(manifest, outputDir, 'g1')
+    await deleteMontage(manifest, outputDir, 'g1')
     expect(manifest.groups.find((g) => g.id === 'g3')?.passenger?.firstname).toBe('Ana')
     expect(fs.existsSync(folder('Ana Roth'))).toBe(true)
   })
 
-  it('refuses a jump that is not a named montage', () => {
+  it('refuses a jump that is not a named montage', async () => {
     const { manifest } = setup()
     manifest.groups.push({ id: 'g4', label: 'jump', day: '01.08.2026', files: [] })
-    expect(() => deleteMontage(manifest, outputDir, 'g4')).toThrow(/named montage/)
+    await expect(deleteMontage(manifest, outputDir, 'g4')).rejects.toThrow(/named montage/)
   })
 })

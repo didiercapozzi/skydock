@@ -5,7 +5,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
 import { speak } from '../../app/i18n'
-import { boardRoute } from './board-route'
+import { boardOf, boardRoute } from './board-route'
 
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
@@ -33,19 +33,11 @@ const YVERDON_JUMP = {
   files: [file('y', AT + 7200), file('z', AT + 7260)]
 }
 
-const board = {
+const board = boardOf({
   groups: [FRESH_JUMP, YVERDON_JUMP],
   looseFiles: [file('solo', AT + 9000)],
-  destinations: [{ name: 'Yverdon' }, { name: 'Passengers' }],
-  outputs: {},
-  proxies: {},
-  montages: {},
-  remote: null,
-  storage: null,
-  hasManifest: true,
-  processing: null,
-  nas: { connected: false, hostname: null, backupFolder: null }
-}
+  destinations: [{ name: 'Yverdon' }, { name: 'Passengers' }]
+})
 
 const montage = (name: [string, string], files: ReturnType<typeof file>[], over = {}) => ({
   id: 'm1',

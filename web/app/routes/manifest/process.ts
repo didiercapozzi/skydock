@@ -39,7 +39,7 @@ const processWait: Intent = async ({ latest }) => {
 const cancelProcess: Intent = async ({ refuse, latest }) => {
   if (!cancelProcessing()) return refuse('Nothing is being processed.')
   await whenProcessed()
-  return { ...boardAnswer(await latest()), processCancelled: true }
+  return { ...(await boardAnswer(await latest())), processCancelled: true }
 }
 
 export { cancelProcess, processIntent, processWait }

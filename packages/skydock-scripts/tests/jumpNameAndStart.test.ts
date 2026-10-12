@@ -38,46 +38,49 @@ afterEach(() => {
 })
 
 describe('making a jump of files picked in Fresh files', () => {
-  it('calls the jump by the name it was given', () => {
+  it('calls the jump by the name it was given', async () => {
     const manifest = unsorted()
 
-    moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: '  4-way formation ' })
+    await moveFiles(manifest, new Set(['a', 'b', 'c']), {
+      newGroup: true,
+      name: '  4-way formation '
+    })
 
     expect(made(manifest).name).toBe('4-way formation')
   })
 
-  it('leaves a jump with no name when none is given', () => {
+  it('leaves a jump with no name when none is given', async () => {
     const manifest = unsorted()
 
-    moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: '   ' })
+    await moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: '   ' })
 
     expect(made(manifest).name).toBeUndefined()
   })
 
-  it('moves every file by the same amount when the start is set, keeping the gaps', () => {
+  it('moves every file by the same amount when the start is set, keeping the gaps', async () => {
     const manifest = unsorted()
     const later = AT + 3600
 
-    moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, startsAt: later })
+    await moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, startsAt: later })
 
     const times = made(manifest).files.map((f) => f.mtime)
     expect(times).toEqual([later, later + 60, later + 120])
     expect(manifest.files.map((f) => f.mtime)).toEqual([later, later + 60, later + 120])
   })
 
-  it('files the jump under the day its new start falls on', () => {
+  it('files the jump under the day its new start falls on', async () => {
     const manifest = unsorted()
     const nextDay = Math.floor(new Date(2026, 7, 2, 9, 30, 0).getTime() / 1000)
 
-    moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, startsAt: nextDay })
+    await moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, startsAt: nextDay })
 
     expect(made(manifest).day).toBe('02.08.2026')
   })
 
-  it('keeps the times as shot when the start is left as it was', () => {
+  it('keeps the times as shot when the start is left as it was', async () => {
     const manifest = unsorted()
 
-    moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, startsAt: AT })
+    await moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, startsAt: AT })
 
     expect(made(manifest).files.map((f) => f.mtime)).toEqual([AT, AT + 60, AT + 120])
   })
@@ -88,31 +91,34 @@ describe('a jump keeps its name', () => {
     dir = createTmpDir('skydock-jump-name-')
     const manifestPath = path.join(dir, 'manifest.json')
     const manifest = unsorted()
-    moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: 'Sunset load' })
+    await moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: 'Sunset load' })
 
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     const loaded = await loadManifestAsync(manifestPath)
 
     expect(loaded?.groups.map((g) => g.name)).toEqual(['Sunset load'])
   })
 
-  it('through a scan', () => {
+  it('through a scan', async () => {
     const manifest = unsorted()
-    moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: 'Sunset load' })
+    await moveFiles(manifest, new Set(['a', 'b', 'c']), { newGroup: true, name: 'Sunset load' })
 
     reclusterGroups(manifest)
 
     expect(manifest.groups.map((g) => g.name)).toEqual(['Sunset load'])
   })
 
-  it('on only one half when a scan splits it in two', () => {
+  it('on only one half when a scan splits it in two', async () => {
     const manifest: Manifest = {
       version: 1,
       createdAt: 'x',
       files: [file('a', AT), file('b', AT + 60), file('c', AT + 7200), file('d', AT + 7260)],
       groups: []
     }
-    moveFiles(manifest, new Set(['a', 'b', 'c', 'd']), { newGroup: true, name: 'Sunset load' })
+    await moveFiles(manifest, new Set(['a', 'b', 'c', 'd']), {
+      newGroup: true,
+      name: 'Sunset load'
+    })
     const id = made(manifest).id
 
     reclusterGroups(manifest)

@@ -2,8 +2,17 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { editorCommand, editorParts, openInEditor, tokenize } from '../src/editor'
+import { editorCommand, editorParts, openInEditor } from '../src/editor'
+import { tokenize } from '../src/openOutside'
 import { createTmpDir, onPlatform } from './fixtures'
+
+const partsOn = (name: string) => {
+  let parts!: ReturnType<typeof editorParts>
+  onPlatform(name, () => {
+    parts = editorParts()
+  })
+  return parts
+}
 
 describe('opening the project in the editor', () => {
   let dir: string
@@ -37,32 +46,35 @@ describe('opening the project in the editor', () => {
     expect(tokenize('sh -c "oops')).toBeNull()
   })
 
+  const receiptOf = (receipt: string) =>
+    expect.poll(() => (fs.existsSync(receipt) ? fs.readFileSync(receipt, 'utf-8') : null), {
+      timeout: 4000
+    })
+
   it('runs a quoted command with the project as its argument', async () => {
     const log = path.join(dir, 'editor.log')
     process.env.SKYDOCK_EDITOR_COMMAND = String.raw`sh -c "printf '%s' \"$0\" > ${log}"`
 
     const result = await openInEditor(project)
     expect(result.opened).toBe(true)
-    await expect
-      .poll(() => (fs.existsSync(log) ? fs.readFileSync(log, 'utf-8') : null), { timeout: 4000 })
-      .toBe(project)
+    await receiptOf(log).toBe(project)
   })
 
-  it('defaults to kdenlive', () => {
+  it('defaults to kdenlive', async () => {
     delete process.env.SKYDOCK_EDITOR_COMMAND
-    expect(editorCommand()).toBe('kdenlive')
+    expect(await editorCommand()).toBe('kdenlive')
   })
 
-  it('finds the editor where each system keeps it', () => {
+  it('finds the editor where each system keeps it', async () => {
     delete process.env.SKYDOCK_EDITOR_COMMAND
     const installed = path.join(dir, 'Programs', 'kdenlive', 'bin', 'kdenlive.exe')
     fs.mkdirSync(path.dirname(installed), { recursive: true })
     fs.writeFileSync(installed, '')
     vi.stubEnv('LOCALAPPDATA', dir)
 
-    onPlatform('linux', () => expect(editorParts()).toEqual(['kdenlive']))
-    onPlatform('darwin', () => expect(editorParts()).toEqual(['open', '-a', 'kdenlive']))
-    onPlatform('win32', () => expect(editorParts()).toEqual([installed]))
+    expect(await partsOn('linux')).toEqual(['kdenlive'])
+    expect(await partsOn('darwin')).toEqual(['open', '-a', 'kdenlive'])
+    expect(await partsOn('win32')).toEqual([installed])
   })
 
   it('runs the configured command against the project, and says so', async () => {
@@ -75,11 +87,7 @@ describe('opening the project in the editor', () => {
     const result = await openInEditor(project)
     expect(result.opened).toBe(true)
 
-    await expect
-      .poll(() => (fs.existsSync(receipt) ? fs.readFileSync(receipt, 'utf-8') : null), {
-        timeout: 4000
-      })
-      .toBe(project)
+    await receiptOf(receipt).toBe(project)
   })
 
   it('says what is wrong rather than throwing when the editor is not on this machine', async () => {

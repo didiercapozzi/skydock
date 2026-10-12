@@ -1,27 +1,30 @@
-import * as fs from 'node:fs'
 import { jumpMoments } from './jumpMoments'
 import { following, job } from './live'
-import { changeBoardSoon, flushBoardChanges, loadManifestAsync } from './manifest'
+import { outputKeyOf } from './fileStatus'
+import { flushBoardChanges, loadManifestAsync, recordPass } from './manifest'
 import type { Manifest, ManifestFile } from './types'
+import { pathExists } from './lib/fs'
 import { untilQuiet } from './lib/quiet'
+import { singleFlight } from './lib/singleFlight'
 import { messageOf } from './lib/words'
-import { getManifestPath, getOutputDir, isVideoFile } from './utils'
+import { getManifestPath, getOutputDir, isVideoFile, mapWithLimit } from './utils'
 
-const needsMoments = (file: ManifestFile) =>
+const needsMoments = async (file: ManifestFile) =>
   isVideoFile(file.path) &&
   !!file.id &&
   !file.freed &&
   file.moments === undefined &&
-  fs.existsSync(file.path)
+  (await pathExists(file.path))
 
 const ensureMoments = async (manifest: Manifest, onFound?: () => void | Promise<void>) => {
   let found = 0
-  const todo = manifest.files.filter(needsMoments)
+  const needed = await mapWithLimit(manifest.files, 16, needsMoments)
+  const todo = manifest.files.filter((_, index) => needed[index])
   const finding = todo.length > 0 ? job({ type: 'moments', label: '', total: todo.length }) : null
-  finding?.rows(todo.map((file) => ({ key: file.id ?? file.path, name: file.filename, size: 0 })))
+  finding?.rows(todo.map((file) => ({ key: outputKeyOf(file), name: file.filename, size: 0 })))
   for (const file of todo) {
     await untilQuiet()
-    const key = file.id ?? file.path
+    const key = outputKeyOf(file)
     const reading = following('moments', file.id)
     finding?.row({ key, at: 'now', part: 0 })
     try {
@@ -45,43 +48,30 @@ const ensureMoments = async (manifest: Manifest, onFound?: () => void | Promise<
 }
 
 const recordMoments = (manifestPath: string, pass: Manifest) =>
-  changeBoardSoon(
+  recordPass(
     manifestPath,
-    (current) => {
-      const found = new Map(pass.files.map((file) => [file.id ?? file.path, file]))
-      for (const file of current.files) {
-        const done = found.get(file.id ?? file.path)
-        if (file.moments === undefined && done?.moments !== undefined) file.moments = done.moments
-      }
+    pass,
+    (file, done) => {
+      if (file.moments === undefined && done.moments !== undefined) file.moments = done.moments
     },
     'moments'
   )
 
-let running: Promise<number> | null = null
-
-const buildMissingMoments = async (outputDir?: string) => {
-  if (running) return await running
+const buildMissingMoments = singleFlight(async (outputDir?: string) => {
   const manifestPath = getManifestPath(outputDir || getOutputDir())
-  running = (async () => {
-    let total = 0
-    for (;;) {
-      const manifest = await loadManifestAsync(manifestPath)
-      if (!manifest) break
-      const found = await ensureMoments(manifest, async () => {
-        recordMoments(manifestPath, manifest)
-        await flushBoardChanges(manifestPath)
-      })
-      total += found
-      if (found === 0) break
-    }
-    return total
-  })()
-  try {
-    return await running
-  } finally {
-    running = null
+  let total = 0
+  for (;;) {
+    const manifest = await loadManifestAsync(manifestPath)
+    if (!manifest) break
+    const found = await ensureMoments(manifest, async () => {
+      recordMoments(manifestPath, manifest)
+      await flushBoardChanges(manifestPath)
+    })
+    total += found
+    if (found === 0) break
   }
-}
+  return total
+})
 
 declare global {
   var skydockMomentsResumed: boolean | undefined

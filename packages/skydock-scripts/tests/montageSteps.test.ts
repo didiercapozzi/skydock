@@ -39,17 +39,17 @@ describe('where a montage has got to', () => {
     })
   })
 
-  it('is to be processed once named', () => {
-    expect(at(montage())).toEqual({ step: 'Processed', next: 'to process' })
+  it('is to be prepared once named', () => {
+    expect(at(montage())).toEqual({ step: 'Prepared', next: 'to process' })
   })
 
-  it('is to be edited once processed', () => {
-    expect(at(montage({ processed: true }), facts())).toEqual({ step: 'Edited', next: 'to edit' })
+  it('is to be given its project once prepared', () => {
+    expect(at(montage({ processed: true }), facts())).toEqual({ step: 'Project', next: 'to edit' })
   })
 
   it('is to be rendered once there is a project', () => {
     expect(at(montage({ processed: true }), facts({ project: true }))).toEqual({
-      step: 'Rendered',
+      step: 'Film',
       next: 'to render'
     })
   })
@@ -64,12 +64,12 @@ describe('where a montage has got to', () => {
   it('is to be emailed once uploaded', () => {
     const group = montage({ processed: true, uploaded: UPLOADED })
     expect(at(group, facts({ project: true, film: FILM }))).toEqual({
-      step: 'Emailed',
+      step: 'Sent',
       next: 'to email'
     })
   })
 
-  it('has every step done once the passenger was emailed', () => {
+  it('has every step done once it was sent', () => {
     const group = montage({ processed: true, uploaded: UPLOADED })
     expect(at(group, facts({ project: true, film: FILM }), true)).toEqual({
       step: 'done',
@@ -79,7 +79,7 @@ describe('where a montage has got to', () => {
 
   it('counts a freed montage as having been through every step up to the upload', () => {
     const group = montage({ processed: true, uploaded: UPLOADED, freed: { at: 1, bytes: 1 } })
-    expect(at(group)).toEqual({ step: 'Emailed', next: 'to email' })
+    expect(at(group)).toEqual({ step: 'Sent', next: 'to email' })
   })
 })
 

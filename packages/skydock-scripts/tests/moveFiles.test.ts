@@ -74,8 +74,8 @@ describe('moving files', () => {
 
   it('refuses a jump that is not there', async () => {
     const manifest: Manifest = { version: 1, createdAt: 'x', files: [file('a')], groups: [] }
-    await expect(async () =>
-      moveFiles(manifest, new Set(['a']), { targetGroupId: 'nope' })
-    ).rejects.toThrow(/not found/)
+    await expect(moveFiles(manifest, new Set(['a']), { targetGroupId: 'nope' })).rejects.toThrow(
+      /not found/
+    )
   })
 })

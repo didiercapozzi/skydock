@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { cutFrom, readFelt } from '../src/jumpMoments'
+import { readFelt } from '../src/jumpMoments'
 
 const GRAVITY = 9.81
 
@@ -255,21 +255,5 @@ describe('the door of a wearer who hangs out before letting go', () => {
   it('ignores a turn further back than a second and a half before the weight goes', () => {
     const { felt, vectors, seconds } = clip(36, 1)
     expect(readFelt(felt, seconds, vectors)?.exit).toBe(readFelt(felt, seconds)?.exit)
-  })
-})
-
-describe('where a cut starts from', () => {
-  const moments = { exit: 38.6, canopy: 101.6, landing: 192.7 }
-
-  it('is the measured instant on a montage', () => {
-    expect(cutFrom(moments, true)).toBe(38.6)
-  })
-
-  it('is a second before it on a fun jump', () => {
-    expect(cutFrom(moments, false)).toBeCloseTo(37.6, 5)
-  })
-
-  it('never runs before the clip does', () => {
-    expect(cutFrom({ exit: 0.4 }, false)).toBe(0)
   })
 })

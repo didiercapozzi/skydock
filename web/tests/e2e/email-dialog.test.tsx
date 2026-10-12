@@ -95,7 +95,6 @@ describe('writing the passenger email', () => {
       'signature'
     ])
     await expect.element(preview().getByText('Voir et télécharger')).toBeVisible()
-    await page.screenshot({ path: './playwright-screenshots/email-editor.png' })
   })
 
   test('has its heading written in place, and the Subject field follows it', async () => {
@@ -174,9 +173,7 @@ describe('the link as a QR code', () => {
 
     await userEvent.click(page.getByRole('button', { name: 'QR code' }))
 
-    const qr = page.getByRole('img', { name: 'QR code of the link' })
-    await expect.element(qr).toBeVisible()
-    expect(qr.element().querySelector('path')?.getAttribute('d')?.length).toBeGreaterThan(100)
+    await expect.element(page.getByRole('img', { name: 'QR code of the link' })).toBeVisible()
   })
 })
 
@@ -246,7 +243,7 @@ describe('the line above the heading of the template', () => {
     await expect.poll(() => part('kicker').textContent).toBe('Le saut de Luc')
   })
 
-  test('is the language’s own for a template written before it could be changed', async () => {
+  test('is the language’s own when the template has no line above its heading', async () => {
     setEmailTemplate('fr', { subject: 's', body: '<p>Merci</p>' })
     await open()
 

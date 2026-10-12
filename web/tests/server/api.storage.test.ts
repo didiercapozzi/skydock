@@ -115,13 +115,13 @@ const play = (filePath: string, range?: string) =>
     params: { '*': filePath.slice(1) }
   })
 
-beforeEach(() => {
+beforeEach(async () => {
   tmpDir = createTmpDir('skydock-api-storage-')
   previous = process.env.SKYDOCK_OUTPUT_DIR
   process.env.SKYDOCK_OUTPUT_DIR = tmpDir
   process.env.SKYDOCK_CONFIG_DIR = tmpDir
   saveManifest(path.join(tmpDir, 'manifest.json'), manifest)
-  saveNasSession(
+  await saveNasSession(
     {
       hostname: 'https://nas.local:5001',
       username: 'u',

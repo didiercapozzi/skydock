@@ -1,17 +1,11 @@
 import { createElement, useState } from 'react'
 import { createRoutesStub } from 'react-router'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { PendingLine, Spinner } from '../../app/components/pending'
 import { boardRoute } from './board-route'
 import { PENDING_AFTER_MS, usePending } from '../../app/hooks/usePending'
-
-vi.mock(import('@skydock/scripts'), async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
-})
-
 
 const Waiting = () => {
   const [active, setActive] = useState(false)

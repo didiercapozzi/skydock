@@ -1,5 +1,6 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { setTimeout as sleep } from 'node:timers/promises'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
   EDIT_LOCKED,
@@ -16,7 +17,11 @@ import { action } from '../../app/routes/api.manifest'
 import { createTmpDir, routeArgs } from './fixtures'
 
 type Refusal = { success: false; status: number; globalErrors?: string[] }
-type Answer = { groups: ManifestGroup[]; looseFiles: ManifestFile[] }
+type Answer = {
+  groups: ManifestGroup[]
+  looseFiles: ManifestFile[]
+  copied?: { files: number }
+}
 
 const refusal = (res: unknown) => res as Refusal
 const answer = (res: unknown) => res as Answer
@@ -212,7 +217,7 @@ describe('changes made on the board', () => {
       runUpload({ key: 'montage:group_1', label: 'Luc Favre' }, async () => {
         for (;;) {
           stopIfUploadCancelled()
-          await new Promise((resolve) => setTimeout(resolve, 5))
+          await sleep(5)
         }
       })
 
@@ -241,7 +246,7 @@ describe('changes made on the board', () => {
       const waiting = send({ intent: 'upload-wait' })
       let answered = false
       void waiting.then(() => (answered = true))
-      await new Promise((resolve) => setTimeout(resolve, 30))
+      await sleep(30)
       expect(answered).toBe(false)
 
       await send({ intent: 'cancel-upload' })
@@ -751,6 +756,30 @@ describe('changes made on the board', () => {
       expect(res.groups.find((g) => g.id === 'fresh')).toBeUndefined()
     })
 
+    it('copies files a dropzone holds, adjusted as they are, and leaves the dropzone its own', async () => {
+      board()
+
+      const res = answer(
+        await send({ intent: 'make-montage', fileIds: ['c'], name: 'Boogie 2026' })
+      )
+
+      const made = res.groups.find((g) => g.montageJump)
+      expect(res.copied?.files).toBe(1)
+      expect(made?.files).toMatchObject([{ copyOf: 'c', cropStart: 3 }])
+      expect(res.groups.find((g) => g.id === 'yv')?.files.map((f) => f.id)).toEqual(['c'])
+    })
+
+    it('joins a montage that has the name already, however it is written', async () => {
+      board()
+      await send({ intent: 'make-montage', fileIds: ['a'], name: 'Luc Favre' })
+
+      const res = answer(await send({ intent: 'make-montage', fileIds: ['c'], name: 'luc favre' }))
+
+      const jumps = res.groups.filter((g) => g.montageJump)
+      expect(jumps).toHaveLength(2)
+      expect(jumps[1]?.passenger).toEqual(jumps[0]?.passenger)
+    })
+
     it('asks for a name', async () => {
       board()
       const res = refusal(await send({ intent: 'make-montage', fileIds: ['a'], name: '  ' }))
@@ -820,6 +849,33 @@ describe('changes made on the board', () => {
 
       expect(res.success).toBe(false)
       expect(res.globalErrors?.[0]).toContain('uploaded')
+    })
+
+    it('refuses more than one file at a time', async () => {
+      writeManifest([group({ id: 'g1', files: [file({ id: 'a' }), file({ id: 'b' })] })])
+
+      const res = refusal(
+        await send({ intent: 'retime-file', fileIds: ['a', 'b'], anchorEpoch: 1_754_003_600 })
+      )
+
+      expect(res.globalErrors?.[0]).toBe('Correct one file at a time.')
+    })
+
+    it('moves that file alone', async () => {
+      const grouped = [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })]
+      writeManifest(
+        [group({ id: 'g1', files: grouped })],
+        [...grouped, file({ id: 'c', mtime: 1_754_000_120 })]
+      )
+
+      const res = answer(
+        await send({ intent: 'retime-file', fileIds: ['a'], anchorEpoch: 1_754_003_600 })
+      )
+
+      const times = Object.fromEntries(
+        [...res.groups.flatMap((g) => g.files), ...res.looseFiles].map((f) => [f.id, f.mtime])
+      )
+      expect(times).toEqual({ a: 1_754_003_600, b: 1_754_000_060, c: 1_754_000_120 })
     })
   })
 

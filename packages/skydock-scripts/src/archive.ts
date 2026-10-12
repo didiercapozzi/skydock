@@ -1,6 +1,10 @@
-import * as fs from 'node:fs'
+import { createWriteStream } from 'node:fs'
+import { readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { ZipArchive } from 'archiver'
-import { sizeOf } from './utils'
+import { z } from 'zod'
+import { jsonText } from './lib/json'
+import { statOrNull } from './lib/fs'
+import { mapWithLimit } from './utils'
 import { stopIfUploadCancelled, stopSignal, UploadCancelled } from './uploading'
 
 type ArchiveEntry = { file: string; name: string }
@@ -15,25 +19,27 @@ const contentsOf = (zipPath: string) => `${zipPath}.contents`
 
 const namesOf = (entries: ArchiveEntry[]) => JSON.stringify(entries.map((entry) => entry.name))
 
-const sameContents = (zipPath: string, entries: ArchiveEntry[]) => {
-  try {
-    return fs.readFileSync(contentsOf(zipPath), 'utf-8') === namesOf(entries)
-  } catch {
-    return false
-  }
-}
+const readContents = (zipPath: string) =>
+  readFile(contentsOf(zipPath), 'utf-8').then(
+    (text) => {
+      const names = jsonText.pipe(z.array(z.string())).safeParse(text)
+      return names.success ? names.data : null
+    },
+    () => null
+  )
 
-const isArchiveFresh = (zipPath: string, entries: ArchiveEntry[]) => {
-  if (!fs.existsSync(zipPath) || entries.length === 0) return false
-  if (!sameContents(zipPath, entries)) return false
-  const built = fs.statSync(zipPath).mtimeMs
-  return entries.every((entry) => {
-    try {
-      return fs.statSync(entry.file).mtimeMs <= built
-    } catch {
-      return false
-    }
-  })
+const sameContents = async (zipPath: string, entries: ArchiveEntry[]) =>
+  JSON.stringify(await readContents(zipPath)) === namesOf(entries)
+
+const statsOf = (entries: ArchiveEntry[]) =>
+  mapWithLimit(entries, 16, (entry) => statOrNull(entry.file))
+
+const isArchiveFresh = async (zipPath: string, entries: ArchiveEntry[]) => {
+  if (entries.length === 0) return false
+  const zip = await statOrNull(zipPath)
+  if (!zip || !(await sameContents(zipPath, entries))) return false
+  const stats = await statsOf(entries)
+  return stats.every((stat) => stat !== null && stat.mtimeMs <= zip.mtimeMs)
 }
 
 const writeArchive = async (
@@ -42,11 +48,11 @@ const writeArchive = async (
   options?: { level?: number; onProgress?: (progress: ArchiveProgress) => void }
 ) => {
   if (entries.length === 0) return null
-  if (isArchiveFresh(zipPath, entries)) return zipPath
+  if (await isArchiveFresh(zipPath, entries)) return zipPath
   stopIfUploadCancelled()
-  const totalBytes = entries.reduce((sum, entry) => sum + sizeOf(entry.file), 0)
+  const totalBytes = (await statsOf(entries)).reduce((sum, stat) => sum + (stat?.size ?? 0), 0)
   const part = `${zipPath}.part`
-  const output = fs.createWriteStream(part)
+  const output = createWriteStream(part)
   const archive = new ZipArchive({
     zlib: { level: options?.level ?? PHOTO_LEVEL },
     forceZip64: true
@@ -79,14 +85,14 @@ const writeArchive = async (
       archive.finalize()
     })
   } catch (e) {
-    fs.rmSync(part, { force: true })
+    await rm(part, { force: true })
     throw e
   }
-  fs.rmSync(contentsOf(zipPath), { force: true })
-  fs.renameSync(part, zipPath)
-  fs.writeFileSync(contentsOf(zipPath), namesOf(entries))
+  await rm(contentsOf(zipPath), { force: true })
+  await rename(part, zipPath)
+  await writeFile(contentsOf(zipPath), namesOf(entries))
   return zipPath
 }
 
-export { isArchiveFresh, PHOTO_LEVEL, sameContents, VIDEO_LEVEL, writeArchive }
+export { isArchiveFresh, PHOTO_LEVEL, readContents, sameContents, VIDEO_LEVEL, writeArchive }
 export type { ArchiveEntry, ArchiveProgress }

@@ -82,7 +82,7 @@ const lookAtStorage = async (outputDir: string) => {
     if (!manifest) return { nas, remote, storage }
     if (session.backupFolder && keepBackupAsPlace(manifest, session.backupFolder))
       await saveManifest(manifestPath, manifest)
-    const settled = settleListsDir(manifest) ?? session
+    const settled = (await settleListsDir(manifest)) ?? session
     remote = await listRemoteFiles(manifest, settled)
     manifest = (await loadManifestAsync(manifestPath)) ?? manifest
     const forgotten = await forgetLostFiles(manifest, remote)
@@ -148,10 +148,10 @@ const loader = async (_args: Route.LoaderArgs) => {
     looseFiles,
     destinations: manifest?.destinations ?? [],
     outputs: manifest ? statProcessedOutputs(manifest) : {},
-    proxies: manifest ? statProxies(manifest, outputDir) : {},
+    proxies: manifest ? await statProxies(manifest, outputDir) : {},
     disk: await diskSpace(outputDir),
     outputDir,
-    montages: manifest ? statMontageArtifacts(manifest, outputDir) : {},
+    montages: manifest ? await statMontageArtifacts(manifest, outputDir) : {},
     nas: { connected: false, hostname: null, username: null } as NasState,
     remote: null,
     storage: null,

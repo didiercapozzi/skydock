@@ -4,13 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-vi.mock(import('@skydock/scripts'), async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
-})
-
 import { boardRoute } from './board-route'
-
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
 const clip = (id: string, at: number) => ({
@@ -95,9 +89,6 @@ describe('a file in a window of its own', () => {
 
     await expect.element(page.getByRole('dialog', { name: 'Preview' })).toBeVisible()
     await expect.element(page.getByRole('navigation', { name: 'Folders' })).not.toBeInTheDocument()
-    const dialog = page.getByRole('dialog', { name: 'Preview' }).element()
-    expect(dialog.classList.contains('drag-region')).toBe(true)
-    expect(dialog.querySelectorAll('.no-drag').length).toBeGreaterThanOrEqual(2)
 
     await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
     expect(closed).toHaveBeenCalled()

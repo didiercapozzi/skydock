@@ -1,8 +1,11 @@
-import * as fs from 'node:fs'
+import { createReadStream, createWriteStream } from 'node:fs'
+import { copyFile, mkdir, readdir, rm, stat, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { startOfFiles } from './clustering'
+import { outputKeyOf } from './fileStatus'
 import { counted } from './lib/counted'
+import { pathExists } from './lib/fs'
 import { loadManifestAsync, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
@@ -18,6 +21,7 @@ import {
   getOutputDir,
   hasCommand,
   isVideoFile,
+  mapWithLimit,
   parseDayEpoch
 } from './utils'
 import {
@@ -42,7 +46,7 @@ type ProcessOptions = {
 }
 
 const exif = async (args: string[]) => {
-  const ran = await run(exiftoolPath(), args)
+  const ran = await run(await exiftoolPath(), args)
   if (!ran.ok) throw new Error(lastComplaint(ran.stderr))
   return ran.stdout
 }
@@ -55,7 +59,7 @@ const shownShape = async (src: string) => {
 const ORIGIN_TAG = 'skydock:from='
 
 const tagOrigin = async (dest: string, from: string | undefined) => {
-  if (!from || !hasCommand('exiftool')) return
+  if (!from || !(await hasCommand('exiftool'))) return
   await exif(['-overwrite_original', '-q', `-Comment=${ORIGIN_TAG}${from}`, dest]).catch(
     () => undefined
   )
@@ -86,6 +90,11 @@ type OnPercent = (percent: number) => void
 const trimSeconds = (cropStart?: number | null, cropEnd?: number | null) =>
   cropEnd != null ? cropEnd - (cropStart ?? 0) : null
 
+const runFfmpeg = async (args: string[], onPercent?: OnPercent, seconds?: number | null) => {
+  const ran = await runWatched(await ffmpegPath(), args, onPercent, seconds)
+  return ran.ok ? { ok: true as const } : { ok: false as const, reason: lastComplaint(ran.stderr) }
+}
+
 const trimVideo = async (
   src: string,
   dest: string,
@@ -93,9 +102,8 @@ const trimVideo = async (
   cropEnd: number | null | undefined,
   onPercent?: OnPercent
 ) => {
-  if (!hasCommand('ffmpeg')) return false
-  const ran = await runWatched(
-    ffmpegPath(),
+  if (!(await hasCommand('ffmpeg'))) return false
+  const ran = await runFfmpeg(
     [
       '-y',
       ...timeArgs(cropStart, cropEnd),
@@ -113,18 +121,13 @@ const trimVideo = async (
   return ran.ok
 }
 
-const runFfmpeg = async (args: string[], onPercent?: OnPercent, seconds?: number | null) => {
-  const ran = await runWatched(ffmpegPath(), args, onPercent, seconds)
-  return ran.ok ? { ok: true as const } : { ok: false as const, reason: lastComplaint(ran.stderr) }
-}
-
 const copyWhole = async (src: string, dest: string, onPercent?: OnPercent) => {
-  const total = onPercent ? fs.statSync(src).size : 0
+  const total = onPercent ? (await stat(src)).size : 0
   const bytes = counted(
     total > 0 ? (done) => onPercent?.(Math.min(99, Math.floor((done / total) * 100))) : undefined,
     false
   )
-  await streams.pipeline(fs.createReadStream(src), bytes.through, fs.createWriteStream(dest), {
+  await streams.pipeline(createReadStream(src), bytes.through, createWriteStream(dest), {
     signal: stoppable().getStore()
   })
 }
@@ -137,7 +140,8 @@ const recodeVideo = async (
   cropEnd?: number | null,
   onPercent?: OnPercent
 ) => {
-  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
+  if (!(await hasCommand('ffmpeg')))
+    return { ok: false as const, reason: 'ffmpeg is not installed' }
   const encode = (pick: ProxyEncoder) => {
     const decode =
       pick === 'nvenc'
@@ -202,16 +206,15 @@ const updateMetadata = async (files: string[]) => {
   }
 }
 
-const pruneTo = (folder: string, kept: Set<string>) => {
-  if (!fs.existsSync(folder)) return
-  for (const entry of fs.readdirSync(folder)) {
+const pruneTo = async (folder: string, kept: Set<string>) => {
+  for (const entry of await readdir(folder).catch(() => [] as string[])) {
     if (kept.has(entry)) continue
-    fs.rmSync(path.join(folder, entry), { recursive: true, force: true })
+    await rm(path.join(folder, entry), { recursive: true, force: true })
   }
 }
 
-const pruneStaleMedia = (dir: string, kept: Set<string>) => {
-  for (const media of ['videos', 'photos']) pruneTo(path.join(dir, media), kept)
+const pruneStaleMedia = async (dir: string, kept: Set<string>) => {
+  for (const media of ['videos', 'photos']) await pruneTo(path.join(dir, media), kept)
 }
 
 const getDestinationDir = (outputDir: string, destination: string) =>
@@ -242,7 +245,7 @@ const writeCutProxy = async (
   outputDir: string,
   groupId: string
 ) => {
-  if (!isVideoFile(file.path) || !file.proxy || !fs.existsSync(file.proxy)) return null
+  if (!isVideoFile(file.path) || !file.proxy || !(await pathExists(file.proxy))) return null
   const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
   const trimmed = isTrimmed(file)
   if (!isWholeFrame(file.frame) || file.rotation) {
@@ -257,8 +260,8 @@ const writeCutProxy = async (
   if (trimmed) {
     if (!(await cropProxy(file.proxy, target, file.cropStart, file.cropEnd))) return null
   } else {
-    fs.mkdirSync(path.dirname(target), { recursive: true })
-    await fs.promises.copyFile(file.proxy, target)
+    await mkdir(path.dirname(target), { recursive: true })
+    await copyFile(file.proxy, target)
   }
   return target
 }
@@ -285,7 +288,7 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent
     if (!video && file.rotation) await turnPhoto(dest, file.rotation)
   }
   await tagOrigin(dest, file.copyOf ?? file.id)
-  fs.utimesSync(dest, time, time)
+  await utimes(dest, time, time)
 }
 
 let writing: ReturnType<typeof job> | null = null
@@ -297,7 +300,7 @@ const writeOne = async (
   after?: () => Promise<unknown>
 ) => {
   const live = following('process', file.id)
-  const key = file.id ?? file.path
+  const key = outputKeyOf(file)
   writing?.row({ key, at: 'now', part: 0 })
   try {
     await copyMedia(file, dest, time, (percent) => {
@@ -311,7 +314,7 @@ const writeOne = async (
   } catch (e) {
     live.done(false)
     writing?.row({ key, at: 'failed', note: e instanceof Error ? e.message : String(e) })
-    if (stoppable().getStore()?.aborted) fs.rmSync(dest, { force: true })
+    if (stoppable().getStore()?.aborted) await rm(dest, { force: true })
     throw e
   }
 }
@@ -333,14 +336,14 @@ const writeGroup = async (
   only?: Set<string>
 ) => {
   const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
-  keepProject(outputDir, dir, baseName)
+  await keepProject(outputDir, dir, baseName)
   const written: string[] = []
   for (const file of group.files) {
     stopIfCancelled()
-    if (only && !only.has(file.id ?? file.path)) continue
-    if (!fs.existsSync(file.path)) continue
+    if (only && !only.has(outputKeyOf(file))) continue
+    if (!(await pathExists(file.path))) continue
     const targetDir = flat ? dir : path.join(dir, isVideoFile(file.path) ? 'videos' : 'photos')
-    fs.mkdirSync(targetDir, { recursive: true })
+    await mkdir(targetDir, { recursive: true })
     const ext = path.extname(file.path).slice(1).toLowerCase()
     const stem = flat
       ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
@@ -355,8 +358,8 @@ const writeGroup = async (
   await updateMetadata(written)
   if (!flat) {
     const names = written.map((entry) => path.basename(entry))
-    pruneStaleMedia(dir, usedNames)
-    pruneTo(
+    await pruneStaleMedia(dir, usedNames)
+    await pruneTo(
       getCutProxyDir(outputDir, group.id),
       new Set(names.map((n) => `${path.parse(n).name}.mp4`))
     )
@@ -379,8 +382,8 @@ const writeLooseFiles = async (
   const written: string[] = []
   for (const file of files) {
     stopIfCancelled()
-    if (!fs.existsSync(file.path)) continue
-    fs.mkdirSync(dir, { recursive: true })
+    if (!(await pathExists(file.path))) continue
+    await mkdir(dir, { recursive: true })
     const ext = path.extname(file.path).slice(1).toLowerCase()
     const name = makeFileName(`${stem}_${formatGroupDay(file.mtime)}`, file.mtime, ext, usedNames)
     const dest = path.join(dir, name)
@@ -465,7 +468,7 @@ const runProcess = async (options?: ProcessOptions) => {
   const looseByDestination = new Map<string, ManifestFile[]>()
   for (const file of manifest.files) {
     if (!file.destination || filesInGroups.has(file.path)) continue
-    if (only && !only.has(file.id ?? file.path)) continue
+    if (only && !only.has(outputKeyOf(file))) continue
     looseByDestination.set(file.destination, [
       ...(looseByDestination.get(file.destination) ?? []),
       file
@@ -490,7 +493,7 @@ const runProcess = async (options?: ProcessOptions) => {
       (groupIds.length > 0
         ? groupIds.includes(g.id)
         : !options?.destination || g.destination === options.destination) &&
-      (!only || g.files.some((f) => only.has(f.id ?? f.path)))
+      (!only || g.files.some((f) => only.has(outputKeyOf(f))))
   )
   const takenOf = (g: ManifestGroup) => (only && isFlatGroup(g) ? only : undefined)
 
@@ -504,13 +507,13 @@ const runProcess = async (options?: ProcessOptions) => {
     ...groups.flatMap((g) =>
       g.files.flatMap((f) => {
         const taken = takenOf(g)
-        return !taken || taken.has(f.id ?? f.path) ? [f.id ?? f.path] : []
+        return !taken || taken.has(outputKeyOf(f)) ? [outputKeyOf(f)] : []
       })
     ),
-    ...destinations.flatMap((d) => (looseByDestination.get(d) ?? []).map((f) => f.id ?? f.path))
+    ...destinations.flatMap((d) => (looseByDestination.get(d) ?? []).map(outputKeyOf))
   ])
   const hold = (file: ManifestFile, dir: string) => {
-    if (file.processed && !inRun.has(file.id ?? file.path))
+    if (file.processed && !inRun.has(outputKeyOf(file)))
       poolFor(dir).add(path.basename(file.processed.path))
   }
   for (const group of manifest.groups)
@@ -520,22 +523,21 @@ const runProcess = async (options?: ProcessOptions) => {
 
   const processedPaths = new Map<string, { dest: string; source: ManifestFile }>()
   const record = (source: ManifestFile, destPath: string) => {
-    processedPaths.set(source.id ?? source.path, { dest: destPath, source })
+    processedPaths.set(outputKeyOf(source), { dest: destPath, source })
   }
 
   const asAsked = new Map(groups.map((g) => [g.id, copiedAs(g)]))
   let copied = 0
-  const keyOf = (file: ManifestFile) => file.id ?? file.path
-  const toWrite = [
-    ...groups.flatMap((g) =>
-      g.files.filter((f) => (!takenOf(g) || takenOf(g)?.has(keyOf(f))) && fs.existsSync(f.path))
-    ),
-    ...destinations.flatMap((d) =>
-      (looseByDestination.get(d) ?? []).filter((f) => fs.existsSync(f.path))
-    )
-  ]
+  const onDisk = async (files: ManifestFile[]) => {
+    const here = await mapWithLimit(files, 16, (f) => pathExists(f.path))
+    return files.filter((_, i) => here[i])
+  }
+  const toWrite = await onDisk([
+    ...groups.flatMap((g) => g.files.filter((f) => !takenOf(g) || takenOf(g)?.has(outputKeyOf(f)))),
+    ...destinations.flatMap((d) => looseByDestination.get(d) ?? [])
+  ])
   const preparing = job({ type: 'process', label: '', total: toWrite.length })
-  preparing.rows(toWrite.map((f) => ({ key: keyOf(f), name: f.filename, size: f.size })))
+  preparing.rows(toWrite.map((f) => ({ key: outputKeyOf(f), name: f.filename, size: f.size })))
   writing = preparing
   try {
     for (const group of groups)
@@ -564,12 +566,12 @@ const runProcess = async (options?: ProcessOptions) => {
       delete group.publish
     }
     for (const file of current.files) {
-      const written = processedPaths.get(file.id ?? file.path)
+      const written = processedPaths.get(outputKeyOf(file))
       if (!written) continue
       const { dest, source } = written
       file.processed = {
         path: dest,
-        size: fs.statSync(dest).size,
+        size: (await stat(dest)).size,
         at: Math.floor(Date.now() / 1000),
         source: {
           id: source.id,

@@ -1,8 +1,8 @@
-import * as fs from 'node:fs'
+import { rm } from 'node:fs/promises'
 import * as path from 'node:path'
 import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
-import { diskTimes, shotTimes } from './scan'
+import { shotTimes } from './scan'
 import { keepProject } from './projectHistory'
 import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestGroup } from './types'
@@ -21,12 +21,11 @@ const removable = (outputDir: string, dir: string) => {
   return target.startsWith(`${root}${path.sep}`) && target !== root
 }
 
-const takeBack = (
+const takeBack = async (
   manifest: Manifest,
   outputDir: string,
   groupId: string,
-  forget: boolean,
-  shot?: Map<string, number>
+  forget: boolean
 ) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) throw new Error('Montage not found.')
@@ -37,15 +36,16 @@ const takeBack = (
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   if (!removable(outputDir, dir)) throw new Error(`Refusing to delete ${dir}.`)
 
-  keepProject(outputDir, dir, baseName)
-  fs.rmSync(dir, { recursive: true, force: true })
-  for (const jump of jumps)
-    fs.rmSync(getCutProxyDir(outputDir, jump.id), { recursive: true, force: true })
-
   const ids = new Set(jumps.flatMap((j) => idsOf(j.files)))
   const times = forget
-    ? (shot ?? diskTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path)))
+    ? await shotTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path))
     : new Map<string, number>()
+
+  await keepProject(outputDir, dir, baseName)
+  await rm(dir, { recursive: true, force: true })
+  await Promise.all(
+    jumps.map((jump) => rm(getCutProxyDir(outputDir, jump.id), { recursive: true, force: true }))
+  )
   const undo = <T extends { path: string; mtime: number }>(file: T): T =>
     forget
       ? {
@@ -67,39 +67,26 @@ const takeBack = (
   if (forget) {
     manifest.files = manifest.files.filter((f) => !(f.copyOf && f.id && ids.has(f.id)))
     manifest.groups = manifest.groups.filter((g) => !taken.has(g.id))
-    return { groupIds: [...taken] }
+  } else {
+    manifest.groups = manifest.groups.map((g) => {
+      if (!taken.has(g.id)) return g
+      const {
+        processed: _processed,
+        publish: _publish,
+        uploaded: _delivered,
+        montage: _montage,
+        ...rest
+      } = g
+      return rest
+    })
   }
-  manifest.groups = manifest.groups.map((g) => {
-    if (!taken.has(g.id)) return g
-    const {
-      processed: _processed,
-      publish: _publish,
-      uploaded: _delivered,
-      montage: _montage,
-      ...rest
-    } = g
-    return rest
-  })
   return { groupIds: [...taken] }
 }
 
 const resetMontage = (manifest: Manifest, outputDir: string, groupId: string) =>
   takeBack(manifest, outputDir, groupId, false)
 
-const deleteMontage = (
-  manifest: Manifest,
-  outputDir: string,
-  groupId: string,
-  shot?: Map<string, number>
-) => takeBack(manifest, outputDir, groupId, true, shot)
+const deleteMontage = (manifest: Manifest, outputDir: string, groupId: string) =>
+  takeBack(manifest, outputDir, groupId, true)
 
-const shotTimesBack = (manifest: Manifest, outputDir: string, groupId: string) => {
-  const group = manifest.groups.find((g) => g.id === groupId)
-  if (!group) return Promise.resolve(undefined)
-  const ids = new Set(
-    sharingFolder(manifest, outputDir, group).flatMap((jump) => idsOf(jump.files))
-  )
-  return shotTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path))
-}
-
-export { deleteMontage, resetMontage, shotTimesBack }
+export { deleteMontage, resetMontage }

@@ -1,5 +1,6 @@
-import * as fs from 'node:fs'
+import { createReadStream } from 'node:fs'
 import * as path from 'node:path'
+import { Readable } from 'node:stream'
 import { z } from 'zod'
 
 const rangeSchema = z.object({
@@ -32,29 +33,9 @@ const streamFile = (
   fileSize: number,
   range?: { start: number; end: number } | null
 ) => {
-  const nodeStream = range
-    ? fs.createReadStream(filePath, { start: range.start, end: range.end })
-    : fs.createReadStream(filePath)
-
-  const readable = new ReadableStream<Uint8Array>(
-    {
-      start: (controller) => {
-        nodeStream.on('data', (chunk) => {
-          controller.enqueue(typeof chunk === 'string' ? new TextEncoder().encode(chunk) : chunk)
-          if ((controller.desiredSize ?? 1) <= 0) nodeStream.pause()
-        })
-        nodeStream.on('end', () => controller.close())
-        nodeStream.on('error', (err) => controller.error(err))
-      },
-      pull: () => {
-        nodeStream.resume()
-      },
-      cancel: () => {
-        nodeStream.destroy()
-      }
-    },
-    { highWaterMark: 4 }
-  )
+  const readable = Readable.toWeb(
+    createReadStream(filePath, range ?? undefined)
+  ) as ReadableStream<Uint8Array>
 
   const status = range ? 206 : 200
   const headers: Record<string, string> = {
@@ -69,23 +50,22 @@ const streamFile = (
   return new Response(readable, { status, headers })
 }
 
-const serveFile = (filePath: string, request: Request) => {
+const serveFile = (filePath: string, request: Request, size: number) => {
   const ext = path.extname(filePath).toLowerCase()
   const contentType = MIME_TYPES[ext] ?? 'application/octet-stream'
-  const stat = fs.statSync(filePath)
 
   const rangeHeader = request.headers.get('range')
   let range: { start: number; end: number } | null = null
   if (rangeHeader) {
     const [from = '', to = ''] = rangeHeader.replace(/bytes=/, '').split('-')
-    const last = stat.size - 1
-    const start = from === '' ? Math.max(0, stat.size - parseInt(to, 10)) : parseInt(from, 10)
+    const last = size - 1
+    const start = from === '' ? Math.max(0, size - parseInt(to, 10)) : parseInt(from, 10)
     const end = from === '' || to === '' ? last : Math.min(parseInt(to, 10), last)
     const parsed = rangeSchema.safeParse({ start, end })
     if (parsed.success && parsed.data.start <= parsed.data.end) range = parsed.data
   }
 
-  return streamFile(filePath, contentType, stat.size, range)
+  return streamFile(filePath, contentType, size, range)
 }
 
 export { serveFile }

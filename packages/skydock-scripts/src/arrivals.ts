@@ -1,12 +1,15 @@
 import { groupNewFiles, looseFiles } from './clustering'
 import type { Copied } from './copy'
-import { originalEntry } from './importFile'
+import { stat } from 'node:fs/promises'
+import { originalEntry } from './fileId'
 import { changeBoardSoon, flushBoardChanges, loadManifestAsync, saveManifest } from './manifest'
 import { getManifestPath, sortFilesByMtime } from './utils'
 
-const putOnBoard = (outputDir: string, { dest, id, shot }: Copied) => {
+const putOnBoard = async (outputDir: string, { dest, id, shot }: Copied) => {
+  const { size } = await stat(dest)
   changeBoardSoon(getManifestPath(outputDir), (board) => {
-    if (!board.files.some((f) => f.id === id)) board.files.push(originalEntry(dest, id, shot))
+    if (!board.files.some((f) => f.id === id))
+      board.files.push(originalEntry({ path: dest, id, mtime: shot, size }))
   })
 }
 

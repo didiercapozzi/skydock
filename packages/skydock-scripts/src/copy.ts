@@ -9,7 +9,7 @@ import { inJob } from './live'
 import { loadManifestAsync } from './manifest'
 import { shotTimes } from './scan'
 import type { Manifest, ManifestFile } from './types'
-import { getManifestPath, getOutputDir, isCliModule, sizeOf } from './utils'
+import { getManifestPath, getOutputDir, isCliModule, mapWithLimit, sizeOf } from './utils'
 
 type CopyOptions = {
   cameraDirs: string[]
@@ -170,7 +170,10 @@ const copyCamera = async ({
   const progress: CopyProgress = { done: 0, total: files.length, copied: 0, skipped: 0 }
   onProgress?.({
     ...progress,
-    files: files.map((file) => ({ name: path.basename(file), size: sizeOf(file) }))
+    files: await mapWithLimit(files, 16, async (file) => ({
+      name: path.basename(file),
+      size: await sizeOf(file)
+    }))
   })
 
   for (const src of files) {

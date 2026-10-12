@@ -1,5 +1,5 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { mkdir, readdir, rename, rmdir, rm, stat, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import { isMediaName } from './constants'
 import { CameraGone, CopyStopped, givenBack, isNameFor, landingFor, loadBoard } from './copy'
@@ -8,10 +8,10 @@ import { computeFileId } from './fileId'
 import { watchGrowth } from './lib/growing'
 import { kioReader } from './kio'
 import type { KioFile, KioReader } from './kio'
-import { findMediaFilesAsync, sameBytes } from './lib/fs'
+import { findMediaFilesAsync, sameBytes, statOrNull } from './lib/fs'
 import type { Manifest } from './types'
 import { shotTimes } from './scan'
-import { getOutputDir } from './utils'
+import { getOutputDir, mapWithLimit } from './utils'
 
 const kioCameras = async (reader: KioReader | null) => {
   if (!reader) return []
@@ -60,15 +60,15 @@ const keyOf = (name: string) => {
 const hereAlready = async (outputDir: string) => {
   const byKey = new Map<string, { path: string; size: number; mtime: number }[]>()
   const add = async (file: string) => {
-    const stat = await fs.promises.stat(file)
+    const { size, mtimeMs } = await stat(file)
     const key = keyOf(path.basename(file))
     byKey.set(key, [
       ...(byKey.get(key) ?? []),
-      { path: file, size: stat.size, mtime: Math.floor(stat.mtimeMs / 1000) }
+      { path: file, size, mtime: Math.floor(mtimeMs / 1000) }
     ])
   }
   const originals = path.join(outputDir, 'original_files')
-  await Promise.all((await findMediaFilesAsync(originals)).map(add))
+  await mapWithLimit(await findMediaFilesAsync(originals), 16, add)
   const named = (name: string, size: number) =>
     (byKey.get(keyOf(name)) ?? []).filter(
       (here) => here.size === size && isNameFor(path.basename(here.path), name)
@@ -111,7 +111,7 @@ const copyOverKio = async ({
   onProgress?.({ ...progress, files: clips.map((clip) => ({ name: clip.name, size: 0 })) })
 
   const incoming = path.join(outputDir, '.incoming')
-  fs.mkdirSync(incoming, { recursive: true })
+  await mkdir(incoming, { recursive: true })
   try {
     for (let at = 0; at < clips.length; at += ASKED_AT_ONCE) {
       const batch = clips.slice(at, at + ASKED_AT_ONCE)
@@ -152,7 +152,7 @@ const copyOverKio = async ({
     }
   } finally {
     try {
-      if (fs.readdirSync(incoming).length === 0) fs.rmdirSync(incoming)
+      if ((await readdir(incoming)).length === 0) await rmdir(incoming)
     } catch {}
   }
   return progress
@@ -170,12 +170,12 @@ const fetchInto = async (
   const partial = path.join(incoming, `${crypto.randomBytes(6).toString('hex')}-${clip.name}`)
   const stop = onPart && said ? watchGrowth([partial, `${partial}.part`], said.size, onPart) : null
   const landed = await reader.copy(clip.url, partial).finally(() => stop?.())
-  const size = landed && fs.existsSync(partial) ? fs.statSync(partial).size : -1
+  const size = landed ? ((await statOrNull(partial))?.size ?? -1) : -1
   if (!landed || size < 0 || (said && size !== said.size)) {
-    fs.rmSync(partial, { force: true })
+    await rm(partial, { force: true })
     throw new CameraGone('The camera stopped answering during the copy.')
   }
-  if (said?.mtime) fs.utimesSync(partial, said.mtime, said.mtime)
+  if (said?.mtime) await utimes(partial, said.mtime, said.mtime)
   let twin: { path: string } | undefined
   for (const one of here.named(clip.name, size))
     if (await sameBytes(partial, one.path)) {
@@ -183,17 +183,17 @@ const fetchInto = async (
       break
     }
   if (twin) {
-    fs.rmSync(partial, { force: true })
+    await rm(partial, { force: true })
     return { copied: false, at: twin.path, size, shot: 0 }
   }
   const shot = (await shotTimes([partial])).get(partial) ?? Math.floor(Date.now() / 1000)
   const dest = landingFor(outputDir, clip.name, shot)
-  fs.renameSync(partial, dest)
+  await rename(partial, dest)
   await here.add(dest)
   return { copied: true, at: dest, size, shot }
 }
 
 const camerasThroughKde = async () => kioCameras(await kioReader())
 
-export { camerasThroughKde, copyOverKio, givenBack, isKioCamera, kioCameraName, kioCameras }
+export { camerasThroughKde, copyOverKio, isKioCamera, kioCameraName, kioCameras }
 export type { SeenClip }

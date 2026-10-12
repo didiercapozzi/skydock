@@ -601,15 +601,15 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     else setDialog({ kind: 'templates', groupId: group.id })
   }
   const takeStep = (group: ManifestGroup, step: MontageStep) => {
-    if (step === 'Processed') send(group.id, { intent: 'process', groupId: group.id })
-    if (step === 'Edited') void askMontage(group)
-    if (step === 'Rendered') send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
+    if (step === 'Prepared') send(group.id, { intent: 'process', groupId: group.id })
+    if (step === 'Project') void askMontage(group)
+    if (step === 'Film') send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
     if (step === 'Uploaded') {
       const gate = facts.gateFor(group.files)
       if (gate.blocked) board.setProblem(gate.message ?? t`It cannot be uploaded yet.`)
       else askUpload(group)
     }
-    if (step === 'Emailed') setDialog({ kind: 'email', groupId: group.id })
+    if (step === 'Sent') setDialog({ kind: 'email', groupId: group.id })
   }
   const cancelProcess = () => send('cancel-process', { intent: 'cancel-process' })
   const freeableOf = (name: string) =>

@@ -125,8 +125,10 @@ const loadManifestAsync = async (manifestPath: string) =>
 
 const BATCH_MS = 500
 
+type BoardChange = (board: Manifest) => void | Promise<void>
+
 type Waiting = {
-  changes: Map<string, (board: Manifest) => void>
+  changes: Map<string, BoardChange>
   timer: NodeJS.Timeout | null
   chain: Promise<void>
 }
@@ -158,7 +160,7 @@ const flushBoardChanges = (manifestPath: string) => {
     try {
       const board = await loadManifestAsync(manifestPath)
       if (!board) return
-      for (const change of changes) change(board)
+      for (const change of changes) await change(board)
       saveManifest(manifestPath, board)
     } catch (e) {
       console.warn(
@@ -173,11 +175,29 @@ const flushBoardChanges = (manifestPath: string) => {
 const flushAllBoardChanges = () =>
   Promise.all([...(globalThis.skydockBoardChanges?.keys() ?? [])].map(flushBoardChanges))
 
-const changeBoardSoon = (manifestPath: string, change: (board: Manifest) => void, key?: string) => {
+const changeBoardSoon = (manifestPath: string, change: BoardChange, key?: string) => {
   const waiting = waitingFor(manifestPath)
   waiting.changes.set(key ?? `#${unnamed++}`, change)
   waiting.timer ??= setTimeout(() => void flushBoardChanges(manifestPath), BATCH_MS)
 }
+
+const recordPass = (
+  manifestPath: string,
+  pass: Manifest,
+  merge: (file: ManifestFile, found: ManifestFile) => void | Promise<void>,
+  key: string
+) =>
+  changeBoardSoon(
+    manifestPath,
+    async (current) => {
+      const found = new Map(pass.files.map((file) => [outputKeyOf(file), file]))
+      for (const file of current.files) {
+        const done = found.get(outputKeyOf(file))
+        if (done) await merge(file, done)
+      }
+    },
+    key
+  )
 
 const statProcessedOutputs = (manifest: Manifest) => {
   const outputs: Record<string, { exists: boolean; size: number }> = {}
@@ -255,6 +275,7 @@ export {
   getGroupsPath,
   loadManifestAsync,
   readRecordAsync,
+  recordPass,
   MANIFEST_VERSION,
   RECORD_UNREADABLE,
   saveManifest,

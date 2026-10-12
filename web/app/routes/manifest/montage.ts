@@ -29,7 +29,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
   if (!fs.existsSync(groupDir)) return refuse('Processed folder not found. Process it again.')
   if (fs.readdirSync(groupDir).some((f) => f.endsWith('.kdenlive')))
     return refuse('This montage already has a project — open it in kdenlive.')
-  const waiting = waitingForProxy(group.files, statProxies(manifest, outputDir))
+  const waiting = waitingForProxy(group.files, await statProxies(manifest, outputDir))
   if (waiting.length > 0)
     return refuse(
       `${waiting.length === 1 ? '1 clip is' : `${waiting.length} clips are`} still getting a proxy — the project is made once each one has it, or has failed to.`
@@ -89,7 +89,7 @@ const montage: Intent = async ({ data, manifest, manifestPath, outputDir, refuse
     saveManifest(manifestPath, board)
     const opened = await openInEditor(made.projectPath)
     return {
-      ...boardAnswer(board),
+      ...(await boardAnswer(board)),
       montage: {
         clips: made.clips,
         photos: made.photos,

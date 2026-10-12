@@ -15,7 +15,7 @@ import type { Intent } from './change'
    they move or are copied is not the person's to decide: files still in Fresh files belong nowhere
    and move in; files that already belong somewhere — a dropzone, another montage — are copied, so
    that place keeps its own. A name that is already a montage's joins it as a jump of its own. */
-const makeMontageIntent: Intent = ({
+const makeMontageIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -36,14 +36,14 @@ const makeMontageIntent: Intent = ({
   const fresh = freshIds(manifest)
   try {
     if ([...ids].every((id) => fresh.has(id))) {
-      moveFiles(manifest, ids, {
+      await moveFiles(manifest, ids, {
         newGroup: true,
         montage: true,
         passenger,
         startsAt: data.anchorEpoch
       })
       saveManifest(manifestPath, manifest)
-      return boardAnswer(manifest)
+      return await boardAnswer(manifest)
     }
     const { copied, passedOver, freed } = copyIntoMontage(manifest, ids, passenger)
     if (copied === 0)
@@ -53,7 +53,7 @@ const makeMontageIntent: Intent = ({
           : 'Those files are no longer here.'
       )
     saveManifest(manifestPath, manifest)
-    return { ...boardAnswer(manifest), copied: { files: copied, passedOver } }
+    return { ...(await boardAnswer(manifest)), copied: { files: copied, passedOver } }
   } catch (e) {
     return refuse(messageOf(e))
   }

@@ -155,7 +155,7 @@ describe('freeing a dropzone', () => {
     withStorage(onStorage)
     await free(manifest)
 
-    const targets = resolveUploadTargets({
+    const targets = await resolveUploadTargets({
       outputDir,
       manifest,
       scope: { destination: DZ }

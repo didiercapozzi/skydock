@@ -1,5 +1,4 @@
-import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { access, constants, realpath } from 'node:fs/promises'
 import * as path from 'node:path'
 import type { CameraFile } from './cameraEntry'
 import {
@@ -11,16 +10,16 @@ import {
   seenOnCamera,
   keyOfMount
 } from './cameraWatch'
-import { alreadyThere, dayFoldersOf, folderIndex, freedAlready, namesIn } from './copy'
-import { idFromHash } from './fileId'
-import { givenBack } from './kioCamera'
+import { alreadyThere, dayFoldersOf, folderIndex, freedAlready, givenBack, namesIn } from './copy'
+import { computeFileId } from './fileId'
 import { listBin } from './bin'
-import { findMediaFilesAsync, moveFile, mtimeOf } from './lib/fs'
+import { findMediaFilesAsync, moveFile, statOrNull } from './lib/fs'
 import { inJob, job } from './live'
 import { loadManifestAsync } from './manifest'
+import { messageOf } from './lib/words'
 import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
-import { getManifestPath, getTrashDir, isVideoFile, sizeOf } from './utils'
+import { getManifestPath, getTrashDir, isVideoFile, mapWithLimit } from './utils'
 
 type Uploaded = NonNullable<ManifestFile['uploaded']>
 
@@ -93,52 +92,19 @@ const boardOf = (manifest: Manifest | null) => {
   return { files, byPath, inFolder: folderIndex(files) }
 }
 
-const fingerprint = (file: string, onBytes?: (read: number, total: number) => void) =>
-  new Promise<{ id: string; md5: string }>((resolve, reject) => {
-    const total = sizeOf(file)
-    let read = 0
-    const sha = crypto.createHash('sha256')
-    const md5 = crypto.createHash('md5')
-    fs.createReadStream(file, { highWaterMark: 1024 * 1024 })
-      .on('data', (chunk) => {
-        sha.update(chunk)
-        md5.update(chunk)
-        read += chunk.length
-        onBytes?.(read, total)
-      })
-      .on('error', reject)
-      .on('end', () => resolve({ id: idFromHash(sha), md5: md5.digest('hex') }))
-  })
-
-const inParallel = async <T, R>(items: T[], limit: number, work: (item: T) => Promise<R>) => {
-  const answers = new Array<R>(items.length)
-  let next = 0
-  await Promise.all(
-    Array.from({ length: Math.min(limit, items.length) }, async () => {
-      while (next < items.length) {
-        const at = next++
-        answers[at] = await work(items[at]!)
-      }
-    })
-  )
-  return answers
-}
-
 const binnedCopies = async (trashDir: string) =>
   (await listBin(trashDir))
     .filter((batch) => batch.from === 'fresh')
     .flatMap((batch) => batch.files)
 
-type Content = { id: string; md5: string }
-
-const known = new Map<string, Promise<Content | null>>()
+const known = new Map<string, Promise<string | null>>()
 const contentOf = async (file: string) => {
-  const stat = await fs.promises.stat(file).catch(() => null)
+  const stat = await statOrNull(file)
   if (!stat) return null
   const key = `${file}\0${stat.size}\0${stat.mtimeMs}`
   const found =
     known.get(key) ??
-    fingerprint(file).catch(() => {
+    computeFileId(file).catch(() => {
       known.delete(key)
       return null
     })
@@ -147,16 +113,13 @@ const contentOf = async (file: string) => {
 }
 
 const binnedBy =
-  (
-    bin: Awaited<ReturnType<typeof binnedCopies>>,
-    read: (file: string) => Promise<Content | null>
-  ) =>
+  (bin: Awaited<ReturnType<typeof binnedCopies>>, read: (file: string) => Promise<string | null>) =>
   async (file: string, size: number) => {
     const alike = bin.filter((f) => f.size === size)
     if (alike.length === 0) return false
     const camera = await read(file)
     if (!camera) return false
-    for (const f of alike) if ((await read(f.path))?.id === camera.id) return true
+    for (const f of alike) if ((await read(f.path)) === camera) return true
     return false
   }
 
@@ -177,6 +140,9 @@ const standingOf = (
 const dcimOf = (mount: string) => path.join(mount, 'DCIM')
 
 const LISTING_PARALLEL = 16
+const DELETING_PARALLEL = 4
+
+const secondsOf = (stat: { mtimeMs: number }) => Math.floor(stat.mtimeMs / 1000)
 
 const listCamera = async (mount: string, outputDir: string, trashDir: string) => {
   const files = await findMediaFilesAsync(dcimOf(mount))
@@ -190,8 +156,8 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
     return found
   }
   const listed = (
-    await inParallel(files, LISTING_PARALLEL, async (file) => {
-      const stat = await fs.promises.stat(file).catch(() => null)
+    await mapWithLimit(files, LISTING_PARALLEL, async (file) => {
+      const stat = await statOrNull(file)
       if (!stat) return null
       const dir = folders.get(file) ?? ''
       const original = await alreadyThere(file, stat, dir, namesOnce)
@@ -200,7 +166,7 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
         path: file,
         name: path.relative(dcimOf(mount), file),
         size: stat.size,
-        mtime: Math.floor(stat.mtimeMs / 1000),
+        mtime: secondsOf(stat),
         state: state === 'missing' && (await binned(file, stat.size)) ? ('binned' as const) : state
       }
     })
@@ -219,14 +185,17 @@ const listCamera = async (mount: string, outputDir: string, trashDir: string) =>
 const listCameraThroughKde = async (camera: string, outputDir: string) => {
   const seen = seenOnCamera(camera)
   const board = boardOf(await loadManifestAsync(getManifestPath(outputDir)))
-  const listed: CameraFile[] = seen.clips.map((clip) => ({
-    path: clip.url,
-    name: clip.url.slice(`${camera}/DCIM/`.length),
-    size: clip.size,
-    mtime:
-      clip.mtime ?? (clip.original && fs.existsSync(clip.original) ? mtimeOf(clip.original) : 0),
-    state: standingOf(board, clip.original, (files) => givenBack(files, clip.name, clip.size))
-  }))
+  const listed: CameraFile[] = await mapWithLimit(seen.clips, LISTING_PARALLEL, async (clip) => {
+    const stat =
+      typeof clip.mtime !== 'number' && clip.original ? await statOrNull(clip.original) : null
+    return {
+      path: clip.url,
+      name: clip.url.slice(`${camera}/DCIM/`.length),
+      size: clip.size,
+      mtime: clip.mtime ?? (stat ? secondsOf(stat) : 0),
+      state: standingOf(board, clip.original, (files) => givenBack(files, clip.name, clip.size))
+    }
+  })
   return {
     camera: cameraName(camera),
     mount: camera,
@@ -248,14 +217,11 @@ const listCameras = async (
     ...camerasSeenThroughKde().map((camera) => listCameraThroughKde(camera, outputDir))
   ])
 
-const canWriteIn = (dir: string) => {
-  try {
-    fs.accessSync(dir, fs.constants.W_OK)
-    return true
-  } catch {
-    return false
-  }
-}
+const canWriteIn = (dir: string) =>
+  access(dir, constants.W_OK).then(
+    () => true,
+    () => false
+  )
 
 const deleteNow = async ({
   paths,
@@ -270,30 +236,35 @@ const deleteNow = async ({
   deleting: ReturnType<typeof job>
   trashDir?: string
   mounts?: string[]
-  writable?: (dir: string) => boolean
+  writable?: (dir: string) => Promise<boolean>
 }) => {
   if (paths.length === 0) throw new Error('Select at least one file on the camera.')
   if (cameraCopying())
     throw new Error('A camera is being copied — wait for it to finish, then delete.')
-  const real = (file: string) => {
-    try {
-      return fs.realpathSync(file)
-    } catch {
-      return null
-    }
-  }
-  const cameraOf = (file: string) =>
-    mounts.find((mount) => {
-      const dcim = real(dcimOf(mount))
-      return dcim !== null && (real(file) ?? '').startsWith(`${dcim}${path.sep}`)
-    })
-  const strangers = paths.filter((file) => !cameraOf(file))
+  const dcims = await Promise.all(
+    mounts.map(async (mount) => ({ mount, dcim: await realpath(dcimOf(mount)).catch(() => null) }))
+  )
+  const sizes = new Map<string, number>()
+  const mountOf = new Map<string, string>()
+  await mapWithLimit(paths, LISTING_PARALLEL, async (file) => {
+    sizes.set(file, (await statOrNull(file))?.size ?? 0)
+    const real = await realpath(file).catch(() => null)
+    const found = dcims.find(
+      ({ dcim }) => dcim !== null && real !== null && real.startsWith(`${dcim}${path.sep}`)
+    )
+    if (found) mountOf.set(file, found.mount)
+  })
+  const strangers = paths.filter((file) => !mountOf.has(file))
   if (strangers.length > 0)
     throw new Error(
       `Nothing was deleted: ${strangers.map((f) => path.basename(f)).join(', ')} ${strangers.length === 1 ? 'is' : 'are'} not on a camera plugged in now.`
     )
 
-  const readOnly = paths.filter((file) => !writable(path.dirname(file)))
+  const readOnly = (
+    await Promise.all(
+      paths.map(async (file) => ((await writable(path.dirname(file))) ? null : file))
+    )
+  ).filter((file) => file !== null)
   if (readOnly.length > 0)
     throw new Error(
       `Nothing was deleted: the camera is mounted read-only here, so nothing can be taken off it from this app. Delete on the camera itself, or run SkyDock where the card can be written to.`
@@ -334,7 +305,7 @@ const deleteNow = async ({
     if (stage === 'done') deleting.step()
   }
   const binned = binnedBy(await binnedCopies(trashDir), (file) =>
-    fingerprint(file).catch(() => null)
+    computeFileId(file).catch(() => null)
   )
   const stamp = new Date().toISOString().replace(/[:.]/g, '-')
   const bins = new Set<string>()
@@ -346,24 +317,24 @@ const deleteNow = async ({
   }
   type Outcome = { file: string; size: number; went: boolean; why?: string }
   const handle = async (file: string): Promise<Outcome> => {
-    const size = sizeOf(file)
+    const size = sizes.get(file) ?? 0
     const name = path.basename(file)
     const refused = (why: string): Outcome => {
       said(file, 'failed', 0, why)
       return { file, size, went: false, why }
     }
     try {
-      const camera = await fingerprint(file, (read, total) =>
-        said(file, 'checking', total > 0 ? (read / total) * 0.5 : 0)
+      const camera = await computeFileId(file, (read) =>
+        said(file, 'checking', size > 0 ? (read / size) * 0.5 : 0)
       )
       const mine = entries.filter(
-        ({ file: f }) => f.id === camera.id || (f.copyOf !== undefined && f.copyOf === camera.id)
+        ({ file: f }) => f.id === camera || (f.copyOf !== undefined && f.copyOf === camera)
       )
       if (mine.length === 0 && !(await binned(file, size)))
         return refused(`${name} is neither on the board nor in the bin — copy it and scan first`)
       said(file, 'checked', 0.5)
       return await afterTheOthers(async () => {
-        const mount = cameraOf(file)!
+        const mount = mountOf.get(file)!
         const bin = path.join(trashDir, `camera-${cameraName(mount)}-${stamp}`)
         said(file, 'moving', 0.5)
         await moveFile(file, path.join(bin, path.relative(mount, file)), (copied) =>
@@ -374,11 +345,13 @@ const deleteNow = async ({
         return { file, size, went: true }
       })
     } catch (e) {
-      return refused(`${name}: ${e instanceof Error ? e.message : String(e)}`)
+      return refused(`${name}: ${messageOf(e)}`)
     }
   }
-  deleting.rows(paths.map((file) => ({ key: file, name: path.basename(file), size: sizeOf(file) })))
-  const outcomes = await inParallel(paths, 4, handle)
+  deleting.rows(
+    paths.map((file) => ({ key: file, name: path.basename(file), size: sizes.get(file) ?? 0 }))
+  )
+  const outcomes = await mapWithLimit(paths, DELETING_PARALLEL, handle)
   const went = outcomes.filter((o) => o.went)
   const stayed = outcomes.filter((o) => !o.went)
   if (went.length === 0)

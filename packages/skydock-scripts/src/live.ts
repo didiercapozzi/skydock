@@ -220,32 +220,30 @@ const job = ({
     const passed = record.passOver ? known.filter((row) => row.at === 'skipped' && !row.note) : []
     const listed = known.filter((row) => !passed.includes(row))
     if (record.quietIfIdle && state === 'done' && !listed.some((row) => row.at !== 'later')) return
-    try {
-      recordTransfer(
-        {
-          kind: record.kind,
-          label: record.label ?? known[0]?.name ?? label,
-          state,
-          ...(reason ? { reason } : {}),
-          items: listed.map((row) => ({
-            name: row.name,
-            size: row.size,
-            ...(row.note ? { note: row.note } : {}),
-            ...(row.to ? { to: row.to } : record.to && row.at === 'done' ? { to: record.to } : {}),
-            result:
-              row.at === 'done'
-                ? ('done' as const)
-                : row.at === 'skipped'
-                  ? ('skipped' as const)
-                  : row.at === 'failed'
-                    ? ('failed' as const)
-                    : ('left' as const)
-          })),
-          ...(passed.length > 0 ? { passedOver: passed.length } : {})
-        },
-        record.outputDir
-      )
-    } catch {}
+    void recordTransfer(
+      {
+        kind: record.kind,
+        label: record.label ?? known[0]?.name ?? label,
+        state,
+        ...(reason ? { reason } : {}),
+        items: listed.map((row) => ({
+          name: row.name,
+          size: row.size,
+          ...(row.note ? { note: row.note } : {}),
+          ...(row.to ? { to: row.to } : record.to && row.at === 'done' ? { to: record.to } : {}),
+          result:
+            row.at === 'done'
+              ? ('done' as const)
+              : row.at === 'skipped'
+                ? ('skipped' as const)
+                : row.at === 'failed'
+                  ? ('failed' as const)
+                  : ('left' as const)
+        })),
+        ...(passed.length > 0 ? { passedOver: passed.length } : {})
+      },
+      record.outputDir
+    ).catch(() => undefined)
   }
   const say = (
     now: 'checking' | 'working' | 'done' | 'failed',

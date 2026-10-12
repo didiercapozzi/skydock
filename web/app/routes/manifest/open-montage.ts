@@ -9,7 +9,7 @@ const openMontage: Intent = async ({ data, manifest, refuse }) => {
   const opened = await openInEditor(group.montage.projectPath)
   if (!opened.opened) return refuse(opened.reason ?? 'Could not open the editor.')
   return {
-    ...boardAnswer(manifest),
+    ...(await boardAnswer(manifest)),
     montage: { clips: 0, missingAssets: [], opened: true, openCommand: opened.command }
   }
 }

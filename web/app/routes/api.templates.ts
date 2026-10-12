@@ -1,5 +1,6 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { createWriteStream } from 'node:fs'
+import { rm } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { Readable } from 'node:stream'
@@ -28,7 +29,7 @@ const held = async (files: File[]) => {
     const at = path.join(os.tmpdir(), `skydock-template-${crypto.randomUUID()}`)
     await pipeline(
       Readable.fromWeb(file.stream() as NodeWebStream<Uint8Array>),
-      fs.createWriteStream(at)
+      createWriteStream(at)
     )
     arrived.push({ filename: file.name, at })
   }
@@ -63,7 +64,7 @@ const action = async ({ request }: Route.ActionArgs) => {
   } catch (e) {
     return Response.json({ ok: false, error: messageOf(e) }, { status: 422 })
   } finally {
-    for (const file of arrived) fs.rmSync(file.at, { force: true })
+    await Promise.all(arrived.map((file) => rm(file.at, { force: true })))
   }
 }
 

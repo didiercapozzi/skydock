@@ -1,11 +1,17 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { getManifestPath, getOutputDir, isCliModule, sortFilesByMtime } from './utils'
+import { getManifestPath, getOutputDir, isCliModule, mapWithLimit, sortFilesByMtime } from './utils'
 import { readExifMap } from './lib/exif'
 import { job } from './live'
 import { MANIFEST_VERSION, readRecordAsync, RECORD_UNREADABLE, saveManifest } from './manifest'
-import { computeFileId } from './fileId'
-import { findMediaFilesAsync, mtimeOf, writeJsonAtomic } from './lib/fs'
+import { computeFileId, originalEntry } from './fileId'
+import {
+  findMediaFilesAsync,
+  mtimeSeconds,
+  pathExists,
+  statOrNull,
+  writeJsonAtomic
+} from './lib/fs'
 import { z } from 'zod'
 import { groupNewFiles, reclusterGroups } from './clustering'
 import { catchUp } from './catchUp'
@@ -29,26 +35,23 @@ const TIME_TAGS = {
   parse: parseDateTime
 }
 
-const getCaptureEpoch = (filepath: string, timeMap: Map<string, string>) => {
-  const tag = timeMap.get(filepath)
+const getCaptureEpoch = (tag: string | undefined, onDisk: number) => {
   if (tag) {
     const datePart = tag.split(' ')[0].replace(/:/g, '-')
     const timePart = tag.split(' ')[1]
-    try {
-      const epoch = Math.floor(new Date(`${datePart}T${timePart}`).getTime() / 1000)
-      if (Number.isFinite(epoch)) return epoch
-    } catch {}
+    const epoch = Math.floor(new Date(`${datePart}T${timePart}`).getTime() / 1000)
+    if (Number.isFinite(epoch)) return epoch
   }
-
-  try {
-    return mtimeOf(filepath)
-  } catch {
-    return 0
-  }
+  return onDisk
 }
 
-const diskTimes = (paths: string[]) =>
-  new Map(paths.map((filepath) => [filepath, getCaptureEpoch(filepath, new Map())]))
+const diskTimes = async (paths: string[]) =>
+  new Map(
+    await mapWithLimit(paths, 16, async (filepath) => {
+      const stat = await statOrNull(filepath)
+      return [filepath, stat ? mtimeSeconds(stat) : 0] as const
+    })
+  )
 
 const shotsKnown = new Map<string, { size: number; at: number; shot: number }>()
 const SHOTS_KEPT = 20_000
@@ -79,9 +82,12 @@ const shotTimes = async (paths: string[]) => {
     if (shotsKnown.size > SHOTS_KEPT) shotsKnown.clear()
     for (const i of unread) {
       const filepath = paths[i]!
-      const shot = getCaptureEpoch(filepath, timeMap)
-      found.set(filepath, shot)
       const stamp = stamps[i]
+      const shot = getCaptureEpoch(
+        timeMap.get(filepath),
+        stamp ? mtimeSeconds({ mtimeMs: stamp.at }) : 0
+      )
+      found.set(filepath, shot)
       if (stamp && timeMap.has(filepath)) shotsKnown.set(filepath, { ...stamp, shot })
     }
   }
@@ -144,15 +150,9 @@ const scanFiles = async (originalDir: string) => {
         if (!before) reading?.working(path.basename(filepath))
         const id = before ? before.id : await computeFileId(filepath)
         if (!before) reading?.step()
-        const shot = before?.shot ?? getCaptureEpoch(filepath, timeMap)
+        const shot = before?.shot ?? getCaptureEpoch(timeMap.get(filepath), mtimeSeconds(stat))
         seen[filepath] = { size: stat.size, at: stat.mtimeMs, id, shot }
-        manifestFiles[i] = {
-          path: filepath,
-          size: stat.size,
-          mtime: shot,
-          filename: path.basename(filepath),
-          id
-        }
+        manifestFiles[i] = originalEntry({ path: filepath, id, mtime: shot, size: stat.size })
       }
     }
   )
@@ -239,7 +239,7 @@ const mergeManifests = async (existing: Manifest, diskFiles: ManifestFile[]) => 
       moved++
       continue
     }
-    if (fs.existsSync(f.path)) {
+    if (await pathExists(f.path)) {
       keptFiles.push(f)
       continue
     }
@@ -300,7 +300,7 @@ const scanMedia = async (options?: { outputDir?: string }) => {
   const originalDir = path.join(outputDir, 'original_files')
   const manifestPath = getManifestPath(outputDir)
 
-  fs.mkdirSync(originalDir, { recursive: true })
+  await fs.promises.mkdir(originalDir, { recursive: true })
 
   const diskFiles = await scanFiles(originalDir)
 

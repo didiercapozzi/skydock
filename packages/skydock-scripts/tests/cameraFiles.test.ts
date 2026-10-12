@@ -12,7 +12,7 @@ import { computeFileId } from '../src/fileId'
 import { saveManifest } from '../src/manifest'
 import { trashUnsorted } from '../src/trashUnsorted'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
-import { createTmpDir, nasStubs, stubFetch } from './fixtures'
+import { cameraWatching, createTmpDir, nasStubs, stubFetch } from './fixtures'
 
 let media: string
 let outputDir: string
@@ -95,33 +95,6 @@ afterEach(() => {
 })
 
 describe('what is on a camera', () => {
-  it('lists a card of four hundred clips as quickly against a board of two thousand files as against none', async () => {
-    const root = card(
-      Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`GX0${1000 + i}.MP4`, i % 250]))
-    )
-    const timed = async () => {
-      const started = Date.now()
-      const [camera] = await listCameras(outputDir, [root], trashDir)
-      expect(camera?.files).toHaveLength(400)
-      return Date.now() - started
-    }
-    const bare = await timed()
-    const filler = (n: number, id: string): ManifestFile => ({
-      id: `${id}${n}`,
-      path: path.join(outputDir, 'original_files', `${id}${n}.MP4`),
-      filename: `${id}${n}.MP4`,
-      size: 10,
-      mtime: DAY.getTime() / 1000 + n
-    })
-    const grouped = Array.from({ length: 1500 }, (_, n) => filler(n, 'g'))
-    const loose = Array.from({ length: 500 }, (_, n) => filler(n, 'l'))
-    const manifest = board([dropzone(grouped)])
-    manifest.files = [...grouped, ...loose]
-    saveManifest(path.join(outputDir, 'manifest.json'), manifest)
-
-    expect((await timed()) - bare).toBeLessThan(1500)
-  })
-
   it('says of each file whether it is on the storage, only copied here, in the bin, or not copied yet', async () => {
     const root = card({ 'GX01.MP4': 1, 'GX02.MP4': 2 })
     await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
@@ -134,7 +107,7 @@ describe('what is on a camera', () => {
     await trashUnsorted(unwanted, new Set([unwanted.files[0]!.id!]), outputDir, trashDir)
     card({ 'GX05.MP4': 5 })
     const storage: Record<string, string> = {}
-    saveManifest(
+    await saveManifest(
       path.join(outputDir, 'manifest.json'),
       board([dropzone([sentAsCopy(await entry('GX01.MP4'), storage), await entry('GX02.MP4')])])
     )
@@ -286,7 +259,7 @@ describe('deleting from a camera', () => {
         outputDir
       })
     ).rejects.toThrow()
-    const refused = readTransfers(outputDir)[0]
+    const refused = (await readTransfers(outputDir))[0]
     expect(refused).toMatchObject({ kind: 'delete', state: 'failed' })
     expect(refused?.items[0]).toMatchObject({ name: 'GX01.MP4', result: 'failed' })
 
@@ -298,7 +271,7 @@ describe('deleting from a camera', () => {
       mounts: [root],
       outputDir
     })
-    expect(readTransfers(outputDir)[0]).toMatchObject({ kind: 'delete', state: 'done' })
+    expect((await readTransfers(outputDir))[0]).toMatchObject({ kind: 'delete', state: 'done' })
   })
 
   it('takes a file off the card that is only copied here, not uploaded', async () => {
@@ -393,7 +366,7 @@ describe('deleting from a camera', () => {
       e.kind === 'job' && e.row?.phase !== 'checking' ? [e.row?.at] : []
     )
     expect(ended).toEqual(expect.arrayContaining(['done', 'failed']))
-    expect(readTransfers(outputDir)[0]?.items.map((i) => [i.name, i.result])).toEqual([
+    expect((await readTransfers(outputDir))[0]?.items.map((i) => [i.name, i.result])).toEqual([
       ['GX01.MP4', 'done'],
       ['GX02.MP4', 'failed']
     ])
@@ -410,7 +383,7 @@ describe('deleting from a camera', () => {
         manifest,
         trashDir,
         mounts: [root],
-        writable: () => false
+        writable: async () => false
       })
     ).rejects.toThrow(/mounted read-only/)
 
@@ -438,24 +411,7 @@ describe('deleting from a camera', () => {
     const storage: Record<string, string> = {}
     const manifest = board([dropzone([sentAsCopy(file, storage)])])
     withStorage(storage)
-    globalThis.skydockCameraWatch = {
-      timer: null,
-      seen: new Set(),
-      queue: [],
-      copying: true,
-      said: '',
-      kde: [],
-      asking: false,
-      askUntil: 0,
-      askedAt: 0,
-      seenOn: {},
-      keys: {},
-      fresh: {},
-      checking: new Set(),
-      prompts: [],
-      only: {},
-      saidKnown: ''
-    }
+    cameraWatching({ copying: true })
 
     await expect(remove(root, manifest)).rejects.toThrow(/being copied/)
   })

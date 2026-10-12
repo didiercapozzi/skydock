@@ -1,8 +1,8 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { chmod, copyFile, mkdir, readFile, rm } from 'node:fs/promises'
 import * as path from 'node:path'
 import { z } from 'zod'
-import { writeJsonAtomic } from './lib/fs'
+import { pathExists, writeJsonAtomic } from './lib/fs'
 import { jsonText } from './lib/json'
 import { getConfigDir, getStatusDir } from './utils'
 import { stopIfUploadCancelled, stopSignal, UploadCancelled } from './uploading'
@@ -69,9 +69,9 @@ const dsmSizedFilesSchema = z
   .object({ files: z.array(dsmSizedFileSchema).optional() })
   .passthrough()
 
-const dsmMd5StartSchema = z.object({ taskid: z.string() }).passthrough()
+const taskStartSchema = z.object({ taskid: z.string() }).passthrough()
 
-const dsmMd5StatusSchema = z
+const taskStatusSchema = z
   .object({ finished: z.boolean().optional(), md5: z.string().optional() })
   .passthrough()
 
@@ -104,14 +104,14 @@ type DsmConfig = z.infer<typeof dsmConfigSchema>
 
 const nasPath = (configDir?: string) => path.join(configDir || getConfigDir(), 'nas.json')
 
-const adoptLegacySession = () => {
+const adoptLegacySession = async () => {
   const legacy = path.join(getStatusDir(), 'nas.json')
   const target = nasPath()
-  if (fs.existsSync(target) || !fs.existsSync(legacy)) return
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  fs.copyFileSync(legacy, target)
-  fs.chmodSync(target, 0o600)
-  fs.unlinkSync(legacy)
+  if ((await pathExists(target)) || !(await pathExists(legacy))) return
+  await mkdir(path.dirname(target), { recursive: true })
+  await copyFile(legacy, target)
+  await chmod(target, 0o600)
+  await rm(legacy)
 }
 
 const normalizeHost = (host: string) => host.replace(/\/+$/, '')
@@ -245,7 +245,7 @@ const dsmLogin = async (config: DsmConfig) => {
       lastErr = e instanceof Error ? e : new Error(String(e))
       const code = e instanceof DsmLoginError ? e.code : undefined
       if (code === 102 || code === 103 || code === 104) continue
-      if (code === 400 && v !== versions[versions.length - 1]) continue
+      if (code === 400 && v !== versions.at(-1)) continue
       if (code === undefined && lastErr.message.includes('not supported')) continue
       throw lastErr
     }
@@ -279,13 +279,25 @@ const dsmValidateSession = async (host: string, sid: string) => {
   }
 }
 
+const scrypt = (password: string, salt: string, length: number) =>
+  new Promise<Buffer>((resolve, reject) =>
+    crypto.scrypt(password, salt, length, (error, key) => (error ? reject(error) : resolve(key)))
+  )
+
+const localKeys = new Map<string, Promise<Buffer>>()
+
 const getLocalKey = (host: string, user: string) => {
   const base = `${host}:${user}:skydock-v1`
-  return crypto.scryptSync(base, 'skydock-salt', 32)
+  let key = localKeys.get(base)
+  if (!key) {
+    key = scrypt(base, 'skydock-salt', 32)
+    localKeys.set(base, key)
+  }
+  return key
 }
 
-const encryptLocal = (host: string, user: string, plain: string) => {
-  const key = getLocalKey(host, user)
+const encryptLocal = async (host: string, user: string, plain: string) => {
+  const key = await getLocalKey(host, user)
   const iv = crypto.randomBytes(12)
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv)
   const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()])
@@ -293,11 +305,11 @@ const encryptLocal = (host: string, user: string, plain: string) => {
   return `${iv.toString('base64')}:${enc.toString('base64')}:${tag.toString('base64')}`
 }
 
-const decryptLocal = (host: string, user: string, encStr: string) => {
+const decryptLocal = async (host: string, user: string, encStr: string) => {
   const parts = encStr.split(':')
   if (parts.length !== 3) throw new Error('Invalid encPasswd format')
   const [ivB64, encB64, tagB64] = parts
-  const key = getLocalKey(host, user)
+  const key = await getLocalKey(host, user)
   const iv = Buffer.from(ivB64, 'base64')
   const enc = Buffer.from(encB64, 'base64')
   const tag = Buffer.from(tagB64, 'base64')
@@ -307,10 +319,10 @@ const decryptLocal = (host: string, user: string, encStr: string) => {
   return dec.toString('utf8')
 }
 
-const encryptPasswordForStorage = (host: string, user: string, plain: string) =>
-  `local:${encryptLocal(host, user, plain)}`
+const encryptPasswordForStorage = async (host: string, user: string, plain: string) =>
+  `local:${await encryptLocal(host, user, plain)}`
 
-const decryptPasswordFromStorage = (host: string, user: string, stored: string) => {
+const decryptPasswordFromStorage = async (host: string, user: string, stored: string) => {
   if (stored.startsWith('dsm:')) throw new Error('DSM encrypted password requires re-entry')
   if (stored.startsWith('local:')) return decryptLocal(host, user, stored.slice(6))
   return decryptLocal(host, user, stored)
@@ -390,47 +402,65 @@ const listNasFiles = async (host: string, sid: string, folderPath: string) => {
 const MD5_POLL_MS = 500
 const MD5_TIMEOUT_MS = 5 * 60 * 1000
 
+const runTask = async (
+  host: string,
+  sid: string,
+  task: {
+    api: string
+    version: string
+    start: Record<string, string>
+    pollMs: number
+    deadline: number
+  }
+) => {
+  const started = await dsmFetch(host, {
+    api: task.api,
+    version: task.version,
+    method: 'start',
+    ...task.start,
+    _sid: sid
+  })
+  if (!started.success) return { started: false } as const
+  const parsed = taskStartSchema.safeParse(started.data)
+  if (!parsed.success) return { started: true, taskid: null } as const
+  const taskid = parsed.data.taskid
+  for (;;) {
+    const body = await dsmFetch(host, {
+      api: task.api,
+      version: task.version,
+      method: 'status',
+      taskid: `"${taskid}"`,
+      _sid: sid
+    })
+    if (!body.success) return { started: true, taskid, status: null } as const
+    const status = taskStatusSchema.safeParse(body.data)
+    if (!status.success) return { started: true, taskid, status: null } as const
+    if (status.data.finished) return { started: true, taskid, status: status.data } as const
+    if (Date.now() > task.deadline) return { started: true, taskid, status: null } as const
+    await new Promise((resolve) => setTimeout(resolve, task.pollMs))
+  }
+}
+
 const dsmFileMd5 = async (
   host: string,
   sid: string,
   filePath: string,
   options?: { pollMs?: number; timeoutMs?: number }
 ) => {
-  const pollMs = options?.pollMs ?? MD5_POLL_MS
-  const deadline = Date.now() + (options?.timeoutMs ?? MD5_TIMEOUT_MS)
   try {
-    const started = await dsmFetch(host, {
+    const run = await runTask(host, sid, {
       api: 'SYNO.FileStation.MD5',
       version: '2',
-      method: 'start',
-      file_path: normalizeNasPath(filePath),
-      _sid: sid
+      start: { file_path: normalizeNasPath(filePath) },
+      pollMs: options?.pollMs ?? MD5_POLL_MS,
+      deadline: Date.now() + (options?.timeoutMs ?? MD5_TIMEOUT_MS)
     })
-    if (!started.success) return null
-    const task = dsmMd5StartSchema.safeParse(started.data)
-    if (!task.success) return null
-    for (;;) {
-      const body = await dsmFetch(host, {
-        api: 'SYNO.FileStation.MD5',
-        version: '2',
-        method: 'status',
-        taskid: `"${task.data.taskid}"`,
-        _sid: sid
-      })
-      if (!body.success) return null
-      const status = dsmMd5StatusSchema.safeParse(body.data)
-      if (!status.success) return null
-      if (status.data.finished) return status.data.md5 ?? null
-      if (Date.now() > deadline) return null
-      await new Promise((resolve) => setTimeout(resolve, pollMs))
-    }
+    return ('status' in run ? run.status?.md5 : null) ?? null
   } catch (e) {
     if (e instanceof UploadCancelled) throw e
     return null
   }
 }
-
-const dsmMoveStatusSchema = z.object({ finished: z.boolean().optional() }).passthrough()
 
 const dsmCopyMove = async (
   host: string,
@@ -439,38 +469,22 @@ const dsmCopyMove = async (
   toFolder: string,
   options?: { pollMs?: number; timeoutMs?: number; keepSource?: boolean }
 ) => {
-  const pollMs = options?.pollMs ?? MD5_POLL_MS
-  const deadline = Date.now() + (options?.timeoutMs ?? MD5_TIMEOUT_MS)
   try {
-    const started = await dsmFetch(host, {
+    const run = await runTask(host, sid, {
       api: 'SYNO.FileStation.CopyMove',
       version: '3',
-      method: 'start',
-      path: JSON.stringify([normalizeNasPath(filePath)]),
-      dest_folder_path: JSON.stringify([normalizeNasPath(toFolder)]),
-      remove_src: options?.keepSource ? 'false' : 'true',
-      overwrite: 'false',
-      create_parents: 'true',
-      _sid: sid
+      start: {
+        path: JSON.stringify([normalizeNasPath(filePath)]),
+        dest_folder_path: JSON.stringify([normalizeNasPath(toFolder)]),
+        remove_src: options?.keepSource ? 'false' : 'true',
+        overwrite: 'false',
+        create_parents: 'true'
+      },
+      pollMs: options?.pollMs ?? MD5_POLL_MS,
+      deadline: Date.now() + (options?.timeoutMs ?? MD5_TIMEOUT_MS)
     })
-    if (!started.success) return false
-    const task = dsmMd5StartSchema.safeParse(started.data)
-    if (!task.success) return true
-    for (;;) {
-      const body = await dsmFetch(host, {
-        api: 'SYNO.FileStation.CopyMove',
-        version: '3',
-        method: 'status',
-        taskid: `"${task.data.taskid}"`,
-        _sid: sid
-      })
-      if (!body.success) return false
-      const status = dsmMoveStatusSchema.safeParse(body.data)
-      if (!status.success) return false
-      if (status.data.finished) return true
-      if (Date.now() > deadline) return false
-      await new Promise((resolve) => setTimeout(resolve, pollMs))
-    }
+    if (!run.started) return false
+    return run.taskid === null || run.status !== null
   } catch {
     return false
   }
@@ -620,27 +634,24 @@ type DsmAuth = {
   validate: (host: string, sid: string) => Promise<boolean>
 }
 
-const loadNasSession = (configDir?: string) => {
+const loadNasSession = async (configDir?: string) => {
   try {
-    if (!configDir) adoptLegacySession()
-    return jsonText.pipe(nasSessionSchema).parse(fs.readFileSync(nasPath(configDir), 'utf-8'))
+    if (!configDir) await adoptLegacySession()
+    return jsonText.pipe(nasSessionSchema).parse(await readFile(nasPath(configDir), 'utf-8'))
   } catch {
     return null
   }
 }
 
-const saveNasSession = (session: NasSession, configDir?: string) => {
+const saveNasSession = async (session: NasSession, configDir?: string) => {
   nasSessionSchema.parse(session)
   const target = nasPath(configDir)
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  writeJsonAtomic(target, session)
-  fs.chmodSync(target, 0o600)
+  await mkdir(path.dirname(target), { recursive: true })
+  await writeJsonAtomic(target, session)
+  await chmod(target, 0o600)
 }
 
-const clearNasSession = (configDir?: string) => {
-  const target = nasPath(configDir)
-  if (fs.existsSync(target)) fs.unlinkSync(target)
-}
+const clearNasSession = (configDir?: string) => rm(nasPath(configDir), { force: true })
 
 const refreshStoredSession = async (
   stored: NasSession,
@@ -663,18 +674,18 @@ const refreshStoredSession = async (
     const parsedSid = dsmSidResponseSchema.safeParse(body)
     if (!parsedSid.success) throw new Error(dsmApiErrorMessage(body))
     const sid = parsedSid.data.data.sid
-    saveNasSession({ ...stored, sessionId: sid }, configDir)
+    await saveNasSession({ ...stored, sessionId: sid }, configDir)
     return sid
   }
-  const plain = decryptPasswordFromStorage(stored.hostname, stored.username, enc)
+  const plain = await decryptPasswordFromStorage(stored.hostname, stored.username, enc)
   const { sid, deviceId } = await login({
     host: stored.hostname,
     user: stored.username,
     password: plain,
     deviceId: stored.deviceId
   })
-  const newEnc = encryptPasswordForStorage(stored.hostname, stored.username, plain)
-  saveNasSession(
+  const newEnc = await encryptPasswordForStorage(stored.hostname, stored.username, plain)
+  await saveNasSession(
     { ...stored, sessionId: sid, encPasswd: newEnc, deviceId: deviceId ?? stored.deviceId },
     configDir
   )
@@ -690,7 +701,7 @@ const loginWithSession = async (
   if (!parsed.success) throw new Error('Invalid login config')
   const { host, user, password, otp } = parsed.data
 
-  const stored = loadNasSession(configDir)
+  const stored = await loadNasSession(configDir)
   const canReuse = stored && stored.hostname === host && stored.username === user
   if (canReuse && (await dsm.validate(host, stored.sessionId))) return stored.sessionId
   if (canReuse && stored && !password && stored.encPasswd) {
@@ -701,13 +712,13 @@ const loginWithSession = async (
   if (!password) throw new Error('Session expired. Please reconnect to NAS.')
   const kept = canReuse && stored ? stored : undefined
   const { sid, deviceId } = await dsm.login({ host, user, password, otp, deviceId: kept?.deviceId })
-  saveNasSession(
+  await saveNasSession(
     {
       hostname: host,
       username: user,
       sessionId: sid,
       backupFolder: kept?.backupFolder,
-      encPasswd: encryptPasswordForStorage(host, user, password),
+      encPasswd: await encryptPasswordForStorage(host, user, password),
       deviceId: deviceId ?? kept?.deviceId,
       listsDir: kept?.listsDir
     },
@@ -717,7 +728,7 @@ const loginWithSession = async (
 }
 
 const tryAutoRefreshSession = async (configDir?: string) => {
-  const stored = loadNasSession(configDir)
+  const stored = await loadNasSession(configDir)
   if (!stored || !stored.encPasswd) return null
   try {
     const valid = await dsmValidateSession(stored.hostname, stored.sessionId)
@@ -725,13 +736,13 @@ const tryAutoRefreshSession = async (configDir?: string) => {
   } catch {}
   try {
     const sid = await refreshStoredSession(stored, configDir)
-    return loadNasSession(configDir) ?? { ...stored, sessionId: sid }
+    return (await loadNasSession(configDir)) ?? { ...stored, sessionId: sid }
   } catch {}
   return null
 }
 
 const ensureNasSession = async (configDir?: string) => {
-  const session = loadNasSession(configDir)
+  const session = await loadNasSession(configDir)
   if (!session) return null
   if (await dsmValidateSession(session.hostname, session.sessionId)) return session
   const refreshed = await tryAutoRefreshSession(configDir)

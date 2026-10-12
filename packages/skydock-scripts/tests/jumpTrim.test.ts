@@ -15,6 +15,10 @@ describe('trimming a clip to its jump', () => {
     expect(jumpTrim({ exit: 40 }, true, null).cropStart).toBe(40)
   })
 
+  it('never starts before the clip does', () => {
+    expect(jumpTrim({ exit: 0.4 }, false, null).cropStart).toBe(0)
+  })
+
   it('keeps the end it has when no landing was found', () => {
     expect(jumpTrim({ exit: 40 }, false, 120).cropEnd).toBe(120)
   })

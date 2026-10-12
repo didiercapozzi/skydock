@@ -229,11 +229,72 @@ const startListStorage = async (
   }
 }
 
+const cameraWatching = (over: Partial<NonNullable<typeof globalThis.skydockCameraWatch>> = {}) => {
+  globalThis.skydockCameraWatch = {
+    timer: null,
+    seen: new Set(),
+    queue: [],
+    copying: false,
+    said: '',
+    kde: [],
+    asking: false,
+    askUntil: 0,
+    askedAt: 0,
+    seenOn: {},
+    keys: {},
+    fresh: {},
+    checking: new Set(),
+    prompts: [],
+    only: {},
+    saidKnown: '',
+    ...over
+  }
+}
+
+const CONTAINERS = new Set(['mp4', 'mov', 'mkv', 'webm', 'avi'])
+
+const ffmpegRefusal = (line: string, out: string) => {
+  if (/(^|\s)-f\s+\w+/.test(line)) return null
+  const extension = out.split('.').pop()?.toLowerCase() ?? ''
+  return CONTAINERS.has(extension)
+    ? null
+    : `Unable to choose an output format for '${out}'; use a standard extension for the filename or specify the format manually.`
+}
+
+const fakeTools =
+  ({
+    width = 3840,
+    height = 1080,
+    rotation
+  }: { width?: number; height?: number; rotation?: number } = {}) =>
+  (cmd: string | Buffer, opts?: { encoding?: string }) => {
+    const line = String(cmd)
+    if (line.startsWith('ffprobe')) {
+      const shape = `width=${width}\nheight=${height}\n${rotation === undefined ? '' : `rotation=${rotation}\n`}`
+      return opts?.encoding ? shape : Buffer.from(shape)
+    }
+    if (line.startsWith('ffmpeg')) {
+      const out = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1]).at(-1)
+      if (!out) return Buffer.from('')
+      const refusal = ffmpegRefusal(line, out)
+      if (refusal !== null) {
+        const failure = new Error('ffmpeg exited with code 234') as Error & { stderr: Buffer }
+        failure.stderr = Buffer.from(`${refusal}\nError opening output file ${out}.\n`)
+        throw failure
+      }
+      fs.mkdirSync(path.dirname(out), { recursive: true })
+      fs.writeFileSync(out, Buffer.from('media'))
+    }
+    return Buffer.from('')
+  }
+
 export {
+  cameraWatching,
   createTmpDir,
   execFileSyncMock,
   execFileViaSyncMock,
   execSyncMock,
+  fakeTools,
   jsonResponse,
   nasStubs,
   onPlatform,

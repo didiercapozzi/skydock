@@ -149,7 +149,7 @@ describe('a copy, kept through what happens to a board', () => {
     const manifest = board()
     copyFiles(manifest, new Set(['plane']), 'anas')
 
-    saveManifest(manifestPath, manifest)
+    await saveManifest(manifestPath, manifest)
     const loaded = (await loadManifestAsync(manifestPath))!
 
     expect(idsIn(loaded, 'anas')).toEqual(['plane~1', 'ana', 'ana2'])
@@ -179,27 +179,27 @@ describe('a copy, kept through what happens to a board', () => {
 })
 
 describe('a copy that leaves its jump', () => {
-  it('ends, rather than going loose beside its original', () => {
+  it('ends, rather than going loose beside its original', async () => {
     const manifest = board()
     copyFiles(manifest, new Set(['plane']), 'anas')
 
-    moveFiles(manifest, new Set(['plane~1']), { destination: null })
+    await moveFiles(manifest, new Set(['plane~1']), { destination: null })
 
     expect(manifest.files.some((f) => f.id === 'plane~1')).toBe(false)
     expect(idsIn(manifest, 'anas')).toEqual(['ana', 'ana2'])
     expect(idsIn(manifest, 'lucs')).toEqual(['plane', 'luc'])
   })
 
-  it('can be moved on into another jump, still a copy', () => {
+  it('can be moved on into another jump, still a copy', async () => {
     const manifest = board()
     copyFiles(manifest, new Set(['luc']), 'anas')
 
-    moveFiles(manifest, new Set(['luc~1']), { newGroup: true })
+    await moveFiles(manifest, new Set(['luc~1']), { newGroup: true })
 
     expect(manifest.files.find((f) => f.id === 'luc~1')).toMatchObject({ copyOf: 'luc' })
   })
 
-  it('goes with its montage when the montage is deleted, leaving the original where it is', () => {
+  it('goes with its montage when the montage is deleted, leaving the original where it is', async () => {
     dir = createTmpDir('skydock-copies-')
     const manifest = board()
     const anas = manifest.groups.find((g) => g.id === 'anas')!
@@ -207,7 +207,7 @@ describe('a copy that leaves its jump', () => {
     anas.passenger = { firstname: 'Ana', lastname: 'Roth' }
     copyFiles(manifest, new Set(['plane']), 'anas')
 
-    deleteMontage(manifest, dir, 'anas')
+    await deleteMontage(manifest, dir, 'anas')
 
     expect(manifest.files.some((f) => f.id === 'plane~1')).toBe(false)
     expect(idsIn(manifest, 'lucs')).toEqual(['plane', 'luc'])
@@ -219,7 +219,7 @@ describe('the original of a copy', () => {
     dir = createTmpDir('skydock-copies-')
     const manifest = board()
     copyFiles(manifest, new Set(['plane']), 'anas')
-    moveFiles(manifest, new Set(['plane']), { destination: null })
+    await moveFiles(manifest, new Set(['plane']), { destination: null })
 
     await expect(
       trashUnsorted(manifest, new Set(['plane']), dir, path.join(dir, 'bin'))
@@ -265,7 +265,7 @@ describe('a jump holding a copy from earlier', () => {
     expect(anas.files.find((f) => f.id === 'plane~1')?.mtime).toBe(copyWas + 600)
   })
 
-  it('has only its copies to go by when it holds nothing else', () => {
+  it('has only its copies to go by when it holds nothing else', async () => {
     expect(
       startOfFiles([
         manifestFile('x~1', AT, { copyOf: 'x' }),
@@ -276,20 +276,20 @@ describe('a jump holding a copy from earlier', () => {
 })
 
 describe('a jump holding a file brought in from well before', () => {
-  const broughtIn = () => {
+  const broughtIn = async () => {
     const manifest = board()
-    moveFiles(manifest, new Set(['luc']), { targetGroupId: 'anas' })
+    await moveFiles(manifest, new Set(['luc']), { targetGroupId: 'anas' })
     return { manifest, anas: manifest.groups.find((g) => g.id === 'anas')! }
   }
 
-  it('still starts when its own run starts', () => {
-    const { anas } = broughtIn()
+  it('still starts when its own run starts', async () => {
+    const { anas } = await broughtIn()
     expect(anas.files.map((f) => f.id)).toEqual(['luc', 'ana', 'ana2'])
     expect(startOfFiles(anas.files)).toBe(AT + 7200)
   })
 
-  it('is re-timed from its own run, and stays on its own day', () => {
-    const { manifest, anas } = broughtIn()
+  it('is re-timed from its own run, and stays on its own day', async () => {
+    const { manifest, anas } = await broughtIn()
 
     shiftGroupTo(manifest, anas, AT + 7200 + 300)
 
@@ -297,10 +297,10 @@ describe('a jump holding a file brought in from well before', () => {
     expect(anas.day).toBe('01.08.2026')
   })
 
-  it('does start earlier when the file brought in is part of the same run', () => {
+  it('does start earlier when the file brought in is part of the same run', async () => {
     const manifest = board()
     manifest.files.push(manifestFile('justBefore', AT + 7200 - 300))
-    moveFiles(manifest, new Set(['justBefore']), { targetGroupId: 'anas' })
+    await moveFiles(manifest, new Set(['justBefore']), { targetGroupId: 'anas' })
 
     expect(startOfFiles(manifest.groups.find((g) => g.id === 'anas')!.files)).toBe(AT + 7200 - 300)
   })

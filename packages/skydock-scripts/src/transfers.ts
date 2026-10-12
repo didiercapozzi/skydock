@@ -1,5 +1,5 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { mkdir, readFile, rm } from 'node:fs/promises'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { writeJsonAtomic } from './lib/fs'
@@ -38,15 +38,28 @@ const ITEMS_KEPT = 400
 const getTransfersPath = (outputDir?: string) =>
   path.join(getStatusDir(outputDir), 'transfers.json')
 
-const readTransfers = (outputDir?: string) => {
+const load = async (outputDir?: string) => {
   try {
     const parsed = jsonText
       .pipe(transfersFileSchema)
-      .safeParse(fs.readFileSync(getTransfersPath(outputDir), 'utf-8'))
+      .safeParse(await readFile(getTransfersPath(outputDir), 'utf-8'))
     return parsed.success ? parsed.data.transfers : []
   } catch {
     return []
   }
+}
+
+let writing: Promise<unknown> = Promise.resolve()
+
+const readTransfers = async (outputDir?: string) => {
+  await writing
+  return load(outputDir)
+}
+
+const inTurn = <T>(job: () => Promise<T>) => {
+  const run = writing.then(job)
+  writing = run.catch(() => undefined)
+  return run
 }
 
 const fitted = (items: TransferItem[], passedOver: number) => {
@@ -61,32 +74,35 @@ const fitted = (items: TransferItem[], passedOver: number) => {
   }
 }
 
-const recordTransfer = (transfer: NewTransfer, outputDir?: string) => {
-  const { items, passedOver, more } = fitted(transfer.items, transfer.passedOver ?? 0)
-  const made: Transfer = {
-    ...transfer,
-    id: crypto.randomUUID(),
-    at: Math.floor(Date.now() / 1000),
-    items,
-    ...(passedOver > 0 ? { passedOver } : {}),
-    ...(more > 0 ? { more } : {})
-  }
-  const target = getTransfersPath(outputDir)
-  fs.mkdirSync(path.dirname(target), { recursive: true })
-  writeJsonAtomic(target, { transfers: [made, ...readTransfers(outputDir)].slice(0, KEPT) })
-  return made
-}
+const recordTransfer = (transfer: NewTransfer, outputDir?: string) =>
+  inTurn(async () => {
+    const { items, passedOver, more } = fitted(transfer.items, transfer.passedOver ?? 0)
+    const made: Transfer = {
+      ...transfer,
+      id: crypto.randomUUID(),
+      at: Math.floor(Date.now() / 1000),
+      items,
+      ...(passedOver > 0 ? { passedOver } : {}),
+      ...(more > 0 ? { more } : {})
+    }
+    const target = getTransfersPath(outputDir)
+    await mkdir(path.dirname(target), { recursive: true })
+    await writeJsonAtomic(target, {
+      transfers: [made, ...(await load(outputDir))].slice(0, KEPT)
+    })
+    return made
+  })
 
-const removeTransfer = (id: string, outputDir?: string) => {
-  const kept = readTransfers(outputDir).filter((transfer) => transfer.id !== id)
-  if (kept.length === 0) clearTransfers(outputDir)
-  else writeJsonAtomic(getTransfersPath(outputDir), { transfers: kept })
-}
+const forget = (outputDir?: string) => rm(getTransfersPath(outputDir), { force: true })
 
-const clearTransfers = (outputDir?: string) => {
-  const target = getTransfersPath(outputDir)
-  if (fs.existsSync(target)) fs.unlinkSync(target)
-}
+const removeTransfer = (id: string, outputDir?: string) =>
+  inTurn(async () => {
+    const kept = (await load(outputDir)).filter((transfer) => transfer.id !== id)
+    if (kept.length === 0) await forget(outputDir)
+    else await writeJsonAtomic(getTransfersPath(outputDir), { transfers: kept })
+  })
+
+const clearTransfers = (outputDir?: string) => inTurn(() => forget(outputDir))
 
 export {
   clearTransfers,

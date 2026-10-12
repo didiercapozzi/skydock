@@ -1,28 +1,18 @@
-import * as fs from 'node:fs'
+import { readdir } from 'node:fs/promises'
 import * as path from 'node:path'
+import { outputKeyOf } from './fileStatus'
 import { toHostPath } from './hostPath'
 import { getGroupProcessedDir } from './process'
 import type { Manifest, ManifestGroup } from './types'
+import { mtimeSeconds, statOrNull } from './lib/fs'
 import { mediaSeconds } from './lib/media'
+import { mapWithLimit } from './utils'
 import { hasCompletePassenger, isMontage } from './workspace'
 
 const isNamedMontage = (group: ManifestGroup) =>
   isMontage(group) && hasCompletePassenger(group.passenger)
 
 const filmNameOf = (baseName: string) => `${baseName}.mp4`
-
-const photosNameOf = (baseName: string) => `${baseName}.photos.zip`
-
-const rushesNameOf = (baseName: string) => `${baseName}.rushes.zip`
-
-const statOrNull = (target: string) => {
-  try {
-    const stat = fs.statSync(target)
-    return { size: stat.size, mtime: Math.floor(stat.mtimeMs / 1000) }
-  } catch {
-    return null
-  }
-}
 
 const durations = new Map<string, number | null>()
 const measuring = new Set<string>()
@@ -41,21 +31,20 @@ const filmSeconds = (target: string, size: number, mtime: number) => {
   return null
 }
 
-const montageArtifacts = (outputDir: string, group: ManifestGroup) => {
+const montageArtifacts = async (outputDir: string, group: ManifestGroup) => {
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
-  const entries = fs.existsSync(dir) ? fs.readdirSync(dir) : []
+  const entries = await readdir(dir).catch(() => [])
+  const stat = await statOrNull(path.join(dir, filmNameOf(baseName)))
   return {
     dir,
     baseName,
     project: entries.some((e) => e.endsWith('.kdenlive')),
-    film: statOrNull(path.join(dir, filmNameOf(baseName))),
-    photosZip: entries.includes(photosNameOf(baseName)),
-    rushesZip: entries.includes(rushesNameOf(baseName)),
+    film: stat ? { size: stat.size, mtime: mtimeSeconds(stat) } : null,
     strayFilms: entries.filter((e) => e.endsWith('.mp4') && e !== filmNameOf(baseName))
   }
 }
 
-const secondsOf = (found: ReturnType<typeof montageArtifacts>) =>
+const secondsOf = (found: Awaited<ReturnType<typeof montageArtifacts>>) =>
   found.film
     ? filmSeconds(
         path.join(found.dir, filmNameOf(found.baseName)),
@@ -66,11 +55,19 @@ const secondsOf = (found: ReturnType<typeof montageArtifacts>) =>
 
 const EDIT_LOCKED = 'This montage has an edit — change it in kdenlive.'
 
-const hasEdit = (outputDir: string, group: ManifestGroup) =>
-  isNamedMontage(group) && montageArtifacts(outputDir, group).project
+const hasEdit = async (outputDir: string, group: ManifestGroup) =>
+  isNamedMontage(group) && (await montageArtifacts(outputDir, group)).project
 
-const frozenMontages = (manifest: Manifest, outputDir: string) =>
-  new Set(manifest.groups.filter((g) => g.freed || hasEdit(outputDir, g)).map((g) => g.id))
+const FROZEN_PARALLEL = 16
+
+const frozenMontages = async (manifest: Manifest, outputDir: string) => {
+  const frozen = await mapWithLimit(
+    manifest.groups,
+    FROZEN_PARALLEL,
+    async (g) => g.freed || (await hasEdit(outputDir, g))
+  )
+  return new Set(manifest.groups.filter((_, i) => frozen[i]).map((g) => g.id))
+}
 
 const editedShape = (group: ManifestGroup) =>
   JSON.stringify({
@@ -81,7 +78,7 @@ const editedShape = (group: ManifestGroup) =>
       ? [group.passenger.firstname.trim(), group.passenger.lastname.trim()]
       : null,
     files: group.files.map((f) => [
-      f.id ?? f.path,
+      outputKeyOf(f),
       f.mtime,
       f.cropStart ?? null,
       f.cropEnd ?? null,
@@ -92,37 +89,28 @@ const editedShape = (group: ManifestGroup) =>
 
 const sameEditedGroup = (a: ManifestGroup, b: ManifestGroup) => editedShape(a) === editedShape(b)
 
-const statMontageArtifacts = (manifest: Manifest, outputDir: string) => {
-  const artifacts: Record<
-    string,
-    {
-      project: boolean
-      projectPath: string
-      film: { size: number; mtime: number; seconds: number | null; path: string } | null
-      baseName: string
-    }
-  > = {}
-  for (const group of manifest.groups) {
-    if (!isNamedMontage(group)) continue
-    const found = montageArtifacts(outputDir, group)
-    artifacts[group.id] = {
-      project: found.project,
-      projectPath: toHostPath(path.join(found.dir, `${found.baseName}.kdenlive`), outputDir),
-      film: found.film
-        ? {
-            ...found.film,
-            seconds: secondsOf(found),
-            path: path.join(found.dir, filmNameOf(found.baseName))
-          }
-        : null,
-      baseName: found.baseName
-    }
-  }
-  return artifacts
+const factOf = (found: Awaited<ReturnType<typeof montageArtifacts>>, outputDir: string) => ({
+  project: found.project,
+  projectPath: toHostPath(path.join(found.dir, `${found.baseName}.kdenlive`), outputDir),
+  film: found.film
+    ? {
+        ...found.film,
+        seconds: secondsOf(found),
+        path: path.join(found.dir, filmNameOf(found.baseName))
+      }
+    : null,
+  baseName: found.baseName
+})
+
+const statMontageArtifacts = async (manifest: Manifest, outputDir: string) => {
+  const named = manifest.groups.filter(isNamedMontage)
+  const founds = await mapWithLimit(named, FROZEN_PARALLEL, (g) => montageArtifacts(outputDir, g))
+  return Object.fromEntries(named.map((g, i) => [g.id, factOf(founds[i]!, outputDir)]))
 }
 
 export {
   EDIT_LOCKED,
+  factOf,
   filmNameOf,
   frozenMontages,
   hasEdit,

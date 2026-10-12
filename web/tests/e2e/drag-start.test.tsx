@@ -66,14 +66,14 @@ const dragged = async (name: string) => {
   await userEvent.dragAndDrop(page.getByRole('button', { name }), page.getByTestId('landing'))
 }
 
-describe('a drag that has just started', () => {
-  test('carries the name of the file, so the engine lets it go', async () => {
+describe('what is carried while a drag is under way', () => {
+  test('a file is carried by its name', async () => {
     await dragged('the clip')
 
     expect(said).toEqual(['luc.MP4'])
   })
 
-  test('carries the name of the jump', async () => {
+  test('a jump is carried by its name', async () => {
     await dragged('the jump')
 
     expect(said).toEqual(['Jump 1'])

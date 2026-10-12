@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import * as url from 'node:url'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
 import { CLIPS, dayFolder, makeClip } from './media'
@@ -8,11 +7,10 @@ import { loadState } from './saved'
 import { recordProblems, treeOf } from './invariants'
 import { place } from './steps'
 
-const here = path.dirname(url.fileURLToPath(import.meta.url))
-const LISTINGS = path.join(here, 'listings')
+const LISTINGS = path.join(import.meta.dirname, 'listings')
 
 describe('the record and the work folder', () => {
-  test('the record parses with the app’s own schema in every state the journey keeps', () => {
+  test('the board’s record is whole and readable in every state the journey keeps', () => {
     for (const state of ['sorted', 'processed']) {
       const world = loadState(state)
       expect(recordProblems(world), `the record of the state ${state}`).toEqual([])
@@ -40,11 +38,10 @@ const j = harness({ name: 'j-invariants', state: 'sorted' })
 describe('the page while the app works', () => {
   test('is never held up while the app scans, copies files in and processes them', async () => {
     await j.context.addInitScript((limit) => {
-      const w = window as unknown as { __long: number[] }
-      w.__long = []
+      const held: number[] = []
+      Reflect.set(window, '__long', held)
       new PerformanceObserver((list) => {
-        for (const entry of list.getEntries())
-          if (entry.duration > limit) w.__long.push(entry.duration)
+        for (const entry of list.getEntries()) if (entry.duration > limit) held.push(entry.duration)
       }).observe({ type: 'longtask', buffered: true })
     }, LONG)
     await j.open()
@@ -62,7 +59,7 @@ describe('the page while the app works', () => {
     await j.page.getByRole('button', { name: /^Process \d+ files?$/ }).click()
     await j.see(/files? (is|are) ready to upload/, 60_000)
 
-    const held = await j.page.evaluate(() => (window as unknown as { __long: number[] }).__long)
+    const held = await j.page.evaluate(() => Reflect.get(window, '__long') as number[])
     expect(held, 'tasks of the page longer than half a second').toEqual([])
     await j.quiet()
   })

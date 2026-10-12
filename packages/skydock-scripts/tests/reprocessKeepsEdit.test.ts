@@ -5,7 +5,7 @@ import * as path from 'node:path'
 import { saveManifest } from '../src/manifest'
 import { processJumps } from '../src/process'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
-import { createTmpDir, execSyncMock, tellTools } from './fixtures'
+import { createTmpDir, execSyncMock, fakeTools, tellTools } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
@@ -13,21 +13,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
-const tools = (cmd: string | Buffer, opts?: { encoding?: string }) => {
-  const line = String(cmd)
-  if (line.startsWith('ffprobe')) {
-    const shape = 'width=3840\nheight=2160\n'
-    return opts?.encoding ? shape : Buffer.from(shape)
-  }
-  if (line.startsWith('ffmpeg')) {
-    const out = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1]).pop()
-    if (out) {
-      fs.mkdirSync(path.dirname(out), { recursive: true })
-      fs.writeFileSync(out, Buffer.from('media'))
-    }
-  }
-  return Buffer.from('')
-}
+const tools = fakeTools({ height: 2160 })
 
 const AT = Math.floor(new Date(2026, 7, 8, 9, 9, 9).getTime() / 1000)
 const PASSENGER = { firstname: 'Luc', lastname: 'Favre' }
@@ -62,7 +48,7 @@ const prepare = async (files: ManifestFile[], group?: Partial<ManifestGroup>) =>
     destinations: [{ name: 'Passengers' }, { name: 'Yverdon' }]
   }
   const manifestPath = path.join(outputDir, 'manifest.json')
-  saveManifest(manifestPath, manifest)
+  await saveManifest(manifestPath, manifest)
   await processJumps({ manifestPath, outputDir })
 }
 

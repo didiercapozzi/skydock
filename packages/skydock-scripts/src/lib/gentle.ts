@@ -4,9 +4,9 @@ import { Writable } from 'node:stream'
 const EVERY_BYTES = 64 * 1024 ** 2
 
 const gentleWriter = (file: string) => {
-  let handle: FileHandle | undefined
+  let opening: Promise<FileHandle> | undefined
   let since = 0
-  const opened = async () => (handle ??= await open(file, 'w'))
+  const opened = () => (opening ??= open(file, 'w'))
   return new Writable({
     highWaterMark: 16 * 1024 ** 2,
     write(chunk: Buffer, _encoding, next) {
@@ -29,9 +29,9 @@ const gentleWriter = (file: string) => {
         )
     },
     destroy(error, done) {
-      const closing = handle?.close()
-      handle = undefined
-      Promise.resolve(closing)
+      const closing = opening
+      opening = undefined
+      Promise.resolve(closing?.then((at) => at.close()))
         .catch(() => {})
         .then(() => done(error))
     }

@@ -1,13 +1,15 @@
 import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { createReadStream } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import * as http from 'node:http'
 import * as https from 'node:https'
 import * as path from 'node:path'
+import { json } from 'node:stream/consumers'
 import { z } from 'zod'
-import { hashFile, walkFiles } from './lib/fs'
+import { hashFile, walkFilesAsync } from './lib/fs'
 import { alreadyUp, sameSizeUnknown, worthReading } from './originEntry'
 import type { OriginIndex } from './originEntry'
-import { stampOf } from './lib/clock'
+import { nowSeconds, stampOf } from './lib/clock'
 import { lastSegment, parentOf } from './paths'
 import { stopIfUploadCancelled, stopSignal, UploadCancelled } from './uploading'
 import { mapWithLimit, withRetry } from './utils'
@@ -58,6 +60,11 @@ type CopyOver = { local: string; from: string; to: string; md5: string }
 
 type Seen = { remotePath: string; size: number; md5?: string }
 
+type Origins = {
+  index: OriginIndex
+  of: (localPath: string) => { from?: string; cut?: [number, number] } | undefined
+}
+
 type UploadVerdict = {
   localPath: string
   remotePath: string
@@ -76,22 +83,6 @@ const PROGRESS_REPORT_INTERVAL = 1024 * 1024
 
 const PROGRESS_FLUSH_FRACTION = 0.95
 
-const readResponseJson = (res: http.IncomingMessage) =>
-  new Promise<unknown>((resolve, reject) => {
-    const chunks: Array<Buffer> = []
-    res.on('data', (chunk: string | Buffer) =>
-      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-    )
-    res.on('end', () => {
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString('utf8')))
-      } catch (e) {
-        reject(e instanceof Error ? e : new Error(String(e)))
-      }
-    })
-    res.on('error', reject)
-  })
-
 const uploadFile = async (
   host: string,
   sid: string,
@@ -102,15 +93,15 @@ const uploadFile = async (
 ) => {
   stopIfUploadCancelled()
   const filename = path.basename(localPath).replace(/"/g, '')
-  const stat = fs.statSync(localPath)
-  const totalBytes = stat.size
+  const said = await stat(localPath)
+  const totalBytes = said.size
   onProgress?.({ filename, bytesUploaded: 0, totalBytes })
   const boundary = `----SkyDock${crypto.randomBytes(8).toString('hex')}`
   const field = (name: string, value: string) =>
     `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`
   const preamble = Buffer.from(
     `${field('path', remoteDir)}${field('create_parents', 'true')}${field('overwrite', options?.overwrite ? 'true' : 'false')}` +
-      field('mtime', String(Math.floor(stat.mtimeMs))) +
+      field('mtime', String(Math.floor(said.mtimeMs))) +
       `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: application/octet-stream\r\n\r\n`,
     'utf8'
   )
@@ -157,8 +148,8 @@ const uploadFile = async (
         'Content-Length': String(contentLength)
       }
       const handleResponse = (res: http.IncomingMessage) => {
-        readResponseJson(res).then((json) => {
-          const parsed = dsmResponseSchema.safeParse(json)
+        json(res).then((body) => {
+          const parsed = dsmResponseSchema.safeParse(body)
           if (parsed.success && parsed.data.success) {
             onProgress?.({ filename, bytesUploaded: totalBytes, totalBytes })
             done()
@@ -166,7 +157,7 @@ const uploadFile = async (
             const code = parsed.success ? parsed.data.error?.code : undefined
             done(
               new Error(
-                `Upload failed for ${filename}${code !== undefined ? ` (DSM error ${code})` : ''}: ${JSON.stringify(json).slice(0, 200)}`
+                `Upload failed for ${filename}${code !== undefined ? ` (DSM error ${code})` : ''}: ${JSON.stringify(body).slice(0, 200)}`
               )
             )
           }
@@ -181,7 +172,7 @@ const uploadFile = async (
         done(err instanceof Error ? err : new Error(String(err)))
       })
 
-      const nodeStream = fs.createReadStream(localPath, { highWaterMark: 1024 * 1024 })
+      const nodeStream = createReadStream(localPath, { highWaterMark: 1024 * 1024 })
       signal?.addEventListener('abort', cutOff, { once: true })
       nodeStream.on('error', (err) => {
         req.destroy()
@@ -219,6 +210,16 @@ const remoteDirOf = (localDir: string, remoteDir: string, file: string) => {
     : remoteJoin(remoteDir, rel.split(path.sep).join('/'))
 }
 
+const remoteOf = (localDir: string, remoteDir: string, file: string) =>
+  `${remoteDirOf(localDir, remoteDir, file)}/${path.basename(file)}`
+
+const verdict = (
+  localPath: string,
+  remotePath: string,
+  md5: string,
+  size: number
+): UploadVerdict => ({ localPath, remotePath, md5, size, at: nowSeconds() })
+
 const planUpload = async ({
   host,
   sid,
@@ -236,12 +237,13 @@ const planUpload = async ({
   concurrency?: number
   onCheck?: (progress: CheckProgress) => void
   files?: string[]
-  origins?: {
-    index: OriginIndex
-    of: (localPath: string) => { from?: string; cut?: [number, number] } | undefined
-  }
+  origins?: Origins
 }) => {
-  const files = only ?? walkFiles(localDir)
+  const files = only ?? (await walkFilesAsync(localDir))
+  const sizes = new Map<string, number>()
+  await mapWithLimit(files, 16, async (file) => {
+    sizes.set(file, (await stat(file)).size)
+  })
   const remoteDirs = [...new Set(files.map((f) => remoteDirOf(localDir, remoteDir, f)))]
   const remoteByPath = new Map<string, number | null>()
   for (const dir of remoteDirs) {
@@ -253,9 +255,9 @@ const planUpload = async ({
   const candidates: { local: string; remote: string }[] = []
   const upload: string[] = []
   for (const file of files) {
-    const remote = `${remoteDirOf(localDir, remoteDir, file)}/${path.basename(file)}`
+    const remote = remoteOf(localDir, remoteDir, file)
     const remoteSize = remoteByPath.get(remote)
-    if (remoteSize !== undefined && remoteSize === fs.statSync(file).size) {
+    if (remoteSize !== undefined && remoteSize === sizes.get(file)) {
       candidates.push({ local: file, remote })
     } else upload.push(file)
   }
@@ -275,14 +277,7 @@ const planUpload = async ({
   candidates.forEach((candidate, index) => {
     const md5 = verdicts[index]
     if (md5 === null || md5 === undefined) upload.push(candidate.local)
-    else
-      skip.push({
-        localPath: candidate.local,
-        remotePath: candidate.remote,
-        md5,
-        size: fs.statSync(candidate.local).size,
-        at: Math.floor(Date.now() / 1000)
-      })
+    else skip.push(verdict(candidate.local, candidate.remote, md5, sizes.get(candidate.local) ?? 0))
   })
 
   const learned = new Map<string, string>()
@@ -290,7 +285,7 @@ const planUpload = async ({
     ? upload.filter((file) =>
         worthReading(origins.index, {
           from: origins.of(file)?.from,
-          size: fs.statSync(file).size
+          size: sizes.get(file) ?? 0
         })
       )
     : []
@@ -299,7 +294,7 @@ const planUpload = async ({
     const md5 = await hashFile(file)
     const known = alreadyUp(origins.index, md5)
     if (known) return { file, md5, remotePath: known.remotePath }
-    for (const stranger of sameSizeUnknown(origins.index, fs.statSync(file).size)) {
+    for (const stranger of sameSizeUnknown(origins.index, sizes.get(file) ?? 0)) {
       const theirs = learned.get(stranger) ?? (await dsmFileMd5(host, sid, stranger))
       if (theirs === null || theirs === undefined) continue
       learned.set(stranger, theirs)
@@ -311,18 +306,12 @@ const planUpload = async ({
   const copyOver: CopyOver[] = []
   for (const twin of twins) {
     if (!twin) continue
-    const remote = `${remoteDirOf(localDir, remoteDir, twin.file)}/${path.basename(twin.file)}`
-    const size = fs.statSync(twin.file).size
+    const remote = remoteOf(localDir, remoteDir, twin.file)
+    const size = sizes.get(twin.file) ?? 0
     if (parentOf(twin.remotePath) === parentOf(remote)) {
       if (remoteByPath.get(twin.remotePath) !== size) continue
       already.add(twin.file)
-      skip.push({
-        localPath: twin.file,
-        remotePath: twin.remotePath,
-        md5: twin.md5,
-        size,
-        at: Math.floor(Date.now() / 1000)
-      })
+      skip.push(verdict(twin.file, twin.remotePath, twin.md5, size))
     } else {
       already.add(twin.file)
       copyOver.push({ local: twin.file, from: twin.remotePath, to: remote, md5: twin.md5 })
@@ -341,16 +330,12 @@ const planUpload = async ({
     copyOver,
     seen,
     held: [...remoteByPath.keys()],
-    listed: remoteDirs
+    listed: remoteDirs,
+    sizes
   }
 }
 
-type JumpArgs = PublishArgs & {
-  origins?: {
-    index: OriginIndex
-    of: (localPath: string) => { from?: string; cut?: [number, number] } | undefined
-  }
-}
+type JumpArgs = PublishArgs & { origins?: Origins }
 
 const checkJump = async (
   args: JumpArgs,
@@ -375,12 +360,12 @@ const checkJump = async (
   const taken: PlannedFile[] = [
     ...planned.upload.map((file) => ({
       name: path.basename(file),
-      size: fs.statSync(file).size,
+      size: planned.sizes.get(file) ?? 0,
       to: remoteDirOf(args.localDir, args.remoteDir, file)
     })),
     ...(planned.copyOver ?? []).map((over) => ({
       name: lastSegment(over.to),
-      size: fs.statSync(over.local).size,
+      size: planned.sizes.get(over.local) ?? 0,
       to: parentOf(over.to)
     }))
   ].filter((file) => held.has(`${file.to}/${file.name}`))
@@ -424,14 +409,7 @@ const publishJump = async (
           `${parentOf(over.to)}/${lastSegment(over.from)}`,
           lastSegment(over.to)
         )))
-    if (ok)
-      copied.push({
-        localPath: over.local,
-        remotePath: over.to,
-        md5: over.md5,
-        size: fs.statSync(over.local).size,
-        at: Math.floor(Date.now() / 1000)
-      })
+    if (ok) copied.push(verdict(over.local, over.to, over.md5, planned.sizes.get(over.local) ?? 0))
     else couldNotCopy.push(over.local)
   }
   planned.upload.push(...couldNotCopy)
@@ -445,7 +423,7 @@ const publishJump = async (
   handlers?.onPlan?.({
     send: planned.upload.map((file) => ({
       name: path.basename(file),
-      size: fs.statSync(file).size,
+      size: planned.sizes.get(file) ?? 0,
       to: remoteDirOf(args.localDir, args.remoteDir, file)
     })),
     there: [...planned.skip, ...copied].map(already),
@@ -455,17 +433,10 @@ const publishJump = async (
   for (const [index, file] of planned.upload.entries()) {
     stopIfUploadCancelled()
     const remoteDir = remoteDirOf(args.localDir, args.remoteDir, file)
-    const remotePath = `${remoteDir}/${path.basename(file)}`
     const { md5, size } = await uploadFile(args.host, sid, remoteDir, file, (progress) =>
       handlers?.onProgress?.({ ...progress, fileIndex: index, totalFiles, to: remoteDir })
     )
-    sent.push({
-      localPath: file,
-      remotePath,
-      md5,
-      size,
-      at: Math.floor(Date.now() / 1000)
-    })
+    sent.push(verdict(file, remoteOf(args.localDir, args.remoteDir, file), md5, size))
   }
   return {
     shareUrl: args.share === false ? null : await ensureShareLink(args.host, sid, args.remoteDir),

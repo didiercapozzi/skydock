@@ -2,10 +2,11 @@ import { ffmpegPath, getOutputDir, isVideoFile } from '@skydock/scripts'
 import { spawn } from 'node:child_process'
 import * as crypto from 'node:crypto'
 import type { Stats } from 'node:fs'
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import * as path from 'node:path'
 import { z } from 'zod'
 import { isOnCamera } from '../../../packages/skydock-scripts/src/cameraWatch'
+import { statOrNull } from '../../../packages/skydock-scripts/src/lib/fs'
 import { limited } from '../../../packages/skydock-scripts/src/lib/queue'
 
 const DEFAULT_WIDTH = 80
@@ -13,10 +14,11 @@ const DEFAULT_WIDTH = 80
 const widthSchema = z.number().int().min(16).max(960).catch(DEFAULT_WIDTH)
 const seekSchema = z.number().nonnegative().catch(0)
 
-const extractFrame = (filePath: string, seek: number, width: number) =>
-  new Promise<Buffer>((resolve, reject) => {
+const extractFrame = async (filePath: string, seek: number, width: number) => {
+  const program = await ffmpegPath()
+  return new Promise<Buffer>((resolve, reject) => {
     const seekArgs = isVideoFile(filePath) ? ['-ss', String(seek), '-skip_frame', 'nokey'] : []
-    const child = spawn(ffmpegPath(), [
+    const child = spawn(program, [
       '-hide_banner',
       '-loglevel',
       'error',
@@ -46,6 +48,7 @@ const extractFrame = (filePath: string, seek: number, width: number) =>
       else reject(new Error(`ffmpeg exited with code ${code}`))
     })
   })
+}
 
 const keptAt = (filePath: string, at: Stats, seek: number, width: number) => {
   const of = `${filePath}|${at.mtimeMs}|${at.size}|${seek}|${width}`
@@ -84,10 +87,8 @@ const loader = async ({
   const work = getOutputDir()
   const inWork = path.join(work, splat)
   const onCamera = path.join(path.sep, splat)
-  const inWorkStat = inWork.startsWith(`${work}${path.sep}`)
-    ? await stat(inWork).catch(() => null)
-    : null
-  const found = inWorkStat ?? (isOnCamera(onCamera) ? await stat(onCamera).catch(() => null) : null)
+  const inWorkStat = inWork.startsWith(`${work}${path.sep}`) ? await statOrNull(inWork) : null
+  const found = inWorkStat ?? (isOnCamera(onCamera) ? await statOrNull(onCamera) : null)
   if (!found || (!inWorkStat && !found.isFile())) {
     return new Response('Not found', { status: 404 })
   }

@@ -6,7 +6,7 @@ import type { Intent } from './change'
 /* A jump is deleted and its files go back to Unsorted, loose (RULES, Jumps). Not a montage with an
    edit, not one freed to the storage, not files already uploaded — uploaded is the end of editing —
    and not while something is being processed underneath it. */
-const deleteJumpIntent: Intent = ({
+const deleteJumpIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -26,7 +26,7 @@ const deleteJumpIntent: Intent = ({
   if (busy) return busy
   if (busyWith({ groupIds: [data.groupId ?? ''] }) === 'uploading')
     return refuse('It is being uploaded — delete it once the upload is done.')
-  deleteJump(manifest, group.id)
+  await deleteJump(manifest, group.id)
   saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)
 }

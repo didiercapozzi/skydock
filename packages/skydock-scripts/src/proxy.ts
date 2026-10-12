@@ -1,8 +1,9 @@
-import * as fs from 'node:fs'
+import { mkdir, readdir, rename, rm } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import type { ProxyFact } from './boardAnswer'
-import { changeBoardSoon, flushBoardChanges, loadManifestAsync } from './manifest'
+import { outputKeyOf } from './fileStatus'
+import { flushBoardChanges, loadManifestAsync, recordPass } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { following, job } from './live'
 import { lastComplaint, run, runWatched } from './tools'
@@ -13,9 +14,12 @@ import {
   getOutputDir,
   hasCommand,
   systemTool,
-  isVideoFile
+  isVideoFile,
+  mapWithLimit
 } from './utils'
+import { pathExists } from './lib/fs'
 import { untilQuiet } from './lib/quiet'
+import { singleFlight } from './lib/singleFlight'
 import { messageOf } from './lib/words'
 
 const PROXY_WIDTH = 640
@@ -80,20 +84,21 @@ type Detected = { encoder: ProxyEncoder; cardScales: boolean; program: string }
 
 const detectEncoder = async (): Promise<Detected> => {
   const asked = process.env.SKYDOCK_PROXY_ENCODER?.trim().toLowerCase()
-  const carried = ffmpegPath()
+  const carried = await ffmpegPath()
   if (asked === 'cpu' || asked === 'nvenc')
     return { encoder: asked, cardScales: true, program: carried }
   if (asked === 'vaapi')
     return { encoder: 'vaapi', cardScales: await vaapiCanScale(carried), program: carried }
-  if (!hasCommand('ffmpeg')) return { encoder: 'cpu', cardScales: false, program: carried }
+  if (!(await hasCommand('ffmpeg'))) return { encoder: 'cpu', cardScales: false, program: carried }
   const vaapiReady = async (program: string) =>
-    fs.existsSync(DRI_DEVICE()) &&
+    (await pathExists(DRI_DEVICE())) &&
     (await canEncode(
       program,
       [...ENCODER_ARGS.vaapi, '-vf', 'format=nv12,hwupload'],
       ['-vaapi_device', DRI_DEVICE()]
     ))
-  for (const program of [carried, systemTool('ffmpeg')].flatMap((one) => (one ? [one] : []))) {
+  const system = await systemTool('ffmpeg')
+  for (const program of [carried, system].flatMap((one) => (one ? [one] : []))) {
     if (await canEncode(program, ENCODER_ARGS.nvenc))
       return { encoder: 'nvenc', cardScales: true, program }
     if (await vaapiReady(program))
@@ -114,7 +119,7 @@ const proxyEncoder = async () => (await detection()).encoder
 
 const setProxyEncoder = (next: ProxyEncoder | null, cardScales = true) => {
   detected =
-    next === null ? null : Promise.resolve({ encoder: next, cardScales, program: ffmpegPath() })
+    next === null ? null : ffmpegPath().then((program) => ({ encoder: next, cardScales, program }))
 }
 
 const TRIAL_ARGS = CONTAINER_ARGS.filter((a, i) => a !== '-f' && CONTAINER_ARGS[i - 1] !== '-f')
@@ -130,8 +135,8 @@ const getProxyPath = (file: ManifestFile, outputDir?: string) => {
 }
 
 const videoShape = async (src: string) => {
-  if (!hasCommand('ffprobe')) return null
-  const ran = await run(ffprobePath(), [
+  if (!(await hasCommand('ffprobe'))) return null
+  const ran = await run(await ffprobePath(), [
     '-v',
     'error',
     '-select_streams',
@@ -193,7 +198,7 @@ const buildWith = async (
         ? `${scaleFilter(shape, false)},format=nv12,hwupload`
         : scaleFilter(shape, pick === 'vaapi')
   const partial = `${dest}.${process.pid}.part`
-  fs.mkdirSync(path.dirname(dest), { recursive: true })
+  await mkdir(path.dirname(dest), { recursive: true })
   const cap =
     pick === 'cpu' ? ['-threads', String(Math.max(1, Math.floor(os.cpus().length / 2)))] : []
   const ran = await runWatched(
@@ -216,13 +221,13 @@ const buildWith = async (
   )
   if (ran.ok) {
     try {
-      fs.renameSync(partial, dest)
+      await rename(partial, dest)
       return { ok: true as const }
     } catch (e) {
       return { ok: false as const, reason: messageOf(e) }
     }
   }
-  if (fs.existsSync(partial)) fs.unlinkSync(partial)
+  await rm(partial, { force: true })
   return { ok: false as const, reason: lastComplaint(ran.stderr) }
 }
 
@@ -232,11 +237,12 @@ const buildProxy = async (
   shape: Awaited<ReturnType<typeof videoShape>> = null,
   onPercent?: (percent: number) => void
 ) => {
-  if (!hasCommand('ffmpeg')) return { ok: false as const, reason: 'ffmpeg is not installed' }
+  if (!(await hasCommand('ffmpeg')))
+    return { ok: false as const, reason: 'ffmpeg is not installed' }
   const { encoder, cardScales, program } = await detection()
   const first = await buildWith(program, encoder, cardScales, src, dest, shape, onPercent)
   if (first.ok || encoder === 'cpu') return first
-  const again = await buildWith(ffmpegPath(), 'cpu', false, src, dest, shape, onPercent)
+  const again = await buildWith(await ffmpegPath(), 'cpu', false, src, dest, shape, onPercent)
   return again.ok ? again : first
 }
 
@@ -246,9 +252,9 @@ const cropProxy = async (
   cropStart: number | null | undefined,
   cropEnd: number | null | undefined
 ) => {
-  if (!hasCommand('ffmpeg')) return false
-  fs.mkdirSync(path.dirname(dest), { recursive: true })
-  const ran = await run(ffmpegPath(), [
+  if (!(await hasCommand('ffmpeg'))) return false
+  await mkdir(path.dirname(dest), { recursive: true })
+  const ran = await run(await ffmpegPath(), [
     '-y',
     ...(cropStart != null ? ['-ss', String(cropStart)] : []),
     '-i',
@@ -278,26 +284,26 @@ const ensureProxies = async (
   const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
   const candidates = manifest.files.filter(needsProxy)
   if (candidates.length === 0) return report
-  if (!hasCommand('ffmpeg')) {
+  if (!(await hasCommand('ffmpeg'))) {
     for (const file of candidates)
-      if (!fs.existsSync(getProxyPath(file, outputDir) ?? '') && file.proxy !== file.path)
+      if (!(await pathExists(getProxyPath(file, outputDir) ?? '')) && file.proxy !== file.path)
         proxyFailures().set(file.path, 'ffmpeg is not installed, so no small copy can be made')
     return report
   }
 
-  const toMake = candidates.filter((file) => {
+  const missing = await mapWithLimit(candidates, 16, async (file) => {
     const proxyPath = getProxyPath(file, outputDir)
-    return proxyPath !== null && !fs.existsSync(proxyPath)
+    return proxyPath !== null && !(await pathExists(proxyPath))
   })
+  const toMake = candidates.filter((_, index) => missing[index])
   const making = toMake.length > 0 ? job({ type: 'proxy', label: '', total: toMake.length }) : null
-  const rowOf = (file: ManifestFile) => file.id ?? file.path
-  making?.rows(toMake.map((file) => ({ key: rowOf(file), name: file.filename, size: 0 })))
+  making?.rows(toMake.map((file) => ({ key: outputKeyOf(file), name: file.filename, size: 0 })))
   try {
     for (const [index, file] of candidates.entries()) {
       onProgress?.(index, candidates.length, file.filename)
       const proxyPath = getProxyPath(file, outputDir)
       if (!proxyPath) continue
-      if (fs.existsSync(proxyPath)) {
+      if (await pathExists(proxyPath)) {
         if (file.proxy !== proxyPath) {
           file.proxy = proxyPath
           onBuilt?.()
@@ -305,9 +311,9 @@ const ensureProxies = async (
         report.skipped++
         continue
       }
-      if (!fs.existsSync(file.path)) {
+      if (!(await pathExists(file.path))) {
         proxyFailures().set(file.path, ORIGINAL_MISSING)
-        making?.row({ key: rowOf(file), at: 'failed', note: ORIGINAL_MISSING })
+        making?.row({ key: outputKeyOf(file), at: 'failed', note: ORIGINAL_MISSING })
         making?.step()
         continue
       }
@@ -319,7 +325,7 @@ const ensureProxies = async (
           onBuilt?.()
         }
         report.skipped++
-        making?.row({ key: rowOf(file), at: 'skipped' })
+        making?.row({ key: outputKeyOf(file), at: 'skipped' })
         making?.step()
         following('proxy', file.id).done(true, {
           proxy: { path: file.path, fact: { state: 'own', play: file.path } }
@@ -327,15 +333,15 @@ const ensureProxies = async (
         continue
       }
       const live = following('proxy', file.id)
-      making?.row({ key: rowOf(file), at: 'now', part: 0 })
+      making?.row({ key: outputKeyOf(file), at: 'now', part: 0 })
       const built = await buildProxy(file.path, proxyPath, shape, (percent) => {
         live.at(percent)
-        making?.row({ key: rowOf(file), at: 'now', part: percent / 100 })
+        making?.row({ key: outputKeyOf(file), at: 'now', part: percent / 100 })
       })
       making?.row(
         built.ok
-          ? { key: rowOf(file), at: 'done' }
-          : { key: rowOf(file), at: 'failed', note: built.reason }
+          ? { key: outputKeyOf(file), at: 'done' }
+          : { key: outputKeyOf(file), at: 'failed', note: built.reason }
       )
       making?.step()
       if (built.ok) {
@@ -366,62 +372,48 @@ const ensureProxies = async (
   }
 }
 
-let running: Promise<ProxyReport> | null = null
-
 const recordProxies = (manifestPath: string, pass: Manifest) =>
-  changeBoardSoon(
+  recordPass(
     manifestPath,
-    (current) => {
-      const made = new Map(pass.files.map((file) => [file.id ?? file.path, file]))
-      for (const file of current.files) {
-        const done = made.get(file.id ?? file.path)
-        if (!done) continue
-        if (done.proxy) file.proxy = done.proxy
-        else if (file.proxy && !fs.existsSync(file.proxy)) delete file.proxy
-      }
+    pass,
+    async (file, done) => {
+      if (done.proxy) file.proxy = done.proxy
+      else if (file.proxy && !(await pathExists(file.proxy))) delete file.proxy
     },
     'proxies'
   )
 
-const buildMissingProxies = async (outputDir?: string) => {
-  if (running) return await running
+const buildMissingProxies = singleFlight(async (outputDir?: string) => {
   const dir = outputDir || getOutputDir()
-  running = (async () => {
-    const manifestPath = getManifestPath(dir)
-    const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
-    for (;;) {
-      const manifest = await loadManifestAsync(manifestPath)
-      if (!manifest) break
-      const pass = await ensureProxies(manifest, dir, undefined, () =>
-        recordProxies(manifestPath, manifest)
-      )
-      await flushBoardChanges(manifestPath)
-      report.built += pass.built
-      report.skipped = pass.skipped
-      report.failed = [...new Set([...report.failed, ...pass.failed])]
-      report.reason ??= pass.reason
-      if (pass.built === 0) break
-    }
-    if (report.built > 0) {
-      const { encoder, cardScales } = await detection()
-      console.log(
-        `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${encoder}${
-          encoder === 'vaapi' && !cardScales ? ' (resized on the processor)' : ''
-        }`
-      )
-    }
-    if (report.failed.length > 0)
-      console.warn(
-        `[Proxy] Could not build ${report.failed.length} of ${report.failed.length + report.built + report.skipped}: ${report.reason}\n[Proxy] ${report.failed.join(', ')}`
-      )
-    return report
-  })()
-  try {
-    return await running
-  } finally {
-    running = null
+  const manifestPath = getManifestPath(dir)
+  const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
+  for (;;) {
+    const manifest = await loadManifestAsync(manifestPath)
+    if (!manifest) break
+    const pass = await ensureProxies(manifest, dir, undefined, () =>
+      recordProxies(manifestPath, manifest)
+    )
+    await flushBoardChanges(manifestPath)
+    report.built += pass.built
+    report.skipped = pass.skipped
+    report.failed = [...new Set([...report.failed, ...pass.failed])]
+    report.reason ??= pass.reason
+    if (pass.built === 0) break
   }
-}
+  if (report.built > 0) {
+    const { encoder, cardScales } = await detection()
+    console.log(
+      `[Proxy] Built ${report.built} proxy file(s) in ${dir}/proxies using ${encoder}${
+        encoder === 'vaapi' && !cardScales ? ' (resized on the processor)' : ''
+      }`
+    )
+  }
+  if (report.failed.length > 0)
+    console.warn(
+      `[Proxy] Could not build ${report.failed.length} of ${report.failed.length + report.built + report.skipped}: ${report.reason}\n[Proxy] ${report.failed.join(', ')}`
+    )
+  return report
+})
 
 declare global {
   var skydockProxiesResumed: boolean | undefined
@@ -438,16 +430,22 @@ const isBeingWritten = (name: string) => {
   }
 }
 
+const clearHalfWritten = async (dir: string) => {
+  const names = await readdir(dir).catch(() => [])
+  await Promise.all(
+    names
+      .filter((name) => name.endsWith('.part') && !isBeingWritten(name))
+      .map((name) => rm(path.join(dir, name), { force: true }))
+  )
+}
+
 const resumeProxies = (outputDir?: string) => {
-  if (!globalThis.skydockProxiesResumed) {
-    globalThis.skydockProxiesResumed = true
-    const dir = getProxyDir(outputDir)
-    if (fs.existsSync(dir))
-      for (const name of fs.readdirSync(dir))
-        if (name.endsWith('.part') && !isBeingWritten(name))
-          fs.rmSync(path.join(dir, name), { force: true })
-  }
-  void buildMissingProxies(outputDir).catch((e: unknown) => {
+  const first = !globalThis.skydockProxiesResumed
+  globalThis.skydockProxiesResumed = true
+  void (async () => {
+    if (first) await clearHalfWritten(getProxyDir(outputDir))
+    await buildMissingProxies(outputDir)
+  })().catch((e: unknown) => {
     console.error('[Proxy] resuming failed:', messageOf(e))
   })
 }
@@ -458,21 +456,20 @@ declare global {
 
 const proxyFailures = () => (globalThis.skydockProxyFailures ??= new Map())
 
-const statProxies = (manifest: Manifest, outputDir?: string) => {
-  const facts: Record<string, ProxyFact> = {}
-  for (const file of manifest.files) {
-    if (!needsProxy(file)) continue
+const statProxies = async (manifest: Manifest, outputDir?: string) => {
+  const files = manifest.files.filter(needsProxy)
+  const facts = await mapWithLimit(files, 16, async (file): Promise<ProxyFact> => {
     const proxyPath = getProxyPath(file, outputDir)
-    if (file.proxy === file.path) facts[file.path] = { state: 'own', play: file.path }
-    else if (proxyPath && fs.existsSync(proxyPath))
-      facts[file.path] = { state: 'ready', play: proxyPath }
-    else {
-      const reason =
-        proxyFailures().get(file.path) ?? (fs.existsSync(file.path) ? undefined : ORIGINAL_MISSING)
-      facts[file.path] = { state: 'none', play: file.path, ...(reason ? { reason } : {}) }
-    }
-  }
-  return facts
+    if (file.proxy === file.path) return { state: 'own', play: file.path }
+    if (proxyPath && (await pathExists(proxyPath))) return { state: 'ready', play: proxyPath }
+    const reason =
+      proxyFailures().get(file.path) ??
+      ((await pathExists(file.path)) ? undefined : ORIGINAL_MISSING)
+    return { state: 'none', play: file.path, ...(reason ? { reason } : {}) }
+  })
+  const answer: Record<string, ProxyFact> = {}
+  for (const [index, file] of files.entries()) answer[file.path] = facts[index]
+  return answer
 }
 
 export {

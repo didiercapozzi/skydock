@@ -26,9 +26,9 @@ const actionArgs = z.object({
 const action = createValidatedFormAction()({
   schema: actionArgs,
   handler: async ({ data, errors }) => {
-    const notConnected = () => {
+    const notConnected = async () => {
       errors.addGlobalError(
-        loadNasSession() ? 'Session expired. Please reconnect.' : 'Not connected.'
+        (await loadNasSession()) ? 'Session expired. Please reconnect.' : 'Not connected.'
       )
       return errors.toResponse(401)
     }
@@ -36,7 +36,7 @@ const action = createValidatedFormAction()({
     if (data.intent === 'status') {
       const session = await ensureNasSession()
       if (!session) {
-        const raw = loadNasSession()
+        const raw = await loadNasSession()
         if (raw && raw.encPasswd) {
           return { connected: false as const, needsRelogin: true as const }
         }
@@ -59,11 +59,11 @@ const action = createValidatedFormAction()({
           { host: data.host, user: data.user, password: data.password, otp: data.otp || undefined },
           { login: dsmLogin, validate: dsmValidateSession }
         )
-        const session = loadNasSession()
+        const session = await loadNasSession()
         return {
           connected: true as const,
-          hostname: session!.hostname,
-          username: session!.username
+          hostname: session?.hostname,
+          username: session?.username
         }
       } catch (err) {
         if (needsCode(err))
@@ -79,13 +79,13 @@ const action = createValidatedFormAction()({
     }
 
     if (data.intent === 'disconnect') {
-      const session = loadNasSession()
+      const session = await loadNasSession()
       if (session) {
         try {
           await dsmLogout(session.hostname, session.sessionId)
         } catch {}
       }
-      clearNasSession()
+      await clearNasSession()
       return { connected: false as const }
     }
 

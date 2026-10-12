@@ -4,6 +4,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
 import { StorageFolder } from '../../app/components/storage-folder'
+import { openedPath } from './dsm'
 
 
 const DIR = '/SkyDock/Passengers/Luc Favre'
@@ -99,7 +100,7 @@ describe('a file shown in the storage’s own web interface', () => {
     const [href, target] = opened.mock.calls[0] ?? []
     expect(target).toBe('_blank')
     expect(String(href).startsWith('https://nas.local:5001/index.cgi?launchApp=SYNO.SDS.App.FileStation3.Instance')).toBe(true)
-    expect(decodeURIComponent(decodeURIComponent(String(href).split('launchParam=')[1] ?? ''))).toMatch(
+    expect(openedPath(String(href))).toMatch(
       new RegExp(`^openfile=${DIR}/`)
     )
     opened.mockRestore()

@@ -75,9 +75,9 @@ describe('a montage’s name', () => {
 })
 
 describe('making a montage of files in Fresh files', () => {
-  it('moves them into a new jump filed under the montage’s name', () => {
+  it('moves them into a new jump filed under the montage’s name', async () => {
     const manifest = yverdon()
-    moveFiles(manifest, new Set(['loose']), {
+    await moveFiles(manifest, new Set(['loose']), {
       newGroup: true,
       montage: true,
       passenger: passengerFrom('Solo')

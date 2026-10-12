@@ -2,17 +2,17 @@ import type { MontageFact } from './boardAnswer'
 import { hasCompletePassenger } from './workspace'
 import type { ManifestGroup } from './types'
 
-const MONTAGE_STEPS = ['Named', 'Processed', 'Edited', 'Rendered', 'Uploaded', 'Emailed'] as const
+const MONTAGE_STEPS = ['Named', 'Prepared', 'Project', 'Film', 'Uploaded', 'Sent'] as const
 
 type MontageStep = (typeof MONTAGE_STEPS)[number]
 
 const NEXT: Record<MontageStep, { todo: string; how: string }> = {
   Named: { todo: 'to name', how: 'Give it a name' },
-  Processed: { todo: 'to process', how: 'Process it' },
-  Edited: { todo: 'to edit', how: 'Make the montage, then edit it in kdenlive' },
-  Rendered: { todo: 'to render', how: 'Render the film in kdenlive' },
+  Prepared: { todo: 'to process', how: 'Process it' },
+  Project: { todo: 'to edit', how: 'Make the montage, then edit it in kdenlive' },
+  Film: { todo: 'to render', how: 'Render the film in kdenlive' },
   Uploaded: { todo: 'to upload', how: 'Upload it' },
-  Emailed: { todo: 'to email', how: 'Email the link' }
+  Sent: { todo: 'to email', how: 'Email the link' }
 }
 
 const montageSteps = ({
@@ -26,11 +26,11 @@ const montageSteps = ({
 }) => {
   const done: Record<MontageStep, boolean> = {
     Named: hasCompletePassenger(group.passenger),
-    Processed: Boolean(group.processed || group.uploaded || group.freed),
-    Edited: Boolean(facts?.project || group.freed),
-    Rendered: Boolean(facts?.film || group.uploaded || group.freed),
+    Prepared: Boolean(group.processed || group.uploaded || group.freed),
+    Project: Boolean(facts?.project || group.freed),
+    Film: Boolean(facts?.film || group.uploaded || group.freed),
     Uploaded: Boolean(group.uploaded),
-    Emailed: emailed
+    Sent: emailed
   }
   const steps = MONTAGE_STEPS.map((name) => ({ name, done: done[name] }))
   const found = steps.findIndex((step) => !step.done)

@@ -1,10 +1,11 @@
-import * as crypto from 'node:crypto'
-import * as fs from 'node:fs'
+import { rename, rm, stat, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import type { Readable } from 'node:stream'
 import { MEDIA_EXTENSIONS_SET } from './constants'
 import { counted } from './lib/counted'
+import { incomingPartial, removeIfEmpty } from './lib/fs'
+import { originalEntry } from './fileId'
 import { gentleWriter } from './lib/gentle'
 import { landingFor } from './copy'
 import { dropRow } from './dropJobs'
@@ -31,14 +32,6 @@ type ImportResult =
   | { filename: string; outcome: 'copied'; stays: string }
   | { filename: string; outcome: 'there' }
   | { filename: string; outcome: 'kept'; reason: string }
-
-const originalEntry = (dest: string, id: string, mtime: number) => ({
-  path: dest,
-  size: fs.statSync(dest).size,
-  mtime,
-  filename: path.basename(dest),
-  id
-})
 
 const placeOf = (manifest: Manifest, id: string) => {
   const group = manifest.groups.find((g) => g.files.some((f) => f.id === id))
@@ -74,7 +67,7 @@ const placeExisting = async (
     copyFiles(manifest, new Set([id]), joining.id)
     return { filename: file.filename, outcome: 'copied', stays }
   }
-  if (inGroup && frozenMontages(manifest, outputDir).has(inGroup.id))
+  if (inGroup && (await frozenMontages(manifest, outputDir)).has(inGroup.id))
     return {
       filename: file.filename,
       outcome: 'kept',
@@ -85,7 +78,7 @@ const placeExisting = async (
     target.kind === 'group'
       ? { targetGroupId: target.groupId }
       : { destination: target.kind === 'destination' ? target.name.trim() : null }
-  moveFiles(manifest, new Set([id]), {
+  await moveFiles(manifest, new Set([id]), {
     ...to,
     shot: await shotTimesFor(manifest, new Set([id]), to)
   })
@@ -141,7 +134,7 @@ const importFile = async ({
     if (target.kind === 'group') {
       const group = manifest.groups.find((g) => g.id === target.groupId)
       if (!group) throw new Error('That jump is no longer there.')
-      if (frozenMontages(manifest, outputDir).has(group.id))
+      if ((await frozenMontages(manifest, outputDir)).has(group.id))
         throw new Error(
           'This montage has an edit, or lives on the storage only — nothing can join it.'
         )
@@ -150,9 +143,7 @@ const importFile = async ({
   }
   await checkTarget()
 
-  const incoming = path.join(outputDir, '.incoming')
-  fs.mkdirSync(incoming, { recursive: true })
-  const partial = path.join(incoming, `${crypto.randomBytes(8).toString('hex')}-${filename}`)
+  const partial = await incomingPartial(outputDir, filename)
   const counted = counting(drop, size ?? 0)
   const copyEnds = copyBegins()
   try {
@@ -162,13 +153,13 @@ const importFile = async ({
     const when = new Date(
       Number.isFinite(lastModified) && lastModified > 0 ? lastModified : Date.now()
     )
-    fs.utimesSync(partial, when, when)
+    await utimes(partial, when, when)
 
     const id = counted.id()
     const manifest = await checkTarget()
     const existing = manifest.files.find((f) => f.id === id)
     if (existing) {
-      fs.rmSync(partial, { force: true })
+      await rm(partial, { force: true })
       const result = await placeExisting(manifest, outputDir, existing, target)
       if (result.outcome === 'moved' || result.outcome === 'copied')
         saveManifest(manifestPath, manifest)
@@ -177,10 +168,11 @@ const importFile = async ({
 
     const mtime = (await shotTimes([partial])).get(partial) ?? Math.floor(when.getTime() / 1000)
     const dest = landingFor(outputDir, filename, mtime)
-    fs.renameSync(partial, dest)
+    const { size } = await stat(partial)
+    await rename(partial, dest)
 
     const file: ManifestFile = {
-      ...originalEntry(dest, id, mtime),
+      ...originalEntry({ path: dest, id, mtime, size }),
       ...(target.kind === 'destination' ? { destination: target.name.trim() } : {})
     }
     manifest.files.push(file)
@@ -195,10 +187,8 @@ const importFile = async ({
     return { filename: file.filename, outcome: 'added' }
   } finally {
     copyEnds()
-    fs.rmSync(partial, { force: true })
-    try {
-      if (fs.readdirSync(incoming).length === 0) fs.rmdirSync(incoming)
-    } catch {}
+    await rm(partial, { force: true })
+    await removeIfEmpty(path.dirname(partial))
   }
 }
 
@@ -209,8 +199,8 @@ declare global {
 const clearStaleIncoming = (outputDir: string) => {
   if (globalThis.skydockIncomingCleared) return
   globalThis.skydockIncomingCleared = true
-  void fs.promises.rm(path.join(outputDir, '.incoming'), { recursive: true, force: true })
+  void rm(path.join(outputDir, '.incoming'), { recursive: true, force: true })
 }
 
-export { clearStaleIncoming, importFile, originalEntry }
-export type { ImportDrop, ImportTarget }
+export { clearStaleIncoming, importFile }
+export type { ImportTarget }

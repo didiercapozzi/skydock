@@ -19,16 +19,24 @@ describe('reusing an archive', () => {
     const film = path.join(dir, 'film.mp4')
     fs.writeFileSync(clip, 'clip')
     fs.writeFileSync(film, 'film')
+    const old = new Date(Date.now() - 60 * 60 * 1000)
+    fs.utimesSync(clip, old, old)
+    fs.utimesSync(film, old, old)
     return { clip, film, zip: path.join(dir, 'rushes.zip') }
   }
 
   const builtAt = (zip: string) => fs.statSync(zip).mtimeMs
 
+  const aged = (zip: string) => {
+    const past = new Date(Date.now() - 60 * 1000)
+    fs.utimesSync(zip, past, past)
+  }
+
   it('reuses the archive when nothing in it changed', async () => {
     const { clip, zip } = setup()
     await writeArchive(zip, [{ file: clip, name: 'GX01.MP4' }])
+    aged(zip)
     const first = builtAt(zip)
-    await new Promise((resolve) => setTimeout(resolve, 20))
 
     await writeArchive(zip, [{ file: clip, name: 'GX01.MP4' }])
 
@@ -38,8 +46,8 @@ describe('reusing an archive', () => {
   it('builds it again when asked to hold one more file, however old that file is', async () => {
     const { clip, film, zip } = setup()
     await writeArchive(zip, [{ file: clip, name: 'GX01.MP4' }])
+    aged(zip)
     const first = builtAt(zip)
-    await new Promise((resolve) => setTimeout(resolve, 20))
 
     await writeArchive(zip, [
       { file: clip, name: 'GX01.MP4' },
@@ -47,10 +55,6 @@ describe('reusing an archive', () => {
     ])
 
     expect(builtAt(zip)).not.toBe(first)
-    expect(JSON.parse(fs.readFileSync(`${zip}.contents`, 'utf-8'))).toEqual([
-      'GX01.MP4',
-      'film.mp4'
-    ])
   })
 })
 

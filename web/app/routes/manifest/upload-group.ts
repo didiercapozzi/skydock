@@ -50,7 +50,7 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
     )
   } catch (err) {
     if (err instanceof UploadCancelled)
-      return { ...boardAnswer(await latest()), uploadCancelled: true }
+      return { ...(await boardAnswer(await latest())), uploadCancelled: true }
     return refuse(err instanceof Error ? err.message : 'Upload failed.')
   }
 }
@@ -111,7 +111,7 @@ const send = async ({
     report.done()
     saveManifest(manifestPath, saved)
     return {
-      ...boardAnswer(saved),
+      ...(await boardAnswer(saved)),
       remote: await pastCancelling(() => listRemoteFiles(saved, session)),
       uploaded: result.uploaded,
       skipped: result.skipped,

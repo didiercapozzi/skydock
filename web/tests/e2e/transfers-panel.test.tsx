@@ -5,6 +5,7 @@ import { page, userEvent } from 'vitest/browser'
 import { TransfersPanel } from '../../app/components/transfers-panel'
 import { liveJobs } from '../../app/hooks/liveStore'
 import { Notice } from '../../app/components/notice'
+import { openedPath } from './dsm'
 
 
 const upload = {
@@ -131,7 +132,7 @@ describe('the transfers panel', () => {
     await expect.element(page.getByText('already on the storage', { exact: true })).toBeVisible()
     const link = page.getByRole('link', { name: 'Open in DSM' }).element() as HTMLAnchorElement
     expect(link.target).toBe('_blank')
-    expect(decodeURIComponent(decodeURIComponent(link.href))).toContain('openfile=/home/tmp/Backup/a.zip')
+    expect(openedPath(link.href)).toBe('openfile=/home/tmp/Backup/a.zip')
   })
 
   test('links a file already uploaded to its folder on the storage too', async () => {
@@ -141,9 +142,7 @@ describe('the transfers panel', () => {
     await expect.element(page.getByRole('link', { name: 'Open in DSM' }).first()).toBeVisible()
     const links = page.getByRole('link', { name: 'Open in DSM' }).elements() as HTMLAnchorElement[]
     expect(links).toHaveLength(2)
-    expect(decodeURIComponent(decodeURIComponent(links[1]!.href))).toContain(
-      'openfile=/Passengers/luc/luc.photos.zip'
-    )
+    expect(openedPath(links[1]!.href)).toBe('openfile=/Passengers/luc/luc.photos.zip')
   })
 
   test('lists a file brought back from the storage', async () => {

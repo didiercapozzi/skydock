@@ -1,11 +1,12 @@
-import * as fs from 'node:fs'
+import { readdir } from 'node:fs/promises'
 import * as path from 'node:path'
 import type { ArchiveEntry } from './archive'
 import { startOfFiles } from './clustering'
 import { filmNameOf, montageArtifacts } from './montageArtifacts'
 import { sendPlanSchema } from './types'
 import type { ManifestGroup, SendPart, SendPlan } from './types'
-import { isVideoFile, parseDayEpoch, sizeOf } from './utils'
+import { pathExists } from './lib/fs'
+import { isVideoFile, mapWithLimit, parseDayEpoch, sizeOf } from './utils'
 import { formatCaptureTime, formatGroupDay, passengerName, toFileStem } from './workspace'
 
 const PARTS = ['videos', 'photos', 'film', 'project'] as const satisfies readonly SendPart[]
@@ -38,8 +39,8 @@ const partEntries = (part: SendPart, files: PartFile[], stem: string): PartFile[
     ? files.map((f) => ({ ...f, name: `${part}/${f.name}` }))
     : files.map((f) => ({ ...f, name: `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}` }))
 
-const partFiles = (group: ManifestGroup, outputDir: string, film: string | null) => {
-  const artifacts = montageArtifacts(outputDir, group)
+const partFiles = async (group: ManifestGroup, outputDir: string, film: string | null) => {
+  const artifacts = await montageArtifacts(outputDir, group)
   const photosDir = path.join(artifacts.dir, 'photos')
   const project = path.join(artifacts.dir, `${artifacts.baseName}.kdenlive`)
   const renderedFilm =
@@ -49,19 +50,23 @@ const partFiles = (group: ManifestGroup, outputDir: string, film: string | null)
       : artifacts.strayFilms.length === 1
         ? path.join(artifacts.dir, artifacts.strayFilms[0]!)
         : null)
-  const one = (file: string) => ({ file, name: path.basename(file), size: sizeOf(file) })
+  const one = async (file: string, name = path.basename(file)) => ({
+    file,
+    name,
+    size: await sizeOf(file)
+  })
+  const videoFiles = group.files.filter((f) => isVideoFile(f.path))
+  const videoThere = await mapWithLimit(videoFiles, 16, (f) => pathExists(f.path))
+  const photoNames = (await pathExists(photosDir)) ? (await readdir(photosDir)).sort() : []
   return {
-    videos: group.files
-      .filter((f) => isVideoFile(f.path) && fs.existsSync(f.path))
-      .map((f) => ({ file: f.path, name: f.filename, size: sizeOf(f.path) })),
-    photos: fs.existsSync(photosDir)
-      ? fs
-          .readdirSync(photosDir)
-          .sort()
-          .map((name) => one(path.join(photosDir, name)))
-      : [],
-    film: renderedFilm ? [one(renderedFilm)] : [],
-    project: fs.existsSync(project) ? [one(project)] : []
+    videos: await mapWithLimit(
+      videoFiles.filter((_, index) => videoThere[index]),
+      16,
+      (f) => one(f.path, f.filename)
+    ),
+    photos: await mapWithLimit(photoNames, 16, (name) => one(path.join(photosDir, name))),
+    film: renderedFilm ? [await one(renderedFilm)] : [],
+    project: (await pathExists(project)) ? [await one(project)] : []
   } satisfies Record<SendPart, PartFile[]>
 }
 
@@ -124,12 +129,12 @@ const itemsFrom = (
   return [...zipped, ...loose]
 }
 
-const sendItems = (
+const sendItems = async (
   group: ManifestGroup,
   outputDir: string,
   zips: SendPlan['zips'],
   film: string | null = null
-) => itemsFrom(partFiles(group, outputDir, film), stemOf(group), zips)
+) => itemsFrom(await partFiles(group, outputDir, film), stemOf(group), zips)
 
 const planOf = (value: unknown) => sendPlanSchema.safeParse(value).data ?? DEFAULT_PLAN
 

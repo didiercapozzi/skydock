@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { copyFile } from 'node:fs/promises'
 import {
   getManifestPath,
   getOutputDir,
@@ -20,6 +20,6 @@ for (const file of [...manifest.files, ...manifest.groups.flatMap((g) => g.files
   cleared.add(file.id ?? file.path)
 }
 
-fs.copyFileSync(manifestPath, `${manifestPath}.before-moments`)
+await copyFile(manifestPath, `${manifestPath}.before-moments`)
 saveManifest(manifestPath, manifest)
 console.log(`${cleared.size} clip(s) forgot their jump. Press Scan on the board to find it again.`)

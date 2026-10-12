@@ -1,11 +1,9 @@
 import * as path from 'node:path'
 import { fileStatus, outputKeyOf } from './fileStatus'
 import { freeablePlace } from './freeable'
-import { removeFile, removeTree } from './freeMontage'
-import { hashFile } from './lib/fs'
+import { freedAmong, proofOf, removeFile, removeTree } from './freeMontage'
 import { inJob } from './live'
 import { statProcessedOutputs } from './manifest'
-import { dsmFileMd5 } from './nas'
 import type { NasSession } from './nas'
 import { lastSegment } from './paths'
 import { getCutProxyDir } from './proxy'
@@ -38,17 +36,9 @@ const proveOnStorage = async (
   const problems: string[] = []
   for (const file of files) {
     const sent = file.uploaded!
-    const label = lastSegment(sent.remotePath)
-    step(label)
-    const [here, there] = await Promise.all([
-      hashFile(sent.localPath).catch(() => null),
-      dsmFileMd5(session.hostname, session.sessionId, sent.remotePath)
-    ])
-    if (here === null || here.toLowerCase() !== sent.md5.toLowerCase())
-      problems.push(`${label} changed here since it was uploaded`)
-    else if (there === null) problems.push(`${label} could not be checked on the storage`)
-    else if (there.toLowerCase() !== sent.md5.toLowerCase())
-      problems.push(`${label} on the storage is not the file that was sent`)
+    step(lastSegment(sent.remotePath))
+    const problem = await proofOf(sent, session)
+    if (problem) problems.push(problem)
   }
   return problems
 }
@@ -118,7 +108,7 @@ const freeDropzone = async ({
 const markDropzoneFreed = (manifest: Manifest, result: DropzoneFreeResult) => {
   const ids = new Set(result.fileIds)
   const jumps = new Set(result.groupIds)
-  const freed = (f: ManifestFile) => (f.id && ids.has(f.id) ? { ...f, freed: true } : f)
+  const freed = freedAmong(ids)
   manifest.files = manifest.files.map(freed)
   manifest.groups = manifest.groups.map((g) =>
     jumps.has(g.id)

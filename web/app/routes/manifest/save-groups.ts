@@ -13,7 +13,7 @@ import type { Intent } from './change'
 /* The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a
    frozen montage forbids — and answered with what was saved, so the board redraws from the server
    rather than trusting its own optimistic copy (RULES, The board). */
-const saveGroups: Intent = ({
+const saveGroups: Intent = async ({
   data,
   manifest,
   manifestPath,
@@ -35,7 +35,7 @@ const saveGroups: Intent = ({
     if (!before || !incoming || !sameEditedGroup(before, incoming)) return refuseFrozen()
   }
   for (const incoming of data.groups) {
-    if (frozen.has(incoming.id) || !hasEdit(outputDir, incoming)) continue
+    if (frozen.has(incoming.id) || !(await hasEdit(outputDir, incoming))) continue
     const before = manifest.groups.find((g) => g.id === incoming.id)
     if (!before || !sameEditedGroup(before, incoming)) return refuseFrozen()
   }

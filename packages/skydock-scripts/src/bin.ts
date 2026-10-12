@@ -4,13 +4,13 @@ import type { BinBatch, BinFile } from './binEntry'
 import { isMediaName } from './constants'
 import { computeFileId } from './fileId'
 import { landingFor } from './copy'
-import { moveFile } from './lib/fs'
+import { moveFile, mtimeSeconds } from './lib/fs'
 import { inJob } from './live'
 import { shotTimes } from './scan'
 import type { Manifest } from './types'
 import { getTrashDir } from './utils'
 
-const mtimeOf = async (file: string) => Math.floor((await stat(file)).mtimeMs / 1000)
+const mtimeOf = async (file: string) => mtimeSeconds(await stat(file))
 
 const STAMP = /(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})-(\d{2})-(\d{3})Z$/
 const putAsideAt = async (folder: string, dir: string) => {

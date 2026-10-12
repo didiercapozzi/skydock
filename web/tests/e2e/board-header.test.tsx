@@ -110,13 +110,23 @@ describe('the top of the board', () => {
     await expect.element(page.getByText(/Proxies ready\s*48\s*\/\s*50/)).toBeVisible()
     await expect.element(page.getByText(/Marks found/)).not.toBeInTheDocument()
     await expect.element(page.getByRole('button', { name: 'Templates…' })).not.toBeInTheDocument()
-    await page.screenshot({ path: './playwright-screenshots/board-header.png' })
 
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
 
     for (const name of ['Auto', 'Light', 'Dark', 'English', 'Templates…', 'Work folder…', 'About SkyDock…'])
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     await userEvent.keyboard('{Escape}')
+    await expect.element(page.getByRole('group', { name: 'Settings' })).not.toBeInTheDocument()
+  })
+
+  test('opens About SkyDock from Settings', async () => {
+    const onAbout = vi.fn()
+    await header({ onAbout })
+
+    await userEvent.click(page.getByRole('button', { name: 'Settings' }))
+    await userEvent.click(page.getByRole('button', { name: 'About SkyDock…' }))
+
+    expect(onAbout).toHaveBeenCalledTimes(1)
     await expect.element(page.getByRole('group', { name: 'Settings' })).not.toBeInTheDocument()
   })
 
@@ -130,7 +140,7 @@ describe('the top of the board', () => {
     await expect.element(page.getByText('Licence: MIT')).toBeVisible()
   })
 
-  test('says which way files are drawn, and how the app is lit', async () => {
+  test('says which way files are drawn', async () => {
     await header()
 
     await expect

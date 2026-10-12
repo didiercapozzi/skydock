@@ -2,8 +2,8 @@ import { run } from '../tools'
 import { ffprobePath, hasCommand } from '../utils'
 
 const mediaSeconds = async (target: string) => {
-  if (!hasCommand('ffprobe')) return null
-  const ran = await run(ffprobePath(), [
+  if (!(await hasCommand('ffprobe'))) return null
+  const ran = await run(await ffprobePath(), [
     '-v',
     'error',
     '-show_entries',

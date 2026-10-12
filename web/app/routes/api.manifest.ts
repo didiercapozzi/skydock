@@ -97,7 +97,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     const { manifest, unreadable } = await readRecordAsync(manifestPath)
     if (!manifest)
       return refuse(unreadable ? RECORD_UNREADABLE : 'No manifest found. Run a scan first.')
-    return intents[data.intent](changeOn(manifest, data, refuse))
+    return intents[data.intent](await changeOn(manifest, data, refuse))
   }
 })
 

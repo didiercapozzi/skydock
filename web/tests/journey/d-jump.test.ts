@@ -146,7 +146,7 @@ describe('correcting the marks', () => {
       .toBe('1.00x')
     const from = await barAt(5)
     const to = await barAt(10)
-    await dragMark(from, to)
+    await dragMark(from, to, 8)
     await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBeGreaterThan(10)
     await said(preview(j.page).getByTitle('Go to the exit')).toContain('0:10')
     expect(recorded(j.world, JUMPED).foundMoments?.exit, 'what the camera measured is kept').toBe(6)
@@ -154,16 +154,6 @@ describe('correcting the marks', () => {
     await preview(j.page).getByRole('button', { name: 'Back to the measured marks' }).click()
     await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBe(6)
     await gone(preview(j.page).getByRole('button', { name: 'Back to the measured marks' }))
-    await quiet()
-  })
-
-  test('moves the exit by dragging it slowly along the timeline without anything breaking in the console', async () => {
-    const from = await barAt(5)
-    const to = await barAt(10)
-    await dragMark(from, to, 8)
-    await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBeGreaterThan(9)
-    await preview(j.page).getByRole('button', { name: 'Back to the measured marks' }).click()
-    await expect.poll(() => recorded(j.world, JUMPED).moments?.exit).toBe(6)
     await quiet()
   })
 

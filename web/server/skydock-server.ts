@@ -1,4 +1,5 @@
-import * as fs from 'node:fs'
+import { createReadStream, existsSync } from 'node:fs'
+import { stat } from 'node:fs/promises'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import * as url from 'node:url'
@@ -8,6 +9,7 @@ import type { ServerBuild } from 'react-router'
 import {
   cancelProcessing,
   flushAllBoardChanges,
+  messageOf,
   rememberOutputDir,
   resolveOutputDir,
   stopTools
@@ -36,11 +38,10 @@ const clientDir = () => {
   const told = process.env.SKYDOCK_CLIENT_DIR?.trim()
   if (told) return path.resolve(told)
   const beside = path.join(here, 'client')
-  return fs.existsSync(beside) ? beside : path.join(here, '..', 'build', 'client')
+  return existsSync(beside) ? beside : path.join(here, '..', 'build', 'client')
 }
 
-const builtFile = (pathname: string) => {
-  const root = clientDir()
+const builtFile = async (root: string, pathname: string) => {
   let asked: string
   try {
     asked = decodeURIComponent(pathname)
@@ -50,22 +51,26 @@ const builtFile = (pathname: string) => {
   const target = path.join(root, path.normalize(asked))
   if (target !== root && !target.startsWith(root + path.sep)) return null
   try {
-    return fs.statSync(target).isFile() ? target : null
+    const found = await stat(target)
+    return found.isFile() ? { target, size: found.size } : null
   } catch {
     return null
   }
 }
 
-const sendBuilt = async (target: string, res: http.ServerResponse) => {
+const sendBuilt = async (
+  { target, size }: { target: string; size: number },
+  res: http.ServerResponse
+) => {
   const type = TYPES[path.extname(target).toLowerCase()]
   res.writeHead(200, {
-    'Content-Length': fs.statSync(target).size,
+    'Content-Length': size,
     ...(type ? { 'Content-Type': type } : {}),
     'Cache-Control': target.includes(`${path.sep}assets${path.sep}`)
       ? 'public, max-age=31536000, immutable'
       : 'public, max-age=0, must-revalidate'
   })
-  await writeOut(fs.createReadStream(target), res)
+  await writeOut(createReadStream(target), res)
 }
 
 const asRequest = (req: http.IncomingMessage, signal: AbortSignal) => {
@@ -88,9 +93,15 @@ const asRequest = (req: http.IncomingMessage, signal: AbortSignal) => {
 
 type Handler = ReturnType<typeof createRequestHandler>
 
-const answer = async (handle: Handler, req: http.IncomingMessage, res: http.ServerResponse) => {
+const answer = async (
+  handle: Handler,
+  root: string,
+  req: http.IncomingMessage,
+  res: http.ServerResponse
+) => {
   const pathname = new URL(req.url ?? '/', `http://${HOST}`).pathname
-  const built = req.method === 'GET' || req.method === 'HEAD' ? builtFile(pathname) : null
+  const built =
+    req.method === 'GET' || req.method === 'HEAD' ? await builtFile(root, pathname) : null
   if (built) {
     await sendBuilt(built, res)
     return
@@ -132,10 +143,11 @@ const start = async () => {
   const outputDir = settleWorkFolder()
   const build = (await import('../build/server/index.js' as string)) as unknown as ServerBuild
   const handle = createRequestHandler(build, 'production')
+  const root = clientDir()
   const server = http.createServer((req, res) => {
-    answer(handle, req, res).catch((e: unknown) => {
+    answer(handle, root, req, res).catch((e: unknown) => {
       if (letGo(e)) return
-      console.error('[SkyDock]', e instanceof Error ? e.message : String(e))
+      console.error('[SkyDock]', messageOf(e))
       if (res.destroyed) return
       if (!res.headersSent) res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8' })
       res.end('SkyDock could not answer that.')

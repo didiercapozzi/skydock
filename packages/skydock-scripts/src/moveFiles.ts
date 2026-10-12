@@ -1,4 +1,4 @@
-import * as fs from 'node:fs'
+import { unlink } from 'node:fs/promises'
 import { groupFromFiles, shiftGroupTo } from './clustering'
 import { diskTimes, shotTimes } from './scan'
 import type { Manifest, ManifestFile, ManifestPassenger } from './types'
@@ -22,16 +22,12 @@ const shotTimesFor = (manifest: Manifest, ids: Set<string>, to: MoveTo) =>
     ? shotTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path))
     : Promise.resolve(undefined)
 
-const endCopies = (manifest: Manifest, ids: Set<string>) => {
+const removeMade = (file: ManifestFile) =>
+  file.processed?.path ? unlink(file.processed.path).catch(() => undefined) : undefined
+
+const endCopies = async (manifest: Manifest, ids: Set<string>) => {
   const ending = manifest.files.filter((f) => f.id && ids.has(f.id) && f.copyOf)
-  for (const copy of ending) {
-    const output = copy.processed?.path
-    if (output && fs.existsSync(output)) {
-      try {
-        fs.unlinkSync(output)
-      } catch {}
-    }
-  }
+  await Promise.all(ending.map(removeMade))
   const gone = new Set(ending.map((f) => f.id))
   manifest.files = manifest.files.filter((f) => !gone.has(f.id))
   manifest.groups = manifest.groups
@@ -40,10 +36,10 @@ const endCopies = (manifest: Manifest, ids: Set<string>) => {
   return new Set([...ids].filter((id) => !gone.has(id)))
 }
 
-const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
+const moveFiles = async (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
   if (to.targetGroupId && !manifest.groups.some((g) => g.id === to.targetGroupId))
     throw new Error('Target jump not found.')
-  const ids = backToSort(to) ? endCopies(manifest, asked) : asked
+  const ids = backToSort(to) ? await endCopies(manifest, asked) : asked
   if (ids.size === 0) return
 
   if (!to.targetGroupId && !to.newGroup)
@@ -54,18 +50,14 @@ const moveFiles = (manifest: Manifest, asked: Set<string>, to: MoveTo) => {
 
   if (backToSort(to)) {
     const going = manifest.files.filter((f) => f.id && ids.has(f.id))
-    const times = to.shot ?? diskTimes(going.map((f) => f.path))
+    const times = to.shot ?? (await diskTimes(going.map((f) => f.path)))
     for (const file of going) file.mtime = times.get(file.path) || file.mtime
   }
 
+  await Promise.all(manifest.files.filter((f) => f.id && ids.has(f.id)).map(removeMade))
+
   for (const file of manifest.files) {
     if (!file.id || !ids.has(file.id)) continue
-    const output = file.processed?.path
-    if (output && fs.existsSync(output)) {
-      try {
-        fs.unlinkSync(output)
-      } catch {}
-    }
     delete file.processed
     delete file.uploaded
     if (to.destination && !to.newGroup && !to.targetGroupId) file.destination = to.destination
@@ -154,11 +146,11 @@ const copyIntoMontage = (manifest: Manifest, ids: Set<string>, passenger: Manife
   return { copied: copies.length, passedOver, freed, groupId: group?.id }
 }
 
-const deleteJump = (manifest: Manifest, groupId: string) => {
+const deleteJump = async (manifest: Manifest, groupId: string) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) throw new Error('That jump is no longer on the board.')
   const ids = new Set(idsOf(group.files))
-  moveFiles(manifest, ids, { destination: null })
+  await moveFiles(manifest, ids, { destination: null })
   manifest.groups = manifest.groups.filter((g) => g.id !== groupId)
   return ids.size
 }

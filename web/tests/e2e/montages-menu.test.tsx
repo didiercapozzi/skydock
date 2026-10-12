@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-import { boardRoute } from './board-route'
+import { boardOf, boardRoute } from './board-route'
 
 
 const AT = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
@@ -21,23 +21,14 @@ const montage = (id: string, passenger: { firstname: string; lastname: string })
   ]
 })
 
-const board = {
+const board = boardOf({
   groups: [
     montage('g1', { firstname: 'Luc', lastname: 'Favre' }),
     montage('g2', { firstname: 'Ana', lastname: '' }),
     montage('g6', { firstname: '', lastname: '' })
   ],
-  looseFiles: [],
-  destinations: [{ name: 'Passengers' }],
-  outputs: {},
-  proxies: {},
-  montages: {},
-  remote: null,
-  storage: null,
-  hasManifest: true,
-  processing: null,
-  nas: { connected: false, hostname: null, backupFolder: null }
-}
+  destinations: [{ name: 'Passengers' }]
+})
 
 describe('the montages in the menu', () => {
   test('lists a montage named by one word as a montage, and one with no name among those waiting', async () => {

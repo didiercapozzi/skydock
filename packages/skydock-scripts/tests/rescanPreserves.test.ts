@@ -58,7 +58,7 @@ describe('a scan keeps the work already done', () => {
       localPath: '/out/processed/Yverdon/yverdon_x.mp4',
       at: 11
     }
-    saveManifest(manifestPath, first)
+    await saveManifest(manifestPath, first)
 
     writeTempFile(origDir, 'DJI_0002.MP4')
     const result = await scanMedia({ outputDir })
@@ -80,7 +80,7 @@ describe('a scan keeps the work already done', () => {
     const board = (await loadManifestAsync(manifestPath))!
     const unseen = writeTempFile(path.join(outputDir, 'landing'), 'DJI_0002.MP4')
     board.files.push({ id: 'landed', path: unseen, filename: 'DJI_0002.MP4', size: 1, mtime: 1 })
-    saveManifest(manifestPath, board)
+    await saveManifest(manifestPath, board)
 
     writeTempFile(origDir, 'DJI_0003.MP4')
     await scanMedia({ outputDir })
@@ -101,7 +101,7 @@ describe('a scan keeps the work already done', () => {
     const first = (await loadManifestAsync(manifestPath))!
     const originalSize = first.files[0].size
     first.files[0].destination = 'Yverdon'
-    saveManifest(manifestPath, first)
+    await saveManifest(manifestPath, first)
 
     fs.writeFileSync(target, Buffer.alloc(originalSize + 500, 7))
     writeTempFile(origDir, 'DJI_0002.MP4')
@@ -143,7 +143,7 @@ describe('a scan keeps the work already done', () => {
       manifest.groups = [a!]
       const corrected = new Map(a!.files.map((f) => [f.id, f.mtime + 3600]))
       for (const f of manifest.files) f.mtime = corrected.get(f.id) ?? f.mtime
-      saveManifest(manifestPath(), manifest)
+      await saveManifest(manifestPath(), manifest)
 
       shoot('C1.MP4', 400)
       shoot('C2.MP4', 401)
@@ -177,7 +177,7 @@ describe('a scan keeps the work already done', () => {
         },
         freed: { at: 2, bytes: 10 }
       })
-      saveManifest(manifestPath(), manifest)
+      await saveManifest(manifestPath(), manifest)
 
       shoot('C1.MP4', 400)
       shoot('C2.MP4', 401)
@@ -206,7 +206,7 @@ describe('a scan keeps the work already done', () => {
     it('never adds a new file to a jump that is already filed', async () => {
       const manifest = await twoJumps()
       manifest.groups[0]!.destination = 'Yverdon'
-      saveManifest(manifestPath(), manifest)
+      await saveManifest(manifestPath(), manifest)
       shoot('A3.MP4', 5)
 
       await scanMedia({ outputDir })
@@ -239,7 +239,7 @@ describe('a scan keeps the work already done', () => {
       manifest.files = manifest.files.map((f) =>
         f.filename === freedName ? { ...f, freed: true } : f
       )
-      saveManifest(manifestPath, manifest)
+      await saveManifest(manifestPath, manifest)
       return { manifestPath, origDir }
     }
 
@@ -283,7 +283,7 @@ describe('a scan keeps the work already done', () => {
       const [first, second] = manifest.groups
       const shared = first!.files[0]!
       copyFiles(manifest, new Set([shared.id!]), second!.id)
-      saveManifest(manifestPath, manifest)
+      await saveManifest(manifestPath, manifest)
       return { manifestPath, origDir, shared, target: second!.id, at }
     }
 
@@ -305,7 +305,7 @@ describe('a scan keeps the work already done', () => {
       manifest.files = manifest.files.map((f) =>
         f.copyOf === shared.id || f.id === shared.id ? { ...f, freed: true } : f
       )
-      saveManifest(manifestPath, manifest)
+      await saveManifest(manifestPath, manifest)
       at('C1.MP4', 5, 300)
 
       await scanMedia({ outputDir })

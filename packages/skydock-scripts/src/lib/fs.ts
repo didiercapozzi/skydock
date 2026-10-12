@@ -1,12 +1,44 @@
 import * as crypto from 'node:crypto'
 import * as fs from 'node:fs'
 import type { FileHandle } from 'node:fs/promises'
-import { copyFile, mkdir, open, readdir, rename, rm, stat, unlink, utimes } from 'node:fs/promises'
+import {
+  access,
+  copyFile,
+  mkdir,
+  open,
+  readdir,
+  rename,
+  rm,
+  rmdir,
+  stat,
+  unlink,
+  utimes
+} from 'node:fs/promises'
 import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { isMediaName } from '../constants'
 
 const DEFAULT_MAX_FIND_DEPTH = 10
+
+const pathExists = (where: string) =>
+  access(where).then(
+    () => true,
+    () => false
+  )
+
+const statOrNull = (where: string) => stat(where).catch(() => null)
+
+const incomingPartial = async (outputDir: string, filename: string) => {
+  const incoming = path.join(outputDir, '.incoming')
+  await mkdir(incoming, { recursive: true })
+  return path.join(incoming, `${crypto.randomBytes(8).toString('hex')}-${filename}`)
+}
+
+const removeIfEmpty = async (dir: string) => {
+  try {
+    if ((await readdir(dir)).length === 0) await rmdir(dir)
+  } catch {}
+}
 
 const findMediaFilesAsync = async (dir: string, maxDepth = DEFAULT_MAX_FIND_DEPTH) => {
   const results: string[] = []
@@ -74,7 +106,7 @@ const pushEntries = (stack: WalkItem[], dir: string, entries: fs.Dirent[]) => {
   }
 }
 
-const mtimeOf = (file: string) => Math.floor(fs.statSync(file).mtimeMs / 1000)
+const mtimeSeconds = (stat: { mtimeMs: number }) => Math.floor(stat.mtimeMs / 1000)
 
 const walkFiles = (dir: string) => {
   const results: string[] = []
@@ -100,10 +132,30 @@ const walkFiles = (dir: string) => {
   return results
 }
 
-const hashFile = async (filePath: string, algorithm = 'md5') => {
+const walkFilesAsync = async (dir: string) => {
+  const results: string[] = []
+  const stack: WalkItem[] = []
+  const read = async (where: string) => {
+    const entries = await readdir(where, { withFileTypes: true }).catch(() => null)
+    if (entries) pushEntries(stack, where, entries)
+  }
+  await read(dir)
+  while (stack.length > 0) {
+    const item = stack.pop()
+    if (!item) continue
+    if (item.dir) await read(item.full)
+    else if (item.file) results.push(item.full)
+  }
+  return results
+}
+
+const hashFile = async (filePath: string, algorithm = 'md5', onBytes?: (read: number) => void) => {
   const hash = crypto.createHash(algorithm)
+  let read = 0
   for await (const chunk of fs.createReadStream(filePath, { highWaterMark: 1024 * 1024 })) {
     hash.update(chunk)
+    read += chunk.length
+    onBytes?.(read)
   }
   return hash.digest('hex')
 }
@@ -185,10 +237,15 @@ const moveFile = async (
 export {
   findMediaFilesAsync,
   hashFile,
+  incomingPartial,
   moveFile,
-  mtimeOf,
+  mtimeSeconds,
   openToHost,
+  pathExists,
+  removeIfEmpty,
   sameBytes,
+  statOrNull,
   walkFiles,
+  walkFilesAsync,
   writeJsonAtomic
 }

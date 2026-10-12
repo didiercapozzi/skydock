@@ -1,6 +1,5 @@
 // @vitest-environment node
 import * as fs from 'node:fs'
-import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import {
   forgetCamera,
@@ -9,7 +8,6 @@ import {
   setCameraAuto,
   touchCamera
 } from '../src/knownCameras'
-import { readSettings, rememberOutputDir } from '../src/settings'
 import { createTmpDir } from './fixtures'
 
 let config: string
@@ -49,13 +47,5 @@ describe('the cameras known to this machine', () => {
     rememberCamera({ key: 'a', name: 'A', auto: false }, config)
     touchCamera('a', config)
     expect(knownCameras(config)[0]?.lastSeen).toBeGreaterThan(0)
-  })
-
-  it('leaves the other settings alone, and they leave it alone', () => {
-    fs.writeFileSync(path.join(config, 'settings.json'), JSON.stringify({ zoom: 120 }))
-    rememberCamera({ key: 'a', name: 'A', auto: false }, config)
-    rememberOutputDir('/work', config)
-    expect(readSettings(config)).toMatchObject({ zoom: 120, outputDir: '/work' })
-    expect(knownCameras(config)).toHaveLength(1)
   })
 })

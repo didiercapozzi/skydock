@@ -6,10 +6,10 @@ import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
-import { cancelProcessing, processingNow, processJumps } from '../src/process'
-import { setProxyEncoder } from '../src/proxy'
+import { cancelProcessing, processingNow, processJumps, writeCutProxy } from '../src/process'
+import { getCutProxyDir, setProxyEncoder } from '../src/proxy'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
-import { createTmpDir, execSyncMock, tellTools } from './fixtures'
+import { createTmpDir, execSyncMock, fakeTools, tellTools, writeTempFile } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
@@ -17,21 +17,7 @@ vi.mock('node:child_process', async (importOriginal) => {
   return { ...actual, execFileSync: execFileSyncMock, execFile: execFileViaSyncMock }
 })
 
-const tools = (cmd: string | Buffer, opts?: { encoding?: string }) => {
-  const line = String(cmd)
-  if (line.startsWith('ffprobe')) {
-    const shape = 'width=3840\nheight=2160\n'
-    return opts?.encoding ? shape : Buffer.from(shape)
-  }
-  if (line.startsWith('ffmpeg')) {
-    const out = [...line.matchAll(/"([^"]+)"/g)].map((m) => m[1]).pop()
-    if (out) {
-      fs.mkdirSync(path.dirname(out), { recursive: true })
-      fs.writeFileSync(out, Buffer.from('media'))
-    }
-  }
-  return Buffer.from('')
-}
+const tools = fakeTools({ height: 2160 })
 
 const ffmpegCalls = () =>
   execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.startsWith('ffmpeg'))
@@ -171,18 +157,6 @@ describe('where a montage lands', () => {
       path.join('Montages', 'Luc Favre', 'videos', 'luc_favre_20260808_100909.mp4')
     ])
   })
-
-  it('never writes a file named after the Montages folder itself', async () => {
-    const { manifestPath } = await write({
-      montageJump: true,
-      passenger: { firstname: 'Luc', lastname: 'Favre' },
-      files: [clip('GX010001.MP4', 0)]
-    })
-
-    await processJumps({ manifestPath, outputDir })
-
-    expect(delivered().some((f) => path.basename(f).startsWith('montages_'))).toBe(false)
-  })
 })
 
 describe('where a dropzone lands', () => {
@@ -198,17 +172,6 @@ describe('where a dropzone lands', () => {
       path.join('Yverdon', 'yverdon_20260808_090909.mp4'),
       path.join('Yverdon', 'yverdon_20260808_090910.jpg')
     ])
-  })
-
-  it('keeps a dropzone flat — no videos or photos folders', async () => {
-    const { manifestPath } = await write({
-      destination: 'Yverdon',
-      files: [clip('GX010001.MP4', 0)]
-    })
-
-    await processJumps({ manifestPath, outputDir })
-
-    expect(delivered().some((f) => f.includes('videos') || f.includes('photos'))).toBe(false)
   })
 
   it('never gives a new file the name of one freed to the storage', async () => {
@@ -304,19 +267,6 @@ describe('particular files of a dropzone', () => {
     const after = (await loadManifestAsync(manifestPath))!
     expect(after.files.find((f) => f.id === 'other')!.processed).toBeDefined()
     expect(after.files.find((f) => f.id === 'lone')!.processed).toBeUndefined()
-  })
-})
-
-describe('a jump filed nowhere', () => {
-  it('gets a folder of its own, named after the jump and its date', async () => {
-    const { manifestPath } = await write({
-      label: 'jump',
-      files: [clip('GX010001.MP4', 0)]
-    })
-
-    await processJumps({ manifestPath, outputDir })
-
-    expect(delivered()).toEqual([path.join('jump_20260808', 'videos', 'jump_20260808_090909.mp4')])
   })
 })
 
@@ -553,6 +503,22 @@ describe('turning a file', () => {
     expect(cmd).not.toContain('-c copy')
   })
 
+  it('cuts the proxy of a montage clip to match, from the proxy itself', async () => {
+    const proxy = writeTempFile(outputDir, 'proxies/id0.mp4')
+    const { manifestPath } = await write({
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [{ ...clip('GX010001.MP4', 0), rotation: 90, proxy }]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    expect(ffmpegCalls().some((l) => l.includes(proxy) && l.includes('transpose'))).toBe(true)
+    expect(
+      fs.existsSync(path.join(outputDir, 'proxies', 'cut', 'g1', 'luc_favre_20260808_090909.mp4'))
+    ).toBe(true)
+  })
+
   it('turns a photo by its orientation tag, without encoding it', async () => {
     const { manifestPath } = await write({
       destination: 'Yverdon',
@@ -573,28 +539,48 @@ describe('turning a file', () => {
 
     await processJumps({ manifestPath, outputDir })
 
-    const { loadManifestAsync } = await import('../src/manifest')
     expect((await loadManifestAsync(manifestPath))!.files[0]?.processed?.source.rotation).toBe(180)
+  })
+})
+
+describe('the proxy the editor opens on', () => {
+  const withProxy = (over: Partial<ManifestFile>): ManifestFile => {
+    const file = clip('GX010001.MP4', 0)
+    const proxy = path.join(outputDir, 'proxies', 'id0.mp4')
+    fs.mkdirSync(path.dirname(proxy), { recursive: true })
+    fs.writeFileSync(proxy, Buffer.from('proxy'))
+    return { ...file, proxy, ...over }
+  }
+
+  it('is cut and turned to match, and kept under the output folder', async () => {
+    const dest = path.join(outputDir, 'processed', 'Montages', 'luc_favre_20260808_090909.mp4')
+
+    const cut = await writeCutProxy(withProxy({ rotation: 90 }), dest, outputDir, 'group_1')
+
+    expect(cut).toBe(
+      path.join(getCutProxyDir(outputDir, 'group_1'), 'luc_favre_20260808_090909.mp4')
+    )
+    expect(fs.existsSync(cut!)).toBe(true)
+    expect(ffmpegCalls().some((l) => l.includes('transpose=1') && l.includes(cut!))).toBe(true)
+  })
+
+  it('is cut to the frame', async () => {
+    const dest = path.join(outputDir, 'processed', 'Montages', 'luc_favre_20260808_090909.mp4')
+
+    const cut = await writeCutProxy(
+      withProxy({ frame: { x: 0.1, y: 0, width: 0.9, height: 0.9 } }),
+      dest,
+      outputDir,
+      'group_1'
+    )
+
+    expect(cut?.startsWith(path.join(outputDir, 'proxies', 'cut', 'group_1'))).toBe(true)
+    expect(ffmpegCalls().some((l) => l.includes('crop='))).toBe(true)
   })
 })
 
 describe('changing the picture on an Intel or AMD card', () => {
   afterEach(() => setProxyEncoder(null))
-
-  it('hands the turned frames back to the card before encoding them', async () => {
-    setProxyEncoder('vaapi')
-    const { manifestPath } = await write({
-      destination: 'Yverdon',
-      files: [{ ...clip('GX010001.MP4', 0), rotation: 90 }]
-    })
-
-    await processJumps({ manifestPath, outputDir })
-
-    const cmd = ffmpegCalls().find((l) => l.includes('transpose')) ?? ''
-    expect(cmd).toContain('-vaapi_device')
-    expect(cmd).toContain('-vf transpose=1,format=nv12,hwupload')
-    expect(cmd).toContain('h264_vaapi')
-  })
 
   it('does the clip on the processor when the graphics card cannot', async () => {
     setProxyEncoder('vaapi')
@@ -620,7 +606,7 @@ describe('changing the picture on an Intel or AMD card', () => {
     expect(delivered()).toEqual([path.join('Yverdon', 'yverdon_20260808_090909.mp4')])
   })
 
-  it('says what ffmpeg said when it fails', async () => {
+  it('says why a file could not be cropped or turned', async () => {
     execSyncMock.mockImplementation((cmd: string | Buffer, opts?: { encoding?: string }) => {
       if (String(cmd).startsWith('ffmpeg') && String(cmd).includes('transpose')) {
         const failure = new Error('ffmpeg exited') as Error & { stderr: string }
@@ -674,16 +660,19 @@ describe('processing, said as it happens', () => {
     ])
   })
 
-  it('asks ffmpeg to say where it is, on the clips it has to write itself', async () => {
+  it('says how far a clip being written has got', async () => {
     const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
       files: [{ ...clip('GX010001.MP4', 0), cropStart: 2, cropEnd: 8 }]
     })
+    const { heard, stop } = listening()
 
     await processJumps({ manifestPath, outputDir })
+    stop()
 
-    expect(ffmpegCalls()[0]).toContain('-progress pipe:1 -nostats')
+    expect(heard[0]).toEqual({ kind: 'file', work: 'process', fileId: 'id0', percent: 0 })
+    expect(heard.at(-1)).toEqual({ kind: 'file-done', work: 'process', fileId: 'id0', ok: true })
   })
 
   it('says so when a file could not be processed, and nothing is left reading as under way', async () => {

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-import { boardRoute } from './board-route'
+import { boardOf, boardRoute } from './board-route'
 
 
 const DIR = '/SkyDock/Passengers'
@@ -36,19 +36,13 @@ const group = (extra: Record<string, unknown>, files: unknown[]) => ({
   ...extra
 })
 
-const board = (g: unknown) => ({
-  groups: [g],
-  looseFiles: [],
-  destinations: [{ name: 'Passengers', path: DIR }],
-  outputs: {},
-  proxies: {},
-  montages: {},
-  remote: null,
-  hasManifest: true,
-  processing: null,
-  nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' },
-  storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, montages: [] }
-})
+const board = (g: unknown) =>
+  boardOf({
+    groups: [g],
+    destinations: [{ name: 'Passengers', path: DIR }],
+    nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' },
+    storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, montages: [] }
+  })
 
 const onStorage = {
   ok: true,

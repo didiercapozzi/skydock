@@ -15,7 +15,7 @@ const open = () => {
     const text = decoder.decode((await reader.read()).value)
     return text.startsWith(':') || text.includes('"kind":"disk"') ? next() : text
   }
-  return { response, next, reader, close: () => abort.abort() }
+  return { next, reader, close: () => abort.abort() }
 }
 
 beforeEach(() => {
@@ -49,14 +49,16 @@ describe('what is happening to the files, sent as it happens', () => {
     close()
   })
 
-  it('ends when the page goes away', async () => {
+  it('ends, and stops listening, when the page goes away', async () => {
     const { reader, close } = open()
 
     await reader.read()
+    expect(globalThis.skydockLive?.listeners.size).toBe(1)
     close()
 
     let read = await reader.read()
     while (!read.done) read = await reader.read()
     expect(read.done).toBe(true)
+    expect(globalThis.skydockLive?.listeners.size).toBe(0)
   })
 })

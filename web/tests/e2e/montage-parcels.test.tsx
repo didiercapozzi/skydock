@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-import { boardRoute } from './board-route'
+import { boardOf, boardRoute } from './board-route'
 import { openedPath } from './dsm'
 
 
@@ -32,31 +32,25 @@ const sent = [
   }
 ]
 
-const montage = (extra: Record<string, unknown> = {}) => ({
-  groups: [
-    {
-      id: 'g1',
-      label: 'jump',
-      day: '28.07.2026',
-      montageJump: true,
-      passenger: { firstname: 'Ana', lastname: 'Roth' },
-      processed: true,
-      files: [clip(1), clip(2)],
-      uploaded: { at: 1_785_000_000, shareUrl: LINK, sent },
-      ...extra
-    }
-  ],
-  looseFiles: [],
-  destinations: [{ name: 'Passengers', path: DIR }],
-  outputs: {},
-  proxies: {},
-  montages: {},
-  remote: null,
-  hasManifest: true,
-  processing: null,
-  nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' },
-  storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, montages: [] }
-})
+const montage = (extra: Record<string, unknown> = {}) =>
+  boardOf({
+    groups: [
+      {
+        id: 'g1',
+        label: 'jump',
+        day: '28.07.2026',
+        montageJump: true,
+        passenger: { firstname: 'Ana', lastname: 'Roth' },
+        processed: true,
+        files: [clip(1), clip(2)],
+        uploaded: { at: 1_785_000_000, shareUrl: LINK, sent },
+        ...extra
+      }
+    ],
+    destinations: [{ name: 'Passengers', path: DIR }],
+    nas: { connected: true, hostname: 'nas.local', backupFolder: '/Backup' },
+    storage: { dir: DIR, problem: null, lost: { folders: [], links: [] }, montages: [] }
+  })
 
 const freed = montage({
   freed: { at: 1_785_100_000, bytes: 16 * GB },

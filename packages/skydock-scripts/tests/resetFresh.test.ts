@@ -69,47 +69,47 @@ afterEach(() => {
 })
 
 describe('a file sent back to be sorted', () => {
-  it('is on the time its camera gave it again', () => {
+  it('is on the time its camera gave it again', async () => {
     const manifest = board()
 
-    moveFiles(manifest, new Set(['a.MP4']), { destination: null })
+    await moveFiles(manifest, new Set(['a.MP4']), { destination: null })
 
     expect(manifest.files.find((f) => f.id === 'a.MP4')?.mtime).toBe(CAMERA)
   })
 
-  it('keeps its trim, which is about the clip and not about the jump', () => {
+  it('keeps its trim, which is about the clip and not about the jump', async () => {
     const manifest = board()
 
-    moveFiles(manifest, new Set(['a.MP4']), { destination: null })
+    await moveFiles(manifest, new Set(['a.MP4']), { destination: null })
 
     expect(manifest.files.find((f) => f.id === 'a.MP4')).toMatchObject({ cropStart: 1, cropEnd: 5 })
   })
 
-  it('is, for every file of a jump that is deleted', () => {
+  it('is, for every file of a jump that is deleted', async () => {
     const manifest = board()
 
-    deleteJump(manifest, 'group_1')
+    await deleteJump(manifest, 'group_1')
 
     expect(
       manifest.files.filter((f) => f.id !== 'y1.MP4' && f.id !== 'y2.MP4').map((f) => f.mtime)
     ).toEqual([CAMERA, CAMERA + 60, CAMERA + 7200])
   })
 
-  it('keeps the time it was given when it goes to another jump or to a place instead', () => {
+  it('keeps the time it was given when it goes to another jump or to a place instead', async () => {
     const manifest = board()
 
-    moveFiles(manifest, new Set(['a.MP4']), { targetGroupId: 'group_2' })
-    moveFiles(manifest, new Set(['b.MP4']), { destination: 'Yverdon' })
+    await moveFiles(manifest, new Set(['a.MP4']), { targetGroupId: 'group_2' })
+    await moveFiles(manifest, new Set(['b.MP4']), { destination: 'Yverdon' })
 
     expect(manifest.files.find((f) => f.id === 'a.MP4')?.mtime).toBe(CORRECTED)
     expect(manifest.files.find((f) => f.id === 'b.MP4')?.mtime).toBe(CORRECTED + 60)
   })
 
-  it('keeps the time it has when its original is not there to be asked', () => {
+  it('keeps the time it has when its original is not there to be asked', async () => {
     const manifest = board()
     fs.rmSync(manifest.files[0]!.path)
 
-    moveFiles(manifest, new Set(['a.MP4']), { destination: null })
+    await moveFiles(manifest, new Set(['a.MP4']), { destination: null })
 
     expect(manifest.files.find((f) => f.id === 'a.MP4')?.mtime).toBe(CORRECTED)
   })

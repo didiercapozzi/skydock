@@ -22,7 +22,7 @@ const playFile: Intent = async ({ data, manifest, refuse }) => {
     )
   const opened = await openInPlayer(file.path)
   if (!opened.opened) return refuse(opened.reason ?? 'Could not open the player.')
-  return { ...boardAnswer(manifest), played: { filename: file.filename } }
+  return { ...(await boardAnswer(manifest)), played: { filename: file.filename } }
 }
 
 export { playFile }

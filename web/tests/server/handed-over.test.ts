@@ -130,9 +130,11 @@ describe('what was handed over of a montage this board holds', () => {
       sent: [{ name: `${STEM}.mp4`, holds: ['film'], to: ['/A/x', '/B/x'], size: 1 }]
     })
 
-    expect(parcelsOfGroup(twice).map((handed) => handed.dir)).toEqual(
-      expect.arrayContaining(['/A/x', '/B/x'])
-    )
+    expect(
+      parcelsOfGroup(twice)
+        .map((handed) => handed.dir)
+        .sort()
+    ).toEqual(['/A/x', '/B/x'])
   })
 
   it('reads a montage uploaded before every item was written down', () => {

@@ -43,7 +43,7 @@ const markEmailed: Intent = async ({ data, manifestPath, latest, refuse }) => {
     if (!known && !group)
       return refuse('This montage is not on the board or on the storage’s list.')
   } else if (!group) return refuse('This montage is not on the board.')
-  return { ...boardAnswer(board), ...listing }
+  return { ...(await boardAnswer(board)), ...listing }
 }
 
 export { markEmailed }

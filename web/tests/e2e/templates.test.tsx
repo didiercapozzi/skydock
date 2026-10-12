@@ -4,15 +4,9 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-vi.mock(import('@skydock/scripts'), async (importOriginal) => {
-  const actual = (await importOriginal()) as Record<string, unknown>
-  return { ...actual, loadManifestAsync: vi.fn(async () => null) }
-})
-
 import Board from '../../app/routes/board'
 import { setTemplateChoice } from '../../app/hooks/useTemplateChoice'
 import { boardRoute } from './board-route'
-
 
 const clip = {
   id: 'v1',
