@@ -16,7 +16,7 @@
   "type": "module",
   "main": "build/electron/main.cjs",
   "scripts": {
-    "app": "npm run shell && electron . --no-sandbox",
+    "app": "npm run shell && env -u ELECTRON_RUN_AS_NODE electron . --no-sandbox ${WAYLAND_DISPLAY:+--ozone-platform=wayland}",
     "app:host": "SKYDOCK_DEV_URL= SKYDOCK_ZOOM=100 scripts/window-on-host.sh",
     "big-board": "npx tsx scripts/big-board.ts",
     "build": "npm run build --workspace=@workspace/web",

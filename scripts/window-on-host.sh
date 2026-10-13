@@ -4,7 +4,7 @@ set -eu
 umask 000
 
 here="$(cd "$(dirname "$0")" && pwd)"
-url="${SKYDOCK_DEV_URL-http://127.0.0.1:5173}"
+url="${SKYDOCK_DEV_URL-http://127.0.0.1:5180}"
 
 app=''
 for candidate in \

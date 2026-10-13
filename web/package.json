@@ -7,7 +7,7 @@
     "build:journey": "tsx tests/journey/build-if-stale.ts",
     "dev": "react-router dev --host",
     "i18n:extract": "lingui extract --clean",
-    "predev": "npx --yes kill-port 5173 || true",
+    "predev": "npx --yes kill-port 5180 || true",
     "start": "react-router-serve ./build/server/index.js",
     "test": "npm run test:node && npm run test:browser && npm run test:journey",
     "test:browser": "vitest --config=vitest.browser.config.ts",

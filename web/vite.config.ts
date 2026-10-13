@@ -42,6 +42,7 @@ const linguiMacros = {
 }
 
 export default defineConfig({
+  server: { port: 5180, strictPort: true },
   define: { __SKYDOCK_VERSION__: JSON.stringify(version) },
   ssr: building ? { noExternal: true } : {},
   plugins: [

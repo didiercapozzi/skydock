@@ -26,6 +26,18 @@ describe('the passenger email', () => {
     expect(email.body).toContain('du 1er août 2026 sont prêtes')
   })
 
+  it('greets nobody when the montage is not for a person', () => {
+    const email = fillEmailTemplate(DEFAULT_TEMPLATES.fr, {
+      firstname: '',
+      lastname: '',
+      day: '01.08.2026',
+      videos: 2,
+      photos: 12
+    })
+    expect(email.body).not.toContain('Bonjour')
+    expect(email.body).toContain('du 1er août 2026 sont prêtes')
+  })
+
   it('puts the link behind one button, and again as text for a client that hides buttons', () => {
     const { html, text } = renderPassengerEmail({
       subject: 'Ta vidéo',

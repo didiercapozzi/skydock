@@ -166,6 +166,20 @@ describe('the language of the email', () => {
   })
 })
 
+describe('the greeting of the email', () => {
+  test('is by the first word of the name until it is switched off, and the email is drafted again without it', async () => {
+    await open()
+    await expect.element(preview().getByText('Bonjour Luc,')).toBeVisible()
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Greet by first name' }))
+    expect(part('body').textContent).not.toContain('Bonjour')
+    expect(part('body').textContent).toContain('du 1er août 2026 sont prêtes')
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Greet by first name' }))
+    await expect.element(preview().getByText('Bonjour Luc,')).toBeVisible()
+  })
+})
+
 describe('the link as a QR code', () => {
   test('is shown when asked for, and is a picture of the link', async () => {
     await open()

@@ -1626,7 +1626,9 @@ stands and the board says the list did not follow. A list that cannot be read is
 
 Once a montage has a share link, its page offers to email whoever it is for, and freeing a montage
 opens the email straight away. The email is written already, in French, for a tandem passenger — the
-film a montage is most often made for: it greets them by the first word of the montage's name, says
+film a montage is most often made for: it greets them by the first word of the montage's name — unless "Greet by first name" is
+switched off, for a montage that is a boogie or a day and not a person, which drafts it again with no
+greeting — says
 what is ready and from which day, and has one button to the folder with the link repeated as text. It is shown exactly as it will arrive, and the message and the signature are written in
 it, where they stand — and so is the heading, which is the subject: typing in the heading is typing in
 the Subject field, and the other way round; and so is the small line above it, which starts as "Saut

@@ -2354,6 +2354,10 @@ msgstr "Going now"
 msgid "Going over the camera — its files appear here as they are reached."
 msgstr "Going over the camera — its files appear here as they are reached."
 
+#: app/components/email-dialog.tsx
+msgid "Greet by first name"
+msgstr "Greet by first name"
+
 #: app/components/place-pane.tsx
 msgid "Group"
 msgstr "Group"
@@ -4559,6 +4563,10 @@ msgstr "The least and the most the camera felt in this clip, in gravities"
 #: app/components/email-dialog.tsx
 msgid "The link as a QR code, for a phone to take it now"
 msgstr "The link as a QR code, for a phone to take it now"
+
+#: app/components/email-dialog.tsx
+msgid "The link can be taken with a phone, before the email has even gone."
+msgstr "The link can be taken with a phone, before the email has even gone."
 
 #: app/components/email-dialog.tsx
 msgid "The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does."

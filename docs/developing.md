@@ -12,7 +12,7 @@ installed app, which is what a dropzone gets.
 
 ```bash
 npm install
-npm run dev            # the board, on http://localhost:5173
+npm run dev            # the board, on http://localhost:5180
 ```
 
 Everything happens on the board: scanning, sorting, processing and uploading. `dev` also points
@@ -33,7 +33,7 @@ npm run app            # the window, here, showing whatever `npm run dev` is ser
 It shows the development server when one is told:
 
 ```bash
-SKYDOCK_DEV_URL=http://127.0.0.1:5173 npm run app
+SKYDOCK_DEV_URL=http://127.0.0.1:5180 npm run app
 ```
 
 and otherwise it is the app itself — its own server, its own work folder, asked for on the first

@@ -96,6 +96,8 @@ const EmailDialog = ({
 }) => {
   const { firstname, shareUrl } = about
   const [lang, setLang] = useState<EmailLanguage>('fr')
+  const [greets, setGreets] = useState(true)
+  const facts = greets ? about : { ...about, firstname: '', lastname: '' }
   const [showingQr, setShowingQr] = useState(false)
   const stored = useEmailTemplate(lang)
   const readable = (raw: EmailTemplate): EmailTemplate => ({
@@ -103,8 +105,8 @@ const EmailDialog = ({
     body: cleanEmailHtml(asEmailHtml(raw.body))
   })
   const template = readable(stored)
-  const drafted = fillEmailTemplate(template, about, lang)
-  const values = variablesOf(about, lang)
+  const drafted = fillEmailTemplate(template, facts, lang)
+  const values = variablesOf(facts, lang)
   const [to, setTo] = useState(emailed?.to ?? '')
   const [subject, setSubject] = useState(drafted.subject)
   const [kicker, setKicker] = useState(drafted.kicker)
@@ -153,7 +155,7 @@ const EmailDialog = ({
     })
   }
   const closeTemplate = () => {
-    const filled = fillEmailTemplate(template, about, lang)
+    const filled = fillEmailTemplate(template, facts, lang)
     setWritingTemplate(false)
     setSubject(filled.subject)
     setKicker(filled.kicker)
@@ -182,7 +184,20 @@ const EmailDialog = ({
       })
       return
     }
-    const filled = fillEmailTemplate(other, about, next)
+    const filled = fillEmailTemplate(other, facts, next)
+    setSubject(filled.subject)
+    setKicker(filled.kicker)
+    setBody(filled.body)
+    setLaid({ subject: filled.subject, kicker: filled.kicker, body: filled.body, signature })
+  }
+  const greet = (next: boolean) => {
+    setGreets(next)
+    if (writingTemplate) return
+    const filled = fillEmailTemplate(
+      template,
+      next ? about : { ...about, firstname: '', lastname: '' },
+      lang
+    )
     setSubject(filled.subject)
     setKicker(filled.kicker)
     setBody(filled.body)
@@ -485,6 +500,14 @@ const EmailDialog = ({
                 onClick={() => void copy('link', copyText(shareUrl))}>
                 {copied === 'link' ? t`✓ copied` : t`Copy link`}
               </Mini>
+              <label className={`${QUIET} gap-1.5`}>
+                <input
+                  type='checkbox'
+                  checked={greets}
+                  onChange={(e) => greet(e.target.checked)}
+                />
+                {t`Greet by first name`}
+              </label>
               <Spacer />
               {writingTemplate ? (
                 <button
@@ -508,7 +531,9 @@ const EmailDialog = ({
           <div className='flex min-h-0 flex-col gap-3.5 overflow-y-auto bg-well px-5.5 py-5'>
             <span className={EYEBROW}>{t`At the counter`}</span>
             <span className='text-title leading-title font-semibold tracking-title'>
-              {t`${firstname} can take the link with a phone, before the email has even gone.`}
+              {greets
+                ? t`${firstname} can take the link with a phone, before the email has even gone.`
+                : t`The link can be taken with a phone, before the email has even gone.`}
             </span>
             {showingQr ? (
               <span className='self-start rounded-corner border border-line-2 bg-white p-1.5'>

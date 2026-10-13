@@ -2354,6 +2354,10 @@ msgstr "En cours"
 msgid "Going over the camera — its files appear here as they are reached."
 msgstr "Parcours de la caméra — ses fichiers apparaissent ici au fur et à mesure."
 
+#: app/components/email-dialog.tsx
+msgid "Greet by first name"
+msgstr "Saluer par le prénom"
+
 #: app/components/place-pane.tsx
 msgid "Group"
 msgstr "Grouper"
@@ -4559,6 +4563,10 @@ msgstr "Le moins et le plus que la caméra a ressenti dans ce clip, en g"
 #: app/components/email-dialog.tsx
 msgid "The link as a QR code, for a phone to take it now"
 msgstr "Le lien en QR code, pour qu’un téléphone le prenne tout de suite"
+
+#: app/components/email-dialog.tsx
+msgid "The link can be taken with a phone, before the email has even gone."
+msgstr "Le lien peut être pris avec un téléphone, avant même que l’e-mail soit parti."
 
 #: app/components/email-dialog.tsx
 msgid "The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does."
