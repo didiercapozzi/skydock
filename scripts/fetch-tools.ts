@@ -7,9 +7,24 @@ import { forWindows, systemBuiltFor, unpack } from './system'
 
 const here = path.dirname(url.fileURLToPath(import.meta.url))
 
+const ATTEMPTS = 5
+
+const fetched = async (from: string) => {
+  for (let attempt = 1; ; attempt++) {
+    const answer = await fetch(from, { redirect: 'follow' }).catch(() => null)
+    if (answer?.ok) return answer
+    const status = answer?.status ?? 0
+    if (attempt === ATTEMPTS || (status !== 0 && status !== 429 && status < 500))
+      throw new Error(`${from} answered ${status || 'nothing'}`)
+    const told = Number(answer?.headers.get('retry-after'))
+    const seconds = Number.isFinite(told) && told > 0 ? told : Math.min(60, 5 * 2 ** attempt)
+    console.error(`> ${from} answered ${status || 'nothing'}, again in ${seconds} s`)
+    await new Promise((resolve) => setTimeout(resolve, seconds * 1000))
+  }
+}
+
 const evermeet = async (tool: string) => {
-  const said = await fetch(`https://evermeet.cx/ffmpeg/info/${tool}/release`)
-  if (!said.ok) throw new Error(`evermeet answered ${said.status} about ${tool}`)
+  const said = await fetched(`https://evermeet.cx/ffmpeg/info/${tool}/release`)
   const release = await said.json()
   const url = release?.download?.zip?.url
   if (!url) throw new Error(`evermeet says nothing about where to get ${tool}`)
@@ -51,8 +66,7 @@ const SOURCES: Record<string, Source> = {
 
 const download = async (from: string, to: string) => {
   console.error(`> fetching ${from}`)
-  const answer = await fetch(from, { redirect: 'follow' })
-  if (!answer.ok) throw new Error(`${from} answered ${answer.status}`)
+  const answer = await fetched(from)
   fs.writeFileSync(to, Buffer.from(await answer.arrayBuffer()))
 }
 
@@ -90,7 +104,7 @@ const fetchInto = async (system: string, into: string) => {
       fs.rmSync(staging, { recursive: true, force: true })
     }
   }
-  await Promise.all(Object.entries(wanted).map(fetchOne))
+  for (const one of Object.entries(wanted)) await fetchOne(one)
 }
 
 const alreadyThere = (system: string, into: string) =>
