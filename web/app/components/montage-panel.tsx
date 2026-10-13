@@ -5,7 +5,7 @@ import {
   passengerName,
   slugOf,
   startOfFiles
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import { useState } from 'react'
 import { parcelsOfGroup } from '../helpers/parcels'
 import { useBoard } from '../hooks/useBoardModel'

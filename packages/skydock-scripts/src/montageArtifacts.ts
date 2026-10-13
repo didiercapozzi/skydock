@@ -6,13 +6,12 @@ import { getGroupProcessedDir } from './process'
 import type { Manifest, ManifestGroup } from './types'
 import { mtimeSeconds, statOrNull } from './lib/fs'
 import { mediaSeconds } from './lib/media'
+import { EDIT_LOCKED, filmNameOf } from './montageNames'
 import { mapWithLimit } from './utils'
 import { hasCompletePassenger, isMontage } from './workspace'
 
 const isNamedMontage = (group: ManifestGroup) =>
   isMontage(group) && hasCompletePassenger(group.passenger)
-
-const filmNameOf = (baseName: string) => `${baseName}.mp4`
 
 const durations = new Map<string, number | null>()
 const measuring = new Set<string>()
@@ -52,8 +51,6 @@ const secondsOf = (found: Awaited<ReturnType<typeof montageArtifacts>>) =>
         found.film.mtime
       )
     : null
-
-const EDIT_LOCKED = 'This montage has an edit — change it in kdenlive.'
 
 const hasEdit = async (outputDir: string, group: ManifestGroup) =>
   isNamedMontage(group) && (await montageArtifacts(outputDir, group)).project

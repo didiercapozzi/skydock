@@ -1,10 +1,10 @@
+import { getOutputDir, transfersFileSchema } from '@skydock/scripts/client'
 import {
   earlierMontagesDirs,
   ensureNasSession,
   forgetLostFiles,
   flushBoardChanges,
   getManifestPath,
-  getOutputDir,
   learnStorage,
   listRemoteFiles,
   loadManifestAsync,
@@ -17,8 +17,7 @@ import {
   statProxies,
   statMontageArtifacts,
   montagesRemoteDir,
-  messageOf,
-  transfersFileSchema
+  messageOf
 } from '@skydock/scripts'
 import type { MontageEntry, MontageLost } from '@skydock/scripts'
 import { keepBackupAsPlace } from '../../../packages/skydock-scripts/src/destinations'

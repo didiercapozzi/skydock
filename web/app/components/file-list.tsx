@@ -8,7 +8,7 @@ import {
   fileStatus,
   isWholeFrame,
   UPLOADED_LOCKED
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { pictureWidthFor, stepTileSize, useTileSize } from '../hooks/useTileSize'

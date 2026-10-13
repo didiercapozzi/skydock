@@ -1,4 +1,4 @@
-import { isVideoFile } from '@skydock/scripts'
+import { isVideoFile } from '@skydock/scripts/client'
 import { plural, t } from '@lingui/core/macro'
 import { Go, Mini, ToBin } from './buttons'
 import { Modal, Spacer } from './modal'

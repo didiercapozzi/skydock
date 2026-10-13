@@ -1,4 +1,6 @@
 import { z } from 'zod'
+import { parentOf } from './paths'
+import type { ManifestGroup } from './types'
 
 const montageEntrySchema = z.object({
   folder: z.string(),
@@ -42,5 +44,13 @@ type MontageLost = z.infer<typeof montageLostSchema>
 const lostOf = (lost: MontageLost | undefined, folder: string) =>
   lost?.folders.includes(folder) ? 'folder' : lost?.links.includes(folder) ? 'link' : null
 
-export { lostOf, montageEntrySchema, montageIndexSchema, montageLostSchema }
+const folderOfUpload = (record: NonNullable<ManifestGroup['uploaded']>) => {
+  const withFilm = record.sent?.find((item) => item.holds.includes('film'))
+  const first = withFilm?.to[0] ?? record.sent?.[0]?.to[0]
+  if (first) return first
+  const sent = record.film ?? record.photos
+  return sent ? parentOf(sent.remotePath) : null
+}
+
+export { folderOfUpload, lostOf, montageEntrySchema, montageIndexSchema, montageLostSchema }
 export type { MontageEntry, MontageIndex, MontageLost }

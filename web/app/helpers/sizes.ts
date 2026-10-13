@@ -1,4 +1,4 @@
-import { isWholeFrame } from '@skydock/scripts'
+import { isWholeFrame } from '@skydock/scripts/client'
 import type { ManifestFile } from '../components/types'
 import { formatSize } from '../components/utils'
 

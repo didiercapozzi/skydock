@@ -1,4 +1,11 @@
-import { itemsFrom, PARTS, projectFolderOf, slugOf, stemOf, zipNameOf } from '@skydock/scripts'
+import {
+  itemsFrom,
+  PARTS,
+  projectFolderOf,
+  slugOf,
+  stemOf,
+  zipNameOf
+} from '@skydock/scripts/client'
 import type { PartFile, SendItem, SendPart, SendPlan, MontageFact } from '@skydock/scripts'
 import { i18n } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'

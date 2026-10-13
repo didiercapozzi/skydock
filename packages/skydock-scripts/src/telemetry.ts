@@ -2,13 +2,12 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { z } from 'zod'
+import { GRAVITY } from './constants'
 import { pathExists } from './lib/fs'
 import { jsonText } from './lib/json'
 import { mediaSeconds } from './lib/media'
 import { run, runWatched } from './tools'
 import { ffmpegPath, ffprobePath, hasCommand } from './utils'
-
-const GRAVITY = 9.81
 
 const KINDS = [
   { handler: 'GoPro MET', kind: 'gopro' },

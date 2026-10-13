@@ -147,6 +147,15 @@ folder of 2,000 small files by default (in the system temp folder unless a folde
 a scan and filed into jumps; it refuses the live work folder and anything under `/mnt`. Point
 `SKYDOCK_OUTPUT_DIR` at the folder it names and open the board.
 
+## What the page may import from the scripts
+
+The page runs in a browser, so it takes what it needs from `@skydock/scripts/client`
+([client.ts](../packages/skydock-scripts/src/client.ts)) and never from `@skydock/scripts` itself, which
+reaches the disk and the tools. A file that holds both kinds keeps the browser's part in a file of its
+own (`plain.ts`, `gone.ts`, `sendNames.ts`…) that the other re-exports. A test fails when the client
+entry reaches a `node:` module, and the dev server would otherwise break the board — nothing answers a
+click once one is loaded.
+
 ## What the board can be asked to do
 
 [RULES.md](../RULES.md) says what the app does. What it does not say is how it is asked: every change

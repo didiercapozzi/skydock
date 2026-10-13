@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import { containCrop, fitRatio, withRatio } from '@skydock/scripts'
+import { containCrop, fitRatio, withRatio } from '@skydock/scripts/client'
 import type { FrameCrop } from '@skydock/scripts'
 import { useRef, useState } from 'react'
 

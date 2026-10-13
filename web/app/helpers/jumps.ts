@@ -1,4 +1,4 @@
-import { folderOfUpload, isoDay, startOfFiles } from '@skydock/scripts'
+import { folderOfUpload, isoDay, startOfFiles } from '@skydock/scripts/client'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { dayWritten, pad, weekday } from '../components/utils'
 

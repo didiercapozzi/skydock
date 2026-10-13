@@ -1,5 +1,5 @@
 import { i18n } from '@lingui/core'
-import { getOutputDir, isVideoFile } from '@skydock/scripts'
+import { getOutputDir, isVideoFile } from '@skydock/scripts/client'
 import type { ProxyFact } from '@skydock/scripts'
 import type { ManifestFile, ManifestGroup } from './types'
 

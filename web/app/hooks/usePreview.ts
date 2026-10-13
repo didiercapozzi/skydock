@@ -1,4 +1,4 @@
-import { isVideoFile } from '@skydock/scripts'
+import { isVideoFile } from '@skydock/scripts/client'
 import type { FrameCrop, Rotation } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'

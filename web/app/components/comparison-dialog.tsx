@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { startOfFiles } from '@skydock/scripts'
+import { startOfFiles } from '@skydock/scripts/client'
 import { useEffect, useRef, useState } from 'react'
 import { Go, Mini } from './buttons'
 import { FileRow, Thumb } from './file-row'

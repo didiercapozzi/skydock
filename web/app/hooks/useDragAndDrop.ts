@@ -1,4 +1,4 @@
-import { isMontage, passengerName, passengerOf } from '@skydock/scripts'
+import { isMontage, passengerName, passengerOf } from '@skydock/scripts/client'
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'
 import type { Passenger } from '../components/montage-card'

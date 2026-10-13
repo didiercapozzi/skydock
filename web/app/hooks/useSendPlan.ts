@@ -1,4 +1,4 @@
-import { DEFAULT_PLAN, jsonText, sendPlanSchema } from '@skydock/scripts'
+import { DEFAULT_PLAN, jsonText, sendPlanSchema } from '@skydock/scripts/client'
 import type { SendPlan } from '@skydock/scripts'
 import { remembered } from './remembered'
 

@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { isVideoFile, lastSegment, parentOf, stemOf } from '@skydock/scripts'
+import { isVideoFile, lastSegment, parentOf, stemOf } from '@skydock/scripts/client'
 import type { SendPart } from '@skydock/scripts'
 import type { ManifestGroup } from '../components/types'
 

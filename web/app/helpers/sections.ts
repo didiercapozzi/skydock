@@ -1,4 +1,4 @@
-import { passengerOf, startOfFiles } from '@skydock/scripts'
+import { passengerOf, startOfFiles } from '@skydock/scripts/client'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { dayOf, dayOfFile } from './jumps'
 import { familyOf } from './places'

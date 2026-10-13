@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { passengerOf, startOfFiles } from '@skydock/scripts'
+import { passengerOf, startOfFiles } from '@skydock/scripts/client'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { parcelsOfGroup } from '../helpers/parcels'

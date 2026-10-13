@@ -18,7 +18,7 @@ import {
   nameOfMoment,
   turnBy,
   turnedSize
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import type { FrameCrop, ProxyFact, Rotation } from '@skydock/scripts'
 import type { ManifestFile } from './types'
 import {

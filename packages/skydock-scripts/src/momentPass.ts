@@ -1,4 +1,4 @@
-import { jumpMoments } from './jumpMoments'
+import { jumpMoments } from './momentsOfClip'
 import { following, job } from './live'
 import { outputKeyOf } from './fileStatus'
 import { flushBoardChanges, loadManifestAsync, recordPass } from './manifest'

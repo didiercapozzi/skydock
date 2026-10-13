@@ -7,7 +7,7 @@ import {
   passengerName,
   startOfFiles,
   UPLOADED_LOCKED
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import type { FileStatus, ProxyFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { dsmFolderUrl } from '../helpers/dsm'

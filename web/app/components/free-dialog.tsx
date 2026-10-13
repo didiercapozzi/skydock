@@ -1,4 +1,4 @@
-import { lastSegment } from '@skydock/scripts'
+import { lastSegment } from '@skydock/scripts/client'
 import { plural, t } from '@lingui/core/macro'
 import { Danger, Mini } from './buttons'
 import { Line, Modal, Section, Spacer } from './modal'

@@ -5,7 +5,8 @@ import { findList, writeList } from './storageList'
 import type { ListPlace } from './storageList'
 import {
   montageEntrySchema as entrySchema,
-  montageIndexSchema as indexSchema
+  montageIndexSchema as indexSchema,
+  folderOfUpload
 } from './montageEntry'
 import type { MontageEntry, MontageIndex } from './montageEntry'
 import type { ManifestGroup } from './types'
@@ -75,14 +76,6 @@ const upsert = (index: MontageIndex, entry: Partial<MontageEntry> & { folder: st
       ]
     : before?.files
   index.montages[at] = entrySchema.parse({ ...before, ...entry, ...(files ? { files } : {}) })
-}
-
-const folderOfUpload = (record: NonNullable<ManifestGroup['uploaded']>) => {
-  const withFilm = record.sent?.find((item) => item.holds.includes('film'))
-  const first = withFilm?.to[0] ?? record.sent?.[0]?.to[0]
-  if (first) return first
-  const sent = record.film ?? record.photos
-  return sent ? parentOf(sent.remotePath) : null
 }
 
 const entryOfMontage = (group: ManifestGroup, listDir?: string | null) => {

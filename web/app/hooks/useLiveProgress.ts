@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import { jsonText, liveEventSchema, mergeRow } from '@skydock/scripts'
+import { jsonText, liveEventSchema, mergeRow } from '@skydock/scripts/client'
 import type { JobRow, JumpMoments, LiveEvent, ProxyFact, MontageFact } from '@skydock/scripts'
 import { useEffect, useEffectEvent, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'

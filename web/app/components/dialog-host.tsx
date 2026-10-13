@@ -1,4 +1,10 @@
-import { buildPassengerFolder, isMontage, isVideoFile, lostOf, passengerOf } from '@skydock/scripts'
+import {
+  buildPassengerFolder,
+  isMontage,
+  isVideoFile,
+  lostOf,
+  passengerOf
+} from '@skydock/scripts/client'
 import type { MontageEntry, MontageLost, MontageFact, freeablePlace } from '@skydock/scripts'
 import { t } from '@lingui/core/macro'
 import { ConnectionDialog } from './connection-dialog'

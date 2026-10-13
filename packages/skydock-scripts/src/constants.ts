@@ -38,8 +38,11 @@ const getExtension = (filePath: string) => {
 const isMediaName = (name: string) =>
   !name.startsWith('._') && MEDIA_EXTENSIONS_SET.has(getExtension(name))
 
+const GRAVITY = 9.81
+
 export {
   getExtension,
+  GRAVITY,
   GROUP_GAP_SECONDS,
   isMediaName,
   MEDIA_EXTENSIONS_SET,

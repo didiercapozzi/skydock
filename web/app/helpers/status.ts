@@ -1,4 +1,4 @@
-import { fileStatus, lastSegment, outputKeyOf, uploadGate } from '@skydock/scripts'
+import { fileStatus, lastSegment, outputKeyOf, uploadGate } from '@skydock/scripts/client'
 import type { OutputFact, RemoteListing } from '@skydock/scripts'
 import type { ManifestFile } from '../components/types'
 

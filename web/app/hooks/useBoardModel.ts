@@ -15,7 +15,7 @@ import {
   startOfFiles,
   montageSteps,
   montageUploadKey
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import type { FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { useFetchers, useNavigate, useOutletContext, useParams } from 'react-router'

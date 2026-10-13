@@ -1,4 +1,5 @@
-import { hasCompletePassenger, type Moment } from '@skydock/scripts'
+import { hasCompletePassenger } from '@skydock/scripts/client'
+import type { Moment } from '@skydock/scripts'
 import { useEffect, useRef } from 'react'
 import { useParams } from 'react-router'
 import { PreviewHost } from '../components/preview-host'

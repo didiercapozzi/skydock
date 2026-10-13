@@ -1,4 +1,4 @@
-import { GRAVITY, READERS, telemetryOf, VECTOR_READERS } from './telemetry'
+import { GRAVITY } from './constants'
 import type { Push } from './telemetry'
 import type { JumpMoments } from './types'
 
@@ -251,15 +251,4 @@ const readFelt = (felt: number[], seconds: number, pushes?: Push[]): JumpMoments
   }
 }
 
-const jumpMoments = async (clip: string, onPercent?: (percent: number) => void) => {
-  const written = await telemetryOf(clip, onPercent)
-  return written
-    ? readFelt(
-        READERS[written.kind](written.data),
-        written.seconds,
-        VECTOR_READERS[written.kind](written.data)
-      )
-    : null
-}
-
-export { cutFrom, jumpMoments, jumpTrim, readFelt, RUN_UP }
+export { cutFrom, jumpTrim, readFelt, RUN_UP }

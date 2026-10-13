@@ -7,7 +7,7 @@ import type {
   OutputFact,
   ProxyFact
 } from '@skydock/scripts'
-import { boardAnswerSchema, isVideoFile, lostOf, ORIGINAL_MISSING } from '@skydock/scripts'
+import { boardAnswerSchema, isVideoFile, lostOf, ORIGINAL_MISSING } from '@skydock/scripts/client'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'

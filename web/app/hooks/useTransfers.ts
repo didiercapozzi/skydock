@@ -1,4 +1,4 @@
-import { transfersFileSchema } from '@skydock/scripts'
+import { transfersFileSchema } from '@skydock/scripts/client'
 import type { Transfer } from '@skydock/scripts'
 import { useLoaded } from './useLoaded'
 

@@ -5,7 +5,7 @@ import {
   isMontage,
   MONTAGES_FOLDER,
   passengerOf
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import { z } from 'zod'
 import type { ManifestFile, ManifestGroup } from '../components/types'
 import { routingEngine } from './routing'

@@ -9,7 +9,7 @@ import {
   passengerName,
   passengerOf,
   idsOf
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import type { FileStatus } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { useEffect, useState } from 'react'

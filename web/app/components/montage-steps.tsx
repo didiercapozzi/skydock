@@ -1,7 +1,7 @@
 import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
-import { montageSteps } from '@skydock/scripts'
+import { montageSteps } from '@skydock/scripts/client'
 import type { MontageFact, MontageProgress, MontageStep } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini } from './buttons'

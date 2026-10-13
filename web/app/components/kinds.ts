@@ -1,5 +1,5 @@
 import { plural } from '@lingui/core/macro'
-import { isVideoFile } from '@skydock/scripts'
+import { isVideoFile } from '@skydock/scripts/client'
 import type { ManifestFile } from './types'
 
 const kindsSaid = (files: ManifestFile[], joiner = ' · ') => {

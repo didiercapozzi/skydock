@@ -1,7 +1,7 @@
 import { GROUP_GAP_SECONDS } from './constants'
 import { isFiled } from './filed'
 import type { Manifest, ManifestFile, ManifestGroup } from './types'
-import { formatDay, sortFilesByMtime } from './utils'
+import { formatDay, sortFilesByMtime } from './plain'
 import { idsOf } from './lib/words'
 
 const splitByGap = (files: ManifestFile[]) => {

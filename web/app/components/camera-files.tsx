@@ -6,7 +6,7 @@ import {
   camerasAnswerSchema
 } from '../../../packages/skydock-scripts/src/cameraEntry'
 import type { CameraFile, CameraListing } from '../../../packages/skydock-scripts/src/cameraEntry'
-import { isVideoFile } from '@skydock/scripts'
+import { isVideoFile } from '@skydock/scripts/client'
 import { routingEngine } from '../helpers/routing'
 import { forgetJobsOf, useJobRow, useJobRows } from '../hooks/liveStore'
 import { usePicked } from '../hooks/usePicked'

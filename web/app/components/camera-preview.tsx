@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import { isVideoFile } from '@skydock/scripts'
+import { isVideoFile } from '@skydock/scripts/client'
 import { useState } from 'react'
 import type { CameraFile } from '../../../packages/skydock-scripts/src/cameraEntry'
 import { Go, Mini } from './buttons'

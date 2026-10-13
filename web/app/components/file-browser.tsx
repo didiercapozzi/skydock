@@ -1,6 +1,6 @@
 import { plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
-import { isMontage, startOfFiles } from '@skydock/scripts'
+import { isMontage, startOfFiles } from '@skydock/scripts/client'
 import type { FileStatus, ProxyFact, StatusContext, MontageProgress } from '@skydock/scripts'
 import { dayLabel } from '../helpers/jumps'
 import { cardsOf } from '../helpers/sections'

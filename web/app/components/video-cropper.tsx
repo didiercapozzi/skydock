@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import { MOMENTS } from '@skydock/scripts'
+import { MOMENTS } from '@skydock/scripts/client'
 import type { Moment } from '@skydock/scripts'
 import { clamp, MAX_ZOOM, slidView, zoomedView } from '../helpers/zoomView'
 import { useEffect, useRef, useState } from 'react'

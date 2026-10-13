@@ -2,7 +2,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import type { Modifiers } from '../components/file-list'
 import type { ManifestFile } from '../components/types'
 import { typingInField } from '../helpers/keys'
-import { idsOf } from '@skydock/scripts'
+import { idsOf } from '@skydock/scripts/client'
 
 const SECOND_CLICK_MS = 400
 

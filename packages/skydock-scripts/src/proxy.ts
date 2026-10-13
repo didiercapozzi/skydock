@@ -6,6 +6,7 @@ import { outputKeyOf } from './fileStatus'
 import { flushBoardChanges, loadManifestAsync, recordPass } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { following, job } from './live'
+import { ORIGINAL_MISSING } from './proxyWait'
 import { lastComplaint, run, runWatched } from './tools'
 import {
   ffmpegPath,
@@ -268,8 +269,6 @@ const cropProxy = async (
   ])
   return ran.ok
 }
-
-const ORIGINAL_MISSING = 'The original is not on this machine'
 
 const needsProxy = (file: ManifestFile) => isVideoFile(file.path) && !!file.id && !file.freed
 

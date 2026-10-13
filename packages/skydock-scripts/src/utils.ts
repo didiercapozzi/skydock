@@ -1,8 +1,14 @@
 import * as path from 'node:path'
-import { z } from 'zod'
-import { getExtension, VIDEO_EXTENSIONS_SET } from './constants'
+import { getExtension } from './constants'
 import { pathExists, statOrNull } from './lib/fs'
-import type { ManifestFile } from './types'
+import {
+  formatDay,
+  getOutputDir,
+  isoDay,
+  isVideoFile,
+  parseDayEpoch,
+  sortFilesByMtime
+} from './plain'
 
 const TOOL_ENV: Record<string, string> = {
   ffmpeg: 'SKYDOCK_FFMPEG_PATH',
@@ -47,11 +53,6 @@ const ffprobePath = async () => (await toolPath('ffprobe')) ?? 'ffprobe'
 
 const exiftoolPath = async () => (await toolPath('exiftool')) ?? 'exiftool'
 
-const isVideoFile = (filePath: string) => VIDEO_EXTENSIONS_SET.has(getExtension(filePath))
-
-const getOutputDir = () =>
-  (typeof process !== 'undefined' && process.env?.SKYDOCK_OUTPUT_DIR) || '/workspace/output'
-
 const getManifestPath = (outputDir?: string) =>
   path.join(outputDir || getOutputDir(), 'manifest.json')
 
@@ -64,36 +65,10 @@ const getTrashDir = () =>
   (typeof process !== 'undefined' && process.env?.SKYDOCK_TRASH_DIR) ||
   path.join(getOutputDir(), '.trash')
 
-const sortFilesByMtime = (files: ManifestFile[]) => [...files].sort((a, b) => a.mtime - b.mtime)
-
 const isCliModule = (baseName: string) => {
   if (typeof process === 'undefined' || !process.argv) return false
   const p = process.argv[1] ?? ''
   return p.endsWith(`${baseName}.ts`) || p.endsWith(`${baseName}.js`)
-}
-
-const daySchema = z.string().regex(/^\d{2}\.\d{2}\.\d{4}$/, 'Invalid day, expected DD.MM.YYYY')
-
-const parseDayEpoch = (day?: string) => {
-  const parsed = daySchema.safeParse(day)
-  if (!parsed.success) return null
-  const [d, m, y] = parsed.data.split('.').map(Number)
-  return Math.floor(new Date(y, m - 1, d).getTime() / 1000)
-}
-
-const isoDay = (stored: string) => {
-  const parts = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(stored.trim())
-  return parts ? `${parts[3]}-${parts[2]}-${parts[1]}` : ''
-}
-
-const formatDay = (epoch: number) => {
-  const day = new Date(epoch * 1000).toLocaleDateString('de-CH', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  })
-  daySchema.parse(day)
-  return day
 }
 
 const parseExiftoolCsv = (csv: string) => {

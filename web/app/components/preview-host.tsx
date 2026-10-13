@@ -3,7 +3,7 @@ import { lockReason } from './file-list'
 import { PreviewDrawer } from './preview-drawer'
 import type { ManifestFile } from './types'
 import { LOOSE, usePreview } from '../hooks/usePreview'
-import { fileStatus } from '@skydock/scripts'
+import { fileStatus } from '@skydock/scripts/client'
 
 const PreviewHost = ({
   preview,

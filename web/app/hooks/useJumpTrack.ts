@@ -1,4 +1,4 @@
-import { jumpTrackSchema } from '@skydock/scripts'
+import { jumpTrackSchema } from '@skydock/scripts/client'
 import type { JumpTrack } from '@skydock/scripts'
 import { useEffect, useState } from 'react'
 import { z } from 'zod'

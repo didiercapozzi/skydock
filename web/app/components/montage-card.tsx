@@ -6,7 +6,7 @@ import {
   passengerFrom,
   passengerName,
   montageUploadKey
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import type { MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini } from './buttons'

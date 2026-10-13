@@ -1,4 +1,4 @@
-import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts'
+import { fileStatus, hasCompletePassenger, isMontage, passengerOf } from '@skydock/scripts/client'
 import type { StatusContext, MontageProgress } from '@skydock/scripts'
 import { t } from '@lingui/core/macro'
 import { useState } from 'react'

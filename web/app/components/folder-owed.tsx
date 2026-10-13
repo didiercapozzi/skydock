@@ -1,5 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
-import { groupableCount, hasCompletePassenger } from '@skydock/scripts'
+import { groupableCount, hasCompletePassenger } from '@skydock/scripts/client'
 import type { MontageFact } from '@skydock/scripts'
 import type { Place } from '../helpers/places'
 import { Mini } from './buttons'

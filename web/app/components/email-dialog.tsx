@@ -10,7 +10,7 @@ import {
   gmailComposeUrl,
   mailtoUrl,
   renderPassengerEmail
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import { i18n } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
 import { useRef, useState } from 'react'

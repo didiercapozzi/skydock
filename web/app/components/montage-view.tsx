@@ -7,7 +7,7 @@ import {
   isVideoFile,
   passengerOf,
   waitingForProxy
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import { useBoard } from '../hooks/useBoardModel'
 import { StorageCards } from './storage-folder'
 import { parcelsOfGroup } from '../helpers/parcels'

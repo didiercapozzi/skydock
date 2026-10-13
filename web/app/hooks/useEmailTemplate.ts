@@ -1,4 +1,4 @@
-import { DEFAULT_TEMPLATES, jsonText } from '@skydock/scripts'
+import { DEFAULT_TEMPLATES, jsonText } from '@skydock/scripts/client'
 import type { EmailLanguage, EmailTemplate } from '@skydock/scripts'
 import { z } from 'zod'
 import { remembered } from './remembered'
