@@ -849,6 +849,7 @@ const ManyPanel = ({
   onMakeJump,
   montage,
   move,
+  onSend,
   onClear
 }: {
   files: ManifestFile[]
@@ -859,6 +860,7 @@ const ManyPanel = ({
   onMakeJump?: (startsAt?: number) => void
   montage?: MontageOffer
   move?: React.ReactNode
+  onSend?: () => void
   onClear: () => void
 }) => {
   const [making, setMaking] = useState(false)
@@ -934,6 +936,11 @@ const ManyPanel = ({
               passengers={montage.passengers}
               onSave={montage.onMake}
             />
+          )}
+          {onSend && (
+            <Whole>
+              <Mini onClick={onSend}>{t`Send these to the storage…`}</Mini>
+            </Whole>
           )}
           <Whole>
             <BinButton onClick={onSendBack}>{backLabel}</BinButton>

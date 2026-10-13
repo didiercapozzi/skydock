@@ -102,10 +102,11 @@ msgid "{0, plural, one {# file, on the storage} other {# files, on the storage}}
 msgstr "{0, plural, one {# file, on the storage} other {# files, on the storage}}"
 
 #. placeholder {0}: batch.files.length
+#. placeholder {0}: dialog.files.length
 #. placeholder {0}: files.length
-#. placeholder {0}: folder.files.length
 #: app/components/bin-files.tsx
 #: app/components/delivered-list.tsx
+#: app/components/dialog-host.tsx
 #: app/components/file-browser.tsx
 #: app/components/file-list.tsx
 #: app/components/inspector.tsx
@@ -2028,6 +2029,7 @@ msgstr "File it to"
 msgid "file them there"
 msgstr "file them there"
 
+#: app/components/dialog-host.tsx
 #: app/components/shortcuts-dialog.tsx
 msgid "Files"
 msgstr "Files"
@@ -4064,6 +4066,10 @@ msgstr "Send {who} the link"
 #: app/routes/place.tsx
 msgid "Send everything in {name} that is processed and not up there yet — {toUpload, plural, one {# file} other {# files}}, whatever the search or the filter is showing."
 msgstr "Send everything in {name} that is processed and not up there yet — {toUpload, plural, one {# file} other {# files}}, whatever the search or the filter is showing."
+
+#: app/components/inspector.tsx
+msgid "Send these to the storage…"
+msgstr "Send these to the storage…"
 
 #: app/components/jobs-panel.tsx
 #: app/components/transfers-panel.tsx

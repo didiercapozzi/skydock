@@ -587,6 +587,22 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       { intent: 'upload-montage', groupId: group.id, plan }
     )
   }
+  const askSend = (files: ManifestFile[]) => {
+    if (board.uploading) return
+    if (!nas.connected) {
+      openConnect()
+      return
+    }
+    setDialog({ kind: 'send', files })
+  }
+  const confirmSend = (files: ManifestFile[], plan: SendPlan) => {
+    setDialog(null)
+    const name = plan.folder || 'files'
+    board.sendUpload(
+      { key: `files:${name}`, label: name },
+      { intent: 'send-files', fileIds: idsOf(files), name, plan }
+    )
+  }
   const makeMontage = (groupId: string, template?: string) =>
     send(groupId, { intent: 'montage', groupId, ...(template ? { template } : {}) })
   const askMontage = async (group: ManifestGroup) => {
@@ -672,6 +688,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     requestUpload,
     askUpload,
     confirmUpload,
+    askSend,
+    confirmSend,
     makeMontage,
     askMontage,
     takeStep,

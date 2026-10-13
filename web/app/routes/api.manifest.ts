@@ -42,6 +42,7 @@ import { deleteMontageIntent, resetMontageIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
 import { uploadGroup } from './manifest/upload-group'
 import { cancelUpload, uploadWait } from './manifest/upload-wait'
+import { sendFilesIntent } from './manifest/send-files'
 import { uploadMontageIntent } from './manifest/upload-montage'
 
 const intents: Record<ActionData['intent'], Intent> = {
@@ -60,6 +61,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'cancel-upload': cancelUpload,
   montage,
   'upload-montage': uploadMontageIntent,
+  'send-files': sendFilesIntent,
   'shift-group-time': shiftGroupTime,
   'retime-file': retimeFileIntent,
   'set-moment': setMomentIntent,

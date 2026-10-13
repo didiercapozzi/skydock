@@ -4,7 +4,9 @@ import * as fs from 'node:fs'
 import * as http from 'node:http'
 import * as path from 'node:path'
 import { uploadMontage } from '../src/uploadMontage'
+import { uploadFiles } from '../src/uploadItems'
 import { slugOf, stemOf } from '../src/sending'
+import { stemFor } from '../src/sendNames'
 import type { SendPlan } from '../src/types'
 import { statMontageArtifacts, montageArtifacts } from '../src/montageArtifacts'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
@@ -493,5 +495,80 @@ describe('what the board knows of a montage’s project and film', () => {
   it('leaves a jump that is not a montage out of it', async () => {
     const { outputDir, manifest } = scene({ noPassenger: true })
     expect(await statMontageArtifacts(manifest, outputDir)).toEqual({})
+  })
+})
+
+describe('sending picked files', () => {
+  const NAME = 'Boogie 2026'
+  const send = async (
+    plan: SendPlan,
+    pick: (files: ManifestFile[]) => ManifestFile[] = (files) => files
+  ) => {
+    const built = scene()
+    const server = await startUploadServer()
+    stubDsm()
+    process.env.SKYDOCK_CONFIG_DIR = path.join(built.outputDir, 'config')
+    await saveNasSession({ hostname: server.url, username: 'u', sessionId: 'sid' })
+    const files = pick(built.group.files)
+    const before = JSON.stringify(built.manifest)
+    try {
+      const result = await uploadFiles({
+        outputDir: built.outputDir,
+        manifest: built.manifest,
+        files,
+        name: NAME,
+        session: session(server.url),
+        plan
+      })
+      const uploads = server.uploads.filter((u) => u.name !== 'skydock-origins.json')
+      return { ...built, files, result, uploads, stem: stemFor(NAME, files), before }
+    } finally {
+      await server.close()
+    }
+  }
+
+  it('makes the zip once and sends it to every destination it was put in, in the folder named after the send', async () => {
+    const { uploads, stem, outputDir } = await send({
+      zips: [{ ending: '', parts: ['videos', 'photos'] }],
+      placed: { 'zip:': ['Backup', 'Passengers'] }
+    })
+    expect(into(uploads, '/Backup/boogie-2026')).toEqual([`${stem}.zip`])
+    expect(into(uploads, '/SkyDock/Passengers/boogie-2026')).toEqual([`${stem}.zip`])
+    const contents = JSON.parse(
+      fs.readFileSync(path.join(outputDir, '.send', 'boogie-2026', `${stem}.zip.contents`), 'utf-8')
+    ) as string[]
+    expect(contents.sort()).toEqual([
+      'photos/G0042000.JPG',
+      'photos/G0042001.JPG',
+      'videos/GX018570.MP4',
+      'videos/GX018571.MP4'
+    ])
+  })
+
+  it('sends the files as they are, under videos/ and photos/, when they are not zipped', async () => {
+    const { uploads } = await send({ zips: [], placed: { videos: ['Backup'], photos: ['Backup'] } })
+    expect(into(uploads, '/Backup/boogie-2026/videos')).toEqual(['GX018570.MP4', 'GX018571.MP4'])
+    expect(into(uploads, '/Backup/boogie-2026/photos')).toEqual(['G0042000.JPG', 'G0042001.JPG'])
+  })
+
+  it('asks for no link, and writes nothing onto the files', async () => {
+    const { result, manifest, before } = await send({
+      zips: [],
+      placed: { videos: ['Passengers'] }
+    })
+    expect(result.shareUrls).toEqual([])
+    expect(JSON.stringify(manifest)).toBe(before)
+  })
+
+  it('leaves out a picked file that is no longer there, and sends the rest', async () => {
+    const { uploads } = await send({ zips: [], placed: { videos: ['Backup'] } }, (files) => {
+      fs.rmSync(files[0]!.path)
+      return files
+    })
+    expect(into(uploads, '/Backup/boogie-2026/videos')).toEqual(['GX018571.MP4'])
+  })
+
+  it('is refused when nothing is put anywhere', async () => {
+    await expect(send({ zips: [], placed: {} })).rejects.toThrow(/at least one thing/)
   })
 })

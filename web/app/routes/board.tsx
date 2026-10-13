@@ -354,6 +354,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         plan={model.sendPlan}
         onPlan={model.setSendPlan}
         onUpload={model.confirmUpload}
+        onSend={model.confirmSend}
         storage={board.storage}
         onEmailed={(folder, sent, to) =>
           send('email', {

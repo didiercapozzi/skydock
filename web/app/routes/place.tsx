@@ -1002,6 +1002,7 @@ const Inspector = ({
         }
         montage={picked.some((f) => f.freed) ? undefined : model.montageOffer(picked, place)}
         move={picked.some((f) => f.freed) ? undefined : moveMenu({ files: ids })}
+        onSend={picked.some((f) => f.freed) ? undefined : () => model.askSend(picked)}
         onClear={selection.clear}
       />
     )

@@ -3,6 +3,7 @@ import {
   PARTS,
   projectFolderOf,
   slugOf,
+  stemFor,
   stemOf,
   zipNameOf
 } from '@skydock/scripts/client'
@@ -30,23 +31,24 @@ const partName = (part: SendPart) => i18n._(PART_NAMES[part])
 
 const SHOWN = 3
 
-const partsOf = (group: ManifestGroup, facts?: MontageFact): Parts => ({
+const partsOf = (group: ManifestGroup, facts?: MontageFact, picked = false): Parts => ({
   videos: group.files
     .filter((f) => isVideoFile(f.path))
     .map((f) => ({ file: f.path, name: f.filename, size: f.size })),
   photos: group.files
     .filter((f) => !isVideoFile(f.path))
-    .flatMap((f) =>
-      f.processed
+    .flatMap((f) => {
+      const made = picked ? { path: f.path, size: f.size } : f.processed
+      return made
         ? [
             {
-              file: f.processed.path,
-              name: f.processed.path.slice(f.processed.path.lastIndexOf('/') + 1),
-              size: f.processed.size
+              file: made.path,
+              name: picked ? f.filename : made.path.slice(made.path.lastIndexOf('/') + 1),
+              size: made.size
             }
           ]
         : []
-    )
+    })
     .sort((a, b) => a.name.localeCompare(b.name)),
   film: facts?.film ? [{ file: facts.film.path, name: 'film', size: facts.film.size }] : [],
   project: facts?.project ? [{ file: facts.projectPath, name: 'project', size: 0 }] : []
@@ -199,6 +201,7 @@ const UploadDialog = ({
   who,
   group,
   facts,
+  picked = false,
   places,
   plan,
   onPlan,
@@ -209,6 +212,7 @@ const UploadDialog = ({
   who: string
   group: ManifestGroup
   facts?: MontageFact
+  picked?: boolean
   places: Destination[]
   plan: SendPlan
   onPlan: (plan: SendPlan) => void
@@ -219,8 +223,8 @@ const UploadDialog = ({
   const [over, setOver] = useState<string | null>(null)
   const [added, setAdded] = useState<string[]>([])
   const [folder, setFolder] = useState(() => projectFolderOf(group, { zips: [], placed: {} }))
-  const parts = partsOf(group, facts)
-  const stem = stemOf(group)
+  const parts = partsOf(group, facts, picked)
+  const stem = picked ? stemFor(slugOf(folder) || 'files', group.files) : stemOf(group)
   const present = PARTS.filter((part) => parts[part].length > 0)
   const items = itemsFrom(parts, stem, plan.zips)
   const zipItems = items.filter((item) => item.zip)
@@ -304,7 +308,7 @@ const UploadDialog = ({
   const used = [...new Set(items.flatMap((item) => placesOf(item.key)))]
   const shown = places.filter((p) => added.includes(p.name) || used.includes(p.name))
   const hidden = places.filter((p) => !shown.includes(p))
-  const waitingForFilm = parts.videos.length > 0 && parts.film.length === 0
+  const waitingForFilm = !picked && parts.videos.length > 0 && parts.film.length === 0
   const blocked = waitingForFilm
     ? t`Render the film in kdenlive first`
     : used.length === 0

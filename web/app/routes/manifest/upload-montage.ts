@@ -4,8 +4,6 @@ import {
   outputKeyOf,
   passengerName,
   pastCancelling,
-  runUpload,
-  UploadCancelled,
   planOf,
   saveManifest,
   statProcessedOutputs,
@@ -20,7 +18,8 @@ import { uploadMontage } from '../../../../packages/skydock-scripts/src/uploadMo
 import { boardAnswer } from '../../helpers/manifest'
 import { connectFirst } from './change'
 import type { Change, Intent } from './change'
-import { uploadReporter } from './progress'
+import { reportedUpload } from './progress'
+import type { UploadReport } from './progress'
 import { recordOnStorage } from './storage'
 
 /* A montage goes up as its plan says — each item built once and sent to every destination it was put
@@ -40,7 +39,7 @@ const sendMontage = async (
   if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
   const key = montageUploadKey(group.id)
   const label = passengerName(group.passenger)
-  const send = async (report: ReturnType<typeof uploadReporter>) => {
+  const send = async (report: UploadReport) => {
     const result = await uploadMontage({
       outputDir,
       manifest,
@@ -84,22 +83,7 @@ const sendMontage = async (
       }
     })
   }
-  try {
-    return await runUpload({ key, label, groupIds: [group.id] }, async () => {
-      const report = uploadReporter({ label, outputDir })
-      try {
-        return await send(report)
-      } catch (err) {
-        if (err instanceof UploadCancelled) report.cancelled()
-        else report.failed(err instanceof Error ? err.message : 'Upload failed.')
-        throw err
-      }
-    })
-  } catch (err) {
-    if (err instanceof UploadCancelled)
-      return { ...(await boardAnswer(await latest())), uploadCancelled: true }
-    return refuse(err instanceof Error ? err.message : 'Upload failed.')
-  }
+  return reportedUpload({ key, label, groupIds: [group.id], outputDir, latest, refuse }, send)
 }
 
 const uploadMontageIntent: Intent = (change) => sendMontage(change, change.data.groupId)

@@ -1,5 +1,7 @@
-import { job } from '@skydock/scripts'
+import { job, runUpload, UploadCancelled } from '@skydock/scripts'
 import type { UploadItem } from '@skydock/scripts'
+import { boardAnswer } from '../../helpers/manifest'
+import type { Change } from './change'
 import type { ArchiveProgress } from '../../../../packages/skydock-scripts/src/archive'
 import type {
   CheckProgress,
@@ -111,4 +113,39 @@ const uploadReporter = ({ label, outputDir }: { label: string; outputDir: string
   }
 }
 
-export { uploadReporter }
+type UploadReport = ReturnType<typeof uploadReporter>
+
+const reportedUpload = async <T>(
+  {
+    key,
+    label,
+    groupIds,
+    outputDir,
+    latest,
+    refuse
+  }: { key: string; label: string; groupIds: string[] } & Pick<
+    Change,
+    'outputDir' | 'latest' | 'refuse'
+  >,
+  send: (report: UploadReport) => Promise<T>
+) => {
+  try {
+    return await runUpload({ key, label, groupIds }, async () => {
+      const report = uploadReporter({ label, outputDir })
+      try {
+        return await send(report)
+      } catch (err) {
+        if (err instanceof UploadCancelled) report.cancelled()
+        else report.failed(err instanceof Error ? err.message : 'Upload failed.')
+        throw err
+      }
+    })
+  } catch (err) {
+    if (err instanceof UploadCancelled)
+      return { ...(await boardAnswer(await latest())), uploadCancelled: true }
+    return refuse(err instanceof Error ? err.message : 'Upload failed.')
+  }
+}
+
+export { reportedUpload, uploadReporter }
+export type { UploadReport }

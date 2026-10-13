@@ -2,7 +2,7 @@ import type { ArchiveEntry } from './archive'
 import { startOfFiles } from './clustering'
 import { parseDayEpoch } from './plain'
 import { sendPlanSchema } from './types'
-import type { ManifestGroup, SendPart, SendPlan } from './types'
+import type { ManifestFile, ManifestGroup, SendPart, SendPlan } from './types'
 import { formatCaptureTime, formatGroupDay, passengerName, toFileStem } from './workspace'
 
 const PARTS = ['videos', 'photos', 'film', 'project'] as const satisfies readonly SendPart[]
@@ -22,11 +22,13 @@ const slugOf = (text: string, typing = false) => {
   return typing ? slug : slug.replace(/-$/, '')
 }
 
-const stemOf = (group: ManifestGroup) => {
-  const start = startOfFiles(group.files)
-  const day = parseDayEpoch(group.day) ?? start
-  return `${toFileStem(passengerName(group.passenger), 'montage')}_${formatGroupDay(day)}_${formatCaptureTime(start)}`
+const stemFor = (name: string, files: ManifestFile[], day?: string) => {
+  const start = startOfFiles(files)
+  return `${toFileStem(name, 'montage')}_${formatGroupDay(parseDayEpoch(day) ?? start)}_${formatCaptureTime(start)}`
 }
+
+const stemOf = (group: ManifestGroup) =>
+  stemFor(passengerName(group.passenger), group.files, group.day)
 
 type PartFile = ArchiveEntry & { size: number }
 
@@ -37,8 +39,11 @@ const partEntries = (part: SendPart, files: PartFile[], stem: string): PartFile[
 
 const zipNameOf = (stem: string, ending: string) => `${stem}${ending ? `.${ending}` : ''}.zip`
 
+const folderFor = (name: string, plan: SendPlan, fallback = 'montage') =>
+  plan.folder ?? (slugOf(name) || fallback)
+
 const projectFolderOf = (group: ManifestGroup, plan: SendPlan) =>
-  plan.folder ?? (slugOf(passengerName(group.passenger)) || 'montage')
+  folderFor(passengerName(group.passenger), plan)
 
 type SendItem = {
   key: string
@@ -96,5 +101,16 @@ const itemsFrom = (
 
 const planOf = (value: unknown) => sendPlanSchema.safeParse(value).data ?? DEFAULT_PLAN
 
-export { DEFAULT_PLAN, itemsFrom, PARTS, planOf, projectFolderOf, slugOf, stemOf, zipNameOf }
+export {
+  DEFAULT_PLAN,
+  folderFor,
+  itemsFrom,
+  PARTS,
+  planOf,
+  projectFolderOf,
+  slugOf,
+  stemFor,
+  stemOf,
+  zipNameOf
+}
 export type { PartFile, SendItem }

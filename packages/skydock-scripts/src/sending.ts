@@ -4,9 +4,24 @@ import { filmNameOf } from './montageNames'
 import { montageArtifacts } from './montageArtifacts'
 import { itemsFrom, stemOf } from './sendNames'
 import type { PartFile } from './sendNames'
-import type { ManifestGroup, SendPart, SendPlan } from './types'
+import type { ManifestFile, ManifestGroup, SendPart, SendPlan } from './types'
 import { pathExists } from './lib/fs'
 import { isVideoFile, mapWithLimit, sizeOf } from './utils'
+
+const one = async (file: string, name = path.basename(file)) => ({
+  file,
+  name,
+  size: await sizeOf(file)
+})
+
+const presentOf = async (files: { path: string; filename: string }[]) => {
+  const there = await mapWithLimit(files, 16, (f) => pathExists(f.path))
+  return mapWithLimit(
+    files.filter((_, index) => there[index]),
+    16,
+    (f) => one(f.path, f.filename)
+  )
+}
 
 const partFiles = async (group: ManifestGroup, outputDir: string, film: string | null) => {
   const artifacts = await montageArtifacts(outputDir, group)
@@ -19,20 +34,9 @@ const partFiles = async (group: ManifestGroup, outputDir: string, film: string |
       : artifacts.strayFilms.length === 1
         ? path.join(artifacts.dir, artifacts.strayFilms[0]!)
         : null)
-  const one = async (file: string, name = path.basename(file)) => ({
-    file,
-    name,
-    size: await sizeOf(file)
-  })
-  const videoFiles = group.files.filter((f) => isVideoFile(f.path))
-  const videoThere = await mapWithLimit(videoFiles, 16, (f) => pathExists(f.path))
   const photoNames = (await pathExists(photosDir)) ? (await readdir(photosDir)).sort() : []
   return {
-    videos: await mapWithLimit(
-      videoFiles.filter((_, index) => videoThere[index]),
-      16,
-      (f) => one(f.path, f.filename)
-    ),
+    videos: await presentOf(group.files.filter((f) => isVideoFile(f.path))),
     photos: await mapWithLimit(photoNames, 16, (name) => one(path.join(photosDir, name))),
     film: renderedFilm ? [await one(renderedFilm)] : [],
     project: (await pathExists(project)) ? [await one(project)] : []
@@ -46,6 +50,18 @@ const sendItems = async (
   film: string | null = null
 ) => itemsFrom(await partFiles(group, outputDir, film), stemOf(group), zips)
 
+const sendFiles = async (files: ManifestFile[], stem: string, zips: SendPlan['zips']) =>
+  itemsFrom(
+    {
+      videos: await presentOf(files.filter((f) => isVideoFile(f.path))),
+      photos: await presentOf(files.filter((f) => !isVideoFile(f.path))),
+      film: [],
+      project: []
+    },
+    stem,
+    zips
+  )
+
 export {
   DEFAULT_PLAN,
   itemsFrom,
@@ -56,5 +72,5 @@ export {
   stemOf,
   zipNameOf
 } from './sendNames'
-export { sendItems }
+export { sendFiles, sendItems }
 export type { PartFile, SendItem } from './sendNames'

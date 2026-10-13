@@ -6,7 +6,7 @@ import {
   passengerOf
 } from '@skydock/scripts/client'
 import type { MontageEntry, MontageLost, MontageFact, freeablePlace } from '@skydock/scripts'
-import { t } from '@lingui/core/macro'
+import { plural, t } from '@lingui/core/macro'
 import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
 import { FreeDialog } from './free-dialog'
@@ -32,12 +32,14 @@ import type { Passenger } from './montage-card'
 import type { SendPlan } from '@skydock/scripts'
 
 type UploadDialogState = { kind: 'upload'; groupId: string }
+type SendDialogState = { kind: 'send'; files: ManifestFile[] }
 
 type BoardDialog =
   | null
   | { kind: 'connect' }
-  | { kind: 'folder'; destination: string; back?: UploadDialogState }
+  | { kind: 'folder'; destination: string; back?: UploadDialogState | SendDialogState }
   | UploadDialogState
+  | SendDialogState
   | { kind: 'take-back'; mode: TakeBackMode; who: string }
   | { kind: 'free'; groupId: string }
   | { kind: 'free-place'; place: string }
@@ -68,6 +70,7 @@ const DialogHost = ({
   plan,
   onPlan,
   onUpload,
+  onSend,
   storage,
   onEmailed,
   onFree,
@@ -105,6 +108,7 @@ const DialogHost = ({
   plan: SendPlan
   onPlan: (plan: SendPlan) => void
   onUpload: (group: ManifestGroup, plan: SendPlan) => void
+  onSend: (files: ManifestFile[], plan: SendPlan) => void
   storage: { montages: MontageEntry[]; lost: MontageLost } | null
   onEmailed: (folder: string, sent: boolean, to: string) => void
   onFree: (group: ManifestGroup) => void
@@ -167,6 +171,26 @@ const DialogHost = ({
             />
           )
         })()}
+
+      {dialog?.kind === 'send' && (
+        <UploadDialog
+          who={plural(dialog.files.length, { one: '# file', other: '# files' })}
+          group={{
+            id: 'files',
+            label: t`Files`,
+            day: '',
+            files: dialog.files,
+            passenger: { firstname: t`Files`, lastname: '' }
+          }}
+          picked
+          places={places.map((p) => ({ ...p, path: folderFor(p.name) ?? undefined }))}
+          plan={plan}
+          onPlan={onPlan}
+          onPickFolder={(destination) => onDialog({ kind: 'folder', destination, back: dialog })}
+          onClose={close}
+          onUpload={(asked) => onSend(dialog.files, asked)}
+        />
+      )}
 
       {dialog?.kind === 'email' &&
         (() => {

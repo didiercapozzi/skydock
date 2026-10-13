@@ -45,6 +45,7 @@ export {
   itemsFrom,
   projectFolderOf,
   slugOf,
+  stemFor,
   stemOf,
   zipNameOf
 } from './sendNames'

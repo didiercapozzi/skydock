@@ -1,6 +1,5 @@
-import { link, mkdir, copyFile, rename, rm } from 'node:fs/promises'
+import { rename } from 'node:fs/promises'
 import * as path from 'node:path'
-import { PHOTO_LEVEL, VIDEO_LEVEL, writeArchive } from './archive'
 import type { ArchiveProgress } from './archive'
 import type { CheckProgress, PlanProgress, UploadProgress, UploadVerdict } from './publish'
 import type { NasSession } from './nas'
@@ -8,14 +7,10 @@ import { projectFolderOf, sendItems } from './sending'
 import type { SendItem } from './sending'
 import { filmNameOf, isNamedMontage, montageArtifacts } from './montageArtifacts'
 import type { Manifest, ManifestGroup, SendPart, SendPlan } from './types'
-import { destBaseOf, uploadTargets } from './upload'
-import type { UploadTarget } from './upload'
 import { pathExists } from './lib/fs'
 import { isVideoFile, sizeOf } from './utils'
 import { passengerName } from './workspace'
-import { originsOf } from './originEntry'
-import { placeFolders } from './originIndex'
-import { stopIfUploadCancelled } from './uploading'
+import { sendPlanned } from './uploadItems'
 
 const SETTLE_MS = 1500
 
@@ -49,13 +44,6 @@ const resolveFilm = async (
 }
 
 const readyOf = (dir: string) => path.join(dir, '.send')
-
-const linkInto = async (file: string, to: string) => {
-  await mkdir(path.dirname(to), { recursive: true })
-  await rm(to, { force: true })
-  await link(file, to).catch(() => copyFile(file, to))
-  return to
-}
 
 const verdictIn = (files: UploadVerdict[], localPath: string, remoteDir: string) =>
   files.find((f) => f.localPath === localPath && f.remotePath.startsWith(`${remoteDir}/`))
@@ -97,68 +85,19 @@ const uploadMontage = async ({
   )
   if (items.length === 0) throw new Error('Put at least one thing in a destination.')
 
-  const folder = projectFolderOf(group, plan)
-  const destinations = [...new Set(items.flatMap((item) => plan.placed[item.key] ?? []))]
-  const remoteOf = new Map<string, string>()
-  for (const destination of destinations) {
-    const base = destBaseOf(destination, manifest)
-    if (!base) throw new Error(`Choose a NAS folder for ${destination} first.`)
-    remoteOf.set(destination, plan.inRoot?.includes(destination) ? base : `${base}/${folder}`)
-  }
-
   const ready = readyOf(artifacts.dir)
-  await mkdir(ready, { recursive: true })
-  const built = new Map<string, string[]>()
-  for (const item of items) {
-    stopIfUploadCancelled()
-    if (item.zip) {
-      const zip = await writeArchive(path.join(ready, item.name), item.entries, {
-        level: item.holds.every((part) => part === 'photos') ? PHOTO_LEVEL : VIDEO_LEVEL,
-        onProgress: (progress) => onArchive?.({ ...progress, name: item.name })
-      })
-      built.set(item.key, zip ? [zip] : [])
-    } else
-      built.set(
-        item.key,
-        await Promise.all(
-          item.entries.map((entry) => linkInto(entry.file, path.join(ready, entry.name)))
-        )
-      )
-  }
-
-  const targets: UploadTarget[] = destinations.flatMap((destination) => {
-    const remote = remoteOf.get(destination)!
-    const here = items.filter((item) => (plan.placed[item.key] ?? []).includes(destination))
-    const inFolder = (sub: string) =>
-      here.flatMap((item) => (built.get(item.key) ?? []).filter((f) => path.dirname(f) === sub))
-    return [
-      { sub: ready, remoteDir: remote, share: here.some((item) => item.holds.includes('film')) },
-      { sub: path.join(ready, 'videos'), remoteDir: `${remote}/videos`, share: false },
-      { sub: path.join(ready, 'photos'), remoteDir: `${remote}/photos`, share: false }
-    ].flatMap(({ sub, remoteDir, share }) => {
-      const files = inFolder(sub)
-      return files.length === 0
-        ? []
-        : [
-            {
-              key: `send:${group.id}:${destination}:${path.basename(sub)}`,
-              label: `${passengerName(group.passenger)} in ${destination}`,
-              localDir: sub,
-              remoteDir,
-              destination,
-              groupIds: [group.id],
-              files,
-              share
-            }
-          ]
-    })
-  })
-
-  const result = await uploadTargets({
+  const { result, built, remoteOf } = await sendPlanned({
+    items,
+    plan,
+    folder: projectFolderOf(group, plan),
+    manifest,
     session,
-    targets,
-    origins: originsOf(manifest),
-    folders: placeFolders(manifest),
+    workDir: ready,
+    id: group.id,
+    label: passengerName(group.passenger),
+    groupIds: [group.id],
+    shares: (here) => here.some((item) => item.holds.includes('film')),
+    onArchive,
     onProgress,
     onCheck,
     onPlan

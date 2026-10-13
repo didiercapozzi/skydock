@@ -1531,6 +1531,23 @@ on the server, and what is shown follows it from whatever page is open. When it 
 list below. A delete off a camera is kept like the others: every file that went, or every file left alone
 and why.
 
+## Sending picked files
+
+Files picked on the board — a jump's, loose ones, a camera's — can be sent to the storage the way a
+montage is, without being one. The dialog is the same two steps: the files are offered as **videos**
+and **photos**, as they are on this machine, with no film and no project; the zips are made and the
+destinations chosen exactly as for a montage, and **the same item can go to several**, built once. As
+they are, the videos go as the files of a `videos/` folder and the photos of a `photos/` folder. A zip
+is named `<name>_<date>_<time>.<ending>.zip`, where the name is the project folder's — it starts as
+"files", and typing another renames the zips with it — and the date and the time are when the first
+of the files was shot. Nothing is ever shared: no link is asked for.
+
+What was sent is not written onto the files, nor onto a jump: it is in the transfers panel, with what
+went where, and sending the same files again is just sending them again — turned away, as for a
+montage, while the same names are still up there. A picked file that is no longer on this machine is
+left out and the rest goes. **Refusals**: nothing put anywhere; a destination with no folder on the
+storage; another upload going.
+
 ## Freeing space
 
 Once a montage is uploaded, everything of it on this machine can be deleted — originals, copies, working

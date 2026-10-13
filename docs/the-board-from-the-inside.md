@@ -72,7 +72,7 @@ flowchart LR
 
 ## Every way in, in detail
 
-The arrows above are the ones worth remembering. These are all of them — **38**,
+The arrows above are the ones worth remembering. These are all of them — **39**,
 of which **24** write the board's own record — grouped by the rule each one serves, in its own
 words. Worth reading when you are in one of them, not before.
 
@@ -287,6 +287,22 @@ The rule itself is in [RULES.md](../RULES.md), under _Putting files in the bin_.
 
 </details>
 
+### Sending picked files
+
+The rule itself is in [RULES.md](../RULES.md), under _Sending picked files_.
+
+| asked for | what it does | what it reaches |
+| --- | --- | --- |
+| `send-files` | Picked files go up as the plan says, the way a montage does, and leave nothing on the board but the transfers panel's line (RULES, Sending picked files). | needs the storage, works outside the record |
+
+<details><summary><code>send-files</code> refuses</summary>
+
+- Pick the files to send first.
+- Those files are not on the board any more.
+- Connect the storage first.
+
+</details>
+
 ### Taking a montage back
 
 The rule itself is in [RULES.md](../RULES.md), under _Taking a montage back_.
@@ -489,7 +505,7 @@ is hard to hold in your head: the same sentence, said by everything that has to 
 `retime-file` · `set-moment` · `reset-moments` · `redo-moments` · `play-file`
 
 **Connect the storage first.**
-`upload-group` · `destination-link` · `bring-back`
+`upload-group` · `send-files` · `destination-link` · `bring-back`
 
 **On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.**
 `save-groups` · `move-files`

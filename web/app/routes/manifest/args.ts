@@ -27,6 +27,8 @@ const actionArgs = z.object({
     'cancel-upload',
     'montage',
     'upload-montage',
+    /* picked files zipped as the plan says and sent to the destinations they were put in */
+    'send-files',
     'shift-group-time',
     /* one file's time, corrected on its own */
     'retime-file',
