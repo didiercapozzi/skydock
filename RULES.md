@@ -33,7 +33,8 @@ says which version is out and opens the page it comes from, because only an app 
 replace itself there. Saying no leaves everything as it was and asks again next time. Nothing is ever
 installed without being asked — a machine in the middle of somebody's day is no place for a version
 that changed by itself. A machine with no way out to the internet, or one that finds nothing, opens
-its board exactly as it always does.
+its board exactly as it always does. Installed from the Microsoft Store, it asks nothing: the Store
+keeps it current.
 
 **Nothing running is cut off unasked.** Closing the window or installing an update while an upload,
 processing or a camera copy is running asks first, saying which; keeping on working is the choice

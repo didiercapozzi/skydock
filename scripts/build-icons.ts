@@ -22,6 +22,21 @@ for (const size of sizes) {
   )
   await page.screenshot({ path: png(size), omitBackground: true })
 }
+const tiles: [string, number, number][] = [
+  ['StoreLogo', 50, 50],
+  ['Square44x44Logo', 44, 44],
+  ['Square150x150Logo', 150, 150],
+  ['Wide310x150Logo', 310, 150]
+]
+const appx = path.join(packaging, 'appx')
+fs.mkdirSync(appx, { recursive: true })
+for (const [name, width, height] of tiles) {
+  const page = await browser.newPage({ viewport: { width, height } })
+  await page.setContent(
+    `<body style="margin:0;display:flex;justify-content:center"><img src="data:image/svg+xml;base64,${svg.toString('base64')}" width="${height}" height="${height}" style="display:block">`
+  )
+  await page.screenshot({ path: path.join(appx, `${name}.png`), omitBackground: true })
+}
 await browser.close()
 
 const ico = path.join(work, 'icon.ico')

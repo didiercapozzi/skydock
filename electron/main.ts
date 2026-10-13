@@ -416,7 +416,7 @@ const installDeb = (file: string) =>
   })
 
 const offerUpdate = () => {
-  if (!app.isPackaged || toldWhere()) return
+  if (!app.isPackaged || process.windowsStore || toldWhere()) return
   const { autoUpdater } = updater
   const onMac = process.platform === 'darwin'
   autoUpdater.autoDownload = !onMac

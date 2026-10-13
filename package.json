@@ -101,6 +101,13 @@
         "msi"
       ]
     },
+    "appx": {
+      "displayName": "SkyDock",
+      "publisherDisplayName": "Didier Capozzi",
+      "languages": [
+        "en-US"
+      ]
+    },
     "releaseInfo": {
       "releaseNotes": "Nobody has signed these: on macOS, open System Settings → Privacy & Security and choose Open Anyway the first time; on Windows, choose More info, then Run anyway."
     }
