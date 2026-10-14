@@ -1,0 +1,94 @@
+name: Store package check
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inside-the-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: The media tools the app carries
+        shell: bash
+        run: |
+          told=$(npx tsx scripts/fetch-tools.ts)
+          echo "SKYDOCK_TOOLS_DIR=$told" >> "$GITHUB_ENV"
+
+      - name: What the app carries
+        shell: bash
+        run: npm run pack
+
+      - name: The window itself
+        shell: bash
+        run: npm run shell
+
+      - name: The package, as the Store would be handed it
+        shell: bash
+        run: >
+          npx electron-builder --win appx --publish never
+          -c.appx.identityName=SkyDock.Check
+          -c.appx.publisher=CN=SkyDockCheck
+          -c.appx.publisherDisplayName="SkyDock check"
+
+      - name: Installed here, and the tools run inside it
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $appx = Get-ChildItem build/installers -Filter *.appx | Select-Object -First 1
+          if (-not $appx) { throw 'no .appx was built' }
+
+          $cert = New-SelfSignedCertificate -Type Custom -Subject 'CN=SkyDockCheck' `
+            -KeyUsage DigitalSignature -FriendlyName 'SkyDock check' `
+            -CertStoreLocation 'Cert:\CurrentUser\My' `
+            -TextExtension @('2.5.29.37={text}1.3.6.1.5.5.7.3.3', '2.5.29.19={text}')
+          $pfx = Join-Path $env:RUNNER_TEMP 'check.pfx'
+          $cer = Join-Path $env:RUNNER_TEMP 'check.cer'
+          $secret = ConvertTo-SecureString 'check' -AsPlainText -Force
+          Export-PfxCertificate -Cert $cert -FilePath $pfx -Password $secret | Out-Null
+          Export-Certificate -Cert $cert -FilePath $cer | Out-Null
+          Import-Certificate -FilePath $cer -CertStoreLocation 'Cert:\LocalMachine\TrustedPeople' | Out-Null
+
+          $signtool = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin' -Recurse -Filter signtool.exe |
+            Where-Object FullName -like '*\x64\*' | Sort-Object FullName | Select-Object -Last 1
+          & $signtool.FullName sign /fd SHA256 /f $pfx /p check $appx.FullName
+          if ($LASTEXITCODE -ne 0) { throw 'the package could not be signed for this check' }
+
+          Add-AppxPackage -Path $appx.FullName
+          $package = Get-AppxPackage -Name 'SkyDock.Check'
+          if (-not $package) { throw 'the package did not install' }
+          $appId = (Get-AppxPackageManifest $package).Package.Applications.Application.Id
+          $root = $package.InstallLocation
+          $tool = @{}
+          foreach ($name in 'ffmpeg', 'ffprobe', 'exiftool') {
+            $found = Get-ChildItem $root -Recurse -Filter "$name.exe" | Select-Object -First 1
+            if (-not $found) { throw "$name.exe is not in the package ($root)" }
+            $tool[$name] = $found.FullName
+          }
+
+          $work = 'C:\check'
+          New-Item -ItemType Directory -Force $work | Out-Null
+
+          function Inside([string] $step, [string] $line) {
+            $script = Join-Path $work "$step.cmd"
+            Set-Content $script "@echo off`r`n($line) > `"$work\$step.txt`" 2>&1 && echo ok > `"$work\$step.ok`""
+            Invoke-CommandInDesktopPackage -PackageFamilyName $package.PackageFamilyName `
+              -AppId $appId -Command 'cmd.exe' -Args "/c `"$script`""
+            for ($i = 0; $i -lt 90 -and -not (Test-Path "$work\$step.ok"); $i++) { Start-Sleep 1 }
+            Write-Host "---- $step"
+            if (Test-Path "$work\$step.txt") { Get-Content "$work\$step.txt" | Select-Object -First 8 }
+            if (-not (Test-Path "$work\$step.ok")) { throw "$step failed inside the package" }
+          }
+
+          Inside 'ffmpeg-version' "`"$($tool.ffmpeg)`" -version"
+          Inside 'ffmpeg-makes-a-clip' "`"$($tool.ffmpeg)`" -y -f lavfi -i testsrc=duration=1:size=320x240:rate=10 -pix_fmt yuv420p `"$work\clip.mp4`""
+          Inside 'ffprobe-reads-it' "`"$($tool.ffprobe)`" -v error -show_entries format=duration -of csv=p=0 `"$work\clip.mp4`""
+          Inside 'exiftool-version' "`"$($tool.exiftool)`" -ver"
+          Inside 'exiftool-reads-it' "`"$($tool.exiftool)`" -s -Duration `"$work\clip.mp4`""
