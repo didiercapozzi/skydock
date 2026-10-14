@@ -92,3 +92,9 @@ jobs:
           Inside 'ffprobe-reads-it' "`"$($tool.ffprobe)`" -v error -show_entries format=duration -of csv=p=0 `"$work\clip.mp4`""
           Inside 'exiftool-version' "`"$($tool.exiftool)`" -ver"
           Inside 'exiftool-reads-it' "`"$($tool.exiftool)`" -s -Duration `"$work\clip.mp4`""
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: skydock-check-package
+          path: build/installers/*.appx
+          if-no-files-found: error

@@ -1,0 +1,81 @@
+name: Store package
+
+on:
+  workflow_dispatch:
+    inputs:
+      identityName:
+        description: Package/Identity/Name, as Partner Center shows it under Product identity
+        required: true
+      publisher:
+        description: Package/Identity/Publisher, as Partner Center shows it (CN=...)
+        required: true
+      publisherDisplayName:
+        description: Package/Properties/PublisherDisplayName, as Partner Center shows it
+        required: true
+
+jobs:
+  store-package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: The media tools the app carries
+        shell: bash
+        run: |
+          told=$(npx tsx scripts/fetch-tools.ts)
+          echo "SKYDOCK_TOOLS_DIR=$told" >> "$GITHUB_ENV"
+
+      - name: What the app carries
+        shell: bash
+        run: npm run pack
+
+      - name: The window itself
+        shell: bash
+        run: npm run shell
+
+      - name: The tiles the Store shows, from the app's icon
+        shell: pwsh
+        run: |
+          Add-Type -AssemblyName System.Drawing
+          $source = [System.Drawing.Image]::FromFile((Resolve-Path 'packaging/icon.png'))
+          New-Item -ItemType Directory -Force 'packaging/appx' | Out-Null
+          foreach ($tile in @(
+            @('StoreLogo', 50, 50),
+            @('Square44x44Logo', 44, 44),
+            @('Square150x150Logo', 150, 150),
+            @('Wide310x150Logo', 310, 150)
+          )) {
+            $bitmap = New-Object System.Drawing.Bitmap $tile[1], $tile[2]
+            $canvas = [System.Drawing.Graphics]::FromImage($bitmap)
+            $canvas.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+            $side = [Math]::Min($tile[1], $tile[2])
+            $canvas.DrawImage($source, [int](($tile[1] - $side) / 2), 0, $side, $side)
+            $bitmap.Save((Join-Path (Resolve-Path 'packaging/appx') "$($tile[0]).png"), [System.Drawing.Imaging.ImageFormat]::Png)
+            $canvas.Dispose()
+            $bitmap.Dispose()
+          }
+
+      - name: The package, unsigned, as the Store signs it itself
+        shell: bash
+        run: >
+          npx electron-builder --win appx --publish never
+          -c.appx.identityName="$IDENTITY_NAME"
+          -c.appx.publisher="$PUBLISHER"
+          -c.appx.publisherDisplayName="$PUBLISHER_DISPLAY_NAME"
+        env:
+          IDENTITY_NAME: ${{ inputs.identityName }}
+          PUBLISHER: ${{ inputs.publisher }}
+          PUBLISHER_DISPLAY_NAME: ${{ inputs.publisherDisplayName }}
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: skydock-store-package
+          path: build/installers/*.appx
+          if-no-files-found: error
