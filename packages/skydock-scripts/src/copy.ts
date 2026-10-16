@@ -57,6 +57,44 @@ const isNameFor = (candidate: string, name: string) => {
 
 const namesIn = (dir: string) => fs.promises.readdir(dir).catch(() => [] as string[])
 
+const withoutNumber = (name: string) => {
+  const { name: stem, ext } = path.parse(name)
+  return `${stem.replace(/_\d+$/, '')}${ext}`
+}
+
+const copiesIndex = async (outputDir: string) => {
+  const root = path.join(outputDir, 'original_files')
+  const days = (await fs.promises.readdir(root, { withFileTypes: true }).catch(() => []))
+    .filter((e) => e.isDirectory())
+    .map((e) => path.join(root, e.name))
+  const names = new Map<string, string[]>()
+  const holding = new Map<string, Set<string>>()
+  await mapWithLimit(days, 8, async (dir) => {
+    const list = await namesIn(dir)
+    names.set(dir, list)
+    for (const name of list)
+      for (const key of new Set([name, withoutNumber(name)])) {
+        const dirs = holding.get(key) ?? new Set<string>()
+        dirs.add(dir)
+        holding.set(key, dirs)
+      }
+  })
+  return {
+    dirsFor: (name: string) => [...(holding.get(name) ?? [])],
+    namesIn: async (dir: string) => names.get(dir) ?? []
+  }
+}
+
+type CopiesIndex = Awaited<ReturnType<typeof copiesIndex>>
+
+const alreadyAnywhere = async (src: string, srcStat: fs.Stats, index: CopiesIndex) => {
+  for (const dir of index.dirsFor(path.basename(src))) {
+    const there = await alreadyThere(src, srcStat, dir, index.namesIn)
+    if (there) return there
+  }
+  return null
+}
+
 const alreadyThere = async (
   src: string,
   srcStat: fs.Stats,
@@ -99,6 +137,19 @@ const freedAlready = (
   srcStat: fs.Stats,
   dir: string
 ) => givenBack(inFolder(dir), path.basename(src), srcStat.size)
+
+const freedOnItsDay = async (
+  inFolder: (dir: string) => ManifestFile[],
+  board: ManifestFile[],
+  src: string,
+  srcStat: fs.Stats,
+  outputDir: string
+) => {
+  if (!givenBack(board, path.basename(src), srcStat.size)) return false
+  const shot = (await shotTimes([src])).get(src) ?? Math.floor(srcStat.mtimeMs / 1000)
+  const dir = path.join(outputDir, 'original_files', dayFolder(shot))
+  return freedAlready(inFolder, src, srcStat, dir)
+}
 
 const loadBoard = async (outputDir: string) => {
   try {
@@ -163,12 +214,21 @@ const copyCamera = async ({
   onCopied?: (copied: Copied) => Promise<void> | void
 }) => {
   const files = (await findMediaFilesAsync(cameraDir)).filter((file) => !only || only.has(file))
-  const shots = await shotTimes(files)
   const known = manifest === undefined ? await loadBoard(outputDir) : manifest
   const board = known
     ? [...known.files, ...known.groups.flatMap((g) => g.files)]
     : ([] as ManifestFile[])
   const inFolder = folderIndex(board)
+  const index = await copiesIndex(outputDir)
+  const hereAlready = async (src: string, srcStat: fs.Stats) =>
+    (await freedOnItsDay(inFolder, board, src, srcStat, outputDir)) ||
+    (await alreadyAnywhere(src, srcStat, index))
+  const pending: string[] = []
+  for (const src of files) {
+    const srcStat = await fs.promises.stat(src).catch(() => null)
+    if (!srcStat || !(await hereAlready(src, srcStat))) pending.push(src)
+  }
+  const shots = await shotTimes(pending)
   const progress: CopyProgress = { done: 0, total: files.length, copied: 0, skipped: 0 }
   onProgress?.({
     ...progress,
@@ -189,11 +249,9 @@ const copyCamera = async ({
     const shot = shots.get(src) ?? Math.floor(srcStat.mtimeMs / 1000)
     let last: 'copied' | 'skipped' | 'failed' = 'skipped'
     try {
-      const destDir = await originalsDay(outputDir, shot)
-      const there =
-        freedAlready(inFolder, src, srcStat, destDir) || (await alreadyThere(src, srcStat, destDir))
-      if (there) progress.skipped++
+      if (await hereAlready(src, srcStat)) progress.skipped++
       else {
+        const destDir = await originalsDay(outputDir, shot)
         const copied = await copyOne(src, srcStat, destDir, (part) =>
           onProgress?.({ ...progress, part })
         )
@@ -292,12 +350,15 @@ export {
   CameraGone,
   CopyStopped,
   alreadyThere,
+  alreadyAnywhere,
+  copiesIndex,
   copyBack,
   copyCamera,
   dayFoldersOf,
   landingFor,
   folderIndex,
   freedAlready,
+  freedOnItsDay,
   isNameFor,
   loadBoard,
   namesIn

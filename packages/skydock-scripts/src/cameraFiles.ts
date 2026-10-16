@@ -10,7 +10,7 @@ import {
   seenOnCamera,
   keyOfMount
 } from './cameraWatch'
-import { alreadyThere, dayFoldersOf, folderIndex, freedAlready, givenBack, namesIn } from './copy'
+import { alreadyAnywhere, copiesIndex, folderIndex, freedOnItsDay, givenBack } from './copy'
 import { computeFileId } from './fileId'
 import { listBin } from './bin'
 import { findMediaFilesAsync, moveFile, statOrNull } from './lib/fs'
@@ -161,25 +161,15 @@ const readCard = async (
     .sort((a, b) => secondsOf(b.stat) - secondsOf(a.stat))
   const board = boardOf(await loadManifestAsync(getManifestPath(outputDir)))
   const binned = binnedBy(await binnedCopies(trashDir), contentOf)
-  const names = new Map<string, Promise<string[]>>()
-  const namesOnce = (dir: string) => {
-    const known = names.get(dir) ?? namesIn(dir)
-    names.set(dir, known)
-    return known
-  }
+  const index = await copiesIndex(outputDir)
   for (let at = 0; at < newestFirst.length; at += CHUNK) {
     const chunk = newestFirst.slice(at, at + CHUNK)
-    const folders = await dayFoldersOf(
-      chunk.map(({ file }) => file),
-      outputDir
-    )
     onChunk(
       await mapWithLimit(chunk, LISTING_PARALLEL, async ({ file, stat }) => {
-        const dir = folders.get(file) ?? ''
-        const original = await alreadyThere(file, stat, dir, namesOnce)
-        const state = standingOf(board, original, () =>
-          freedAlready(board.inFolder, file, stat, dir)
-        )
+        const original = await alreadyAnywhere(file, stat, index)
+        const freed =
+          !original && (await freedOnItsDay(board.inFolder, board.files, file, stat, outputDir))
+        const state = standingOf(board, original, () => freed)
         return {
           path: file,
           name: path.relative(dcimOf(mount), file),
