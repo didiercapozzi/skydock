@@ -2,7 +2,15 @@ import * as crypto from 'node:crypto'
 import { mkdir, readdir, rename, rmdir, rm, stat, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import { isMediaName } from './constants'
-import { CameraGone, CopyStopped, givenBack, isNameFor, landingFor, loadBoard } from './copy'
+import {
+  CameraGone,
+  CopyStopped,
+  givenBack,
+  isNameFor,
+  landingFor,
+  loadBoard,
+  withoutNumber
+} from './copy'
 import type { Copied, CopyProgress } from './copy'
 import { computeFileId } from './fileId'
 import { watchGrowth } from './lib/growing'
@@ -52,10 +60,7 @@ type SeenClip = {
   original: string | null
 }
 
-const keyOf = (name: string) => {
-  const { name: stem, ext } = path.parse(name)
-  return `${stem.replace(/_\d+$/, '')}${ext}`.toLowerCase()
-}
+const keyOf = (name: string) => withoutNumber(name).toLowerCase()
 
 const hereAlready = async (outputDir: string) => {
   const byKey = new Map<string, { path: string; size: number; mtime: number }[]>()

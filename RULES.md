@@ -131,7 +131,7 @@ Everything below follows from these.
 **1. Copy off the cameras.** Every photo and video is copied into a folder named after the day it was
 shot; a camera's other files, such as its small preview copies, are left on it.
 Inserting the same camera again costs nothing: a file already there with the same contents is skipped,
-recognised by its size and time without being read again. A file this machine has already given back is
+recognised by its size and time without being read again, and looked for in every day's folder, so the file is not opened to read the day it was shot: only a file that is new, or that shares its name and size with one given back, is opened for that. Listing a camera's files, on its page or before a copy, therefore reads no metadata from the card. A file this machine has already given back is
 passed over the same way, since freeing is a choice and plugging the camera in again does not undo it.
 That one is recognised without being read either — by the day it belongs to, the name it would be filed
 under, its own or its own with a number, and its size; not by its time, which is the time it was shot

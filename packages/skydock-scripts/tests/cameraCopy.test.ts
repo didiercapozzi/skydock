@@ -16,11 +16,16 @@ import { forgetCamera, knownCameras, rememberCamera } from '../src/knownCameras'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifestAsync, saveManifest } from '../src/manifest'
-import { scanMedia } from '../src/scan'
+import { scanMedia, shotTimes } from '../src/scan'
 import { readTransfers } from '../src/transfers'
 import { getManifestPath } from '../src/utils'
 import { computeFileId } from '../src/fileId'
 import { createTmpDir, onPlatform } from './fixtures'
+
+vi.mock('../src/scan', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/scan')>()
+  return { ...original, shotTimes: vi.fn(original.shotTimes) }
+})
 
 let media: string
 let outputDir: string
@@ -230,6 +235,20 @@ describe('copying a camera off', () => {
     await saveManifest(manifestPath, manifest)
     fs.rmSync(day(filename))
   }
+
+  it('does not read the metadata of files already copied when the camera is plugged in again', async () => {
+    const root = card('GOPRO', {
+      'GX010001.MP4': { bytes: 32, fill: 1, at: DAY },
+      'GX010002.MP4': { bytes: 48, fill: 2, at: DAY }
+    })
+    await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+    vi.mocked(shotTimes).mockClear()
+
+    const again = await copyCamera({ cameraDir: path.join(root, 'DCIM'), outputDir })
+
+    expect(again).toMatchObject({ copied: 0, skipped: 2 })
+    expect(vi.mocked(shotTimes).mock.calls.flatMap(([paths]) => paths)).toEqual([])
+  })
 
   it('passes over a file this machine freed, rather than copying it off the camera again', async () => {
     const root = card('GOPRO', { 'GX010001.MP4': { bytes: 32, fill: 1, at: DAY } })
