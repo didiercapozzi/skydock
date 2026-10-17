@@ -359,18 +359,33 @@ const PreviewDrawer = ({
     }
     onRotate(next)
   }
+  const resume = useRef<{ time: number; playing: boolean; from: string } | null>(null)
+  const holdTime = () => {
+    const v = videoRef.current
+    if (!v) return
+    const src = v.getAttribute('src') ?? ''
+    if (resume.current && resume.current.from !== src) return
+    resume.current = { time: v.currentTime, playing: !v.paused, from: src }
+  }
+  const choose = (which: boolean) => {
+    if (which !== original) holdTime()
+    setOriginal(which)
+  }
   const showBig = () => {
     setOriginal(false)
     setBig(true)
     void stage.current?.requestFullscreen?.().catch(() => undefined)
   }
   const leaveBig = () => {
+    holdTime()
     setBig(false)
     if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined)
   }
   useEffect(() => {
     const onChange = () => {
-      if (!document.fullscreenElement) setBig(false)
+      if (document.fullscreenElement) return
+      holdTime()
+      setBig(false)
     }
     document.addEventListener('fullscreenchange', onChange)
     return () => document.removeEventListener('fullscreenchange', onChange)
@@ -650,8 +665,14 @@ const PreviewDrawer = ({
                     onLoadedMetadata={(e) => {
                       const v = e.currentTarget
                       if (v.duration && Number.isFinite(v.duration)) onDurationChange(v.duration)
-                      if (currentTime > 0 && Math.abs(v.currentTime - currentTime) > 0.05)
-                        scrub.seek(v, currentTime)
+                      const back =
+                        resume.current && resume.current.from !== v.getAttribute('src')
+                          ? resume.current
+                          : null
+                      resume.current = null
+                      const at = back?.time ?? currentTime
+                      if (at > 0 && Math.abs(v.currentTime - at) > 0.05) scrub.seek(v, at)
+                      if (back?.playing) void v.play().catch(() => undefined)
                       if (v.videoWidth && v.videoHeight)
                         setShape({
                           width: v.videoWidth,
@@ -812,7 +833,7 @@ const PreviewDrawer = ({
                           type='button'
                           aria-pressed={original === which}
                           title={hint}
-                          onClick={() => setOriginal(which)}
+                          onClick={() => choose(which)}
                           className={`rounded-corner px-2.5 ${original === which ? 'bg-white text-stage-ink' : 'hover:text-white'}`}>
                           {name}
                         </button>

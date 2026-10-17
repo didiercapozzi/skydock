@@ -907,7 +907,8 @@ it — with the window's own player under a clip so it can be watched rather tha
 photo at its own size. There a clip with a small copy opens on that copy, which plays at once
 wherever the window can play H.264 and may be all a 4K original lets it show; _Proxy_ and _Original_,
 at the corner of the screen, switch between it and the file itself at the quality it was shot in —
-which is the one to judge a picture by — and it opens on the small copy again each time. A clip
+which is the one to judge a picture by — and it opens on the small copy again each time. Switching, or
+leaving the screen, keeps the clip at the moment it was at, playing if it was playing. A clip
 with no small copy is itself already and has no choice to make; a clip this window has no decoder
 for stays on the small copy when asked for the original, and says so.
 
