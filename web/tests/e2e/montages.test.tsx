@@ -299,7 +299,7 @@ describe('dropped on the Montages heading', () => {
     page.getByRole('navigation', { name: 'Folders' }).getByRole('heading', { name: /Montages/ })
   const naming = () => page.getByRole('dialog', { name: 'Name the montage' })
 
-  test('a jump asks for the montage’s name, and saved, is that montage', async () => {
+  test('a jump asks for the montage’s name, and saved, is that montage, without leaving the page', async () => {
     const named = { ...FRESH_JUMP, montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' } }
     await renderBoard({ groups: [named, YVERDON_JUMP] })
 
@@ -312,7 +312,9 @@ describe('dropped on the Montages heading', () => {
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' }
     })
-    await expect.element(pageHeading('Luc Favre')).toBeVisible()
+    await new Promise((resolve) => setTimeout(resolve, 600))
+    await expect.element(pageHeading('Luc Favre')).not.toBeInTheDocument()
+    await expect.element(pageHeading('Fresh files')).toBeVisible()
   })
 
   test('cancelled, changes nothing', async () => {

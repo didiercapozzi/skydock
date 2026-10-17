@@ -675,8 +675,8 @@ file's and a selection's, lists Fresh files, every destination, every named mont
 montage…_, leaving out where it already is, and does exactly what dropping it there would — a new
 montage asks for its name first. A trackpad, a long list or a narrow window makes a drag hard; it is
 never the only way. While something is carried, what is drawn under the pointer is a small chip with the picture and the name of what is carried, hung down and to the right of the pointer so that the place being aimed at stays in sight; the
-place or jump under the pointer lights up when it would take it, and a place that already holds everything carried does not take it. Something dropped on a destination is
-followed there: that destination's page opens, with what was just filed in it. Dropping onto a montage
+place or jump under the pointer lights up when it would take it, and a place that already holds everything carried does not take it. Something dropped on a destination stays where it was dropped from: the page does not change, and
+the destination it went to lights up briefly in the menu. Dropping onto a montage
 joins that montage, never a new one. A montage whose last files are taken back to Fresh files is left
 with nothing, so the board goes to Fresh files with them.
 
@@ -687,7 +687,8 @@ own. Asking comes first — the name only appears once asked for, starting from 
 when it has one — and the name is saved by Enter or the button; Escape or Cancel changes nothing. A
 name that is already a montage's, however capitalised, says it will join that montage and saves the
 name exactly as already written: the new jump is a jump of that montage, keeping its own times. Once
-made, the montage's page opens and its entry lights up briefly in the menu. Renaming a montage later is
+made from a panel, the montage's page opens and its entry lights up briefly in the menu; made by a drop, the
+page stays and only the entry lights up. Renaming a montage later is
 the same: it moves its folder or joins it to another, so it is saved only by Enter or Save, never by
 clicking away; Escape puts the name back, an emptied name saves nothing, and a name that is another
 montage's says it will join it before anything is saved. A montage whose name was

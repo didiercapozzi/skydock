@@ -447,10 +447,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
         keeps: files.every(inUnsorted) ? undefined : placeLabel(place)
       })
     },
-    onFiled: (destination) => {
-      if (place.kind !== 'dz' || place.name !== destination)
-        pickPlace({ kind: 'dz', name: destination })
-    }
+    onFiled: (destination) => flash({ kind: 'dz', name: destination })
   })
 
   const [flashPlace, setFlashPlace] = useState<string | null>(null)
@@ -484,20 +481,25 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     setProblem(t`${who}’s montage has an edit — change it in kdenlive.`)
     return true
   }
-  const madeNote = (who: string, joining: boolean, copied: boolean) => {
+  const madeNote = (who: string, joining: boolean, copied: boolean, follow = true) => {
     const made = joining ? t`Joined ${who}’s montage` : t`Made ${who}’s montage`
     setNote(copied ? `${made} — ${t`copied, the destination keeps its own`}` : made)
     flash({ kind: 'pax', name: who })
-    setGoingTo(who)
+    if (follow) setGoingTo(who)
   }
-  const nameMontage = (groupId: string, passenger: Passenger) => {
+  const nameMontage = (groupId: string, passenger: Passenger, follow = true) => {
     const who = passengerName(passenger)
     if (editedMontage(who)) return
     const joining = groups.some((g) => g.id !== groupId && isMontage(g) && passengerOf(g) === who)
     toMontage([groupId], passenger)
-    madeNote(who, joining, false)
+    madeNote(who, joining, false, follow)
   }
-  const montageOf = (files: ManifestFile[], passenger: Passenger, startsAt?: number) => {
+  const montageOf = (
+    files: ManifestFile[],
+    passenger: Passenger,
+    startsAt?: number,
+    follow = true
+  ) => {
     const who = passengerName(passenger)
     if (editedMontage(who)) return
     const fileIds = files.flatMap((f) => (f.id ? [f.id] : []))
@@ -510,18 +512,18 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       name: who,
       ...(startsAt !== undefined ? { anchorEpoch: startsAt } : {})
     })
-    madeNote(who, joining, !files.every(inUnsorted))
+    madeNote(who, joining, !files.every(inUnsorted), follow)
   }
   const nameDropped = (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => {
     if (what.groupId) {
-      nameMontage(what.groupId, passenger)
+      nameMontage(what.groupId, passenger, false)
       return
     }
     const files = (what.fileIds ?? []).flatMap((id) => {
       const found = fileById(id)
       return found ? [found] : []
     })
-    montageOf(files, passenger)
+    montageOf(files, passenger, undefined, false)
   }
   const montageOffer = (files: ManifestFile[], from: Place) => ({
     passengers,

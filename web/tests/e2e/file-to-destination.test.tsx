@@ -51,25 +51,36 @@ const renderBoard = async () => {
 const yverdon = () =>
   page.getByRole('navigation', { name: 'Folders' }).getByRole('link', { name: /Yverdon/ })
 const heading = () => page.getByRole('heading', { level: 1, name: /^Yverdon/ })
+const settled = () => new Promise((resolve) => setTimeout(resolve, 600))
+const here = () => page.getByRole('heading', { level: 1, name: /^Fresh files/ })
 
 describe('dropping on a destination', () => {
-  test('opens the destination a file was dropped on', async () => {
+  test('files a file there and stays on the page it was dropped from', async () => {
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: /^Jump 1, / }))
 
     await userEvent.dragAndDrop(page.getByRole('button', { name: /luc\.MP4/ }).first(), yverdon())
 
     await vi.waitFor(() =>
-      expect(requests).toContainEqual(expect.objectContaining({ intent: 'move-files', destination: 'Yverdon' }))
+      expect(requests).toContainEqual(
+        expect.objectContaining({ intent: 'move-files', destination: 'Yverdon' })
+      )
     )
-    await expect.element(heading()).toBeVisible()
+    await settled()
+    await expect.element(here()).toBeVisible()
+    await expect.element(heading()).not.toBeInTheDocument()
   })
 
-  test('opens the destination a whole jump was dropped on', async () => {
+  test('files a whole jump there and stays on the page it was dropped from', async () => {
     await renderBoard()
 
     await userEvent.dragAndDrop(page.getByRole('button', { name: /^Jump 1, / }), yverdon())
 
-    await expect.element(heading()).toBeVisible()
+    await vi.waitFor(() =>
+      expect(requests).toContainEqual(expect.objectContaining({ intent: 'save-groups' }))
+    )
+    await settled()
+    await expect.element(here()).toBeVisible()
+    await expect.element(heading()).not.toBeInTheDocument()
   })
 })
