@@ -86,7 +86,7 @@ describe('deleting a prepared montage', () => {
     await j.page.getByLabel('Name', { exact: true }).fill('Anna Roux')
     await j.page.keyboard.press('Enter')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     expect(filesUnder(montageFolder(j.world, 'Anna Roux'))).toHaveLength(2)
 
     await deleteIt('Anna Roux')
@@ -103,7 +103,7 @@ describe('deleting a montage that has an edit', () => {
   test('names the edit on its own, removes the project, and keeps every version of it aside', async () => {
     await nameFile(j.page, 'DJI_20260906090000_0006_D.MP4', 'Marc Roux')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     await makeProject(j.page, path.join(j.world.computer, 'club'))
     const folder = montageFolder(j.world, 'Marc Roux')
     const project = filesUnder(folder).find((f) => f.endsWith('.kdenlive'))
@@ -113,7 +113,7 @@ describe('deleting a montage that has an edit', () => {
     await details(j.page).getByRole('button', { name: 'Delete montage…' }).click()
     const ask = dialogNamed(j.page, 'Delete montage')
     await ask.waitFor()
-    expect(await ask.innerText()).toContain('the kdenlive project — the edit itself')
+    expect(await ask.innerText()).toContain('the edit itself')
     await ask
       .getByRole('button', { name: /^Delete/ })
       .last()
@@ -136,8 +136,8 @@ describe('deleting a montage that has its film', () => {
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await nameFile(j.page, 'DJI_20260906090300_0007_D.MP4', 'Eva Roux')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     await j.page
       .getByRole('button', { name: 'Open in kdenlive' })
       .first()

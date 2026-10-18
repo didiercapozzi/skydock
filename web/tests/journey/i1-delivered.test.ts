@@ -162,8 +162,10 @@ describe('deleting a montage that was uploaded', () => {
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await nameJump(j.page, 'Jump 1', ANNA)
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByRole('button', { name: 'Make the project' }).waitFor({ timeout: 60_000 })
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page
+      .getByRole('button', { name: 'Make a kdenlive project' })
+      .waitFor({ timeout: 60_000 })
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     await j.page
       .getByRole('button', { name: 'Open in kdenlive' })
       .first()

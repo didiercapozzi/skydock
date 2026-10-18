@@ -64,3 +64,30 @@ describe('the edit, kept aside', () => {
     expect(kept()).toEqual([])
   })
 })
+
+describe('the film editor’s edit, kept aside', () => {
+  const edit = () => path.join(dir, `${BASE}.edit.json`)
+
+  it('is copied beside the projects, under the moment it was kept', async () => {
+    fs.writeFileSync(edit(), '{"version":1}')
+
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
+
+    expect(kept()).toEqual(['luc_favre_20260802-2026-09-21T18-05-12.edit.json'])
+  })
+
+  it('keeps one version of an edit that has not changed, whatever the kdenlive project does', async () => {
+    fs.writeFileSync(edit(), '{"version":1}')
+    fs.writeFileSync(project(), '<mlt>an afternoon</mlt>')
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
+    fs.writeFileSync(project(), '<mlt>and an evening</mlt>')
+
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 21, 40, 0))
+
+    expect(kept()).toEqual([
+      'luc_favre_20260802-2026-09-21T18-05-12.edit.json',
+      'luc_favre_20260802-2026-09-21T18-05-12.kdenlive',
+      'luc_favre_20260802-2026-09-21T21-40-00.kdenlive'
+    ])
+  })
+})

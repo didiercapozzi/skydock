@@ -101,7 +101,7 @@ const makeAndPrepare = async (j: Journey) => {
   await j.see('Jump 2')
   await nameJump(j.page, 'Jump 2', WHO)
   await j.see('Prepare the files')
-  await takeStep(j.page, 'Process', 'Make the editing project')
+  await takeStep(j.page, 'Process', 'Edit the film')
 }
 
 const templatesDialog = (page: Page) => dialogNamed(page, 'Editing templates')
@@ -115,7 +115,7 @@ const bringTemplate = async (page: Page, folder: string) => {
 }
 
 const makeProject = async (page: Page, folder: string) => {
-  await page.getByRole('button', { name: 'Make the project' }).click()
+  await page.getByRole('button', { name: 'Make a kdenlive project' }).click()
   const dialog = templatesDialog(page)
   await dialog.waitFor()
   await bringTemplate(page, folder)

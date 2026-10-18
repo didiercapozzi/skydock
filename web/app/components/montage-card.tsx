@@ -317,6 +317,7 @@ const MontageCardActions = ({
   onProcess,
   onCancelProcess,
   onMontage,
+  onKdenlive,
   onOpenMontage,
   onUpload,
   onEmail,
@@ -334,6 +335,7 @@ const MontageCardActions = ({
   onProcess: () => void
   onCancelProcess?: () => void
   onMontage: () => void
+  onKdenlive?: () => void
   onOpenMontage: () => void
   onUpload: () => void
   onEmail?: { name: string; open: () => void }
@@ -371,11 +373,19 @@ const MontageCardActions = ({
           title={
             proxiesWaiting > 0
               ? t`${plural(proxiesWaiting, { one: '# clip is', other: '# clips are' })} still getting a proxy — the project can be made once each one has it, or has failed to`
-              : t`Write the kdenlive project — clips laid out, render destination set — and open it`
+              : t`Open the film editor with the clips laid end to end`
           }
           onClick={onMontage}>
-          {busy === group.id ? t`Writing…` : t`Make the project`}
+          {t`Edit the film`}
         </Go>
+        {onKdenlive && (
+          <Mini
+            disabled={working || proxiesWaiting > 0}
+            title={t`Write a kdenlive project from a template instead, and open it`}
+            onClick={onKdenlive}>
+            {busy === group.id ? t`Writing…` : t`Make a kdenlive project`}
+          </Mini>
+        )}
       </span>
     )
   if (compact) {
@@ -392,9 +402,13 @@ const MontageCardActions = ({
       return (
         <Go
           disabled={working}
-          title={t`Open this project in the editor`}
+          title={facts.edit ? t`Open the film editor` : t`Open this project in kdenlive`}
           onClick={onOpenMontage}>
-          {busy === `open:${group.id}` ? t`Opening…` : t`Open in kdenlive`}
+          {busy === `open:${group.id}`
+            ? t`Opening…`
+            : facts.edit
+              ? t`Edit the film`
+              : t`Open in kdenlive`}
         </Go>
       )
     if (!group.uploaded)
@@ -449,14 +463,18 @@ const MontageCardActions = ({
       </Upload>
       <Mini
         disabled={working}
-        title={t`Open this project in the editor`}
+        title={facts.edit ? t`Open the film editor` : t`Open this project in kdenlive`}
         onClick={onOpenMontage}>
         <Icon
           name='open'
           size={14}
           className='text-ink-2'
         />
-        {busy === `open:${group.id}` ? t`Opening…` : t`Open in kdenlive`}
+        {busy === `open:${group.id}`
+          ? t`Opening…`
+          : facts.edit
+            ? t`Edit the film`
+            : t`Open in kdenlive`}
       </Mini>
       <Mini
         disabled={working}

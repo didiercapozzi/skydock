@@ -289,13 +289,14 @@ person, an event. A jump is processed once it is filed.
 montage or the dropzone and the time they were shot, cropped and turned as asked, and stamped so that
 each file's date matches its name.
 
-**5. Hand over.** A dropzone folder is **uploaded** whole, with no share link: one is made, and taken away again, by hand from the destination's own panel, when it is wanted. A montage is given an
-**editing project** — its clips waiting in the bin — someone edits and renders the film, and the
-montage is then **uploaded**: the film and the photos to its folder, the original videos to the backup
+**5. Hand over.** A dropzone folder is **uploaded** whole, with no share link: one is made, and taken away again, by hand from the destination's own panel, when it is wanted. A montage's film
+is **edited** in SkyDock's own film editor — or, for whoever prefers it, in kdenlive from a template
+— and **rendered**, and the montage is then **uploaded**: the film and the photos to its folder, the original videos to the backup
 folder. Finally whoever it is for is **emailed** the link.
 
 Sorting and editing are the steps that need a person. Everything else is one press, always in the
-same place. Rendering the film needs the video editor, which SkyDock opens but never runs itself.
+same place. A film edited in SkyDock is rendered by SkyDock in one press; a kdenlive project is
+rendered by kdenlive, and SkyDock notices the film.
 
 ## Jumps
 
@@ -431,12 +432,14 @@ output/
 │   └── Montages/             the montages' working folders
 │       └── Luc Favre/        a montage, named as typed: the name kept so its edit still opens
 │           ├── videos/  photos/
-│           ├── luc_favre_20260829.kdenlive    the editing project
+│           ├── luc_favre_20260829.edit.json   the film's edit, when it is made in SkyDock
+│           ├── luc_favre_20260829.kdenlive    the editing project, when it is made in kdenlive
 │           ├── luc_favre_20260829.mp4         the film, once rendered
 │           ├── luc_favre_20260829.photos.zip  for whoever it is for
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup, when kept as one archive
 ├── proxies/                  the small copies, and for each montage a set cut to match its processed clips
 ├── templates/                one editing template per folder, with the music and logos it uses
+├── music/                    the music the film editor offers, brought in from the computer
 ├── .thumbs/                  the frames the board draws, cut once and kept
 └── .projects/                every version of each montage's editing project, kept and never deleted
 ```
@@ -568,7 +571,7 @@ off what is there — the name, the copies, the project, the film, the upload, t
 freed montage went through every step up to the upload, with nothing left here to show for it. A
 montage with several jumps is where the one furthest behind is, since one name is one folder.
 
-**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — open it in kdenlive, process it again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
+**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — edit the film, open it in kdenlive, process it again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
 
 **Montages done** lists the freed montages as a table — who it was for, the day, when its link was emailed (a dash while it has not been), how much is on the storage, whether its link still works — each with buttons for its storage cards and its page. With no montage left to do the Montages heading says so.
 
@@ -890,7 +893,7 @@ to any.
 
 **Taking the next step from where it is said.** Where a montage's own buttons are not on screen —
 the Montages page with no montage open — the step it is at is taken from there:
-_Process_, _Make the project_, _Open in kdenlive_ to render, _Upload…_, _Email the link…_ —
+_Process_, _Edit the film_, _Open the editor_ to render, _Upload…_, _Email the link…_ —
 the same as each step's own button. Where its buttons are on screen, the trail only says; each thing
 is offered once. Naming is typed, so it has no button.
 
@@ -1301,9 +1304,63 @@ sky is a gap in the line, never a line ruled across it. Neither is ever estimate
 worse than an absent one. The drawing is read off the original when the clip is opened, and nothing
 about it is stored.
 
+## The film editor
+
+**A processed montage's film is edited in SkyDock.** _Edit the film_ opens the film editor over the
+board: the montage's clips on the left, the picture in the middle, what is picked on the right, and
+under them the timeline, with a track for the video, one for the text and one for the music. The first
+time, every video of the montage is laid end to end in the order shot, whole, with its camera sound
+off, and a title with the person's name opens the film. The edit is saved beside the montage's copies
+as `<name>_<date>.edit.json`, by itself, a moment after each change; that file is the montage's edit,
+so the project step is done and the montage is frozen as an edit freezes it (below), and it is kept
+aside in every version the way a kdenlive project is.
+
+**Clips go in where they are dropped.** A clip dragged from the left onto the video track goes in at
+the nearest cut — between two clips, or at either end — and everything after it moves along; _Add_
+puts it at the end. A clip on the timeline is moved by dragging it to another cut, and removed with
+Delete or from the panel. **Trimming closes the gap**: dragging either edge of a clip shortens or
+lengthens it, and the clips after it follow, so the film never has a hole. Text placed after the clip
+moves with the film; music stays where it was put, since it is cut to the film and not to a clip.
+
+**Choosing the part.** A double-click on a clip, or _Choose the part…_, opens it whole as a strip of
+frames with a blue part laid over what the film shows. The part is dragged along the clip, or its
+edges are, and it snaps a second before each jump mark — the exit, the opening, the canopy, the
+ground — so the moment that matters lands just after the cut. The part plays at twice the speed to be
+checked before it is used.
+
+**The music is the film's sound.** A clip is heard only when its speaker is turned on; then, for as
+long as it plays, the music dips to _Music under the camera sound_ — 15% of its own volume unless
+changed — over 0.8 seconds either side, and comes back up after. The music's level is drawn along its
+track, and the picture says what is heard at the playhead: the music and how loud, the camera, or
+both. A clip with no sound of its own cannot be turned on.
+
+**Music** is brought in from the computer into the work folder's `music` folder — MP3, M4A, AAC, WAV,
+Ogg or FLAC — and is offered to every montage from then on. A piece goes in after the last one, as
+long as what is left of the film; it is moved by dragging, cut at its end, and given its own volume.
+It fades in over a third of a second and out over a second and a half, and the film's end cuts it.
+
+**Text** comes from five ready looks — a title with the person's name, a subtitle, a lower third, a
+big moment, a signature — and goes in at the playhead. Each says its words, how it comes in (_Fade_,
+_Rise_, _Pop_ or a _Lower third_ on a band), its type (_Clean_, _Bold_, _Elegant_, _Hand_), its size,
+its colour and how long it is shown. It is placed by dragging it in the picture, where it snaps to the
+middle either way and a frame shows the edge a screen may cut. The picture draws text the way the film
+will have it.
+
+**The picture plays the edit.** It plays from the proxies, with the music and the camera sound as they
+will be heard; Space plays and stops, and the jump marks of the clip at the playhead are buttons that
+go to them.
+
+**Rendering is one press.** _Render the film_ saves the edit and makes the film from the processed
+copies — never the proxies — into the montage's folder under the film's own name: MP4 with H.264 video
+and AAC sound, 1920 by 1080 at 30 frames a second, or 1080 by 1920 when the first clip is upright,
+each clip fitted inside the frame. It is written aside and put in place whole, so the board never
+takes half a film for the film, and its progress is in the panel in the corner. One montage renders
+one film at a time; _Render again_ replaces the film with the edit as it now is.
+
 ## The editing project
 
-A processed montage can be turned into an editing project, made from a copy of the chosen template
+Instead of the film editor, a processed montage can be turned into a kdenlive editing project —
+_Make a kdenlive project_, beside _Edit the film_ — made from a copy of the chosen template
 and named after it. The template is taken exactly as its owner made it: every track, title,
 photo and piece of music stays where it is, and nothing in it is moved, cut or faded — and nothing is
 added to its timeline either, so the tracks the editor finds are the template's own. The montage's
@@ -1344,13 +1401,13 @@ that names them by paths relative to itself finds them wherever the folder goes.
 A template missing some of its files still gives a project, and the board names what is missing
 straight away. **SkyDock ships with none**: a template is somebody's branding and somebody's music,
 and neither is ours to hand out. Until one is brought in there is nothing to make a project from, and
-pressing Make the project says so and names where to put one.
+pressing Make a kdenlive project says so and names where to put one.
 
 **Choosing one.** A template is somebody's branding, so which one a project is made from is never
 decided for the person — but it can be settled once. Any template can be marked **the usual one**,
 and from then on a project is made from it without anybody being asked, however many there are; the
 mark is taken off the same way, and a project made from the command line follows it too. Until one is
-marked: with a single template that is whole, pressing Make the project simply uses it; with several, the
+marked: with a single template that is whole, pressing Make a kdenlive project simply uses it; with several, the
 templates are shown to be chosen between, and nothing is made until one is, with the one picked last
 time already ticked and still to be confirmed. A template with a file missing is shown
 first even when it is the only one. Each template says which kdenlive wrote it, which is shown beside
@@ -1698,7 +1755,9 @@ Worth knowing, so nobody goes looking:
 - **SkyDock never sends email.** A person sends it from their own mail.
 - **Every photo is handed over.** There is no choosing which photos go into the archive; the
   montage takes the videos only.
-- **Nothing renders the film.** The editor does, by a person's hand; SkyDock only notices.
+- **The film editor cuts; it does not blend.** Clips follow each other cut to cut: no transitions
+  between them, no colour work, no speed changes, no zones laid out by a template. A film that needs
+  more is made in kdenlive, which SkyDock opens but never runs itself.
 - **Nothing is ever doubled on the disk.** A clip copied into another jump is still one original; each
   jump it is in makes a processed copy of its own from it.
 - **A dropzone can be created, not renamed.**

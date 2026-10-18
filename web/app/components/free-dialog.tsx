@@ -72,7 +72,7 @@ const FreeDialog = ({
       </Section>
 
       <Section title={t`Kept`}>
-        <Line mark='✓'>{t`the kdenlive project, and the record of what went where`}</Line>
+        <Line mark='✓'>{t`the edit, and the record of what went where`}</Line>
       </Section>
 
       <Note>

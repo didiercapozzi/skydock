@@ -9,8 +9,8 @@ type MontageStep = (typeof MONTAGE_STEPS)[number]
 const NEXT: Record<MontageStep, { todo: string; how: string }> = {
   Named: { todo: 'to name', how: 'Give it a name' },
   Prepared: { todo: 'to process', how: 'Process it' },
-  Project: { todo: 'to edit', how: 'Make the montage, then edit it in kdenlive' },
-  Film: { todo: 'to render', how: 'Render the film in kdenlive' },
+  Project: { todo: 'to edit', how: 'Edit the film' },
+  Film: { todo: 'to render', how: 'Render the film' },
   Uploaded: { todo: 'to upload', how: 'Upload it' },
   Sent: { todo: 'to email', how: 'Email the link' }
 }

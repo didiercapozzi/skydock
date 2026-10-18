@@ -29,7 +29,26 @@ const LINK_IN_PANEL =
   'keeps the link out of those cards, in the panel at the right, with the way to copy it or remove it and where the film and the originals went'
 const BUSY = 'cannot be reset or deleted until the processing is over'
 
+const FILM_OPENS =
+  'opens on a prepared montage with its clips laid end to end, and saves the edit beside them'
+
 const covers: Record<string, string[]> = {
+  'The film editor': [FILM_OPENS],
+  "A processed montage's film is edited in SkyDock": [FILM_OPENS],
+  'Clips go in where they are dropped': [
+    'trims a clip by its edge, and the clips after it close the gap',
+    'puts a clip in again with Add, at the end of the film'
+  ],
+  'Choosing the part': ['chooses the part a clip shows in a window of its own, and keeps it'],
+  "The music is the film's sound": [
+    'hears a clip whose speaker is turned on, and the music dips under it'
+  ],
+  Music: ['brings music in from the computer, puts it in the film, and the saved edit carries it'],
+  Text: ['adds a title from a preset, and the saved edit carries it'],
+  'The picture plays the edit': ['plays the edit in the picture, and stops where it is'],
+  'Rendering is one press': [
+    'renders the film into the montage’s folder, and the board takes it as the film'
+  ],
   'Where every montage has got to': [SIX_STEPS, FILM_NOTICED, SHRINK],
   "A montage's page changes with where the montage is": [
     'keeps what else can be done in the menu of its page, so the page carries one next step',

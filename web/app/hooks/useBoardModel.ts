@@ -478,7 +478,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
 
   const editedMontage = (who: string) => {
     if (!groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) return false
-    setProblem(t`${who}’s montage has an edit — change it in kdenlive.`)
+    setProblem(t`${who}’s montage has an edit — change it in its editor.`)
     return true
   }
   const madeNote = (who: string, joining: boolean, copied: boolean, follow = true) => {
@@ -618,10 +618,16 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     if (only && only.missing.length === 0) makeMontage(group.id, only.name)
     else setDialog({ kind: 'templates', groupId: group.id })
   }
+  const openKdenlive = (group: ManifestGroup) =>
+    send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
   const takeStep = (group: ManifestGroup, step: MontageStep) => {
     if (step === 'Prepared') send(group.id, { intent: 'process', groupId: group.id })
-    if (step === 'Project') void askMontage(group)
-    if (step === 'Film') send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
+    if (step === 'Project') setDialog({ kind: 'editor', groupId: group.id })
+    if (step === 'Film') {
+      if (board.montageFacts[group.id]?.edit || !group.montage)
+        setDialog({ kind: 'editor', groupId: group.id })
+      else openKdenlive(group)
+    }
     if (step === 'Uploaded') {
       const gate = facts.gateFor(group.files)
       if (gate.blocked) board.setProblem(gate.message ?? t`It cannot be uploaded yet.`)
@@ -694,6 +700,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     confirmSend,
     makeMontage,
     askMontage,
+    openKdenlive,
     takeStep,
     trimToJump,
     cancelProcess,

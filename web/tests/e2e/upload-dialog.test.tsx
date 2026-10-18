@@ -700,7 +700,7 @@ describe('deleting a montage that is already edited and rendered', () => {
 
     const dialog = page.getByRole('dialog', { name: 'Delete montage' })
     await expect.element(dialog.getByText('Back to Fresh files, loose')).toBeInTheDocument()
-    await expect.element(dialog.getByText(/the kdenlive project — the edit itself/)).toBeInTheDocument()
+    await expect.element(dialog.getByText(/the edit itself/)).toBeInTheDocument()
     await expect.element(dialog.getByText('3 files, loose, to be sorted again')).toBeInTheDocument()
 
     await userEvent.click(dialog.getByRole('button', { name: 'Delete', exact: true }))

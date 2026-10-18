@@ -101,7 +101,7 @@ describe('making a montage', () => {
       .toContain('to process')
     await see('Prepare the files')
 
-    await takeStep(j.page, 'Process', 'Make the editing project')
+    await takeStep(j.page, 'Process', 'Edit the film')
     await expect.poll(async () => await atStep().innerText()).toContain('Project')
     await montageMenu()
       .getByRole('img', { name: /2 of 6 steps done/ })
@@ -140,7 +140,7 @@ describe('making a montage', () => {
 describe('what else can be done to a montage', () => {
   test('keeps what else can be done in the menu of its page, so the page carries one next step', async () => {
     const page = j.page.getByRole('region', { name: WHO }).last()
-    expect(await page.getByRole('button', { name: 'Make the project' }).count()).toBe(1)
+    expect(await page.getByRole('button', { name: 'Make a kdenlive project' }).count()).toBe(1)
     expect(await page.getByRole('button', { name: /^(Upload|Process again|Reset)/ }).count()).toBe(
       0
     )

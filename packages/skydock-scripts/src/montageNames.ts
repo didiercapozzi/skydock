@@ -1,5 +1,7 @@
 const filmNameOf = (baseName: string) => `${baseName}.mp4`
 
-const EDIT_LOCKED = 'This montage has an edit — change it in kdenlive.'
+const editNameOf = (baseName: string) => `${baseName}.edit.json`
 
-export { EDIT_LOCKED, filmNameOf }
+const EDIT_LOCKED = 'This montage has an edit — change it in its editor.'
+
+export { EDIT_LOCKED, editNameOf, filmNameOf }

@@ -107,7 +107,7 @@ describe('uploading a montage is refused', () => {
     fs.renameSync(film, `${film}.aside`)
     await upload().click()
     await said(body()).toContain(`nothing named ${FILM}`)
-    await said(body()).toContain('Render the film in kdenlive first')
+    await said(body()).toContain('Render the film first')
     expect(stored(storage)).toEqual([])
     fs.renameSync(`${film}.aside`, film)
     await dismissCorner()

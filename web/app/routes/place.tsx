@@ -1017,7 +1017,7 @@ const Inspector = ({
           jump.freed
             ? t`Freed from this machine — it is on the storage only now.`
             : frozen.has(jump.id)
-              ? t`${editLocked} Open it in kdenlive, or reset the montage.`
+              ? t`${editLocked} Open it in its editor, or reset the montage.`
               : null
         }
         passengers={model.passengers}
@@ -1042,7 +1042,7 @@ const Inspector = ({
           jump.freed
             ? t`Freed from this machine — it is on the storage only now.`
             : frozen.has(jump.id)
-              ? t`${editLocked} Open it in kdenlive, or reset the montage.`
+              ? t`${editLocked} Open it in its editor, or reset the montage.`
               : null
         }
         statusOf={statusOf}

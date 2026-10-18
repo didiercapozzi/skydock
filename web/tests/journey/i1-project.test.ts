@@ -40,13 +40,13 @@ describe('the editing project', () => {
     await stale.route('**/api/events*', (route) => route.abort())
     await stale.goto(`${j.app.url}/fresh`)
     await place(stale, /Luc Favre/).click()
-    await stale.getByRole('button', { name: 'Make the project' }).waitFor()
+    await stale.getByRole('button', { name: 'Make a kdenlive project' }).waitFor()
     let asked = false
     await stale.route('**/*.data*', (route) => {
       if (route.request().method() === 'POST') asked = true
       return route.request().method() === 'GET' && !asked ? route.abort() : route.continue()
     })
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     const dialog = templatesDialog(j.page)
     await dialog.getByText('No template yet — bring one in below.').waitFor()
     await dialog.getByText('Bring a template in').waitFor()
@@ -147,7 +147,7 @@ describe('the editing project', () => {
 describe('the project is made once', () => {
   test('refuses to make a second project for a montage that has one, and the edit is left as it was', async () => {
     const before = fs.readFileSync(projectFile(j.world), 'utf8')
-    await stale!.getByRole('button', { name: 'Make the project' }).click()
+    await stale!.getByRole('button', { name: 'Make a kdenlive project' }).click()
     await stale!
       .getByText(/already has a project/)
       .first()

@@ -19,7 +19,8 @@ const jobTypeSchema = z.enum([
   'moments',
   'process',
   'camera-copy',
-  'upload'
+  'upload',
+  'render'
 ])
 
 const jobRowSchema = z.object({

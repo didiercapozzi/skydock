@@ -24,7 +24,13 @@ const MIME_TYPES: Record<string, string> = {
   '.tif': 'image/tiff',
   '.tiff': 'image/tiff',
   '.heic': 'image/heic',
-  '.heif': 'image/heif'
+  '.heif': 'image/heif',
+  '.mp3': 'audio/mpeg',
+  '.m4a': 'audio/mp4',
+  '.aac': 'audio/aac',
+  '.wav': 'audio/wav',
+  '.ogg': 'audio/ogg',
+  '.flac': 'audio/flac'
 }
 
 const streamFile = (

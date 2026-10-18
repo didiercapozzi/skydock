@@ -30,7 +30,7 @@ const resolveFilm = async (
     if (!hasVideos) return null
     if (artifacts.strayFilms.length === 0)
       throw new Error(
-        `Render the film in kdenlive first — nothing named ${filmNameOf(artifacts.baseName)} in ${artifacts.dir}`
+        `Render the film first — nothing named ${filmNameOf(artifacts.baseName)} in ${artifacts.dir}`
       )
     if (artifacts.strayFilms.length > 1)
       throw new Error(

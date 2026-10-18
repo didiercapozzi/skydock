@@ -10,8 +10,8 @@ import type { ManifestGroup } from './types'
 
 const STEP_ACTION: Partial<Record<MontageStep, MessageDescriptor>> = {
   Prepared: msg`Process`,
-  Project: msg`Make the project`,
-  Film: msg`Open in kdenlive`,
+  Project: msg`Edit the film`,
+  Film: msg`Open the editor`,
   Uploaded: msg`Upload…`,
   Sent: msg`Email the link…`
 }
@@ -40,8 +40,8 @@ const StepButton = ({
 const STEP_ABOUT: Record<MontageStep, MessageDescriptor> = {
   Named: msg`It needs a name first — a person, an event. The name becomes its folder, its file names and its film.`,
   Prepared: msg`Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder.`,
-  Project: msg`Lays the clips out in kdenlive. You edit there — the board notices the film by itself.`,
-  Film: msg`Edit it in kdenlive and render the film there. The board notices the film by itself.`,
+  Project: msg`Opens the film editor with the clips laid end to end. Trim them, add music and text, then render.`,
+  Film: msg`Finish the edit and render the film. The board notices the film by itself.`,
   Uploaded: msg`The film is rendered. Send it, the photos and the originals where you choose.`,
   Sent: msg`The film is on the storage and the link works. The email is written already.`
 }
@@ -185,8 +185,8 @@ const StepMeter = ({
 const STEP_HINT: Record<MontageStep, { later: MessageDescriptor; done: MessageDescriptor }> = {
   Named: { later: msg`Give it a name`, done: msg`Named` },
   Prepared: { later: msg`Prepare the files`, done: msg`Files ready` },
-  Project: { later: msg`Make the project`, done: msg`Project made` },
-  Film: { later: msg`Render in kdenlive`, done: msg`Film rendered` },
+  Project: { later: msg`Edit the film`, done: msg`Film edited` },
+  Film: { later: msg`Render the film`, done: msg`Film rendered` },
   Uploaded: { later: msg`Upload to the storage`, done: msg`On the storage` },
   Sent: { later: msg`Email the link`, done: msg`Link sent` }
 }
@@ -194,8 +194,8 @@ const STEP_HINT: Record<MontageStep, { later: MessageDescriptor; done: MessageDe
 const STEP_TITLE: Record<MontageStep, MessageDescriptor> = {
   Named: msg`Give it a name`,
   Prepared: msg`Prepare the files`,
-  Project: msg`Make the editing project`,
-  Film: msg`Render the film in kdenlive`,
+  Project: msg`Edit the film`,
+  Film: msg`Render the film`,
   Uploaded: msg`Upload it to the storage`,
   Sent: msg`Email the link`
 }

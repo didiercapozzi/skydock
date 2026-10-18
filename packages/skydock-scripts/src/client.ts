@@ -14,6 +14,30 @@ export {
   turnedSize,
   withRatio
 } from './frameCrop'
+export {
+  clipLength,
+  DUCK_RAMP,
+  duckAt,
+  editAnswerSchema,
+  filmEditSchema,
+  filmLength,
+  heardSpans,
+  musicLevelAt,
+  TEXT_EFFECTS,
+  TEXT_FONTS,
+  textLookAt,
+  UNDER_SOUND
+} from './filmEditShape'
+export type {
+  EditClip,
+  EditMusic,
+  EditSource,
+  EditText,
+  FilmEdit,
+  MusicSource,
+  TextEffect,
+  TextFont
+} from './filmEditShape'
 export { freeablePlace } from './freeable'
 export { goneFromStorage, goneSent } from './gone'
 export { cutFrom, jumpTrim } from './jumpMoments'
@@ -21,7 +45,7 @@ export { jsonText } from './lib/json'
 export { idsOf } from './lib/words'
 export { liveEventSchema, mergeRow } from './liveShape'
 export { folderOfUpload, lostOf } from './montageEntry'
-export { EDIT_LOCKED, filmNameOf } from './montageNames'
+export { EDIT_LOCKED, editNameOf, filmNameOf } from './montageNames'
 export { furthestBehind, montageSteps } from './montageSteps'
 export {
   DEFAULT_TEMPLATES,

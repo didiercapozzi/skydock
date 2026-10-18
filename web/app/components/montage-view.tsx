@@ -54,6 +54,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       onProcess={() => model.takeStep(group, 'Prepared')}
       onCancelProcess={model.cancelProcess}
       onMontage={() => model.takeStep(group, 'Project')}
+      onKdenlive={() => void model.askMontage(group)}
       onOpenMontage={() => model.takeStep(group, 'Film')}
       onUpload={() => model.takeStep(group, 'Uploaded')}
       onEmail={
@@ -386,14 +387,22 @@ const MontageMenu = ({
           {emailed ? t`✓ Emailed · again…` : t`Email ${firstname}…`}
         </MenuItem>
       )}
-      {facts?.project && !group.freed && (
+      {facts?.edit && !group.freed && (
+        <MenuItem
+          icon='montage'
+          onClick={act(() => model.setDialog({ kind: 'editor', groupId: group.id }))}>
+          {t`Edit the film`}
+        </MenuItem>
+      )}
+      {facts?.project && group.montage && !group.freed && (
         <MenuItem
           icon='open'
           disabled={busy}
-          onClick={act(() => model.takeStep(group, 'Film'))}>
+          onClick={act(() => model.openKdenlive(group))}>
           {t`Open in kdenlive`}
         </MenuItem>
       )}
+
       {group.processed && !group.freed && (
         <MenuItem
           icon='scan'

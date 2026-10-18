@@ -65,7 +65,7 @@ describe('resetting a montage', () => {
 
   test('names the edit on its own in the question, and keeps it aside when the montage is reset', async () => {
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     await makeProject(j.page, path.join(j.world.computer, 'club'))
     renderFilm(j.world)
     await expect
@@ -77,7 +77,7 @@ describe('resetting a montage', () => {
     const ask = dialogNamed(j.page, /Reset montage/)
     await ask.waitFor()
     const text = await ask.innerText()
-    expect(text).toContain('the kdenlive project — the edit itself')
+    expect(text).toContain('the edit itself')
     expect(text).toContain('the rendered film')
     await ask.getByRole('button', { name: 'Reset', exact: true }).click()
 

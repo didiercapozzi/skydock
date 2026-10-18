@@ -94,6 +94,9 @@
   --color-stage-ink: #10131a;
   --color-scrim: rgba(16, 19, 26, 0.42);
   --color-veil: #080c16;
+  --color-film-shadow: rgba(0, 0, 0, 0.45);
+  --color-film-box: rgba(0, 0, 0, 0.45);
+  --color-film-safe: rgba(255, 255, 255, 0.18);
   --color-dot-local: #f08a24;
   --color-dot-proc: #e05ab6;
   --color-dot-up: #23b877;
@@ -379,6 +382,27 @@
 
   .tool-button {
     @apply grid size-7 flex-none place-items-center rounded-corner border-0 bg-well p-0 text-ink-2 hover:bg-line hover:text-ink;
+  }
+
+  .film-room {
+    container-type: size;
+  }
+  .film-stage {
+    container-type: size;
+  }
+  .film-text {
+    text-shadow: 0 2px 6px var(--color-film-shadow);
+  }
+  .film-text-box {
+    background: var(--color-film-box);
+    padding: 0.2em 0.5em;
+  }
+  .film-safe {
+    inset: 5%;
+    border: 1px dashed var(--color-film-safe);
+  }
+  .film-hand {
+    font-family: 'Segoe Print', 'Bradley Hand', 'Comic Sans MS', cursive;
   }
 
   .bare-input {

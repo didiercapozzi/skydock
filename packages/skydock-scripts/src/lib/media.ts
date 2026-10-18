@@ -17,4 +17,20 @@ const mediaSeconds = async (target: string) => {
   return Number.isFinite(parsed) ? parsed : null
 }
 
-export { mediaSeconds }
+const mediaHasSound = async (target: string) => {
+  if (!(await hasCommand('ffprobe'))) return false
+  const ran = await run(await ffprobePath(), [
+    '-v',
+    'error',
+    '-select_streams',
+    'a',
+    '-show_entries',
+    'stream=index',
+    '-of',
+    'csv=p=0',
+    target
+  ])
+  return ran.ok && ran.stdout.trim() !== ''
+}
+
+export { mediaHasSound, mediaSeconds }

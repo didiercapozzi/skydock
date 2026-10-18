@@ -6,7 +6,7 @@ import { getGroupProcessedDir } from './process'
 import type { Manifest, ManifestGroup } from './types'
 import { mtimeSeconds, statOrNull } from './lib/fs'
 import { mediaSeconds } from './lib/media'
-import { EDIT_LOCKED, filmNameOf } from './montageNames'
+import { EDIT_LOCKED, editNameOf, filmNameOf } from './montageNames'
 import { mapWithLimit } from './utils'
 import { hasCompletePassenger, isMontage } from './workspace'
 
@@ -32,12 +32,13 @@ const filmSeconds = (target: string, size: number, mtime: number) => {
 
 const montageArtifacts = async (outputDir: string, group: ManifestGroup) => {
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
-  const entries = await readdir(dir).catch(() => [])
+  const entries: string[] = await readdir(dir).catch(() => [])
   const stat = await statOrNull(path.join(dir, filmNameOf(baseName)))
   return {
     dir,
     baseName,
-    project: entries.some((e) => e.endsWith('.kdenlive')),
+    project: entries.some((e) => e.endsWith('.kdenlive') || e === editNameOf(baseName)),
+    edit: entries.includes(editNameOf(baseName)),
     film: stat ? { size: stat.size, mtime: mtimeSeconds(stat) } : null,
     strayFilms: entries.filter((e) => e.endsWith('.mp4') && e !== filmNameOf(baseName))
   }
@@ -88,6 +89,7 @@ const sameEditedGroup = (a: ManifestGroup, b: ManifestGroup) => editedShape(a) =
 
 const factOf = (found: Awaited<ReturnType<typeof montageArtifacts>>, outputDir: string) => ({
   project: found.project,
+  edit: found.edit,
   projectPath: toHostPath(path.join(found.dir, `${found.baseName}.kdenlive`), outputDir),
   film: found.film
     ? {

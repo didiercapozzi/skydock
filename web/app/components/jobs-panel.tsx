@@ -200,6 +200,15 @@ const looksOf = ({ type, label, stage, done, total, rows, phase }: Job): Looks =
         summary: t`${done} of ${plural(total, { one: '# file', other: '# files' })} prepared`,
         bar: t`Files prepared`
       }
+    case 'render':
+      return {
+        icon: 'montage',
+        title: t`Rendering ${label}’s film`,
+        doing: t`Rendering`,
+        summary: t`Putting the clips, the music and the text together into one film`,
+        bar: t`Film rendered`,
+        note: (row) => (row.at === 'now' ? `${Math.round((row.part ?? 0) * 100)}%` : undefined)
+      }
     case 'import':
       return {
         icon: 'copying',

@@ -310,7 +310,7 @@ const UploadDialog = ({
   const hidden = places.filter((p) => !shown.includes(p))
   const waitingForFilm = !picked && parts.videos.length > 0 && parts.film.length === 0
   const blocked = waitingForFilm
-    ? t`Render the film in kdenlive first`
+    ? t`Render the film first`
     : used.length === 0
       ? t`Put at least one thing in a destination`
       : used.some((name) => !places.find((p) => p.name === name)?.path)
@@ -373,9 +373,7 @@ const UploadDialog = ({
           ))}
         </div>
         {waitingForFilm && (
-          <span className='text-body text-local'>
-            {t`No montage rendered yet — render it in kdenlive first.`}
-          </span>
+          <span className='text-body text-local'>{t`No film rendered yet — render it first.`}</span>
         )}
       </div>
       <div className={SCROLL}>

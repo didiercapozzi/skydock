@@ -211,6 +211,30 @@ const PATHS = {
       fill='currentColor'
     />
   ),
+  pause: (
+    <path
+      d='M7 4h3.5v16H7zM13.5 4H17v16h-3.5z'
+      fill='currentColor'
+    />
+  ),
+  sound: <path d='M4 9.5h3.5L12 5.5v13l-4.5-4H4zM15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11' />,
+  muted: <path d='M4 9.5h3.5L12 5.5v13l-4.5-4H4zM16 9.5l5 5M21 9.5l-5 5' />,
+  music: (
+    <>
+      <path d='M9 17.5V5.5l11-2v12' />
+      <circle
+        cx='6.5'
+        cy='17.5'
+        r='2.5'
+      />
+      <circle
+        cx='17.5'
+        cy='15.5'
+        r='2.5'
+      />
+    </>
+  ),
+  text: <path d='M5 6V4.5h14V6M12 4.5v15M9 19.5h6' />,
   upload: <path d='M12 19V5M6 11l6-6 6 6' />,
   lock: (
     <>

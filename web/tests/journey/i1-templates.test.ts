@@ -86,7 +86,7 @@ const prepareAnna = async () => {
   await j.page.getByRole('link', { name: /^Fresh files/ }).click()
   await nameJump(j.page, 'Jump 1', 'Anna Roux')
   await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-  await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
+  await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
 }
 
 const projectOf = (who: string) =>
@@ -113,7 +113,7 @@ describe('templates', () => {
     expect(read('zeta', 'zeta.kdenlive')).toContain('/home/them/club/song.mp3')
     await closeDialog()
 
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     await templatesDialog(j.page)
       .getByText(/1 file it uses is not here: song\.mp3/)
       .waitFor()
@@ -198,7 +198,7 @@ describe('templates', () => {
 
 describe('choosing a template', () => {
   test('never decides which one a project is made from while several are there: nothing is made until one is picked', async () => {
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     await templatesDialog(j.page).waitFor()
     const make = templatesDialog(j.page).getByRole('button', { name: 'Make the montage' })
     expect(await templatesDialog(j.page).getByRole('radio').count()).toBe(4)
@@ -226,8 +226,8 @@ describe('choosing a template', () => {
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await nameFile(j.page, 'GX010001.MP4', 'Eva Roux')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     await templatesDialog(j.page).waitFor()
     await templatesDialog(j.page).getByRole('radio', { name: /^club/, checked: true }).waitFor()
     expect(projectOf('Eva Roux')).toBeUndefined()
@@ -248,7 +248,7 @@ describe('choosing a template', () => {
   })
 
   test('makes a project from the usual one without asking anybody, however many templates there are', async () => {
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     await j.page
       .getByRole('button', { name: 'Open in kdenlive' })
       .first()

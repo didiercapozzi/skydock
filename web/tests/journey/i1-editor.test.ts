@@ -28,7 +28,7 @@ describe('opening the editor', () => {
   test('says the editor cannot be reached, still makes the project, and offers its path to copy', async () => {
     await j.context.grantPermissions(['clipboard-read', 'clipboard-write'])
     await makeAndPrepare(j)
-    await j.page.getByRole('button', { name: 'Make the project' }).click()
+    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
     const dialog = templatesDialog(j.page)
     await dialog.waitFor()
     const chooser = j.page.waitForEvent('filechooser')

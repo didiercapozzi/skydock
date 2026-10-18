@@ -431,7 +431,7 @@ describe('uploading a montage — what is refused', () => {
   })
 
   it('names the film it looked for when the render has not happened', async () => {
-    expect(await fails({ film: null })).toMatch(/Render the film in kdenlive first/)
+    expect(await fails({ film: null })).toMatch(/Render the film first/)
   })
 
   it('refuses to choose between several films', async () => {

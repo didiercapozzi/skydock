@@ -35,7 +35,7 @@ describe('making the editing project', () => {
     await actions(2)
 
     await expect.element(page.getByText('waiting for 2 proxies')).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Make the project' })).toBeDisabled()
+    await expect.element(page.getByRole('button', { name: 'Edit the film' })).toBeDisabled()
   })
 
   test('is offered once every clip has its proxy, or has failed to', async () => {
@@ -43,7 +43,7 @@ describe('making the editing project', () => {
     await actions(0, onMontage)
 
     await expect.element(page.getByText(/waiting for/)).not.toBeInTheDocument()
-    await userEvent.click(page.getByRole('button', { name: 'Make the project' }))
+    await userEvent.click(page.getByRole('button', { name: 'Edit the film' }))
     expect(onMontage).toHaveBeenCalledTimes(1)
   })
 })

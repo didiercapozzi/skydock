@@ -15,6 +15,8 @@ const routes = [
   route('api/import', 'routes/api.import.ts'),
   route('api/dropped', 'routes/api.dropped.ts'),
   route('api/templates', 'routes/api.templates.ts'),
+  route('api/edit', 'routes/api.edit.ts'),
+  route('api/music', 'routes/api.music.ts'),
   route('api/transfers', 'routes/api.transfers.ts'),
   route('api/events', 'routes/api.events.ts'),
   route('api/remote-files', 'routes/api.remote-files.ts'),

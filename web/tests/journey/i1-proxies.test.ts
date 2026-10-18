@@ -37,7 +37,7 @@ const foldCorner = async () => {
   const fold = j.page.getByRole('button', { name: 'Hide the list' })
   if (await fold.count()) await fold.first().click()
 }
-const makeIt = () => j.page.getByRole('button', { name: 'Make the project' })
+const makeIt = () => j.page.getByRole('button', { name: 'Make a kdenlive project' })
 
 describe('the project waits for the proxies', () => {
   test('cannot be made while a clip is still getting its proxy, and says how many it waits for', async () => {
@@ -48,7 +48,7 @@ describe('the project waits for the proxies', () => {
     await foldCorner()
     await nameFile(j.page, 'GX010002', 'Noé Roux')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
 
     await j.page.getByText('waiting for 1 proxy').waitFor()
     expect(await makeIt().isDisabled()).toBe(true)
@@ -79,7 +79,7 @@ describe('the project waits for the proxies', () => {
     await foldCorner()
     await nameFile(j.page, 'GX010003', 'Zoé Roux')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     await j.page.getByText('waiting for 1 proxy').waitFor()
 
     fs.rmSync(mark('hold-proxies'))
@@ -117,7 +117,7 @@ describe('while a montage is being processed', () => {
     ).toBe(true)
 
     fs.rmSync(mark('hold-copies'))
-    await j.page.getByText('Make the editing project').first().waitFor({ timeout: 60_000 })
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     expect(await details(j.page).getByRole('button', { name: 'Reset…' }).isDisabled()).toBe(false)
     expect(groupsOf(j.world).find((g) => g.passenger?.lastname === 'Favre')?.processed).toBe(true)
     await quiet()

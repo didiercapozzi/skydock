@@ -12,6 +12,7 @@ const proxyFactSchema = z.object({
 
 const montageFactSchema = z.object({
   project: z.boolean(),
+  edit: z.boolean().optional(),
   projectPath: z.string(),
   film: z
     .object({
