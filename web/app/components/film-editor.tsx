@@ -10,14 +10,23 @@ import type {
 } from '@skydock/scripts/client'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
-import { clipAt, clockOf, insertClip, nextId, removeClip, setPart } from '../helpers/filmTimeline'
+import {
+  boundaries,
+  clipAt,
+  clockOf,
+  insertClip,
+  nextId,
+  placed,
+  removeClip,
+  setPart,
+  trimClip
+} from '../helpers/filmTimeline'
 import { routingEngine } from '../helpers/routing'
 import { Go, Mini, Seg } from './buttons'
 import { FilmPart } from './film-part'
-import { FilmPreview } from './film-preview'
+import { FONT_LOOK, FilmPreview } from './film-preview'
 import { CLIP_DRAG, FilmTimeline, markName } from './film-timeline'
 import type { Picked } from './film-timeline'
-import { FileRow, Thumb } from './file-row'
 import { Icon } from './icons'
 import { getFileUrl, getThumbUrl } from './utils'
 
@@ -29,6 +38,8 @@ const DRIFT = 0.3
 const MUSIC_VOLUME = 0.8
 const SHORTEST_MUSIC = 5
 const ZOOM = { min: 2, max: 80 }
+const UNDOABLE = 50
+const ONE_CHANGE = 400
 
 const refusalSchema = z.object({
   success: z.literal(false),
@@ -112,10 +123,42 @@ const FONTS = (): Array<readonly [TextFont, string]> => [
 ]
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-  <label className='flex flex-col gap-1.5'>
-    <span className='eyebrow'>{label}</span>
+  <label className='grid gap-1'>
+    <span className='text-micro text-ink-2'>{label}</span>
     {children}
   </label>
+)
+
+const secondsOf = (text: string) => {
+  const [minutes, seconds] = text.includes(':') ? text.split(':') : ['0', text]
+  return Number(minutes) * 60 + Number(seconds)
+}
+
+const TimeBox = ({
+  label,
+  value,
+  onCommit
+}: {
+  label: string
+  value: number
+  onCommit?: (seconds: number) => void
+}) => (
+  <Field label={label}>
+    <input
+      key={value}
+      type='text'
+      aria-label={label}
+      readOnly={!onCommit}
+      defaultValue={clockOf(value)}
+      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+      onBlur={(e) => {
+        const seconds = secondsOf(e.currentTarget.value)
+        if (onCommit && Number.isFinite(seconds) && seconds !== value) onCommit(seconds)
+        else e.currentTarget.value = clockOf(value)
+      }}
+      className='min-w-0 rounded-corner border border-line bg-well px-2 py-1 font-mono text-body tabular-nums read-only:text-ink-2'
+    />
+  </Field>
 )
 
 const Slider = ({
@@ -136,7 +179,7 @@ const Slider = ({
   onChange: (value: number) => void
 }) => (
   <Field label={label}>
-    <span className='flex items-center gap-3'>
+    <span className='grid grid-cols-[1fr_52px] items-center gap-2'>
       <input
         type='range'
         aria-label={label}
@@ -145,11 +188,51 @@ const Slider = ({
         step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
-        className='min-w-0 flex-1 accent-accent'
+        className='w-full min-w-0 accent-accent'
       />
-      <span className='w-12 text-right text-small text-ink-2 tabular-nums'>{shown}</span>
+      <output className='text-right font-mono text-small text-ink-2 tabular-nums'>{shown}</output>
     </span>
   </Field>
+)
+
+const Item = ({
+  picture,
+  name,
+  meta,
+  trailing,
+  ...frame
+}: React.HTMLAttributes<HTMLDivElement> & {
+  picture: React.ReactNode
+  name: string
+  meta: React.ReactNode
+  trailing: React.ReactNode
+}) => (
+  <div
+    {...frame}
+    className='grid grid-cols-[56px_minmax(0,1fr)_auto] items-center gap-2.5 rounded-corner border border-transparent p-1.5 hover:bg-well'>
+    <span className='grid h-8.5 w-14 place-items-center overflow-hidden rounded-corner bg-well'>
+      {picture}
+    </span>
+    <span className='grid min-w-0'>
+      <span
+        title={name}
+        className='truncate font-medium'>
+        {name}
+      </span>
+      <span className='flex gap-1.5 truncate font-mono text-small text-ink-3'>{meta}</span>
+    </span>
+    {trailing}
+  </div>
+)
+
+const Add = ({ title, onClick }: { title?: string; onClick: () => void }) => (
+  <button
+    type='button'
+    title={title}
+    onClick={onClick}
+    className='h-control-sm rounded-corner px-2 text-small font-bold text-accent-ink hover:bg-accent-soft'>
+    {t`Add`}
+  </button>
 )
 
 const Library = ({
@@ -192,28 +275,43 @@ const Library = ({
     onMusicArrived()
   }
   return (
-    <aside className='flex min-h-0 flex-col border-r border-line bg-pane'>
-      <div className='p-3'>
-        <Seg
-          label={t`Library`}
-          value={tab}
-          wide
-          options={[
+    <aside
+      aria-label={t`Library`}
+      className='flex min-h-0 min-w-0 flex-col border-r border-line bg-pane max-wide:h-72 max-desk:border-r-0 max-desk:border-b'>
+      <div
+        role='group'
+        aria-label={t`Library`}
+        className='flex flex-none items-center gap-1 border-b border-line px-2.5 py-2'>
+        {(
+          [
             ['clips', t`Clips`],
             ['music', t`Music`],
             ['text', t`Text`]
-          ]}
-          onPick={onTab}
-        />
+          ] as const
+        ).map(([option, name]) => (
+          <button
+            key={option}
+            type='button'
+            aria-pressed={tab === option}
+            onClick={() => onTab(option)}
+            className={`rounded-corner px-2 py-1 font-medium ${
+              tab === option ? 'bg-well text-ink' : 'text-ink-2 hover:bg-well'
+            }`}>
+            {name}
+          </button>
+        ))}
       </div>
-      <div className='flex min-h-0 flex-1 flex-col gap-2 overflow-auto px-3 pb-3'>
+      <div className='flex min-h-0 flex-1 flex-col gap-1.5 overflow-auto p-2.5'>
         {tab === 'clips' && (
           <>
-            <p className='text-small text-ink-3'>
+            <p className='eyebrow mx-0.5 mt-1 mb-1'>
+              {t`${title} · ${plural(sources.length, { one: '# video', other: '# videos' })}`}
+            </p>
+            <p className='mx-0.5 mb-1 text-small text-ink-3'>
               {t`Drag a clip onto the video track, between two clips or at either end.`}
             </p>
             {sources.map((source) => (
-              <FileRow
+              <Item
                 key={source.name}
                 draggable
                 onDragStart={(e) => {
@@ -221,10 +319,14 @@ const Library = ({
                   e.dataTransfer.effectAllowed = 'copy'
                 }}
                 picture={
-                  <Thumb src={getThumbUrl(source.play, Math.min(1, source.seconds / 2), 160)} />
+                  <img
+                    src={getThumbUrl(source.play, Math.min(1, source.seconds / 2), 160)}
+                    alt=''
+                    draggable={false}
+                    className='size-full object-cover'
+                  />
                 }
                 name={source.name}
-                nameTitle={source.name}
                 meta={
                   <>
                     <span>{clockOf(source.seconds)}</span>
@@ -236,11 +338,10 @@ const Library = ({
                   </>
                 }
                 trailing={
-                  <Mini
+                  <Add
                     title={t`Put it at the end of the film`}
-                    onClick={() => onAddClip(source.name)}>
-                    {t`Add`}
-                  </Mini>
+                    onClick={() => onAddClip(source.name)}
+                  />
                 }
               />
             ))}
@@ -252,7 +353,7 @@ const Library = ({
               {t`The music is the film’s sound. Where a clip’s speaker is on, the music dips under the camera sound.`}
             </p>
             {music.map((piece) => (
-              <FileRow
+              <Item
                 key={piece.name}
                 picture={
                   <Icon
@@ -262,9 +363,8 @@ const Library = ({
                   />
                 }
                 name={piece.name}
-                nameTitle={piece.name}
                 meta={<span>{clockOf(piece.seconds)}</span>}
-                trailing={<Mini onClick={() => onAddMusic(piece.name)}>{t`Add`}</Mini>}
+                trailing={<Add onClick={() => onAddMusic(piece.name)} />}
               />
             ))}
             {music.length === 0 && (
@@ -366,152 +466,195 @@ const Inspector = ({
     </Mini>
   )
   return (
-    <aside className='flex min-h-0 flex-col gap-5 overflow-auto border-l border-line bg-pane p-4'>
-      {clip && (
-        <>
-          <h3 className='m-0 truncate text-lead font-bold'>{clip.name}</h3>
-          <p className='text-body text-ink-2 tabular-nums'>
-            {t`From ${clockOf(clip.start)} to ${clockOf(clip.end)} of the clip`}
-          </p>
-          <Mini onClick={() => onOpenPart(clip.id)}>
-            <Icon
-              name='scissors'
-              size={13}
-            />
-            {t`Choose the part…`}
-          </Mini>
-          <label className='flex items-center gap-2 text-body'>
-            <input
-              type='checkbox'
-              checked={clip.sound}
-              disabled={!sources.get(clip.name)?.sound}
-              onChange={(e) =>
+    <aside
+      aria-label={t`Inspector`}
+      className='flex min-h-0 min-w-0 flex-col border-l border-line bg-pane max-wide:h-72 max-wide:border-l-0'>
+      <div className='flex flex-none items-center border-b border-line px-2.5 py-2'>
+        <h3 className='m-0 rounded-corner bg-well px-2 py-1 text-body font-medium text-ink'>{t`Inspector`}</h3>
+      </div>
+      <div className='flex min-h-0 flex-1 flex-col gap-3.5 overflow-auto p-2.5'>
+        {clip && (
+          <>
+            <h3 className='m-0 truncate text-lead font-semibold'>{clip.name}</h3>
+            <div className='grid grid-cols-2 gap-2'>
+              {(() => {
+                const source = sources.get(clip.name)
+                const trim = (side: 'start' | 'end', value: number) =>
+                  source && onChange(trimClip(edit, clip.id, side, value, source.seconds))
+                return (
+                  <>
+                    <TimeBox
+                      label={t`Starts at`}
+                      value={placed(edit).find((one) => one.clip.id === clip.id)?.from ?? 0}
+                    />
+                    <TimeBox
+                      label={t`Length`}
+                      value={clip.end - clip.start}
+                      onCommit={(seconds) => trim('end', clip.start + seconds)}
+                    />
+                    <TimeBox
+                      label={t`Source in`}
+                      value={clip.start}
+                      onCommit={(seconds) => trim('start', seconds)}
+                    />
+                    <TimeBox
+                      label={t`Source out`}
+                      value={clip.end}
+                      onCommit={(seconds) => trim('end', seconds)}
+                    />
+                  </>
+                )
+              })()}
+            </div>
+            <Mini onClick={() => onOpenPart(clip.id)}>
+              <Icon
+                name='scissors'
+                size={13}
+              />
+              {t`Choose the part…`}
+            </Mini>
+            <label className='flex items-center gap-2 text-body'>
+              <input
+                type='checkbox'
+                checked={clip.sound}
+                disabled={!sources.get(clip.name)?.sound}
+                onChange={(e) =>
+                  onChange({
+                    ...edit,
+                    clips: edit.clips.map((one) =>
+                      one.id === clip.id ? { ...one, sound: e.target.checked } : one
+                    )
+                  })
+                }
+                className='accent-accent'
+              />
+              {sources.get(clip.name)?.sound ? t`Hear this clip` : t`This clip has no sound`}
+            </label>
+            {under}
+            {remove}
+          </>
+        )}
+        {piece && (
+          <>
+            <h3 className='m-0 truncate text-lead font-bold'>{piece.name}</h3>
+            <Slider
+              label={t`Volume`}
+              value={piece.volume}
+              min={0}
+              max={1}
+              step={0.01}
+              shown={`${Math.round(piece.volume * 100)}%`}
+              onChange={(volume) =>
                 onChange({
                   ...edit,
-                  clips: edit.clips.map((one) =>
-                    one.id === clip.id ? { ...one, sound: e.target.checked } : one
-                  )
+                  music: edit.music.map((one) => (one.id === piece.id ? { ...one, volume } : one))
                 })
               }
-              className='accent-accent'
             />
-            {sources.get(clip.name)?.sound ? t`Hear this clip` : t`This clip has no sound`}
-          </label>
-          {under}
-          {remove}
-        </>
-      )}
-      {piece && (
-        <>
-          <h3 className='m-0 truncate text-lead font-bold'>{piece.name}</h3>
-          <Slider
-            label={t`Volume`}
-            value={piece.volume}
-            min={0}
-            max={1}
-            step={0.01}
-            shown={`${Math.round(piece.volume * 100)}%`}
-            onChange={(volume) =>
-              onChange({
-                ...edit,
-                music: edit.music.map((one) => (one.id === piece.id ? { ...one, volume } : one))
-              })
-            }
-          />
-          {under}
-          {remove}
-        </>
-      )}
-      {text && (
-        <>
-          <Field label={t`Text`}>
-            <textarea
-              value={text.text}
-              rows={2}
-              maxLength={200}
-              onChange={(e) => changeText({ text: e.target.value })}
-              className='resize-none rounded-corner border border-line-strong bg-pane px-3 py-2 text-body text-ink focus:border-accent focus:outline-none'
+            {under}
+            {remove}
+          </>
+        )}
+        {text && (
+          <>
+            <Field label={t`Text`}>
+              <textarea
+                value={text.text}
+                rows={2}
+                maxLength={200}
+                onChange={(e) => changeText({ text: e.target.value })}
+                className='resize-none rounded-corner border border-line-strong bg-pane px-3 py-2 text-body text-ink focus:border-accent focus:outline-none'
+              />
+            </Field>
+            <Field label={t`Effect`}>
+              <Seg
+                label={t`Effect`}
+                wide
+                value={text.effect}
+                options={EFFECTS()}
+                onPick={(effect) => changeText({ effect })}
+              />
+            </Field>
+            <Field label={t`Font`}>
+              <span className='grid overflow-hidden rounded-corner border border-line'>
+                {FONTS().map(([font, name]) => (
+                  <button
+                    key={font}
+                    type='button'
+                    aria-pressed={text.font === font}
+                    onClick={() => changeText({ font })}
+                    className={`border-b border-line px-3 py-1.5 text-left text-lead last:border-b-0 ${FONT_LOOK[font]} ${
+                      text.font === font ? 'bg-accent-soft text-accent-ink' : 'hover:bg-well'
+                    }`}>
+                    {name}
+                  </button>
+                ))}
+              </span>
+            </Field>
+            <Slider
+              label={t`Size`}
+              value={text.size}
+              min={0.02}
+              max={0.3}
+              step={0.005}
+              shown={`${Math.round(text.size * 100)}`}
+              onChange={(size) => changeText({ size })}
             />
-          </Field>
-          <Field label={t`Effect`}>
-            <span className='grid grid-cols-2 gap-1.5'>
-              {EFFECTS().map(([effect, name]) => (
-                <Mini
-                  key={effect}
-                  pressed={text.effect === effect}
-                  onClick={() => changeText({ effect })}>
-                  {name}
-                </Mini>
-              ))}
-            </span>
-          </Field>
-          <Field label={t`Font`}>
-            <span className='grid grid-cols-2 gap-1.5'>
-              {FONTS().map(([font, name]) => (
-                <Mini
-                  key={font}
-                  pressed={text.font === font}
-                  onClick={() => changeText({ font })}>
-                  {name}
-                </Mini>
-              ))}
-            </span>
-          </Field>
-          <Slider
-            label={t`Size`}
-            value={text.size}
-            min={0.02}
-            max={0.3}
-            step={0.005}
-            shown={`${Math.round(text.size * 100)}`}
-            onChange={(size) => changeText({ size })}
-          />
-          <Slider
-            label={t`Shown for`}
-            value={text.seconds}
-            min={0.5}
-            max={20}
-            step={0.5}
-            shown={`${text.seconds}s`}
-            onChange={(seconds) => changeText({ seconds })}
-          />
-          <Field label={t`Colour`}>
-            <span className='flex gap-2'>
-              {COLOURS.map((colour) => (
-                <button
-                  key={colour}
-                  type='button'
-                  aria-label={colour}
-                  aria-pressed={text.colour.toLowerCase() === colour}
-                  onClick={() => changeText({ colour })}
-                  style={{ background: colour }}
-                  className={`size-7 rounded-full ${
-                    text.colour.toLowerCase() === colour ? 'shadow-picked' : 'shadow-hairline'
-                  }`}
-                />
-              ))}
-            </span>
-          </Field>
-          {remove}
-        </>
-      )}
-      {!clip && !piece && !text && (
-        <>
-          <h3 className='m-0 text-lead font-bold'>{t`The film`}</h3>
-          <p className='text-body text-ink-2'>
-            {t`${plural(edit.clips.length, { one: '# clip', other: '# clips' })} · ${clockOf(filmLength(edit))}`}
-          </p>
-          <p className='text-small text-ink-3'>
-            {t`Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part.`}
-          </p>
-          {under}
-        </>
-      )}
+            <Slider
+              label={t`Shown for`}
+              value={text.seconds}
+              min={0.5}
+              max={20}
+              step={0.5}
+              shown={`${text.seconds}s`}
+              onChange={(seconds) => changeText({ seconds })}
+            />
+            <Field label={t`Colour`}>
+              <span className='flex gap-2'>
+                {COLOURS.map((colour) => (
+                  <button
+                    key={colour}
+                    type='button'
+                    aria-label={colour}
+                    aria-pressed={text.colour.toLowerCase() === colour}
+                    onClick={() => changeText({ colour })}
+                    style={{ background: colour }}
+                    className={`size-5.5 rounded-corner ${
+                      text.colour.toLowerCase() === colour ? 'shadow-picked' : 'shadow-hairline'
+                    }`}
+                  />
+                ))}
+              </span>
+            </Field>
+            {remove}
+          </>
+        )}
+        {!clip && !piece && !text && (
+          <>
+            <h3 className='m-0 text-lead font-bold'>{t`The film`}</h3>
+            <p className='text-body text-ink-2'>
+              {t`${plural(edit.clips.length, { one: '# clip', other: '# clips' })} · ${clockOf(filmLength(edit))}`}
+            </p>
+            <p className='text-small text-ink-3'>
+              {t`Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part.`}
+            </p>
+            {under}
+          </>
+        )}
+      </div>
     </aside>
   )
 }
 
-const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void }) => {
+const FilmEditor = ({
+  groupId,
+  day,
+  onClose
+}: {
+  groupId: string
+  day?: string
+  onClose: () => void
+}) => {
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [edit, setEditNow] = useState<FilmEdit | null>(null)
@@ -525,6 +668,11 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
   const [part, setPartOf] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
   const [readAgain, setReadAgain] = useState(0)
+  const [history, setHistory] = useState<FilmEdit[]>([])
+  const lastChange = useRef(0)
+  const joined = useRef(false)
+  const held = useRef(false)
+  const dialog = useRef<HTMLDivElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const sounds = useRef(new Map<string, HTMLAudioElement>())
   const latest = useRef<FilmEdit | null>(null)
@@ -554,13 +702,27 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
     return !refused.success
   }
 
-  const change = (next: FilmEdit) => {
+  const apply = (next: FilmEdit) => {
     latest.current = next
     setEditNow(next)
     setSaving('waiting')
     if (timer.current) clearTimeout(timer.current)
     timer.current = setTimeout(() => void save('save'), SAVE_AFTER)
   }
+
+  const change = (next: FilmEdit) => {
+    const was = latest.current
+    const moment = performance.now()
+    if (was && !(joined.current && (held.current || moment - lastChange.current <= ONE_CHANGE)))
+      setHistory((kept) => [...kept.slice(1 - UNDOABLE), was])
+    joined.current = true
+    lastChange.current = moment
+    apply(next)
+  }
+
+  useEffect(() => {
+    dialog.current?.focus()
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -681,8 +843,22 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
     }
   }
 
+  const undo = () => {
+    const before = history.at(-1)
+    if (!before) return
+    setHistory(history.slice(0, -1))
+    joined.current = false
+    setPicked((now) =>
+      now && [...before.clips, ...before.music, ...before.texts].some((one) => one.id === now.id)
+        ? now
+        : null
+    )
+    apply(before)
+  }
+
   const removePicked = () => {
     if (!edit || !picked) return
+    joined.current = false
     if (picked.kind === 'clip') change(removeClip(edit, picked.id))
     if (picked.kind === 'music')
       change({ ...edit, music: edit.music.filter((one) => one.id !== picked.id) })
@@ -692,12 +868,21 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
   }
 
   const keys = (e: React.KeyboardEvent) => {
-    const typing = e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement
+    const typing =
+      e.target instanceof HTMLTextAreaElement ||
+      (e.target instanceof HTMLInputElement && !['range', 'checkbox'].includes(e.target.type))
+    const control =
+      typing || e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement
     if (e.key === 'Escape' && !part) {
       e.stopPropagation()
       void close()
     }
     if (typing) return
+    if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+      e.preventDefault()
+      undo()
+    }
+    if (control) return
     if (e.key === ' ') {
       e.preventDefault()
       setPlaying(!playing)
@@ -778,34 +963,46 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
 
   return (
     <div
+      ref={dialog}
       role='dialog'
       aria-modal='true'
       aria-label={t`Film editor`}
       onKeyDown={keys}
+      onPointerDownCapture={() => {
+        joined.current = false
+        held.current = true
+      }}
+      onPointerUp={() => (held.current = false)}
+      onPointerCancel={() => (held.current = false)}
       tabIndex={-1}
       className='fixed inset-0 z-40 flex flex-col bg-ground text-ink'>
-      <header className='flex h-14 flex-none items-center gap-3 border-b border-line bg-pane px-4'>
-        <Icon
-          name='montage'
-          size={18}
-          className='text-accent'
-        />
-        <h2 className='m-0 truncate text-title font-bold'>
-          {loaded ? t`${loaded.title}’s film` : t`Film editor`}
+      <header className='flex h-13 flex-none items-center gap-3 border-b border-line bg-pane px-4'>
+        <h2 className='m-0 flex min-w-0 items-center gap-2 truncate text-body font-normal text-ink-2'>
+          <span className='max-desk:hidden'>{t`Montages`}</span>
+          <span className='text-ink-3 max-desk:hidden'>/</span>
+          <strong className='truncate font-semibold text-ink'>
+            {loaded ? loaded.title : t`Film editor`}
+          </strong>
+          {day && <span className='max-desk:hidden'>· {day}</span>}
         </h2>
         <span className='text-small text-ink-3'>
           {saving === 'saved' ? t`Saved` : saving === 'failed' ? t`Not saved` : t`Saving…`}
         </span>
         <span className='flex-1' />
         {rendering && <span className='text-small text-ink-3'>{t`A render is running`}</span>}
+        <Mini
+          disabled={history.length === 0}
+          title={t`Undo (Ctrl+Z)`}
+          onClick={undo}>
+          {t`Undo`}
+        </Mini>
         <Go
           disabled={!edit || edit.clips.length === 0 || rendering}
           title={t`Render the film into the montage’s folder: MP4, H.264 and AAC, from the processed copies`}
           onClick={() => void render()}>
           <Icon
-            name='upload'
+            name='download'
             size={14}
-            weight={2}
           />
           {loaded?.film ? t`Render again` : t`Render the film`}
         </Go>
@@ -827,8 +1024,8 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
       )}
 
       {edit && loaded ? (
-        <>
-          <div className='grid min-h-0 flex-1 grid-cols-[400px_minmax(0,1fr)_280px]'>
+        <div className='flex min-h-0 flex-1 flex-col max-wide:overflow-y-auto'>
+          <div className='grid min-h-0 flex-1 grid-cols-[260px_minmax(0,1fr)_270px] overflow-auto max-wide:flex-none max-wide:grid-cols-2 max-wide:overflow-visible max-desk:grid-cols-1'>
             <Library
               tab={tab}
               onTab={setTab}
@@ -840,13 +1037,14 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
               onAddText={addText}
               onMusicArrived={() => setReadAgain(readAgain + 1)}
             />
-            <div className='flex min-h-0 min-w-0 flex-col'>
+            <div className='flex min-h-0 min-w-0 flex-col justify-center bg-well max-wide:order-first max-wide:h-[40vh] max-wide:min-h-72 max-wide:col-span-2 max-wide:border-b max-wide:border-line max-desk:col-span-1'>
               <FilmPreview
                 edit={edit}
                 at={at}
                 upright={upright}
                 picked={picked?.kind === 'text' ? picked.id : null}
                 heard={heard}
+                framed={picked?.kind === 'text'}
                 videoRef={video}
                 onPickText={(id) => setPicked({ kind: 'text', id })}
                 onMoveText={(id, x, y) =>
@@ -857,22 +1055,47 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
                 }
                 onShape={(tall) => here?.index === 0 && setUpright(tall)}
               />
-              <div className='flex flex-none items-center gap-3 border-t border-line bg-pane px-4 py-2'>
+              <div className='flex flex-none items-center justify-center gap-3 px-4 py-2'>
+                <button
+                  type='button'
+                  aria-label={t`Previous clip`}
+                  onClick={() =>
+                    seek(
+                      boundaries(edit)
+                        .filter((start) => start < at - 0.2)
+                        .at(-1) ?? 0
+                    )
+                  }
+                  className='grid size-8 place-items-center rounded-full border border-line-strong bg-pane text-ink-2'>
+                  <Icon
+                    name='skipBack'
+                    size={14}
+                  />
+                </button>
                 <button
                   type='button'
                   aria-label={playing ? t`Pause` : t`Play`}
                   title={t`Play or pause (Space)`}
                   onClick={() => setPlaying(!playing)}
-                  className='grid size-9 place-items-center rounded-full bg-accent text-on-accent'>
+                  className='grid size-9.5 place-items-center rounded-full bg-ink text-pane'>
                   <Icon
                     name={playing ? 'pause' : 'play'}
                     size={14}
                   />
                 </button>
-                <span className='text-body tabular-nums'>
-                  {clockOf(at)} / {clockOf(total)}
+                <button
+                  type='button'
+                  aria-label={t`Next clip`}
+                  onClick={() => seek(boundaries(edit).find((start) => start > at + 0.01) ?? total)}
+                  className='grid size-8 place-items-center rounded-full border border-line-strong bg-pane text-ink-2'>
+                  <Icon
+                    name='skipNext'
+                    size={14}
+                  />
+                </button>
+                <span className='min-w-23 text-center font-mono text-body tabular-nums'>
+                  {`${clockOf(at)} / ${clockOf(total)}`}
                 </span>
-                <span className='flex-1' />
                 {(here ? (sources.get(here.clip.name)?.marks ?? []) : [])
                   .filter((mark) => mark.at >= here!.clip.start && mark.at <= here!.clip.end)
                   .map((mark) => (
@@ -883,19 +1106,6 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
                       {markName(mark.which)}
                     </Mini>
                   ))}
-                <label className='inline-flex items-center gap-1.5 text-small text-ink-3'>
-                  {t`Zoom`}
-                  <input
-                    type='range'
-                    aria-label={t`Zoom the timeline`}
-                    min={ZOOM.min}
-                    max={ZOOM.max}
-                    step={1}
-                    value={pps}
-                    onChange={(e) => setPps(Number(e.target.value))}
-                    className='w-24 accent-accent'
-                  />
-                </label>
               </div>
             </div>
             <Inspector
@@ -907,7 +1117,32 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
               onRemove={removePicked}
             />
           </div>
-          <div className='flex h-64 flex-none flex-col border-t border-line'>
+          <div className='flex h-80 flex-none flex-col border-t border-line'>
+            <div className='flex h-12 flex-none items-center gap-1.5 border-b border-line bg-pane px-2.5'>
+              <Mini
+                disabled={!picked}
+                onClick={removePicked}>
+                <Icon
+                  name='bin'
+                  size={13}
+                />
+                {t`Delete`}
+              </Mini>
+              <span className='flex-1' />
+              <label className='inline-flex items-center gap-1.5 text-small text-ink-3'>
+                {t`Zoom`}
+                <input
+                  type='range'
+                  aria-label={t`Zoom the timeline`}
+                  min={ZOOM.min}
+                  max={ZOOM.max}
+                  step={1}
+                  value={pps}
+                  onChange={(e) => setPps(Number(e.target.value))}
+                  className='w-24 accent-accent'
+                />
+              </label>
+            </div>
             <FilmTimeline
               edit={edit}
               sources={sources}
@@ -921,6 +1156,12 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
               onOpenPart={setPartOf}
               onDropClip={(name, index) => addClip(name, index)}
             />
+            <div className='flex flex-none flex-wrap gap-4 border-t border-line bg-pane px-3 py-2 text-small text-ink-3'>
+              <span>
+                {t`Film`} <b className='font-mono font-medium text-ink-2'>{clockOf(total)}</b>
+              </span>
+              <span>{t`Edited on the proxies, rendered from the processed copies`}</span>
+            </div>
           </div>
           {edit.music.map((piece) => {
             const source = music.get(piece.name)
@@ -936,7 +1177,7 @@ const FilmEditor = ({ groupId, onClose }: { groupId: string; onClose: () => void
               />
             ) : null
           })}
-        </>
+        </div>
       ) : (
         !problem && (
           <p className='grid flex-1 place-items-center text-body text-ink-3'>{t`Opening the film…`}</p>

@@ -265,6 +265,7 @@ const DialogHost = ({
       {dialog?.kind === 'editor' && (
         <FilmEditor
           groupId={dialog.groupId}
+          day={groups.find((g) => g.id === dialog.groupId)?.day}
           onClose={close}
         />
       )}

@@ -283,6 +283,19 @@ const PATHS = {
   ),
   previous: <path d='m15 6-6 6 6 6' />,
   next: <path d='m9 6 6 6-6 6' />,
+  skipBack: (
+    <path
+      d='M5 5h2v14H5zM20 5v14L9 12z'
+      fill='currentColor'
+    />
+  ),
+  skipNext: (
+    <path
+      d='M17 5h2v14h-2zM4 5v14l11-7z'
+      fill='currentColor'
+    />
+  ),
+  download: <path d='M12 3v11M7.5 9.5 12 14l4.5-4.5M4 20h16' />,
   monitor: (
     <>
       <rect

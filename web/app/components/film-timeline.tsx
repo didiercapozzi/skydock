@@ -25,30 +25,43 @@ const markName = (which: 'exit' | 'opening' | 'canopy' | 'landing') =>
         ? t`Canopy`
         : t`Landing`
 
+const HEAD = 150
+
 const stepFor = (pps: number) => STEPS.find((step) => step * pps >= TICK_ROOM) ?? 300
 
 const Lane = ({
   name,
-  icon,
-  tall,
+  tag,
+  note,
+  height,
   children
 }: {
   name: string
-  icon: 'play' | 'text' | 'music'
-  tall?: boolean
+  tag: string
+  note?: string
+  height: string
   children: React.ReactNode
 }) => (
-  <div className={`flex ${tall ? 'h-18' : 'h-11'} border-b border-line`}>
-    <span className='sticky left-0 z-10 flex w-28 flex-none items-center gap-2 border-r border-line bg-pane px-3 text-small font-semibold text-ink-2'>
-      <Icon
-        name={icon}
-        size={12}
-      />
-      {name}
+  <div className={`flex ${height} border-b border-line`}>
+    <span
+      style={{ width: HEAD }}
+      className='sticky left-0 z-10 flex flex-none flex-col justify-center gap-px border-r border-line bg-pane px-2.5'>
+      <span className='flex items-center gap-1.5 text-body font-medium'>
+        {name}
+        <span className='rounded-corner border border-line px-1 font-mono text-micro text-ink-3'>
+          {tag}
+        </span>
+      </span>
+      {note && <span className='text-micro text-ink-3'>{note}</span>}
     </span>
     <div className='relative flex-1'>{children}</div>
   </div>
 )
+
+const FRAME = 56
+const GRIP = 'after:absolute after:inset-y-[30%] after:w-0.5 after:rounded-corner after:bg-accent'
+
+const ring = (chosen: boolean) => (chosen ? 'border-accent shadow-ring' : 'border-line-strong')
 
 const FilmTimeline = ({
   edit,
@@ -80,7 +93,7 @@ const FilmTimeline = ({
   const total = filmLength(edit)
   const width = Math.max(total, ...edit.music.map((m) => m.at + m.end - m.start)) * pps + 240
   const step = stepFor(pps)
-  const ticks = Array.from({ length: Math.floor(width / pps / step) + 1 }, (_, i) => i * step)
+  const ticks = Array.from({ length: Math.floor(width / pps / (step / 2)) + 1 }, (_, i) => i)
   const spans = heardSpans(edit, (clip) => sources.get(clip.name)?.sound === true)
 
   const timeOf = (e: { clientX: number }, lane: Element) =>
@@ -206,20 +219,36 @@ const FilmTimeline = ({
   return (
     <div className='relative min-h-0 flex-1 overflow-auto bg-ground'>
       <div
-        style={{ width: width + 112 }}
+        style={{ width: width + HEAD }}
         className='relative'>
-        <div className='sticky top-0 z-20 flex h-7 border-b border-line bg-pane'>
-          <span className='sticky left-0 z-10 w-28 flex-none border-r border-line bg-pane' />
+        <div className='sticky top-0 z-20 flex h-7 border-b border-line bg-well'>
+          <span
+            style={{ width: HEAD }}
+            className='sticky left-0 z-10 flex-none border-r border-line bg-well'
+          />
           <div
             onPointerDown={scrub}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                e.preventDefault()
+                onSeek(at + (e.key === 'ArrowLeft' ? -1 : 1))
+              }
+            }}
+            role='slider'
+            tabIndex={0}
+            aria-valuemin={0}
+            aria-valuemax={total}
+            aria-valuenow={at}
             aria-label={t`Timeline ruler`}
-            className='relative flex-1 cursor-col-resize'>
+            className='relative flex-1 cursor-pointer'>
             {ticks.map((tick) => (
               <span
                 key={tick}
-                style={{ left: tick * pps }}
-                className='absolute top-0 h-full border-l border-line pl-1 text-micro text-ink-3 tabular-nums'>
-                {clockOf(tick).replace(/\.0$/, '')}
+                style={{ left: (tick * step * pps) / 2 }}
+                className={`absolute bottom-0 border-l border-line-strong pl-1 font-mono text-micro text-ink-3 tabular-nums ${
+                  tick % 2 === 0 ? 'top-0' : 'top-5'
+                }`}>
+                {tick % 2 === 0 && clockOf((tick * step) / 2).replace(/\.0$/, '')}
               </span>
             ))}
           </div>
@@ -227,8 +256,9 @@ const FilmTimeline = ({
 
         <Lane
           name={t`Video`}
-          icon='play'
-          tall>
+          tag='V1'
+          note={t`Linked to Camera sound`}
+          height='h-14.5'>
           <div
             onDragOver={overVideo}
             onDragLeave={() => setDropAt(null)}
@@ -242,24 +272,38 @@ const FilmTimeline = ({
                 <div
                   key={clip.id}
                   onPointerDown={(e) => pressClip(e, clip.id)}
+                  onKeyDown={(e) =>
+                    (e.key === 'Enter' || e.key === ' ') && onPick({ kind: 'clip', id: clip.id })
+                  }
+                  role='button'
+                  tabIndex={0}
+                  aria-pressed={chosen}
                   title={t`${clip.name} · double-click to choose the part`}
                   style={{ left: from * pps, width: Math.max(4, length * pps - 2) }}
-                  className={`absolute inset-y-1.5 cursor-grab overflow-hidden rounded-corner bg-proc-soft ${
-                    chosen ? 'shadow-ring-2' : 'shadow-hairline'
-                  }`}>
+                  className={`absolute inset-y-1.25 cursor-grab overflow-hidden rounded-corner border bg-proc-soft ${ring(chosen)}`}>
                   {source && (
-                    <img
-                      src={getThumbUrl(source.play, clip.start + Math.min(1, length / 2), 160)}
-                      alt=''
-                      draggable={false}
-                      className='pointer-events-none absolute inset-y-0 left-0 h-full w-24 object-cover opacity-80'
-                    />
+                    <span className='pointer-events-none absolute inset-0 flex'>
+                      {Array.from({ length: Math.ceil((length * pps) / FRAME) }, (_, i) => (
+                        <img
+                          key={i}
+                          src={getThumbUrl(
+                            source.play,
+                            Math.max(
+                              0,
+                              Math.min(clip.end - 0.1, Math.round(clip.start + (i * FRAME) / pps))
+                            ),
+                            160
+                          )}
+                          alt=''
+                          loading='lazy'
+                          draggable={false}
+                          className='h-full w-14 flex-none border-r border-black/20 bg-well object-cover'
+                        />
+                      ))}
+                    </span>
                   )}
-                  <span className='pointer-events-none absolute top-1 left-26 truncate text-micro font-semibold text-ink'>
+                  <span className='pointer-events-none absolute top-0.75 right-1.75 left-1.75 truncate text-micro font-medium text-here [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]'>
                     {clip.name}
-                  </span>
-                  <span className='pointer-events-none absolute bottom-1 left-26 text-micro text-ink-3 tabular-nums'>
-                    {clockOf(length)}
                   </span>
                   {source?.marks
                     .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
@@ -274,44 +318,15 @@ const FilmTimeline = ({
                         </span>
                       </span>
                     ))}
-                  <button
-                    type='button'
-                    disabled={!source?.sound}
-                    aria-pressed={clip.sound}
-                    aria-label={clip.sound ? t`Mute the camera sound` : t`Hear this clip`}
-                    title={
-                      !source?.sound
-                        ? t`This clip has no sound`
-                        : clip.sound
-                          ? t`Camera sound heard, the music dips under it`
-                          : t`Hear this clip: the music dips under it`
-                    }
-                    onPointerDown={(e) => e.stopPropagation()}
-                    onClick={() =>
-                      onChange({
-                        ...edit,
-                        clips: edit.clips.map((one) =>
-                          one.id === clip.id ? { ...one, sound: !one.sound } : one
-                        )
-                      })
-                    }
-                    className={`absolute right-2 bottom-1 grid size-6 place-items-center rounded-full disabled:opacity-40 ${
-                      clip.sound ? 'bg-accent text-on-accent' : 'bg-pane text-ink-3'
-                    }`}>
-                    <Icon
-                      name={clip.sound ? 'sound' : 'muted'}
-                      size={13}
-                    />
-                  </button>
                   <span
                     onPointerDown={(e) => trim(e, clip.id, 'start')}
                     aria-label={t`Trim the start`}
-                    className='absolute inset-y-0 left-0 w-2 cursor-ew-resize bg-accent/0 hover:bg-accent/60'
+                    className={`absolute inset-y-0 left-0 w-2 cursor-ew-resize ${chosen ? GRIP + ' after:left-0.75' : ''}`}
                   />
                   <span
                     onPointerDown={(e) => trim(e, clip.id, 'end')}
                     aria-label={t`Trim the end`}
-                    className='absolute inset-y-0 right-0 w-2 cursor-ew-resize bg-accent/0 hover:bg-accent/60'
+                    className={`absolute inset-y-0 right-0 w-2 cursor-ew-resize ${chosen ? GRIP + ' after:right-0.75' : ''}`}
                   />
                 </div>
               )
@@ -326,8 +341,63 @@ const FilmTimeline = ({
         </Lane>
 
         <Lane
+          name={t`Camera sound`}
+          tag='A1'
+          note={t`From the cameras`}
+          height='h-11'>
+          {placed(edit).map(({ clip, from }) => {
+            const source = sources.get(clip.name)
+            return (
+              <div
+                key={clip.id}
+                onPointerDown={() => onPick({ kind: 'clip', id: clip.id })}
+                style={{ left: from * pps, width: Math.max(4, clipLength(clip) * pps - 2) }}
+                className={`absolute inset-y-1.25 flex items-center gap-1 overflow-hidden rounded-corner border bg-well pr-1 pl-1.75 ${ring(
+                  picked?.kind === 'clip' && picked.id === clip.id
+                )}`}>
+                <span
+                  className={`min-w-0 flex-1 truncate text-micro font-medium ${clip.sound ? 'text-ink' : 'text-ink-3'}`}>
+                  {clip.name}
+                </span>
+                <button
+                  type='button'
+                  disabled={!source?.sound}
+                  aria-pressed={clip.sound}
+                  aria-label={clip.sound ? t`Mute the camera sound` : t`Hear this clip`}
+                  title={
+                    !source?.sound
+                      ? t`This clip has no sound`
+                      : clip.sound
+                        ? t`Camera sound heard, the music dips under it`
+                        : t`Hear this clip: the music dips under it`
+                  }
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onClick={() =>
+                    onChange({
+                      ...edit,
+                      clips: edit.clips.map((one) =>
+                        one.id === clip.id ? { ...one, sound: !one.sound } : one
+                      )
+                    })
+                  }
+                  className={`grid size-7 flex-none place-items-center rounded-full disabled:opacity-40 ${
+                    clip.sound ? 'bg-accent text-on-accent' : 'bg-pane text-ink-3'
+                  }`}>
+                  <Icon
+                    name={clip.sound ? 'sound' : 'muted'}
+                    size={13}
+                  />
+                </button>
+              </div>
+            )
+          })}
+        </Lane>
+
+        <Lane
           name={t`Text`}
-          icon='text'>
+          tag='T1'
+          note={t`Your titles`}
+          height='h-10'>
           {edit.texts.map((text) => (
             <div
               key={text.id}
@@ -352,8 +422,9 @@ const FilmTimeline = ({
 
         <Lane
           name={t`Music`}
-          icon='music'
-          tall>
+          tag='M1'
+          note={t`From the music`}
+          height='h-13'>
           {spans.map((span) => (
             <span
               key={span.from}
@@ -411,9 +482,13 @@ const FilmTimeline = ({
         </Lane>
 
         <span
-          style={{ left: 112 + Math.min(at, total) * pps }}
-          className='pointer-events-none absolute top-0 bottom-0 z-30 w-0.5 bg-accent'
-        />
+          style={{ left: HEAD + Math.min(at, total) * pps }}
+          className='pointer-events-none absolute top-0 bottom-0 z-5 w-px bg-accent'>
+          <span
+            style={{ clipPath: 'polygon(0 0, 100% 0, 100% 55%, 50% 100%, 0 55%)' }}
+            className='absolute -left-1.5 top-0 h-3 w-3 bg-accent'
+          />
+        </span>
       </div>
     </div>
   )

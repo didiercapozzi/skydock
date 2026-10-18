@@ -87,6 +87,7 @@ const FilmPreview = ({
   upright,
   picked,
   heard,
+  framed,
   videoRef,
   onPickText,
   onMoveText,
@@ -97,6 +98,7 @@ const FilmPreview = ({
   upright: boolean
   picked: string | null
   heard: string
+  framed: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
   onPickText: (id: string) => void
   onMoveText: (id: string, x: number, y: number) => void
@@ -104,7 +106,7 @@ const FilmPreview = ({
 }) => {
   const [guides, setGuides] = useState({ x: false, y: false })
   return (
-    <div className='film-room relative grid min-h-0 flex-1 place-items-center p-4'>
+    <div className='film-room relative grid min-h-0 max-h-100 flex-1 place-items-center p-3'>
       <div
         style={{
           aspectRatio: upright ? '9 / 16' : '16 / 9',
@@ -112,7 +114,7 @@ const FilmPreview = ({
             ? 'min(100cqw, calc(100cqh * 9 / 16))'
             : 'min(100cqw, calc(100cqh * 16 / 9))'
         }}
-        className='film-stage relative overflow-hidden rounded-corner bg-stage shadow-card'>
+        className='film-stage relative overflow-hidden rounded-corner bg-stage'>
         <video
           ref={videoRef}
           playsInline
@@ -123,7 +125,7 @@ const FilmPreview = ({
           }
           className='absolute inset-0 h-full w-full object-contain'
         />
-        <div className='film-safe pointer-events-none absolute' />
+        {framed && <div className='film-safe pointer-events-none absolute' />}
         {guides.x && (
           <div className='pointer-events-none absolute inset-y-0 left-1/2 w-px bg-pick' />
         )}
@@ -146,7 +148,7 @@ const FilmPreview = ({
             {t`Drag clips from the left onto the timeline to start the film.`}
           </p>
         )}
-        <span className='absolute top-3 right-3 rounded-full bg-scrim px-3 py-1 text-small font-semibold text-paper'>
+        <span className='absolute top-3 left-3 rounded-full bg-scrim px-3 py-1 text-small font-semibold text-paper'>
           {heard}
         </span>
       </div>

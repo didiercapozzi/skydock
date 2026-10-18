@@ -217,11 +217,6 @@ msgstr "{0} von {1} Schritten"
 msgid "{0} on the storage"
 msgstr "{0} auf dem Speicher"
 
-#. placeholder {0}: loaded.title
-#: app/components/film-editor.tsx
-msgid "{0}’s film"
-msgstr "Der Film von {0}"
-
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
 msgstr "{addedCount, plural, one {# Datei wurde} other {# Dateien wurden}} zu {where} hinzugefügt"
@@ -601,6 +596,11 @@ msgstr "{there} schon da"
 #: app/components/preview-drawer.tsx
 msgid "{times}× upscale, will look soft"
 msgstr "{times}× hochskaliert, wirkt unscharf"
+
+#. placeholder {0}: sources.length
+#: app/components/film-editor.tsx
+msgid "{title} · {0, plural, one {# video} other {# videos}}"
+msgstr "{title} · {0, plural, one {# Video} other {# Videos}}"
 
 #: app/components/folder-owed.tsx
 msgid "{toEdit} to edit"
@@ -1152,6 +1152,7 @@ msgid "Camera {camera}: nothing new — all {skipped} files already here"
 msgstr "Kamera {camera}: nichts Neues — alle {skipped} Dateien schon hier"
 
 #: app/components/film-editor.tsx
+#: app/components/film-timeline.tsx
 msgid "Camera sound"
 msgstr "Kameraton"
 
@@ -1687,6 +1688,7 @@ msgstr "Dunkel"
 msgid "Day"
 msgstr "Tag"
 
+#: app/components/film-editor.tsx
 #: app/components/take-back-dialog.tsx
 msgid "Delete"
 msgstr "Löschen"
@@ -1945,6 +1947,10 @@ msgstr "Film schneiden"
 msgid "Edit the template…"
 msgstr "Vorlage bearbeiten…"
 
+#: app/components/film-editor.tsx
+msgid "Edited on the proxies, rendered from the processed copies"
+msgstr "Am Proxy geschnitten, aus den aufbereiteten Kopien gerendert"
+
 #: app/components/templates-dialog.tsx
 msgid "Editing templates"
 msgstr "Schnittvorlagen"
@@ -2170,6 +2176,7 @@ msgstr "Dateien bereit"
 msgid "film"
 msgstr "Film"
 
+#: app/components/film-editor.tsx
 #: app/components/montage-panel.tsx
 #: app/components/montage-steps.tsx
 msgid "Film"
@@ -2408,12 +2415,6 @@ msgstr "Neue Dateien zurückgesetzt — {files, plural, one {# Datei} other {# D
 msgid "From"
 msgstr "Von"
 
-#. placeholder {0}: clockOf(clip.start)
-#. placeholder {1}: clockOf(clip.end)
-#: app/components/film-editor.tsx
-msgid "From {0} to {1} of the clip"
-msgstr "Von {0} bis {1} des Clips"
-
 #: app/components/inspector.tsx
 msgid "from {filename}"
 msgstr "aus {filename}"
@@ -2422,6 +2423,10 @@ msgstr "aus {filename}"
 msgid "from {start}"
 msgstr "ab {start}"
 
+#: app/components/film-timeline.tsx
+msgid "From the cameras"
+msgstr "Von den Kameras"
+
 #: app/components/preview-drawer.tsx
 msgid "From the exit to a few seconds after the landing"
 msgstr "Vom Absprung bis wenige Sekunden nach der Landung"
@@ -2429,6 +2434,10 @@ msgstr "Vom Absprung bis wenige Sekunden nach der Landung"
 #: app/components/preview-drawer.tsx
 msgid "From the exit to a few seconds after the landing."
 msgstr "Vom Absprung bis ein paar Sekunden nach der Landung."
+
+#: app/components/film-timeline.tsx
+msgid "From the music"
+msgstr "Aus der Musik"
 
 #: app/components/preview-drawer.tsx
 msgid "Full screen"
@@ -2613,6 +2622,10 @@ msgstr "Enthalten"
 #: app/components/upload-dialog.tsx
 msgid "Inside {0}"
 msgstr "In {0}"
+
+#: app/components/film-editor.tsx
+msgid "Inspector"
+msgstr "Inspektor"
 
 #: app/components/email-dialog.tsx
 msgid "is filled from their montage. A line whose variables are all empty for a montage — no film, no photos — is left out of their email."
@@ -2831,6 +2844,10 @@ msgstr "Leer lassen, um es nach dem Projekt zu benennen"
 msgid "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
 msgstr "Lass das bei einer fremden Kamera ungewählt — du wählst jedes Mal die Dateien zum Kopieren."
 
+#: app/components/film-editor.tsx
+msgid "Length"
+msgstr "Länge"
+
 #: app/routes/place.tsx
 msgid "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
 msgstr "Freigeben, wie es der Desktop tut, damit es abgezogen werden kann — nichts darauf wird berührt"
@@ -2865,6 +2882,10 @@ msgstr "Linkadresse"
 #: app/components/montage-steps.tsx
 msgid "Link sent"
 msgstr "Link gesendet"
+
+#: app/components/film-timeline.tsx
+msgid "Linked to Camera sound"
+msgstr "Mit dem Kameraton verbunden"
 
 #: app/components/email-dialog.tsx
 msgid "List"
@@ -3074,6 +3095,7 @@ msgstr "Montage fertig — {clips, plural, one {# Clip} other {# Clips}} im Papi
 msgid "Montage ready — {photos, plural, one {# photo} other {# photos}} in the bin"
 msgstr "Montage fertig — {photos, plural, one {# Foto} other {# Fotos}} im Papierkorb"
 
+#: app/components/film-editor.tsx
 #: app/components/places-tree.tsx
 #: app/helpers/places.ts
 #: app/routes/place.tsx
@@ -3219,6 +3241,10 @@ msgstr "Name des neuen Ordners"
 #: app/components/preview-drawer.tsx
 msgid "Next"
 msgstr "Weiter"
+
+#: app/components/film-editor.tsx
+msgid "Next clip"
+msgstr "Nächster Clip"
 
 #: app/components/montage-steps.tsx
 msgid "Next up"
@@ -3880,6 +3906,10 @@ msgstr "Vorschau von der Kamera"
 msgid "Previous"
 msgstr "Zurück"
 
+#: app/components/film-editor.tsx
+msgid "Previous clip"
+msgstr "Voriger Clip"
+
 #: app/components/montage-card.tsx
 #: app/components/montage-steps.tsx
 msgid "Process"
@@ -4540,6 +4570,14 @@ msgstr "Durchgezogen ist gespeichert, gestrichelt noch nicht."
 msgid "Some of these are copies: a copy can only be taken out, and its original stays where it is."
 msgstr "Einige davon sind Kopien: Eine Kopie kann nur entfernt werden, ihr Original bleibt, wo es ist."
 
+#: app/components/film-editor.tsx
+msgid "Source in"
+msgstr "Start in der Quelle"
+
+#: app/components/film-editor.tsx
+msgid "Source out"
+msgstr "Ende in der Quelle"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "Space"
 msgstr "Leertaste"
@@ -4573,6 +4611,10 @@ msgstr "Beginn"
 #: app/components/inspector.tsx
 msgid "starts {starts}"
 msgstr "beginnt um {starts}"
+
+#: app/components/film-editor.tsx
+msgid "Starts at"
+msgstr "Beginnt bei"
 
 #: app/components/preview-drawer.tsx
 msgid "State"
@@ -5308,8 +5350,13 @@ msgid "under way"
 msgstr "läuft"
 
 #: app/components/email-dialog.tsx
+#: app/components/film-editor.tsx
 msgid "Undo"
 msgstr "Rückgängig"
+
+#: app/components/film-editor.tsx
+msgid "Undo (Ctrl+Z)"
+msgstr "Rückgängig (Strg+Z)"
 
 #: app/components/montage-panel.tsx
 #: app/components/montage-view.tsx
@@ -5656,6 +5703,10 @@ msgstr "Du kannst {0} auf diesem Rechner freigeben. Es fragt vorher."
 #: app/components/film-editor.tsx
 msgid "Your text"
 msgstr "Dein Text"
+
+#: app/components/film-timeline.tsx
+msgid "Your titles"
+msgstr "Deine Titel"
 
 #: app/components/montage-card.tsx
 #: app/components/montage-panel.tsx

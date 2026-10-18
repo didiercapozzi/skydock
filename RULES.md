@@ -1307,9 +1307,16 @@ about it is stored.
 ## The film editor
 
 **A processed montage's film is edited in SkyDock.** _Edit the film_ opens the film editor over the
-board: the montage's clips on the left, the picture in the middle, what is picked on the right, and
-under them the timeline, with a track for the video, one for the text and one for the music. The first
-time, every video of the montage is laid end to end in the order shot, whole, with its camera sound
+board: the montage's clips on the left, the picture in the middle with previous clip, play and next
+clip under it, what is picked on the right, and under them a toolbar with Delete and the zoom, the
+timeline, and a line with the film's length. The timeline has a track for the video, one
+for the camera sound of those clips — where each speaker is turned on — one for the text and one for
+the music, each named at its left with its tag (V1, A1, T1, M1). The header says _Montages_, the
+person and the day of the montage, whether the edit is saved, _Undo_ — also Ctrl or Cmd and Z — and
+_Render the film_. Undo takes back the last change, a drag or a slider counting as one, as far back as
+the editor has been open. On a narrow window the picture takes the top and the two panes sit side by
+side below it, and on a phone they stack, the whole editor scrolling so the timeline is always
+reachable. The first time, every video of the montage is laid end to end in the order shot, whole, with its camera sound
 off, and a title with the person's name opens the film. The edit is saved beside the montage's copies
 as `<name>_<date>.edit.json`, by itself, a moment after each change; that file is the montage's edit,
 so the project step is done and the montage is frozen as an edit freezes it (below), and it is kept
