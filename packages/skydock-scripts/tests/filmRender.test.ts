@@ -84,8 +84,8 @@ describe('rendering the film', () => {
     expect(made).toContain('amix=inputs=2:duration=first:normalize=0')
     const spans = heardSpans(film, () => true)
     expect(spans).toEqual([{ from: 4, to: 7 }])
-    expect(musicLevelAt(0.8, 0.15, spans, 1)).toBeCloseTo(0.8)
-    expect(musicLevelAt(0.8, 0.15, spans, 5)).toBeCloseTo(0.12)
+    expect(musicLevelAt(film.music[0]!, 0.15, spans, 1)).toBeCloseTo(0.8)
+    expect(musicLevelAt(film.music[0]!, 0.15, spans, 5)).toBeCloseTo(0.12)
     expect(duckAt(spans, 3.6)).toBeCloseTo(0.5)
   })
 

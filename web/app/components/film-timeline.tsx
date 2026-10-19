@@ -1,5 +1,14 @@
 import { t } from '@lingui/core/macro'
-import { clipLength, fadeInto, heardSpans, musicLevelAt, SLOT } from '@skydock/scripts/client'
+import {
+  clipLength,
+  fadeInOf,
+  fadeInto,
+  fadeOutOf,
+  heardSpans,
+  musicLevelAt,
+  SLOT,
+  textFadesOf
+} from '@skydock/scripts/client'
 import type { EditSource, FilmEdit, MusicSource } from '@skydock/scripts/client'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
@@ -80,6 +89,27 @@ const FRAME = 56
 const GRIP = 'after:absolute after:inset-y-[30%] after:w-0.5 after:rounded-corner after:bg-accent'
 
 const ring = (chosen: boolean) => (chosen ? 'border-accent shadow-ring' : 'border-line-strong')
+
+const Ramps = ({ fadeIn, fadeOut, pps }: { fadeIn: number; fadeOut: number; pps: number }) => (
+  <>
+    {fadeIn > 0 && (
+      <span
+        aria-hidden='true'
+        data-fade='in'
+        style={{ width: fadeIn * pps, clipPath: 'polygon(0 0, 100% 0, 0 100%)' }}
+        className='pointer-events-none absolute inset-y-0 left-0 bg-scrim'
+      />
+    )}
+    {fadeOut > 0 && (
+      <span
+        aria-hidden='true'
+        data-fade='out'
+        style={{ width: fadeOut * pps, clipPath: 'polygon(0 0, 100% 0, 100% 100%)' }}
+        className='pointer-events-none absolute inset-y-0 right-0 bg-scrim'
+      />
+    )}
+  </>
+)
 
 const FilmTimeline = ({
   edit,
@@ -508,6 +538,11 @@ const FilmTimeline = ({
                       ))}
                     </span>
                   )}
+                  <Ramps
+                    fadeIn={fadeInOf(edit.clips, index)}
+                    fadeOut={fadeOutOf(edit.clips, index)}
+                    pps={pps}
+                  />
                   <span
                     style={{ marginLeft: lead }}
                     className='pointer-events-none absolute top-0.75 right-1.75 left-1.75 truncate text-micro font-medium text-here [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]'>
@@ -683,6 +718,10 @@ const FilmTimeline = ({
                   ? 'shadow-ring-2'
                   : 'shadow-hairline'
               }`}>
+              <Ramps
+                {...textFadesOf(text)}
+                pps={pps}
+              />
               <span className='pointer-events-none flex h-full items-center'>
                 {text.text || t`Text`}
               </span>
@@ -716,7 +755,7 @@ const FilmTimeline = ({
             )
               .map(
                 (into) =>
-                  `${into * pps},${(1 - musicLevelAt(piece.volume, edit.underSound, spans, piece.at + into)) * 100}`
+                  `${into * pps},${(1 - musicLevelAt(piece, edit.underSound, spans, piece.at + into)) * 100}`
               )
               .join(' ')
             return (

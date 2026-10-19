@@ -20,7 +20,9 @@ const filmTemplateSchema = z.object({
           at: seconds,
           start: seconds,
           end: seconds,
-          volume: z.number().min(0).max(1)
+          volume: z.number().min(0).max(1),
+          fadeIn: z.number().min(0).finite().optional(),
+          fadeOut: z.number().min(0).finite().optional()
         })
         .refine((piece) => piece.end > piece.start)
     )
@@ -133,7 +135,18 @@ const applyTemplate = (
       cut.push(piece.name)
       return []
     }
-    return [{ id: '', name: piece.name, at, start: piece.start, end, volume: piece.volume }]
+    return [
+      {
+        id: '',
+        name: piece.name,
+        at,
+        start: piece.start,
+        end,
+        volume: piece.volume,
+        ...(piece.fadeIn !== undefined && { fadeIn: piece.fadeIn }),
+        ...(piece.fadeOut !== undefined && { fadeOut: piece.fadeOut })
+      }
+    ]
   })
   const numbered = <T extends { id: string }>(list: T[], prefix: string) =>
     list.map((one, index) => ({ ...one, id: `${prefix}-${index + 1}` }))

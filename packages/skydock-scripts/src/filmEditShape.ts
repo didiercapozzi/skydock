@@ -13,6 +13,7 @@ const DUCK_RAMP = 0.8
 
 const seconds = z.number().min(0)
 const fraction = z.number().min(0).max(1)
+const fadeLength = seconds.finite().optional()
 
 const editClipSchema = z
   .object({
@@ -22,7 +23,9 @@ const editClipSchema = z
     end: seconds,
     sound: z.boolean(),
     gap: seconds.finite().optional(),
-    fade: z.number().gt(0).finite().optional()
+    fade: z.number().gt(0).finite().optional(),
+    fadeIn: fadeLength,
+    fadeOut: fadeLength
   })
   .refine((clip) => clip.end > clip.start, 'a clip ends after it starts')
 
@@ -33,7 +36,9 @@ const editMusicSchema = z
     at: seconds,
     start: seconds,
     end: seconds,
-    volume: fraction
+    volume: fraction,
+    fadeIn: fadeLength,
+    fadeOut: fadeLength
   })
   .refine((music) => music.end > music.start, 'a piece of music ends after it starts')
 
@@ -47,7 +52,9 @@ const editTextSchema = z.object({
   x: fraction,
   y: fraction,
   size: z.number().min(0.02).max(0.3),
-  colour: z.string().regex(/^#[0-9a-fA-F]{6}$/)
+  colour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  fadeIn: fadeLength,
+  fadeOut: fadeLength
 })
 
 const filmEditSchema = z.object({
@@ -113,6 +120,35 @@ const fadeInto = (clips: EditClip[], index: number) => {
     : 0
 }
 
+const halved = (value: number | undefined, length: number) => Math.min(value ?? 0, length / 2)
+
+const fadeInOf = (clips: EditClip[], index: number) =>
+  fadeInto(clips, index) > 0 ? 0 : halved(clips[index]?.fadeIn, clipLength(clips[index]!))
+
+const fadeOutOf = (clips: EditClip[], index: number) =>
+  fadeInto(clips, index + 1) > 0 ? 0 : halved(clips[index]?.fadeOut, clipLength(clips[index]!))
+
+const textFadesOf = (text: EditText) => ({
+  fadeIn: halved(text.fadeIn, text.seconds),
+  fadeOut: halved(text.fadeOut, text.seconds)
+})
+
+const musicFadesOf = (piece: EditMusic) => ({
+  fadeIn: halved(piece.fadeIn ?? 0, piece.end - piece.start),
+  fadeOut: halved(piece.fadeOut ?? 0, piece.end - piece.start)
+})
+
+const within = (value: number) => Math.min(1, Math.max(0, value))
+
+const rampAt = (into: number, length: number, fadeIn: number, fadeOut: number) =>
+  Math.min(
+    fadeIn > 0 ? within(into / fadeIn) : 1,
+    fadeOut > 0 ? within((length - into) / fadeOut) : 1
+  )
+
+const clipLevelAt = (clips: EditClip[], index: number, into: number) =>
+  rampAt(into, clipLength(clips[index]!), fadeInOf(clips, index), fadeOutOf(clips, index))
+
 const filmLength = (edit: FilmEdit) =>
   edit.clips.reduce(
     (total, clip, index) =>
@@ -143,8 +179,6 @@ const heardSpans = (edit: FilmEdit, heard: (clip: EditClip) => boolean) => {
   return spans
 }
 
-const within = (value: number) => Math.min(1, Math.max(0, value))
-
 const duckAt = (spans: Span[], t: number) =>
   Math.max(
     0,
@@ -154,11 +188,18 @@ const duckAt = (spans: Span[], t: number) =>
     )
   )
 
-const musicLevelAt = (volume: number, underSound: number, spans: Span[], t: number) =>
-  volume * (1 - (1 - underSound) * duckAt(spans, t))
+const musicLevelAt = (piece: EditMusic, underSound: number, spans: Span[], t: number) => {
+  const { fadeIn, fadeOut } = musicFadesOf(piece)
+  return (
+    piece.volume *
+    rampAt(t - piece.at, piece.end - piece.start, fadeIn, fadeOut) *
+    (1 - (1 - underSound) * duckAt(spans, t))
+  )
+}
 
 const textLookAt = (text: EditText, t: number) => {
   const until = text.at + text.seconds
+  const { fadeIn, fadeOut } = textFadesOf(text)
   const opacity =
     t < text.at || t > until
       ? 0
@@ -169,7 +210,7 @@ const textLookAt = (text: EditText, t: number) => {
           : (until - t) / TEXT_FADE
   const easing = Math.max(0, 1 - (t - text.at) / TEXT_FADE) ** 2
   return {
-    opacity,
+    opacity: opacity * rampAt(t - text.at, text.seconds, fadeIn, fadeOut),
     scale: text.effect === 'pop' ? Math.min(1, 0.6 + (0.4 * Math.max(0, t - text.at)) / POP) : 1,
     dx: text.effect === 'lower-third' ? -0.05 * easing : 0,
     dy: text.effect === 'rise' ? 0.04 * easing : 0
@@ -184,17 +225,23 @@ export {
   editMarkSchema,
   editSourceSchema,
   editTextSchema,
+  clipLevelAt,
+  fadeInOf,
   fadeInto,
+  fadeOutOf,
   filmEditSchema,
   filmLength,
   heardSpans,
   MUSIC_EXTENSIONS,
+  musicFadesOf,
   musicLevelAt,
   musicSourceSchema,
   POP,
+  rampAt,
   TEXT_EFFECTS,
   TEXT_FADE,
   TEXT_FONTS,
+  textFadesOf,
   textLookAt,
   timelineEnd,
   STILL_EXTENSIONS,

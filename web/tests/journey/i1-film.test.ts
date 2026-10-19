@@ -179,7 +179,9 @@ describe('the film editor', () => {
   test('adds a title from a preset, and the saved edit carries it', async () => {
     await editor().getByRole('button', { name: 'Text', exact: true }).click()
     await editor().getByRole('button', { name: 'Title', exact: true }).click()
-    await expect.poll(() => editor().getByRole('textbox').inputValue()).toBe('Luc Favre')
+    await expect
+      .poll(() => editor().getByRole('textbox', { name: 'Text', exact: true }).inputValue())
+      .toBe('Luc Favre')
     await expect
       .poll(() => savedEdit().texts.map((text) => text.text), { timeout: 10_000 })
       .toEqual(['Luc Favre', 'Luc Favre'])

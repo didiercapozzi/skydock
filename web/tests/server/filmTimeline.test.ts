@@ -21,6 +21,7 @@ import {
   trimClip,
   zoomAround
 } from '../../app/helpers/filmTimeline'
+import { fadeInOf, fadeOutOf } from '@skydock/scripts/client'
 import type { FilmEdit } from '@skydock/scripts/client'
 
 const edit: FilmEdit = {
@@ -83,6 +84,50 @@ describe('cutting at the playhead', () => {
       ]
     }
     expect(splitClip(odd, 4.6)).not.toBeNull()
+  })
+})
+
+describe('the fades of a clip through the edits', () => {
+  const faded: FilmEdit = {
+    ...edit,
+    clips: [
+      { id: 'clip-1', name: 'a.mp4', start: 0, end: 10, sound: true, fadeIn: 2, fadeOut: 3 },
+      { id: 'clip-2', name: 'b.mp4', start: 2, end: 8, sound: false }
+    ]
+  }
+
+  it('stays in on the first piece of a cut and out on the second', () => {
+    const cut = splitClip(faded, 4)!
+    expect(cut.clips[0]).toEqual({
+      id: 'clip-1',
+      name: 'a.mp4',
+      start: 0,
+      end: 4,
+      sound: true,
+      fadeIn: 2
+    })
+    expect(cut.clips[1]).toEqual({
+      id: 'clip-3',
+      name: 'a.mp4',
+      start: 4,
+      end: 10,
+      sound: true,
+      fadeOut: 3
+    })
+  })
+
+  it('is clamped to half the clip when it is trimmed shorter, and comes back when it grows', () => {
+    const shorter = trimClip(faded, 'clip-1', 'end', 2, 20, false)
+    expect(fadeInOf(shorter.clips, 0)).toBe(1)
+    expect(fadeOutOf(shorter.clips, 0)).toBe(1)
+    const longer = trimClip(shorter, 'clip-1', 'end', 10, 20, false)
+    expect(fadeOutOf(longer.clips, 0)).toBe(3)
+  })
+
+  it('follows the clip when it moves, and goes with it when it is deleted', () => {
+    const moved = moveClip(faded, 'clip-1', 2)
+    expect(moved.clips[1]).toMatchObject({ id: 'clip-1', fadeIn: 2, fadeOut: 3 })
+    expect(removeClip(faded, 'clip-1', false).clips.map((one) => one.id)).toEqual(['clip-2'])
   })
 })
 

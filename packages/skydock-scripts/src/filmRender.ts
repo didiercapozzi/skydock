@@ -4,11 +4,15 @@ import * as path from 'node:path'
 import { editSources, musicSources } from './filmEdit'
 import {
   DUCK_RAMP,
+  fadeInOf,
   fadeInto,
+  fadeOutOf,
   filmLength,
   heardSpans,
+  musicFadesOf,
   POP,
   TEXT_FADE,
+  textFadesOf,
   timelineEnd
 } from './filmEditShape'
 import type { EditSource, EditText, FilmEdit, MusicSource, Span, TextFont } from './filmEditShape'
@@ -24,8 +28,6 @@ import { passengerOf } from './workspace'
 const FPS = 30
 const LONG_SIDE = 1920
 const SHORT_SIDE = 1080
-const MUSIC_FADE_IN = 0.3
-const MUSIC_FADE_OUT = 1.5
 
 const FONT_PATTERNS: Record<TextFont, string> = {
   clean: 'sans-serif',
@@ -43,8 +45,12 @@ const shown = (at: number, until: number) =>
 
 const easing = (at: number) => `pow(max(0,1-(t-${n(at)})/${n(TEXT_FADE)}),2)`
 
+const fadedBy = (at: number, until: number, fadeIn: number, fadeOut: number) =>
+  `${fadeIn > 0 ? `*clip((t-${n(at)})/${n(fadeIn)},0,1)` : ''}${fadeOut > 0 ? `*clip((${n(until)}-t)/${n(fadeOut)},0,1)` : ''}`
+
 const textFilter = (text: EditText, file: string, font: string | null) => {
   const until = text.at + text.seconds
+  const { fadeIn, fadeOut } = textFadesOf(text)
   const size =
     text.effect === 'pop'
       ? `h*${n(text.size)}*min(1,0.6+0.4*max(0,t-${n(text.at)})/${n(POP)})`
@@ -63,7 +69,7 @@ const textFilter = (text: EditText, file: string, font: string | null) => {
     `fontsize=${quoted(size)}`,
     `x=${quoted(x)}`,
     `y=${quoted(y)}`,
-    `alpha=${quoted(shown(text.at, until))}`,
+    `alpha=${quoted(`${shown(text.at, until)}${fadedBy(text.at, until, fadeIn, fadeOut)}`)}`,
     'shadowcolor=black@0.45',
     'shadowx=2',
     'shadowy=2',
@@ -126,12 +132,18 @@ const filmArgs = ({
     )
     if (clip.gap) black(`g${index}`, clip.gap)
     parts.push({ label: `[v${index}][a${index}]`, length, fade: fadeInto(edit.clips, index) })
+    const fadeIn = fadeInOf(edit.clips, index)
+    const fadeOut = fadeOutOf(edit.clips, index)
+    const dim = (filter: string) => [
+      ...(fadeIn > 0 ? [`${filter}=t=in:st=0:d=${n(fadeIn)}`] : []),
+      ...(fadeOut > 0 ? [`${filter}=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])
+    ]
     graph.push(
-      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=PTS-STARTPTS,fps=${FPS},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p[v${index}]`
+      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=PTS-STARTPTS,fps=${FPS},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
     )
     graph.push(
       clip.sound && source.sound
-        ? `[${index}:a]atrim=start=${n(clip.start)}:end=${n(clip.end)},asetpts=PTS-STARTPTS,${stereo},apad=whole_dur=${n(length)},atrim=end=${n(length)}[a${index}]`
+        ? `[${index}:a]atrim=start=${n(clip.start)}:end=${n(clip.end)},asetpts=PTS-STARTPTS,${stereo},apad=whole_dur=${n(length)},atrim=end=${n(length)}${['', ...dim('afade')].join(',')}[a${index}]`
         : `anullsrc=r=48000:cl=stereo,atrim=end=${n(length)},${stereo}[a${index}]`
     )
   })
@@ -173,10 +185,11 @@ const filmArgs = ({
     const source = music.get(piece.name)
     if (!source) throw new Error(`The music ${piece.name} is not in the music folder any more.`)
     const length = piece.end - piece.start
+    const { fadeIn, fadeOut } = musicFadesOf(piece)
     const delay = Math.round(piece.at * 1000)
     inputs.push('-i', source.path)
     graph.push(
-      `[${edit.clips.length + index}:a]atrim=start=${n(piece.start)}:end=${n(piece.end)},asetpts=PTS-STARTPTS,${stereo},afade=t=in:d=${n(MUSIC_FADE_IN)},afade=t=out:st=${n(Math.max(0, length - MUSIC_FADE_OUT))}:d=${n(MUSIC_FADE_OUT)},adelay=${delay}:all=1,volume=${quoted(musicLevel(piece.volume, edit.underSound, duck))}:eval=frame[m${index}]`
+      `[${edit.clips.length + index}:a]atrim=start=${n(piece.start)}:end=${n(piece.end)},asetpts=PTS-STARTPTS,${stereo},${[...(fadeIn > 0 ? [`afade=t=in:d=${n(fadeIn)}`] : []), ...(fadeOut > 0 ? [`afade=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])].map((one) => `${one},`).join('')}adelay=${delay}:all=1,volume=${quoted(musicLevel(piece.volume, edit.underSound, duck))}:eval=frame[m${index}]`
     )
   })
   graph.push(

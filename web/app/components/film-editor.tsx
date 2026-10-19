@@ -2,20 +2,28 @@ import { plural, t } from '@lingui/core/macro'
 import {
   applyTemplate,
   captureTemplate,
+  clipLength,
+  clipLevelAt,
   DAY_TOKEN,
   editAnswerSchema,
+  fadeInOf,
   fadeInto,
+  fadeOutOf,
   filmLength,
   filmTemplatesAnswerSchema,
   heardSpans,
+  musicFadesOf,
   musicLevelAt,
   NAME_TOKEN,
   SLOT,
   slotEdit,
   STILL_SECONDS,
-  TEXT_FADE
+  TEXT_FADE,
+  textFadesOf
 } from '@skydock/scripts/client'
 import type {
+  EditClip,
+  EditMusic,
   EditSource,
   EditText,
   FilmEdit,
@@ -54,6 +62,8 @@ import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-
 import type { Listed } from './film-template-modals'
 import { FONT_LOOK, FilmPreview } from './film-preview'
 import { FilmShortcuts } from './film-shortcuts'
+import { FILM_ACTIONS, keyLabel, keyNames, type FilmAction } from '../helpers/filmKeys'
+import { useFilmKeys } from '../hooks/useFilmKeys'
 import { CLIP_DRAG, FilmTimeline, markName, ZOOM } from './film-timeline'
 import type { Picked } from './film-timeline'
 import { Icon } from './icons'
@@ -241,7 +251,7 @@ const TimeBox = ({
       onBlur={(e) => {
         const seconds = secondsOf(e.currentTarget.value)
         if (onCommit && Number.isFinite(seconds) && seconds !== value) onCommit(seconds)
-        else e.currentTarget.value = clockOf(value)
+        e.currentTarget.value = clockOf(value)
       }}
       className='min-w-0 rounded-corner border border-line bg-well px-2 py-1 font-mono text-body tabular-nums read-only:text-ink-2'
     />
@@ -519,6 +529,48 @@ const Library = ({
   )
 }
 
+const FadeLengths = ({
+  fadeIn,
+  fadeOut,
+  max,
+  whyIn,
+  whyOut,
+  onChange
+}: {
+  fadeIn: number
+  fadeOut: number
+  max: number
+  whyIn?: string
+  whyOut?: string
+  onChange: (change: { fadeIn?: number; fadeOut?: number }) => void
+}) => {
+  const within = (seconds: number) => Math.min(max, Math.max(0, Math.round(seconds * 10) / 10))
+  return (
+    <>
+      <TimeBox
+        label={t({ message: 'Fade in', context: 'a fade from black, not a crossfade' })}
+        value={fadeIn}
+        onCommit={whyIn ? undefined : (seconds) => onChange({ fadeIn: within(seconds) })}
+      />
+      <TimeBox
+        label={t`Fade out`}
+        value={fadeOut}
+        onCommit={whyOut ? undefined : (seconds) => onChange({ fadeOut: within(seconds) })}
+      />
+      {[whyIn, whyOut].map(
+        (why) =>
+          why && (
+            <p
+              key={why}
+              className='col-span-2 m-0 text-small text-ink-3'>
+              {why}
+            </p>
+          )
+      )}
+    </>
+  )
+}
+
 const Inspector = ({
   edit,
   picked,
@@ -550,7 +602,19 @@ const Inspector = ({
     />
   )
   const clip = picked?.kind === 'clip' ? edit.clips.find((one) => one.id === picked.id) : undefined
-  const fade = clip ? fadeInto(edit.clips, edit.clips.indexOf(clip)) : 0
+  const clipIndex = clip ? edit.clips.indexOf(clip) : -1
+  const fade = clip ? fadeInto(edit.clips, clipIndex) : 0
+  const changeClip = (change: Partial<EditClip>) =>
+    clip &&
+    onChange({
+      ...edit,
+      clips: edit.clips.map((one) => (one.id === clip.id ? { ...one, ...change } : one))
+    })
+  const changePiece = (change: Partial<EditMusic>) =>
+    onChange({
+      ...edit,
+      music: edit.music.map((one) => (one.id === picked?.id ? { ...one, ...change } : one))
+    })
   const piece =
     picked?.kind === 'music' ? edit.music.find((one) => one.id === picked.id) : undefined
   const text = picked?.kind === 'text' ? edit.texts.find((one) => one.id === picked.id) : undefined
@@ -610,6 +674,24 @@ const Inspector = ({
                           onCommit={(seconds) => trim('end', seconds)}
                         />
                       </>
+                    )}
+                    {clip.id !== SLOT && (
+                      <FadeLengths
+                        fadeIn={fadeInOf(edit.clips, clipIndex)}
+                        fadeOut={fadeOutOf(edit.clips, clipIndex)}
+                        max={clipLength(clip) / 2}
+                        whyIn={
+                          fade > 0
+                            ? t`The fade from the previous clip already fades this clip in.`
+                            : undefined
+                        }
+                        whyOut={
+                          fadeInto(edit.clips, clipIndex + 1) > 0
+                            ? t`The next clip fades in over this one, which fades it out.`
+                            : undefined
+                        }
+                        onChange={changeClip}
+                      />
                     )}
                   </>
                 )
@@ -686,6 +768,14 @@ const Inspector = ({
                 })
               }
             />
+            <div className='grid grid-cols-2 gap-2'>
+              <FadeLengths
+                fadeIn={musicFadesOf(piece).fadeIn}
+                fadeOut={musicFadesOf(piece).fadeOut}
+                max={(piece.end - piece.start) / 2}
+                onChange={changePiece}
+              />
+            </div>
             {under}
             {remove}
           </>
@@ -772,6 +862,14 @@ const Inspector = ({
               shown={`${text.seconds}s`}
               onChange={(seconds) => changeText({ seconds })}
             />
+            <div className='grid grid-cols-2 gap-2'>
+              <FadeLengths
+                fadeIn={textFadesOf(text).fadeIn}
+                fadeOut={textFadesOf(text).fadeOut}
+                max={text.seconds / 2}
+                onChange={changeText}
+              />
+            </div>
             <Field label={t`Colour`}>
               <span className='flex gap-2'>
                 {COLOURS.map((colour) => (
@@ -1122,7 +1220,15 @@ const FilmEditor = ({
       drive(players[chosen]!, one, level, at, roll)
       return chosen
     }
-    const deck = lead ? put(lead, blend?.mix ?? 1, t, rolling, shown.current) : -1
+    const deck = lead
+      ? put(
+          lead,
+          blend?.mix ?? clipLevelAt(current.clips, lead.index, t - lead.from),
+          t,
+          rolling,
+          shown.current
+        )
+      : -1
     if (blend) put(blend.out, 1 - blend.mix, t, rolling)
     if (lead && (blend || settled(players[deck]!))) {
       shown.current = deck
@@ -1146,10 +1252,7 @@ const FilmEditor = ({
       if (rolling && into >= 0 && into < piece.end - piece.start) {
         const want = piece.start + into
         if (Math.abs(sound.currentTime - want) > DRIFT) sound.currentTime = want
-        sound.volume = Math.min(
-          1,
-          Math.max(0, musicLevelAt(piece.volume, current.underSound, spans, t))
-        )
+        sound.volume = Math.min(1, Math.max(0, musicLevelAt(piece, current.underSound, spans, t)))
         if (sound.paused) void sound.play().catch(() => undefined)
       } else if (!sound.paused) sound.pause()
     }
@@ -1277,6 +1380,11 @@ const FilmEditor = ({
     if (second) setPicked({ kind: 'clip', id: second.id })
   }
 
+  const bound = useFilmKeys()
+  const hint = (text: string, action: FilmAction) =>
+    bound[action].length ? `${text} (${bound[action].map(keyLabel).join(', ')})` : text
+  const shortcuts = (action: FilmAction) => bound[action].map(keyLabel).join(' ') || undefined
+
   const keys = (e: KeyboardEvent) => {
     const target = e.target instanceof HTMLElement ? e.target : null
     const typing =
@@ -1291,7 +1399,7 @@ const FilmEditor = ({
     if (e.repeat && !REPEATING.test(e.key)) return
     const arrowed = target?.matches(ARROWED)
     const command = e.ctrlKey || e.metaKey
-    if (e.key.toLowerCase() === 'z' && command && !e.shiftKey) {
+    if (e.key.toLowerCase() === 'z' && command && !e.shiftKey && !e.getModifierState('AltGraph')) {
       e.preventDefault()
       undo()
     }
@@ -1308,17 +1416,24 @@ const FilmEditor = ({
       const by = (e.shiftKey ? 1 : 0.1) * (e.key === 'ArrowLeft' ? -1 : 1)
       change(placeClip(edit, picked.id, Math.round((from + by) * 1000) / 1000, ripple))
     }
-    if (command || e.altKey) return
+    if ((command || e.altKey) && !e.getModifierState('AltGraph')) return
     if (e.key === ' ' || e.key === 'Enter') {
       if (keyFocus.current && target?.matches(NATIVE)) return
       e.preventDefault()
       if (!e.repeat) setPlaying((was) => !was)
     }
+    const typed = keyNames(e)
+    const hit = FILM_ACTIONS.find((action) => bound[action].some((one) => typed.includes(one)))
+    const has = (action: FilmAction) => hit === action
+    const shifted = e.shiftKey && /^\p{L}$/u.test(e.key)
     if (
-      (e.key === 'Delete' || e.key === 'Backspace') &&
-      !(keyFocus.current && target?.matches(PRESSED))
+      !shifted &&
+      hit &&
+      !(scratch && hit === 'cut') &&
+      !(hit === 'delete' && keyFocus.current && target?.matches(PRESSED))
     )
-      removePicked()
+      e.preventDefault()
+    if (has('delete') && !shifted && !(keyFocus.current && target?.matches(PRESSED))) removePicked()
     if (e.key === '?') setHelp(true)
     if (!arrowed && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
       e.preventDefault()
@@ -1332,13 +1447,12 @@ const FilmEditor = ({
       e.preventDefault()
       seek(e.key === 'Home' ? 0 : total)
     }
-    if (e.shiftKey) return
-    const letter = e.key.toLowerCase()
-    if (letter === 'c') cutHere()
-    if (letter === 'f' && pickedId && blocked === null) fadeHere()
-    if (letter === 'r') setRipple((was) => !was)
-    if (letter === 's') setSnap((was) => !was)
-    if (letter === 't') addText(PRESETS[0]!)
+    if (shifted) return
+    if (has('cut')) cutHere()
+    if (has('fade') && pickedId && blocked === null) fadeHere()
+    if (has('ripple')) setRipple((was) => !was)
+    if (has('snap')) setSnap((was) => !was)
+    if (has('title')) addText(PRESETS[0]!)
   }
 
   const keyFocus = useRef(false)
@@ -1425,7 +1539,7 @@ const FilmEditor = ({
         0,
         ...edit.music
           .filter((piece) => at >= piece.at && at < piece.at + piece.end - piece.start)
-          .map((piece) => musicLevelAt(piece.volume, edit.underSound, spans, at))
+          .map((piece) => musicLevelAt(piece, edit.underSound, spans, at))
       )
     : 0
   const heard = heardClip
@@ -1531,7 +1645,7 @@ const FilmEditor = ({
                 picked={picked?.kind === 'text' ? picked.id : null}
                 heard={heard}
                 blank={!here}
-                mix={blend?.mix ?? 1}
+                mix={blend?.mix ?? (here ? clipLevelAt(edit.clips, here.index, at - here.from) : 1)}
                 fading={blend !== null}
                 evenFront={front === 0}
                 onReady={settle}
@@ -1625,8 +1739,8 @@ const FilmEditor = ({
               </Mini>
               <Mini
                 disabled={!cut}
-                title={t`Cut at playhead (C)`}
-                keys='C'
+                title={hint(t`Cut at playhead`, 'cut')}
+                keys={shortcuts('cut')}
                 onClick={cutHere}>
                 <Icon
                   name='scissors'
@@ -1636,8 +1750,8 @@ const FilmEditor = ({
               </Mini>
               <Mini
                 disabled={!picked}
-                keys='Delete Backspace'
-                title={t`Delete the picked item (Delete, Backspace)`}
+                keys={shortcuts('delete')}
+                title={hint(t`Delete the picked item`, 'delete')}
                 onClick={removePicked}>
                 <Icon
                   name='bin'
@@ -1648,10 +1762,11 @@ const FilmEditor = ({
               <Mini
                 pressed={fading}
                 disabled={blocked !== null}
-                keys='F'
-                title={`${
-                  pickedId ? fadeWhy(blocked) : t`Pick a clip to fade it in over the one before it`
-                } (F)`}
+                keys={shortcuts('fade')}
+                title={hint(
+                  pickedId ? fadeWhy(blocked) : t`Pick a clip to fade it in over the one before it`,
+                  'fade'
+                )}
                 onClick={fadeHere}>
                 <Icon
                   name='fade'
@@ -1662,15 +1777,21 @@ const FilmEditor = ({
               <span className='h-4.5 w-px flex-none bg-line' />
               <Mini
                 pressed={ripple}
-                keys='R'
-                title={`${t`Changing the video pulls the text and the music after it along`} (R)`}
+                keys={shortcuts('ripple')}
+                title={hint(
+                  t`Changing the video pulls the text and the music after it along`,
+                  'ripple'
+                )}
                 onClick={() => setRipple(!ripple)}>
                 {t`Ripple`}
               </Mini>
               <Mini
                 pressed={snap}
-                keys='S'
-                title={`${t`Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks`} (S)`}
+                keys={shortcuts('snap')}
+                title={hint(
+                  t`Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks`,
+                  'snap'
+                )}
                 onClick={() => setSnap(!snap)}>
                 {t`Snap`}
               </Mini>

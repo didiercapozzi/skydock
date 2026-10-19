@@ -22,9 +22,20 @@ const remembered = <T>({
 
   const store = () => (kept === 'session' ? sessionStorage : localStorage)
 
+  const heard = (e: StorageEvent) => {
+    if (e.key !== null && e.key !== key) return
+    if (e.storageArea && e.storageArea !== store()) return
+    if (e.newValue === null) held = fallback
+    for (const listener of listeners) listener()
+  }
+
   const subscribe = (listener: () => void) => {
+    if (!listeners.size) window.addEventListener('storage', heard)
     listeners.add(listener)
-    return () => listeners.delete(listener)
+    return () => {
+      listeners.delete(listener)
+      if (!listeners.size) window.removeEventListener('storage', heard)
+    }
   }
 
   let seen: { stored: string; value: T } | null = null

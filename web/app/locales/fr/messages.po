@@ -67,6 +67,10 @@ msgstr ", gardés tels qu’ils étaient sur la carte, et y restent jusqu’à c
 msgid "?"
 msgstr "?"
 
+#: app/helpers/filmKeys.ts
+msgid "? opens the list of shortcuts"
+msgstr "? ouvre la liste des raccourcis"
+
 #: app/helpers/places.ts
 msgid "“{trimmed}” cannot be a dropzone’s name — it is not a folder name."
 msgstr "« {trimmed} » ne peut pas être le nom d’une dropzone — ce n’est pas un nom de dossier."
@@ -232,6 +236,10 @@ msgstr "{0} sur le stockage"
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
 msgstr "{addedCount, plural, one {# fichier ajouté} other {# fichiers ajoutés}} à {where}"
+
+#: app/components/film-shortcuts.tsx
+msgid "{aliasLabel} on this keycap is used by {used}"
+msgstr "{aliasLabel} sur cette touche est utilisée par {used}"
 
 #: app/helpers/notes.ts
 msgid "{back, plural, one {# file} other {# files}} back in Fresh files, out of the bin."
@@ -422,6 +430,10 @@ msgstr "{kept, plural, one {# saut ou fichier en vrac pas encore entièrement en
 msgid "{kept, plural, one {# not all uploaded yet stays here.} other {# not all uploaded yet stay here.}}"
 msgstr "{kept, plural, one {# pas encore entièrement envoyé reste ici.} other {# pas encore entièrement envoyés restent ici.}}"
 
+#: app/components/film-shortcuts.tsx
+msgid "{key} is used by {used}. Use it for {wanted} instead?"
+msgstr "{key} est utilisée par {used}. L’utiliser plutôt pour {wanted} ?"
+
 #: app/components/remove-files-dialog.tsx
 msgid "{kinds}, {inAll} in all"
 msgstr "{kinds}, {inAll} au total"
@@ -433,6 +445,10 @@ msgstr "{label} — {seconds} s"
 #: app/components/video-cropper.tsx
 msgid "{label} — {seconds}s, drag to correct"
 msgstr "{label} — {seconds} s, glissez pour corriger"
+
+#: app/components/film-shortcuts.tsx
+msgid "{label}, change the key of {tool}"
+msgstr "{label}, changer la touche de {tool}"
 
 #: app/components/remove-place-dialog.tsx
 msgid "{linked} and everything in it stays on the storage, and so does any link handed out of it"
@@ -818,6 +834,10 @@ msgstr "Une copie ne peut pas aller à la corbeille — son original reste où i
 msgid "a copy of the film"
 msgstr "une copie du film"
 
+#: app/components/film-shortcuts.tsx
+msgid "A dead key cannot be set"
+msgstr "Une touche morte ne peut pas être choisie"
+
 #: app/helpers/places.ts
 msgid "A dropzone needs a name."
 msgstr "Une dropzone a besoin d’un nom."
@@ -923,6 +943,14 @@ msgstr "Ajoutez une destination, puis glissez dessus ce qui doit y aller."
 #: app/components/places-tree.tsx
 msgid "Add a destination…"
 msgstr "Ajouter une destination…"
+
+#: app/components/film-shortcuts.tsx
+msgid "Add a key"
+msgstr "Ajouter une touche"
+
+#: app/components/film-shortcuts.tsx
+msgid "Add a key to {tool}"
+msgstr "Ajouter une touche à {tool}"
 
 #: app/components/film-shortcuts.tsx
 msgid "add a text at the playhead"
@@ -1221,6 +1249,7 @@ msgstr "annuler"
 #: app/components/connection-dialog.tsx
 #: app/components/delete-jump-dialog.tsx
 #: app/components/film-part.tsx
+#: app/components/film-shortcuts.tsx
 #: app/components/film-template-modals.tsx
 #: app/components/free-dialog.tsx
 #: app/components/free-place-dialog.tsx
@@ -1264,6 +1293,10 @@ msgstr "Modifier l’e-mail envoyé pour chaque montage, avec les mots qui chang
 #: app/components/montage-panel.tsx
 msgid "Change the name"
 msgstr "Changer le nom"
+
+#: app/components/film-shortcuts.tsx
+msgid "Change this key"
+msgstr "Changer cette touche"
 
 #: app/components/file-status.tsx
 msgid "changed"
@@ -1729,10 +1762,15 @@ msgstr "Créer et ouvrir"
 msgid "Create link"
 msgstr "Créer un lien"
 
+#: app/components/film-shortcuts.tsx
+msgid "Ctrl, Cmd and Alt are for other things"
+msgstr "Ctrl, Cmd et Alt servent à autre chose"
+
 #: app/components/comparison-dialog.tsx
 msgid "Custom"
 msgstr "Personnalisée"
 
+#: app/components/film-shortcuts.tsx
 #: app/components/preview-drawer.tsx
 msgid "Cut"
 msgstr "Coupe"
@@ -1745,13 +1783,13 @@ msgstr "Retirez un support ou un doigt du coin de l’image. Identique garde la 
 msgid "Cut at playhead"
 msgstr "Couper à la tête de lecture"
 
-#: app/components/film-editor.tsx
-msgid "Cut at playhead (C)"
-msgstr "Couper à la tête de lecture (C)"
-
 #: app/components/film-shortcuts.tsx
 msgid "cut at the playhead"
 msgstr "couper à la tête de lecture"
+
+#: app/components/film-shortcuts.tsx
+msgid "cut at the playhead; Cut is off here, so this key does nothing"
+msgstr "couper à la tête de lecture ; Coupe est désactivée ici, cette touche ne fait rien"
 
 #: app/components/board-header.tsx
 msgid "Dark"
@@ -1763,6 +1801,7 @@ msgid "Day"
 msgstr "Jour"
 
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 #: app/components/film-templates-dialog.tsx
 #: app/components/take-back-dialog.tsx
 msgid "Delete"
@@ -1832,8 +1871,8 @@ msgid "delete the picked item"
 msgstr "supprimer l’élément choisi"
 
 #: app/components/film-editor.tsx
-msgid "Delete the picked item (Delete, Backspace)"
-msgstr "Supprimer l’élément choisi (Delete, Backspace)"
+msgid "Delete the picked item"
+msgstr "Supprimer l’élément choisi"
 
 #: app/components/film-templates-dialog.tsx
 msgid "Delete this film template?"
@@ -1949,6 +1988,10 @@ msgstr "Terminé — retour à cet e-mail"
 msgid "Done — only the storage holds them now"
 msgstr "Terminés — seul le stockage les garde maintenant"
 
+#: app/components/film-shortcuts.tsx
+msgid "Done editing"
+msgstr "Terminé"
+
 #: app/components/preview-drawer.tsx
 msgid "down"
 msgstr "en hauteur"
@@ -2057,6 +2100,10 @@ msgstr "Modifier {name}"
 msgid "edit and render it"
 msgstr "montez-le et faites le rendu"
 
+#: app/components/film-shortcuts.tsx
+msgid "Edit shortcuts"
+msgstr "Modifier les raccourcis"
+
 #: app/components/montage-card.tsx
 #: app/components/montage-steps.tsx
 #: app/components/montage-view.tsx
@@ -2152,6 +2199,10 @@ msgstr "Terminer le clip à la tête de lecture"
 msgid "Ends with"
 msgstr "Se termine par"
 
+#: app/helpers/filmKeys.ts
+msgid "Enter and Space play and stop"
+msgstr "Entrée et Espace lancent et arrêtent la lecture"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "Enter, or double-click"
 msgstr "Entrée, ou double-clic"
@@ -2159,6 +2210,10 @@ msgstr "Entrée, ou double-clic"
 #: app/components/shortcuts-dialog.tsx
 msgid "Esc"
 msgstr "Esc"
+
+#: app/helpers/filmKeys.ts
+msgid "Esc closes the editor and its dialogs"
+msgstr "Échap ferme l’éditeur et ses fenêtres"
 
 #: app/components/templates-dialog.tsx
 msgid "every file here"
@@ -2242,13 +2297,23 @@ msgid "Fade from the previous clip"
 msgstr "Fondu enchaîné depuis le clip précédent"
 
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 msgid "Fade in"
 msgstr "Fondu enchaîné"
+
+#: app/components/film-editor.tsx
+msgctxt "a fade from black, not a crossfade"
+msgid "Fade in"
+msgstr "Fondu d’entrée"
 
 #. placeholder {0}: clip.name
 #: app/components/film-timeline.tsx
 msgid "Fade into {0}"
 msgstr "Fondu enchaîné vers {0}"
+
+#: app/components/film-editor.tsx
+msgid "Fade out"
+msgstr "Fondu de sortie"
 
 #: app/components/film-editor.tsx
 msgid "Fade the picked clip in over the end of the clip before it"
@@ -3312,6 +3377,10 @@ msgstr "Plus"
 msgid "More than 15 minutes from the rest of its jump — the gap rule would not have put it here"
 msgstr "À plus de 15 minutes du reste de son saut — la règle d’écart ne l’aurait pas mis ici"
 
+#: app/components/film-shortcuts.tsx
+msgid "Move"
+msgstr "Déplacer"
+
 #: app/components/film-part.tsx
 msgid "Move the end"
 msgstr "Déplacer la fin"
@@ -3821,6 +3890,10 @@ msgstr "Seulement pour un clip vertical. Celui-ci est en paysage."
 msgid "Only on the storage now"
 msgstr "Seulement sur le stockage maintenant"
 
+#: app/components/film-shortcuts.tsx
+msgid "Only the keys of the tools can be changed. The other keys are fixed."
+msgstr "Seules les touches des outils peuvent être changées. Les autres touches sont fixes."
+
 #: app/helpers/parcels.ts
 msgid "only there"
 msgstr "seulement là-bas"
@@ -4128,6 +4201,10 @@ msgstr "Préparation des fichiers"
 msgid "press a zip to see inside"
 msgstr "cliquez sur un zip pour voir dedans"
 
+#: app/components/film-shortcuts.tsx
+msgid "Press the new key for {capturing}. Esc cancels."
+msgstr "Appuyez sur la nouvelle touche pour {capturing}. Échap annule."
+
 #: app/components/upload-dialog.tsx
 msgid "press to put it in a new zip"
 msgstr "appuyer pour le mettre dans un nouveau zip"
@@ -4385,6 +4462,10 @@ msgstr "Supprimer la destination…"
 msgid "Remove files"
 msgstr "Retirer des fichiers"
 
+#: app/components/film-shortcuts.tsx
+msgid "Remove key {label} from {tool}"
+msgstr "Retirer la touche {label} de {tool}"
+
 #: app/components/montage-card.tsx
 #: app/components/montage-panel.tsx
 #: app/routes/place.tsx
@@ -4410,6 +4491,10 @@ msgstr "Supprimer ces copies (⌫)"
 #: app/hooks/useBoardModel.ts
 msgid "Remove this copy (⌫)"
 msgstr "Supprimer cette copie (⌫)"
+
+#: app/components/film-shortcuts.tsx
+msgid "Remove this key"
+msgstr "Retirer cette touche"
 
 #: app/hooks/useBoardModel.ts
 msgid "Remove… (⌫)"
@@ -4474,11 +4559,16 @@ msgstr "La requête a échoué"
 msgid "Rescan cameras"
 msgstr "Relire les caméras"
 
+#: app/components/film-shortcuts.tsx
 #: app/components/preview-drawer.tsx
 #: app/components/take-back-dialog.tsx
 #: app/components/video-cropper.tsx
 msgid "Reset"
 msgstr "Réinitialiser"
+
+#: app/components/film-shortcuts.tsx
+msgid "Reset {tool}"
+msgstr "Rétablir {tool}"
 
 #: app/components/take-back-dialog.tsx
 msgid "Reset {who} to before processing"
@@ -4500,6 +4590,10 @@ msgstr "Réinitialiser le montage"
 #: app/components/reset-fresh-dialog.tsx
 msgid "Reset the {files, plural, one {# file} other {# files}} in Fresh files"
 msgstr "Réinitialiser les {files, plural, one {# fichier} other {# fichiers}} des Nouveaux fichiers"
+
+#: app/components/film-shortcuts.tsx
+msgid "Reset to defaults"
+msgstr "Rétablir les valeurs par défaut"
 
 #: app/components/video-cropper.tsx
 msgid "Reset trim"
@@ -4531,6 +4625,7 @@ msgid "Restored {person}’s montage from the storage’s list — named again, 
 msgstr "Montage de {person} restauré depuis la liste du stockage — renommé, aux heures qu’il avait ; préparez-le pour continuer"
 
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 msgid "Ripple"
 msgstr "Propagation"
 
@@ -4715,6 +4810,10 @@ msgstr "Dossiers partagés"
 msgid "Shift + ↑ ↓"
 msgstr "Maj + ↑ ↓"
 
+#: app/components/film-shortcuts.tsx
+msgid "Shift cannot be held with a letter"
+msgstr "Maj ne peut pas être maintenue avec une lettre"
+
 #: app/components/film-editor.tsx
 msgid "Shortcuts"
 msgstr "Raccourcis"
@@ -4849,6 +4948,7 @@ msgid "Smaller"
 msgstr "Plus petit"
 
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 msgid "Snap"
 msgstr "Magnétisme"
 
@@ -5012,6 +5112,10 @@ msgstr "Objet — pour chaque e-mail"
 msgid "Subtitle"
 msgstr "Sous-titre"
 
+#: app/helpers/filmKeys.ts
+msgid "Tab moves between the controls"
+msgstr "Tab passe d’une commande à l’autre"
+
 #. placeholder {0}: item.name
 #. placeholder {1}: p.name
 #: app/components/upload-dialog.tsx
@@ -5086,6 +5190,10 @@ msgstr "Cela n’a pas fonctionné."
 msgid "the archives, and the record of what was uploaded"
 msgstr "les archives, et la trace de ce qui a été envoyé"
 
+#: app/helpers/filmKeys.ts
+msgid "The arrows, Home and End move the playhead"
+msgstr "Les flèches, Début et Fin déplacent la tête de lecture"
+
 #: app/components/bin-files.tsx
 msgid "The bin is empty."
 msgstr "La corbeille est vide."
@@ -5153,6 +5261,10 @@ msgstr "le montage, et la trace de ce qui est allé où"
 #: app/components/board-header.tsx
 msgid "The editing templates a montage is made from — look them over, or bring one in"
 msgstr "Les modèles de montage dont un montage est fait — les parcourir, ou en importer un"
+
+#: app/components/film-editor.tsx
+msgid "The fade from the previous clip already fades this clip in."
+msgstr "Le fondu enchaîné depuis le clip précédent fait déjà apparaître ce clip."
 
 #: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
@@ -5306,6 +5418,10 @@ msgstr "le nom, {who}"
 #: app/components/take-back-dialog.tsx
 msgid "the name, every trim and frame, and every corrected time — each file goes back to the time its camera gave it"
 msgstr "le nom, chaque coupe et cadrage, et chaque heure corrigée — chaque fichier reprend l’heure donnée par sa caméra"
+
+#: app/components/film-editor.tsx
+msgid "The next clip fades in over this one, which fades it out."
+msgstr "Le clip suivant apparaît en fondu par-dessus celui-ci, ce qui le fait déjà disparaître."
 
 #: app/components/jump-graph.tsx
 msgid "the opening"
@@ -5515,6 +5631,10 @@ msgstr "Ce saut devient un montage dès qu’il a un nom."
 msgid "This jump runs from {start} to {end}"
 msgstr "Ce saut va de {start} à {end}"
 
+#: app/helpers/filmKeys.ts
+msgid "This key cannot be used here"
+msgstr "Cette touche ne peut pas être utilisée ici"
+
 #: app/components/film-shortcuts.tsx
 #: app/components/shortcuts-dialog.tsx
 msgid "this list"
@@ -5561,6 +5681,7 @@ msgid "Times reset — {files, plural, one {# file} other {# files}} back on the
 msgstr "Heures réinitialisées — {files, plural, one {# fichier} other {# fichiers}} de retour à l’heure de la caméra ; sauts, noms et coupes conservés"
 
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 msgid "Title"
 msgstr "Titre"
 

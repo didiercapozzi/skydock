@@ -139,12 +139,14 @@ const splitClip = (edit: FilmEdit, at: number) => {
   const here = newestAt(placed(edit), at)
   if (!here || at < here.from + SHORTEST - HAIR || at > here.to - SHORTEST + HAIR) return null
   const cut = here.clip.start + at - here.from
+  const { fadeIn: _, ...second } = here.clip
+  const { fadeOut: __, ...first } = here.clip
   const clips = [...edit.clips]
   clips.splice(
     here.index,
     1,
-    { ...here.clip, end: cut },
-    joined({ ...here.clip, id: nextId('clip', edit.clips), start: cut }, 0)
+    { ...first, end: cut },
+    joined({ ...second, id: nextId('clip', edit.clips), start: cut }, 0)
   )
   return fitFades({ ...edit, clips }, undefined, false)
 }
@@ -197,7 +199,7 @@ const trimClip = (
   const { clip } = here
   const start = side === 'start' ? Math.min(Math.max(0, value), clip.end - SHORTEST) : clip.start
   const end = side === 'end' ? Math.max(Math.min(seconds, value), clip.start + SHORTEST) : clip.end
-  const by = end - start - clipLength(clip)
+  const by = clipLength({ ...clip, start, end }) - clipLength(clip)
   const offset = offsetOf(clip)
   const moved = ripple ? offset : Math.max(Math.min(0, offset), offset + start - clip.start)
   return fitFades(
@@ -220,7 +222,7 @@ const trimClip = (
 const setPart = (edit: FilmEdit, id: string, start: number, end: number, ripple: boolean) => {
   const here = placed(edit).find((one) => one.clip.id === id)
   if (!here) return edit
-  const by = end - start - clipLength(here.clip)
+  const by = clipLength({ ...here.clip, start, end }) - clipLength(here.clip)
   return fitFades(
     rippleBy(
       { ...edit, clips: edit.clips.map((one) => (one.id === id ? { ...one, start, end } : one)) },

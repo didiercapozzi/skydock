@@ -9,6 +9,7 @@ import { filmArgs } from '../src/filmRender'
 import { createTmpDir } from './fixtures'
 
 let dir: string
+let renders = 0
 
 const clip = (name: string, color: string, seconds: number, sound = true) => {
   const file = path.join(dir, name)
@@ -47,7 +48,7 @@ const render = (
   edit: FilmEdit,
   music = new Map<string, { name: string; path: string; seconds: number }>()
 ) => {
-  const out = path.join(dir, 'film.mp4')
+  const out = path.join(dir, `film-${renders++}.mp4`)
   const sources = new Map(
     [
       clip('red.mp4', 'red', 3),
@@ -66,7 +67,7 @@ const render = (
         music,
         width: 320,
         height: 180,
-        fonts: {},
+        fonts: { bold: execFileSync('fc-match', ['-f', '%{file}', 'sans-serif:bold']).toString() },
         textFileOf: (id) => path.join(dir, `${id}.txt`),
         out
       })
@@ -345,5 +346,154 @@ describe('the saved crossfade', () => {
     expect(fadeInto(clips, 0)).toBe(0)
     expect(fadeInto(clips, 1)).toBe(0.5)
     expect(fadeInto(clips, 2)).toBe(0)
+  })
+})
+
+describe('a fade on one clip alone', () => {
+  const faded = (over: object = {}) => [
+    { id: 'clip-1', name: 'red.mp4', start: 0, end: 3, sound: true, fadeIn: 1, fadeOut: 1, ...over }
+  ]
+
+  it('comes from black, reaches the colour and goes back to black', () => {
+    const file = render(film({ clips: faded() }))
+
+    expect(seconds(file)).toBeCloseTo(3, 0)
+    expect(rgbAt(file, 0.04).r).toBeLessThan(40)
+    expect(rgbAt(file, 0.5).r).toBeGreaterThan(40)
+    expect(rgbAt(file, 0.5).r).toBeLessThan(rgbAt(file, 1.5).r)
+    expect(rgbAt(file, 1.5).r).toBeGreaterThan(150)
+    expect(rgbAt(file, 2.96).r).toBeLessThan(40)
+  })
+
+  it('takes the camera sound with it, and leaves a muted clip silent', () => {
+    const file = render(film({ clips: faded() }))
+
+    expect(meanDb(file, 0, 0.2)).toBeLessThan(meanDb(file, 1.2, 1.8) - 10)
+    expect(meanDb(file, 2.8, 3)).toBeLessThan(meanDb(file, 1.2, 1.8) - 10)
+    expect(meanDb(render(film({ clips: faded({ sound: false }) })), 1.2, 1.8)).toBeLessThan(-60)
+  })
+
+  it('fades one side only', () => {
+    const file = render(film({ clips: faded({ fadeIn: 0 }) }))
+
+    expect(rgbAt(file, 0.04).r).toBeGreaterThan(150)
+    expect(rgbAt(file, 2.96).r).toBeLessThan(40)
+  })
+
+  it('fades beside a gap, and under a crossfade only on the outer sides', () => {
+    const gapped = render(
+      film({
+        clips: [
+          { id: 'clip-1', name: 'red.mp4', start: 0, end: 3, sound: true, fadeOut: 1 },
+          { id: 'clip-2', name: 'blue.mp4', start: 0, end: 3, sound: true, gap: 1, fadeIn: 1 }
+        ]
+      })
+    )
+    expect(rgbAt(gapped, 1).r).toBeGreaterThan(150)
+    expect(rgbAt(gapped, 2.96).r).toBeLessThan(40)
+    expect(Math.max(...Object.values(rgbAt(gapped, 3.5)))).toBeLessThan(40)
+    expect(rgbAt(gapped, 4.04).b).toBeLessThan(40)
+    expect(rgbAt(gapped, 6).b).toBeGreaterThan(150)
+
+    const crossed = render(
+      film({
+        clips: [
+          { id: 'clip-1', name: 'red.mp4', start: 0, end: 3, sound: true, fadeIn: 1, fadeOut: 1 },
+          {
+            id: 'clip-2',
+            name: 'blue.mp4',
+            start: 0,
+            end: 3,
+            sound: true,
+            fade: 1,
+            fadeIn: 1,
+            fadeOut: 1
+          }
+        ]
+      })
+    )
+    expect(seconds(crossed)).toBeCloseTo(5, 0)
+    expect(rgbAt(crossed, 0.04).r).toBeLessThan(40)
+    expect(rgbAt(crossed, 1.5).r).toBeGreaterThan(150)
+    expect(rgbAt(crossed, 2.5).r).toBeGreaterThan(60)
+    expect(rgbAt(crossed, 2.5).b).toBeGreaterThan(60)
+    expect(rgbAt(crossed, 3.5).b).toBeGreaterThan(150)
+    expect(rgbAt(crossed, 4.96).b).toBeLessThan(40)
+  })
+})
+
+describe('a fade on a text', () => {
+  const writing = (over: object) => {
+    fs.writeFileSync(path.join(dir, 'text-1.txt'), 'WWWW')
+    return film({
+      clips: [{ id: 'clip-1', name: 'red.mp4', start: 0, end: 3, sound: false }],
+      texts: [
+        {
+          id: 'text-1',
+          text: 'WWWW',
+          at: 0,
+          seconds: 3,
+          effect: 'fade',
+          font: 'bold',
+          x: 0.5,
+          y: 0.5,
+          size: 0.4,
+          colour: '#ffffff',
+          ...over
+        }
+      ]
+    })
+  }
+
+  it('lets the words in and out over the length given, on top of the effect', () => {
+    const file = render(writing({ fadeIn: 1.4, fadeOut: 1.4 }))
+    const plain = render(writing({}))
+
+    expect(rgbAt(file, 0.7).g).toBeLessThan(rgbAt(plain, 0.7).g)
+    expect(rgbAt(file, 0.7).g).toBeLessThan(rgbAt(file, 1.5).g)
+    expect(rgbAt(file, 2.3).g).toBeLessThan(rgbAt(file, 1.5).g)
+    expect(rgbAt(plain, 0.7).g).toBeGreaterThan(rgbAt(file, 0.7).g + 4)
+  })
+})
+
+describe('a fade on music', () => {
+  const song = () => {
+    const file = path.join(dir, 'song.wav')
+    execFileSync('ffmpeg', [
+      '-y',
+      '-loglevel',
+      'error',
+      '-f',
+      'lavfi',
+      '-i',
+      'sine=f=3000:d=8',
+      file
+    ])
+    return new Map([['song.wav', { name: 'song.wav', path: file, seconds: 8 }]])
+  }
+  const played = (over: object) =>
+    render(
+      film({
+        clips: film({}).clips.map((one) => ({ ...one, sound: false })),
+        music: [{ id: 'music-1', name: 'song.wav', at: 0, start: 0, end: 8, volume: 1, ...over }]
+      }),
+      song()
+    )
+  const high = 'highpass=f=2500'
+
+  it('rises over the length given and falls over the length given', () => {
+    const file = played({ fadeIn: 3, fadeOut: 3 })
+
+    expect(meanDb(file, 0, 0.5, high)).toBeLessThan(meanDb(file, 3.2, 4.5, high) - 10)
+    expect(meanDb(file, 7.4, 8, high)).toBeLessThan(meanDb(file, 3.2, 4.5, high) - 10)
+  })
+
+  it('has none at 0 and none when absent', () => {
+    const none = played({ fadeIn: 0, fadeOut: 0 })
+    const absent = played({})
+
+    expect(meanDb(absent, 0.1, 0.2, high)).toBeCloseTo(meanDb(none, 0.1, 0.2, high), 0)
+    expect(meanDb(absent, 7.7, 7.95, high)).toBeCloseTo(meanDb(none, 7.7, 7.95, high), 0)
+    expect(meanDb(none, 7.7, 7.95, high)).toBeGreaterThan(meanDb(none, 3.2, 4.5, high) - 3)
   })
 })
