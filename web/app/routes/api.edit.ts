@@ -20,7 +20,11 @@ import {
   readEdit,
   saveEdit
 } from '../../../packages/skydock-scripts/src/filmEdit'
-import { isRendering, renderFilm } from '../../../packages/skydock-scripts/src/filmRender'
+import {
+  availableFormats,
+  isRendering,
+  renderFilm
+} from '../../../packages/skydock-scripts/src/filmRender'
 import { filmNameOf } from '../../../packages/skydock-scripts/src/montageNames'
 import { pathExists } from '../../../packages/skydock-scripts/src/lib/fs'
 import { routingEngine } from '../helpers/routing'
@@ -67,6 +71,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     sources,
     music: await musicSources(outputDir),
     rendering: isRendering(group.id),
+    formats: await availableFormats(),
     film: (await pathExists(path.join(dir, filmNameOf(baseName)))) ? filmNameOf(baseName) : null
   })
 }

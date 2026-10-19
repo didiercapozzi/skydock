@@ -25,6 +25,7 @@ const actionArgs = z.object({
     'upload-wait',
     /* what is being uploaded, stopped */
     'cancel-upload',
+    'cancel-render',
     'montage',
     'upload-montage',
     /* picked files zipped as the plan says and sent to the destinations they were put in */

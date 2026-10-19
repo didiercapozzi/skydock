@@ -41,6 +41,7 @@ import { shiftGroupTime } from './manifest/shift-group-time'
 import { deleteMontageIntent, resetMontageIntent } from './manifest/take-back'
 import { trashUnsortedIntent } from './manifest/trash-unsorted'
 import { uploadGroup } from './manifest/upload-group'
+import { cancelRender } from './manifest/render-cancel'
 import { cancelUpload, uploadWait } from './manifest/upload-wait'
 import { sendFilesIntent } from './manifest/send-files'
 import { uploadMontageIntent } from './manifest/upload-montage'
@@ -59,6 +60,7 @@ const intents: Record<ActionData['intent'], Intent> = {
   'upload-group': uploadGroup,
   'upload-wait': uploadWait,
   'cancel-upload': cancelUpload,
+  'cancel-render': cancelRender,
   montage,
   'upload-montage': uploadMontageIntent,
   'send-files': sendFilesIntent,

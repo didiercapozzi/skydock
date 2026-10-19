@@ -10,7 +10,7 @@ import {
   timelineEnd
 } from '../src/filmEditShape'
 import type { EditSource, FilmEdit, MusicSource } from '../src/filmEditShape'
-import { duckOf, filmArgs, filmShape } from '../src/filmRender'
+import { availableFormats, duckOf, filmArgs, filmShape } from '../src/filmRender'
 
 const source = (name: string, sound = true): EditSource => ({
   name,
@@ -219,32 +219,56 @@ describe('a clip played faster or slower', () => {
 })
 
 describe('the output of the film', () => {
-  const crf = (film: FilmEdit) => {
+  const after = (film: FilmEdit, flag: string) => {
     const made = args(film)
-    return made[made.indexOf('-crf') + 1]
+    return made[made.indexOf(flag) + 1]
   }
 
-  it('is as it always was when nothing is chosen', () => {
-    expect(crf(edit())).toBe('18')
-    expect(crf(edit({ output: {} }))).toBe('18')
+  it('is H.264 at 30 frames a second and a constant quality of 18 when nothing is chosen', () => {
+    expect(after(edit(), '-c:v')).toBe('libx264')
+    expect(after(edit(), '-crf')).toBe('18')
+    expect(after(edit(), '-r')).toBe('30')
+    expect(graph(args(edit()))).toContain('fps=30')
+    expect(after(edit({ output: {} }), '-c:v')).toBe('libx264')
   })
 
-  it('is compressed more for a small file and less for a high quality', () => {
-    expect(crf(edit({ output: { quality: 'small' } }))).toBe('26')
-    expect(crf(edit({ output: { quality: 'normal' } }))).toBe('18')
-    expect(crf(edit({ output: { quality: 'high' } }))).toBe('14')
+  it('is H.265 or AV1 when chosen, each with its own usual quality, and tagged to play on Apple devices', () => {
+    const h265 = args(edit({ output: { format: 'h265' } }))
+    expect(h265[h265.indexOf('-c:v') + 1]).toBe('libx265')
+    expect(h265[h265.indexOf('-crf') + 1]).toBe('22')
+    expect(h265[h265.indexOf('-tag:v') + 1]).toBe('hvc1')
+    expect(after(edit({ output: { format: 'av1' } }), '-c:v')).toBe('libsvtav1')
+    expect(after(edit({ output: { format: 'av1' } }), '-crf')).toBe('28')
   })
 
-  it('is full size or small, and never anything else', async () => {
-    expect(await filmShape(undefined, undefined)).toEqual({ width: 1920, height: 1080 })
-    expect(await filmShape(undefined, 'full')).toEqual({ width: 1920, height: 1080 })
-    expect(await filmShape(undefined, 'small')).toEqual({ width: 1280, height: 720 })
+  it('has the quality that is asked for, whatever the format', () => {
+    expect(after(edit({ output: { crf: 14 } }), '-crf')).toBe('14')
+    expect(after(edit({ output: { format: 'h265', crf: 30 } }), '-crf')).toBe('30')
+  })
+
+  it('has the frame rate that is asked for in every place that has one', () => {
+    const made = args(edit({ output: { fps: 24 } }))
+    expect(made[made.indexOf('-r') + 1]).toBe('24')
+    expect(graph(made)).toContain('fps=24')
+    expect(graph(made)).not.toContain('fps=30')
+  })
+
+  it('is read back only when it is a format and a frame rate that exist', () => {
     expect(
-      filmEditSchema.safeParse(edit({ output: { size: 'small', quality: 'high' } })).success
+      filmEditSchema.safeParse(edit({ output: { format: 'h265', fps: 60, crf: 20 } })).success
     ).toBe(true)
-    expect(filmEditSchema.safeParse({ ...edit(), output: { size: 'huge' } }).success).toBe(false)
-    expect(filmEditSchema.safeParse({ ...edit(), output: { quality: 'ultra' } }).success).toBe(
-      false
-    )
+    expect(filmEditSchema.safeParse({ ...edit(), output: { format: 'vp9' } }).success).toBe(false)
+    expect(filmEditSchema.safeParse({ ...edit(), output: { fps: 29 } }).success).toBe(false)
+    expect(filmEditSchema.safeParse({ ...edit(), output: { crf: 99 } }).success).toBe(false)
+  })
+
+  it('is in the shape of the first clip, full size', async () => {
+    expect(await filmShape(undefined)).toEqual({ width: 1920, height: 1080 })
+  })
+
+  it('lists the formats this computer can make, H.264 always first', async () => {
+    const formats = await availableFormats()
+    expect(formats[0]).toBe('h264')
+    expect(new Set(formats).size).toBe(formats.length)
   })
 })

@@ -259,6 +259,28 @@ describe('changes made on the board', () => {
     })
   })
 
+  describe('a film being rendered', () => {
+    it('is stopped by cancelling it', async () => {
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      const stop = new AbortController()
+      globalThis.skydockRendering = new Map([['group_1', stop]])
+
+      const res = (await send({ intent: 'cancel-render' })) as { renderCancelled?: boolean }
+
+      expect(res.renderCancelled).toBe(true)
+      expect(stop.signal.aborted).toBe(true)
+      globalThis.skydockRendering = undefined
+    })
+
+    it('has nothing to cancel when nothing is rendering', async () => {
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+
+      const res = refusal(await send({ intent: 'cancel-render' }))
+
+      expect(res.globalErrors?.[0]).toContain('Nothing is being rendered')
+    })
+  })
+
   describe('the montage', () => {
     it('is only for a montage', async () => {
       await writeManifest([

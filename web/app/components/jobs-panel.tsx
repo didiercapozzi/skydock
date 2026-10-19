@@ -291,7 +291,17 @@ const stopOf = (type: Job['type']): Stop | null =>
           busy: t`Cancelling…`,
           title: t`Stop it now — nothing of it is recorded, and what already went up is found there next time`
         }
-      : null
+      : type === 'render'
+        ? {
+            run: () =>
+              void routingEngine
+                .action({ url: '/api/manifest', actionArgs: { intent: 'cancel-render' } })
+                .catch(() => null),
+            word: t`Cancel`,
+            busy: t`Cancelling…`,
+            title: t`Stop the render now — the film as it was before stays as it is`
+          }
+        : null
 
 const JobPanel = ({ job, dsmHost }: { job: Job; dsmHost?: string | null }) => {
   const looks = looksOf(job)

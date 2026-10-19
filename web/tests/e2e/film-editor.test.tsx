@@ -2274,39 +2274,49 @@ describe('the fade handles on the timeline', () => {
 })
 
 describe('the output of the film', () => {
-  const saved = () => {
-    const posts: Array<{ edit: { output?: Record<string, string> } }> = []
-    return posts
-  }
-
-  test('is chosen from the film when nothing is picked, and kept in the saved edit', async () => {
-    const posts = saved()
+  const start = async (formats: string[]) => {
+    const posts: Array<{ edit: { output?: Record<string, unknown> } }> = []
     vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
       if (init?.method === 'POST') {
         posts.push(JSON.parse(String(init.body)))
         return Response.json({ ok: true })
       }
-      return Response.json(answer)
+      return Response.json({ ...answer, formats })
     })
     await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return posts
+  }
 
-    const size = page.getByRole('group', { name: 'Size' })
-    const quality = page.getByRole('group', { name: 'Quality' })
-    await expect.element(size.getByRole('button', { name: 'Full' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(quality.getByRole('button', { name: 'Normal' })).toHaveAttribute('aria-pressed', 'true')
+  test('is the format, the frame rate and the quality, chosen from the film when nothing is picked', async () => {
+    const posts = await start(['h264', 'h265', 'av1'])
+    const format = page.getByRole('group', { name: 'Format' })
+    const rate = page.getByRole('group', { name: 'Frame rate' })
 
-    await userEvent.click(size.getByRole('button', { name: 'Small' }))
-    await userEvent.click(quality.getByRole('button', { name: 'High' }))
+    await expect.element(format.getByRole('button', { name: 'H.264' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(rate.getByRole('button', { name: '30' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('18')
 
-    await expect.element(size.getByRole('button', { name: 'Small' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ size: 'small', quality: 'high' })
+    await userEvent.click(format.getByRole('button', { name: 'H.265' }))
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('22')
+    await userEvent.click(rate.getByRole('button', { name: '24' }))
+    page.getByRole('slider', { name: 'Quality' }).element().focus()
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+
+    await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ format: 'h265', fps: 24, crf: 24 })
+  })
+
+  test('offers only the formats that this computer can make, and none to choose when there is one', async () => {
+    await start(['h264'])
+
+    await expect.element(page.getByRole('group', { name: 'Format' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).toBeInTheDocument()
   })
 
   test('is not offered in the film template editor, which makes no film', async () => {
     vi.stubGlobal('fetch', async () => Response.json({ templates: [], music: [] }))
     await render(createElement(FilmEditor, { template: 'Club', onClose: () => {} }))
 
-    await expect.element(page.getByRole('group', { name: 'Size' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).not.toBeInTheDocument()
   })
 })

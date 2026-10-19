@@ -2532,6 +2532,10 @@ msgstr "Forget this one — nothing that was sent or copied is touched"
 msgid "Forget what is listed here — nothing that was sent or copied is touched"
 msgstr "Forget what is listed here — nothing that was sent or copied is touched"
 
+#: app/components/film-editor.tsx
+msgid "Format"
+msgstr "Format"
+
 #: app/components/preview-drawer.tsx
 msgid "Forward ten seconds"
 msgstr "Forward ten seconds"
@@ -2548,6 +2552,10 @@ msgstr "frame"
 #: app/components/preview-drawer.tsx
 msgid "Frame"
 msgstr "Frame"
+
+#: app/components/film-editor.tsx
+msgid "Frame rate"
+msgstr "Frame rate"
 
 #: app/components/file-list.tsx
 msgid "Frame saved — about {kept}% of the picture, keeping its shape. Applied at the next Process."
@@ -2683,10 +2691,6 @@ msgstr "From the exit to a few seconds after the landing."
 msgid "From the music"
 msgstr "From the music"
 
-#: app/components/film-editor.tsx
-msgid "Full"
-msgstr "Full"
-
 #: app/components/preview-drawer.tsx
 msgid "Full screen"
 msgstr "Full screen"
@@ -2816,10 +2820,6 @@ msgstr "Hide details"
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
 msgstr "Hide the list"
-
-#: app/components/film-editor.tsx
-msgid "High"
-msgstr "High"
 
 #: app/hooks/useBoardModel.ts
 msgid "Hold alt while dropping to copy it into the other jump instead."
@@ -4960,17 +4960,9 @@ msgstr "SkyDock sends nothing: it copies the email and opens a new message with 
 msgid "SkyDock works in"
 msgstr "SkyDock works in"
 
-#: app/components/film-editor.tsx
-msgid "Small"
-msgstr "Small"
-
 #: app/components/jobs-panel.tsx
 msgid "Small copies made"
 msgstr "Small copies made"
-
-#: app/components/film-editor.tsx
-msgid "Small file"
-msgstr "Small file"
 
 #: app/components/board-header.tsx
 msgid "Smaller"
@@ -5091,6 +5083,10 @@ msgstr "Stop after the file under way — what came across stays, the rest stays
 #: app/components/jobs-panel.tsx
 msgid "Stop it now — nothing of it is recorded, and what already went up is found there next time"
 msgstr "Stop it now — nothing of it is recorded, and what already went up is found there next time"
+
+#: app/components/jobs-panel.tsx
+msgid "Stop the render now — the film as it was before stays as it is"
+msgstr "Stop the render now — the film as it was before stays as it is"
 
 #: app/components/templates-dialog.tsx
 msgid "Stop using by default"
@@ -5403,6 +5399,10 @@ msgstr "The link as a QR code, for a phone to take it now"
 #: app/components/email-dialog.tsx
 msgid "The link can be taken with a phone, before the email has even gone."
 msgstr "The link can be taken with a phone, before the email has even gone."
+
+#: app/components/film-editor.tsx
+msgid "The lower the number, the better the picture and the bigger the file."
+msgstr "The lower the number, the better the picture and the bigger the file."
 
 #: app/components/email-dialog.tsx
 msgid "The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does."

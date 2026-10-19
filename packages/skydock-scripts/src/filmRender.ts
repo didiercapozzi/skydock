@@ -12,7 +12,7 @@ import {
   heardSpans,
   musicFadesOf,
   OUTPUT_CRF,
-  OUTPUT_SIZES,
+  OUTPUT_FORMATS,
   POP,
   speedOf,
   TEXT_FADE,
@@ -24,12 +24,14 @@ import { inJob } from './live'
 import { filmNameOf } from './montageNames'
 import { getGroupProcessedDir } from './process'
 import { videoShape } from './proxy'
-import { lastComplaint, run, runWatched } from './tools'
+import { lastComplaint, run, runWatched, stoppable } from './tools'
 import type { Manifest, ManifestGroup } from './types'
 import { ffmpegPath, hasCommand } from './utils'
 import { passengerOf } from './workspace'
 
 const FPS = 30
+const SHORT_SIDE = 1080
+const LONG_SIDE = 1920
 
 const FONT_PATTERNS: Record<TextFont, string> = {
   clean: 'sans-serif',
@@ -93,6 +95,22 @@ const duckOf = (spans: Span[]) =>
 const musicLevel = (volume: number, underSound: number, duck: string | null) =>
   duck === null ? n(volume) : `${n(volume)}*(1-${n(1 - underSound)}*${duck})`
 
+const ENCODERS = {
+  h264: ['libx264', 'medium'],
+  h265: ['libx265', 'medium'],
+  av1: ['libsvtav1', '8']
+} as const
+
+const videoArgs = ({ format = 'h264', crf }: NonNullable<FilmEdit['output']>) => [
+  '-c:v',
+  ENCODERS[format][0],
+  '-crf',
+  String(crf ?? OUTPUT_CRF[format]),
+  '-preset',
+  ENCODERS[format][1],
+  ...(format === 'h265' ? ['-tag:v', 'hvc1', '-x265-params', 'log-level=error'] : [])
+]
+
 const filmArgs = ({
   edit,
   sources,
@@ -114,11 +132,12 @@ const filmArgs = ({
 }) => {
   const inputs: string[] = []
   const graph: string[] = []
+  const fps = edit.output?.fps ?? FPS
   const stereo = 'aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo'
   const parts: Array<{ label: string; length: number; fade: number }> = []
   const black = (name: string, length: number) => {
     graph.push(
-      `color=c=black:s=${width}x${height}:r=${FPS}:d=${n(length)},setsar=1,format=yuv420p[v${name}]`,
+      `color=c=black:s=${width}x${height}:r=${fps}:d=${n(length)},setsar=1,format=yuv420p[v${name}]`,
       `anullsrc=r=48000:cl=stereo,atrim=end=${n(length)},${stereo}[a${name}]`
     )
     parts.push({ label: `[v${name}][a${name}]`, length, fade: 0 })
@@ -130,7 +149,7 @@ const filmArgs = ({
     const speed = speedOf(clip)
     const tempo = speed < 0.5 ? `atempo=0.5,atempo=${n(speed / 0.5)}` : `atempo=${n(speed)}`
     inputs.push(
-      ...(source.still ? ['-loop', '1', '-framerate', String(FPS), '-t', n(clip.end)] : []),
+      ...(source.still ? ['-loop', '1', '-framerate', String(fps), '-t', n(clip.end)] : []),
       '-i',
       source.path
     )
@@ -143,7 +162,7 @@ const filmArgs = ({
       ...(fadeOut > 0 ? [`${filter}=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])
     ]
     graph.push(
-      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${FPS},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
+      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${fps},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
     )
     graph.push(
       clip.sound && source.sound
@@ -212,16 +231,11 @@ const filmArgs = ({
     '[film]',
     '-map',
     '[sound]',
-    '-c:v',
-    'libx264',
-    '-crf',
-    String(OUTPUT_CRF[edit.output?.quality ?? 'normal']),
-    '-preset',
-    'medium',
+    ...videoArgs(edit.output ?? {}),
     '-pix_fmt',
     'yuv420p',
     '-r',
-    String(FPS),
+    String(fps),
     '-c:a',
     'aac',
     '-b:a',
@@ -242,25 +256,40 @@ const fontFile = async (font: TextFont) => {
   return ran.ok && ran.stdout.trim() !== '' ? ran.stdout.trim() : null
 }
 
-const filmShape = async (first: EditSource | undefined, size: 'full' | 'small' = 'full') => {
+const filmShape = async (first: EditSource | undefined) => {
   const shape = first ? await videoShape(first.path) : null
   const upright = shape
     ? shape.turned
       ? shape.width > shape.height
       : shape.height > shape.width
     : false
-  const short = OUTPUT_SIZES[size]
-  const long = Math.round((short * 16) / 9)
-  return upright ? { width: short, height: long } : { width: long, height: short }
+  return upright
+    ? { width: SHORT_SIDE, height: LONG_SIDE }
+    : { width: LONG_SIDE, height: SHORT_SIDE }
 }
 
 declare global {
-  var skydockRendering: Set<string> | undefined
+  var skydockFormats: Promise<Array<(typeof OUTPUT_FORMATS)[number]>> | undefined
+  var skydockRendering: Map<string, AbortController> | undefined
 }
 
-const renderingNow = () => (globalThis.skydockRendering ??= new Set())
+const availableFormats = () =>
+  (globalThis.skydockFormats ??= (async () => {
+    const ran = await run(await ffmpegPath(), ['-hide_banner', '-encoders'])
+    return OUTPUT_FORMATS.filter(
+      (format) => format === 'h264' || (ran.ok && ran.stdout.includes(` ${ENCODERS[format][0]} `))
+    )
+  })())
+
+const renderingNow = () => (globalThis.skydockRendering ??= new Map())
 
 const isRendering = (groupId: string) => renderingNow().has(groupId)
+
+const cancelRendering = () => {
+  const going = [...renderingNow().values()]
+  for (const stop of going) stop.abort()
+  return going.length > 0
+}
 
 const renderFilm = async ({
   manifest,
@@ -276,11 +305,15 @@ const renderFilm = async ({
   if (isRendering(group.id)) throw new Error('This film is already being rendered.')
   if (edit.clips.length === 0) throw new Error('The film has no clips.')
   if (!(await hasCommand('ffmpeg'))) throw new Error('ffmpeg is not installed.')
+  const format = edit.output?.format ?? 'h264'
+  if (!(await availableFormats()).includes(format))
+    throw new Error(`This computer's ffmpeg cannot make ${format.toUpperCase()}: choose H.264.`)
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   const filmPath = path.join(dir, filmNameOf(baseName))
   const partPath = path.join(dir, `.${baseName}.rendering`)
   const name = filmNameOf(baseName)
-  renderingNow().add(group.id)
+  const stop = new AbortController()
+  renderingNow().set(group.id, stop)
   const scratch = await mkdtemp(path.join(os.tmpdir(), 'skydock-render-'))
   try {
     return await inJob(
@@ -303,17 +336,20 @@ const renderFilm = async ({
           edit,
           sources,
           music,
-          ...(await filmShape(sources.get(edit.clips[0]!.name), edit.output?.size)),
+          ...(await filmShape(sources.get(edit.clips[0]!.name))),
           fonts,
           textFileOf: (id) => path.join(scratch, `${id}.txt`),
           out: partPath
         })
-        const ran = await runWatched(
-          await ffmpegPath(),
-          args,
-          (percent) => rendering.row({ key: 'film', at: 'now', part: percent / 100 }),
-          timelineEnd(edit)
+        const ran = await stoppable().run(stop.signal, async () =>
+          runWatched(
+            await ffmpegPath(),
+            args,
+            (percent) => rendering.row({ key: 'film', at: 'now', part: percent / 100 }),
+            timelineEnd(edit)
+          )
         )
+        if (stop.signal.aborted) throw new Error('Render cancelled — the film is as it was before.')
         if (!ran.ok) throw new Error(lastComplaint(ran.stderr))
         await rename(partPath, filmPath)
         rendering.row({ key: 'film', at: 'done', size: (await stat(filmPath)).size })
@@ -328,4 +364,13 @@ const renderFilm = async ({
   }
 }
 
-export { duckOf, filmArgs, filmShape, isRendering, musicLevel, renderFilm }
+export {
+  availableFormats,
+  cancelRendering,
+  duckOf,
+  filmArgs,
+  filmShape,
+  isRendering,
+  musicLevel,
+  renderFilm
+}

@@ -5,8 +5,10 @@ const TEXT_FONTS = ['clean', 'bold', 'elegant', 'hand'] as const
 const MUSIC_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.flac'] as const
 const UNDER_SOUND = 0.15
 const STILL_SECONDS = 5
-const OUTPUT_SIZES = { full: 1080, small: 720 } as const
-const OUTPUT_CRF = { small: 26, normal: 18, high: 14 } as const
+const OUTPUT_FORMATS = ['h264', 'h265', 'av1'] as const
+const OUTPUT_FPS = [24, 25, 30, 50, 60] as const
+const OUTPUT_CRF = { h264: 18, h265: 22, av1: 28 } as const
+const CRF_RANGE = { least: 12, most: 40 }
 const STILL_MAX = 60
 const STILL_EXTENSIONS = ['.jpg', '.jpeg', '.png'] as const
 const TEXT_FADE = 0.6
@@ -63,8 +65,12 @@ const editTextSchema = z.object({
 })
 
 const outputSchema = z.object({
-  size: z.enum(['full', 'small']).optional(),
-  quality: z.enum(['small', 'normal', 'high']).optional()
+  format: z.enum(OUTPUT_FORMATS).optional(),
+  fps: z
+    .number()
+    .refine((value) => (OUTPUT_FPS as readonly number[]).includes(value))
+    .optional(),
+  crf: z.number().int().min(CRF_RANGE.least).max(CRF_RANGE.most).optional()
 })
 
 const filmEditSchema = z.object({
@@ -107,7 +113,8 @@ const editAnswerSchema = z.discriminatedUnion('ok', [
     sources: z.array(editSourceSchema),
     music: z.array(musicSourceSchema),
     rendering: z.boolean(),
-    film: z.string().nullable()
+    film: z.string().nullable(),
+    formats: z.array(z.enum(OUTPUT_FORMATS)).default(['h264'])
   })
 ])
 
@@ -260,8 +267,10 @@ export {
   textFadesOf,
   textLookAt,
   timelineEnd,
+  CRF_RANGE,
   OUTPUT_CRF,
-  OUTPUT_SIZES,
+  OUTPUT_FORMATS,
+  OUTPUT_FPS,
   STILL_EXTENSIONS,
   STILL_MAX,
   STILL_SECONDS,

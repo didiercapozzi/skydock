@@ -14,6 +14,9 @@ import {
   heardSpans,
   musicFadesOf,
   musicLevelAt,
+  CRF_RANGE,
+  OUTPUT_CRF,
+  OUTPUT_FPS,
   NAME_TOKEN,
   SLOT,
   slotEdit,
@@ -337,6 +340,8 @@ const Add = ({ title, onClick }: { title?: string; onClick: () => void }) => (
   </button>
 )
 
+const FORMAT_NAMES = { h264: 'H.264', h265: 'H.265', av1: 'AV1' } as const
+
 const Library = ({
   tab,
   onTab,
@@ -580,6 +585,7 @@ const Inspector = ({
   edit,
   picked,
   sources,
+  formats,
   ripple,
   scratch,
   onChange,
@@ -589,6 +595,7 @@ const Inspector = ({
   edit: FilmEdit
   picked: Picked
   sources: Map<string, EditSource>
+  formats: ReadonlyArray<keyof typeof FORMAT_NAMES>
   ripple: boolean
   scratch: boolean
   onChange: (edit: FilmEdit) => void
@@ -928,33 +935,44 @@ const Inspector = ({
             {under}
             {!scratch && (
               <>
+                {formats.length > 1 && (
+                  <div className='grid gap-1'>
+                    <span className='text-micro text-ink-2'>{t`Format`}</span>
+                    <Seg
+                      label={t`Format`}
+                      wide
+                      value={edit.output?.format ?? 'h264'}
+                      options={formats.map((one) => [one, FORMAT_NAMES[one]] as const)}
+                      onPick={(format) =>
+                        onChange({ ...edit, output: { ...edit.output, format, crf: undefined } })
+                      }
+                    />
+                  </div>
+                )}
                 <div className='grid gap-1'>
-                  <span className='text-micro text-ink-2'>{t`Size`}</span>
+                  <span className='text-micro text-ink-2'>{t`Frame rate`}</span>
                   <Seg
-                    label={t`Size`}
+                    label={t`Frame rate`}
                     wide
-                    value={edit.output?.size ?? 'full'}
-                    options={[
-                      ['full', t`Full`],
-                      ['small', t`Small`]
-                    ]}
-                    onPick={(size) => onChange({ ...edit, output: { ...edit.output, size } })}
+                    value={String(edit.output?.fps ?? 30)}
+                    options={OUTPUT_FPS.map((rate) => [String(rate), String(rate)] as const)}
+                    onPick={(rate) =>
+                      onChange({ ...edit, output: { ...edit.output, fps: Number(rate) } })
+                    }
                   />
                 </div>
-                <div className='grid gap-1'>
-                  <span className='text-micro text-ink-2'>{t`Quality`}</span>
-                  <Seg
-                    label={t`Quality`}
-                    wide
-                    value={edit.output?.quality ?? 'normal'}
-                    options={[
-                      ['small', t`Small file`],
-                      ['normal', t`Normal`],
-                      ['high', t`High`]
-                    ]}
-                    onPick={(quality) => onChange({ ...edit, output: { ...edit.output, quality } })}
-                  />
-                </div>
+                <Slider
+                  label={t`Quality`}
+                  value={edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264']}
+                  min={CRF_RANGE.least}
+                  max={CRF_RANGE.most}
+                  step={1}
+                  shown={String(edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264'])}
+                  onChange={(crf) => onChange({ ...edit, output: { ...edit.output, crf } })}
+                />
+                <p className='m-0 text-small text-ink-3'>
+                  {t`The lower the number, the better the picture and the bigger the file.`}
+                </p>
               </>
             )}
           </>
@@ -1777,6 +1795,7 @@ const FilmEditor = ({
               edit={edit}
               picked={picked}
               sources={sources}
+              formats={loaded?.formats ?? ['h264']}
               ripple={ripple}
               scratch={scratch}
               onChange={change}

@@ -201,3 +201,29 @@ describe('an upload going', () => {
     await expect.element(panel().getByRole('button', { name: 'Cancelling…' })).toBeDisabled()
   })
 })
+
+describe('a film being rendered', () => {
+  test('can be cancelled at any moment', async () => {
+    const intents: string[] = []
+    put({
+      type: 'render',
+      label: 'Luc Favre',
+      phase: 'working',
+      done: 0,
+      total: 1,
+      rows: [{ key: 'film', name: 'luc_favre.mp4', size: 0, at: 'now', part: 0.3 }]
+    })
+    vi.stubGlobal('fetch', async (url: string | URL | Request, init?: RequestInit) => {
+      if (!String(url instanceof Request ? url.url : url).includes('/api/manifest'))
+        return realFetch(url, init)
+      intents.push((JSON.parse(String(init?.body)) as { intent: string }).intent)
+      return Response.json({ ok: true })
+    })
+    await render(createElement(JobsPanel, { dsmHost: 'nas.local' }))
+
+    await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
+
+    await expect.poll(() => intents).toContain('cancel-render')
+    await expect.element(page.getByRole('button', { name: 'Cancelling…' })).toBeDisabled()
+  })
+})

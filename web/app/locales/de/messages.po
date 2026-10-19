@@ -2532,6 +2532,10 @@ msgstr "Diesen vergessen — nichts, was gesendet oder kopiert wurde, wird anget
 msgid "Forget what is listed here — nothing that was sent or copied is touched"
 msgstr "Vergessen, was hier aufgelistet ist — nichts, was gesendet oder kopiert wurde, wird angetastet"
 
+#: app/components/film-editor.tsx
+msgid "Format"
+msgstr "Format"
+
 #: app/components/preview-drawer.tsx
 msgid "Forward ten seconds"
 msgstr "Zehn Sekunden vor"
@@ -2548,6 +2552,10 @@ msgstr "Bildausschnitt"
 #: app/components/preview-drawer.tsx
 msgid "Frame"
 msgstr "Bildausschnitt"
+
+#: app/components/film-editor.tsx
+msgid "Frame rate"
+msgstr "Bildrate"
 
 #: app/components/file-list.tsx
 msgid "Frame saved — about {kept}% of the picture, keeping its shape. Applied at the next Process."
@@ -2683,10 +2691,6 @@ msgstr "Vom Absprung bis ein paar Sekunden nach der Landung."
 msgid "From the music"
 msgstr "Aus der Musik"
 
-#: app/components/film-editor.tsx
-msgid "Full"
-msgstr "Voll"
-
 #: app/components/preview-drawer.tsx
 msgid "Full screen"
 msgstr "Vollbild"
@@ -2816,10 +2820,6 @@ msgstr "Details ausblenden"
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
 msgstr "Liste ausblenden"
-
-#: app/components/film-editor.tsx
-msgid "High"
-msgstr "Hoch"
 
 #: app/hooks/useBoardModel.ts
 msgid "Hold alt while dropping to copy it into the other jump instead."
@@ -4960,17 +4960,9 @@ msgstr "SkyDock sendet nichts: Es kopiert die E-Mail und öffnet eine neue Nachr
 msgid "SkyDock works in"
 msgstr "SkyDock arbeitet in"
 
-#: app/components/film-editor.tsx
-msgid "Small"
-msgstr "Klein"
-
 #: app/components/jobs-panel.tsx
 msgid "Small copies made"
 msgstr "Kleine Kopien erstellt"
-
-#: app/components/film-editor.tsx
-msgid "Small file"
-msgstr "Kleine Datei"
 
 #: app/components/board-header.tsx
 msgid "Smaller"
@@ -5091,6 +5083,10 @@ msgstr "Nach der laufenden Datei stoppen — was schon kopiert ist, bleibt, der 
 #: app/components/jobs-panel.tsx
 msgid "Stop it now — nothing of it is recorded, and what already went up is found there next time"
 msgstr "Jetzt abbrechen — nichts davon wird vermerkt, und was schon oben ist, wird beim nächsten Mal dort gefunden"
+
+#: app/components/jobs-panel.tsx
+msgid "Stop the render now — the film as it was before stays as it is"
+msgstr "Das Rendern jetzt abbrechen — der bisherige Film bleibt, wie er war"
 
 #: app/components/templates-dialog.tsx
 msgid "Stop using by default"
@@ -5403,6 +5399,10 @@ msgstr "Der Link als QR-Code, damit ein Handy ihn gleich übernehmen kann"
 #: app/components/email-dialog.tsx
 msgid "The link can be taken with a phone, before the email has even gone."
 msgstr "Den Link kann man mit einem Handy mitnehmen, noch bevor die E-Mail abgeschickt ist."
+
+#: app/components/film-editor.tsx
+msgid "The lower the number, the better the picture and the bigger the file."
+msgstr "Je kleiner die Zahl, desto besser das Bild und desto größer die Datei."
 
 #: app/components/email-dialog.tsx
 msgid "The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does."
