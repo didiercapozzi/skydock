@@ -74,6 +74,8 @@ type Library = 'clips' | 'music' | 'text'
 const LENGTH = { min: 5, max: 3600 }
 const SAVE_AFTER = 700
 const DRIFT = 0.3
+const SEEK_EPS = 0.001
+const CUE_WITHIN = 5
 const MUSIC_VOLUME = 0.8
 const SHORTEST_MUSIC = 5
 const UNDOABLE = 50
@@ -879,6 +881,14 @@ const FilmEditor = ({
   const root = useRef<HTMLElement>(null)
   const video = useRef<HTMLVideoElement>(null)
   const under = useRef<HTMLVideoElement>(null)
+  const shown = useRef(-1)
+  const leadDeck = useRef(-1)
+  const cueing = useRef(false)
+  const running = useRef(false)
+  const alive = useRef(true)
+  const decoded = useRef(new Map<string, boolean>())
+  const laid = useRef<{ edit: FilmEdit; list: Placed[] } | null>(null)
+  const [front, setFront] = useState(0)
   const sounds = useRef(new Map<string, HTMLAudioElement>())
   const latest = useRef<FilmEdit | null>(null)
   const now = useRef(0)
@@ -1029,7 +1039,20 @@ const FilmEditor = ({
   ) => {
     const source = one && sources.get(one.clip.name)
     if (player && one && source?.still) {
-      player.poster = getFileUrl(source.play)
+      const url = getFileUrl(source.play)
+      player.poster = url
+      if (!decoded.current.has(url)) {
+        decoded.current.set(url, false)
+        const image = new Image()
+        image.src = url
+        void image
+          .decode()
+          .catch(() => undefined)
+          .then(() => {
+            decoded.current.set(url, true)
+            settle()
+          })
+      }
       if (player.dataset.src) {
         delete player.dataset.src
         player.removeAttribute('src')
@@ -1044,7 +1067,8 @@ const FilmEditor = ({
         player.src = url
       }
       const want = one.clip.start + Math.min(t, one.to) - one.from
-      if (!rolling || Math.abs(player.currentTime - want) > DRIFT) player.currentTime = want
+      if (Math.abs(player.currentTime - want) > (rolling ? DRIFT : SEEK_EPS))
+        player.currentTime = want
       player.muted = !(one.clip.sound && source.sound)
       player.volume = Math.min(1, Math.max(0, level))
       if (rolling && player.paused) void player.play().catch(() => undefined)
@@ -1052,12 +1076,60 @@ const FilmEditor = ({
     } else if (player && !player.paused) player.pause()
   }
 
+  const settled = (player: HTMLVideoElement | null) => {
+    if (!player) return true
+    if (player.dataset.src)
+      return player.error !== null || (player.readyState >= 2 && !player.seeking)
+    const poster = player.getAttribute('poster')
+    return !poster || decoded.current.get(poster) === true
+  }
+
+  const laidOut = (current: FilmEdit) => {
+    if (laid.current?.edit !== current) laid.current = { edit: current, list: placed(current) }
+    return laid.current.list
+  }
+
   const sync = (t: number, rolling: boolean) => {
     const current = latest.current
     if (!current) return
+    const lead = clipAt(current, t)
     const blend = fadeAt(current, t)
-    drive(video.current, clipAt(current, t), blend?.mix ?? 1, t, rolling)
-    drive(under.current, blend?.out ?? null, 1 - (blend?.mix ?? 1), t, rolling)
+    const players = [video.current, under.current]
+    const taken = [false, false]
+    const put = (one: Placed, level: number, at: number, roll: boolean, avoid = -1) => {
+      const url = getFileUrl(sources.get(one.clip.name)?.play ?? '')
+      const has = (player: HTMLVideoElement | null, deck: number) =>
+        !taken[deck] && (player?.dataset.src === url || player?.getAttribute('poster') === url)
+      const want = one.clip.start + Math.min(at, one.to) - one.from
+      const deck =
+        [0, 1]
+          .filter((k) => has(players[k]!, k))
+          .sort(
+            (a, b) =>
+              Math.abs(players[a]!.currentTime - want) - Math.abs(players[b]!.currentTime - want)
+          )[0] ?? -1
+      const free = [0, 1].filter((k) => !taken[k])
+      const chosen = deck >= 0 ? deck : (free.find((k) => k !== avoid) ?? free[0]!)
+      taken[chosen] = true
+      drive(players[chosen]!, one, level, at, roll)
+      return chosen
+    }
+    const deck = lead ? put(lead, blend?.mix ?? 1, t, rolling, shown.current) : -1
+    if (blend) put(blend.out, 1 - blend.mix, t, rolling)
+    if (lead && (blend || settled(players[deck]!))) {
+      shown.current = deck
+      setFront(deck)
+    }
+    leadDeck.current = deck
+    const ahead = blend ? undefined : laidOut(current).find((one) => one.from > t)
+    cueing.current = false
+    if (ahead && ahead.from - t < CUE_WITHIN) {
+      if (deck < 0 || settled(players[deck]!)) put(ahead, 0, ahead.from, false)
+      else cueing.current = true
+    }
+    players.forEach((player, k) => {
+      if (!taken[k] && player && !player.paused) player.pause()
+    })
     const spans = heardSpans(current, (clip) => sources.get(clip.name)?.sound === true)
     for (const piece of current.music) {
       const sound = sounds.current.get(piece.id)
@@ -1075,6 +1147,15 @@ const FilmEditor = ({
     }
   }
 
+  const settle = () => {
+    const deck = leadDeck.current
+    if (deck < 0 || !settled([video.current, under.current][deck]!)) return
+    const moved = shown.current !== deck
+    shown.current = deck
+    setFront(deck)
+    if (alive.current && (moved || cueing.current)) sync(now.current, running.current)
+  }
+
   const seek = (t: number) => {
     const total = latest.current ? timelineEnd(latest.current) : 0
     now.current = Math.min(Math.max(0, t), total)
@@ -1084,6 +1165,7 @@ const FilmEditor = ({
 
   useEffect(() => {
     if (!playing) return
+    running.current = true
     const end = () => (latest.current ? timelineEnd(latest.current) : 0)
     if (now.current >= end() - 0.05) now.current = 0
     let last = performance.now()
@@ -1103,10 +1185,20 @@ const FilmEditor = ({
     frame = requestAnimationFrame(tick)
     return () => {
       cancelAnimationFrame(frame)
+      running.current = false
       sync(now.current, false)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [playing])
+
+  useEffect(() => {
+    const map = decoded.current
+    alive.current = true
+    return () => {
+      alive.current = false
+      map.clear()
+    }
+  }, [])
 
   useEffect(() => {
     if (loaded) sync(now.current, false)
@@ -1382,6 +1474,9 @@ const FilmEditor = ({
                 heard={heard}
                 blank={!here}
                 mix={blend?.mix ?? 1}
+                fading={blend !== null}
+                evenFront={front === 0}
+                onReady={settle}
                 framed={picked?.kind === 'text'}
                 videoRef={video}
                 underRef={under}

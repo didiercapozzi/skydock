@@ -89,6 +89,9 @@ const FilmPreview = ({
   heard,
   blank,
   mix,
+  fading,
+  evenFront,
+  onReady,
   framed,
   videoRef,
   underRef,
@@ -103,6 +106,9 @@ const FilmPreview = ({
   heard: string
   blank: boolean
   mix: number
+  fading: boolean
+  evenFront: boolean
+  onReady: () => void
   framed: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
   underRef: React.RefObject<HTMLVideoElement | null>
@@ -111,6 +117,8 @@ const FilmPreview = ({
   onShape: (upright: boolean) => void
 }) => {
   const [guides, setGuides] = useState({ x: false, y: false })
+  const deck = (front: boolean) =>
+    `absolute inset-0 h-full w-full object-contain ${front ? (blank ? 'invisible' : 'z-10') : fading ? '' : 'invisible'}`
   return (
     <div className='film-room relative grid min-h-0 max-h-100 flex-1 place-items-center p-3'>
       <div
@@ -121,24 +129,33 @@ const FilmPreview = ({
             : 'min(100cqw, calc(100cqh * 16 / 9))'
         }}
         className='film-stage relative overflow-hidden rounded-corner bg-stage'>
-        <video
-          ref={underRef}
-          playsInline
-          muted
-          preload='auto'
-          className={`absolute inset-0 h-full w-full object-contain ${mix < 1 ? '' : 'invisible'}`}
-        />
-        <video
-          ref={videoRef}
-          playsInline
-          muted
-          preload='auto'
-          style={{ opacity: mix }}
-          onLoadedMetadata={(e) =>
-            onShape(e.currentTarget.videoHeight > e.currentTarget.videoWidth)
-          }
-          className={`absolute inset-0 h-full w-full object-contain ${blank ? 'invisible' : ''}`}
-        />
+        <div className='absolute inset-0 isolate'>
+          <video
+            ref={underRef}
+            playsInline
+            muted
+            preload='auto'
+            onSeeked={onReady}
+            onError={onReady}
+            onLoadedData={onReady}
+            style={{ opacity: evenFront ? 1 : mix }}
+            className={deck(!evenFront)}
+          />
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            preload='auto'
+            onSeeked={onReady}
+            onError={onReady}
+            onLoadedData={onReady}
+            style={{ opacity: evenFront ? mix : 1 }}
+            onLoadedMetadata={(e) =>
+              onShape(e.currentTarget.videoHeight > e.currentTarget.videoWidth)
+            }
+            className={deck(evenFront)}
+          />
+        </div>
         {framed && <div className='film-safe pointer-events-none absolute' />}
         {guides.x && (
           <div className='pointer-events-none absolute inset-y-0 left-1/2 w-px bg-pick' />

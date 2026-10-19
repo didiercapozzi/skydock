@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createRoutesStub, Link, Outlet } from 'react-router'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
@@ -8,6 +8,19 @@ import { TILE_LOOP } from '../../app/helpers/filmTimeline'
 import { FilmEditor } from '../../app/components/film-editor'
 import Edit from '../../app/routes/edit'
 import { setFilmTemplateChoice } from '../../app/hooks/useFilmTemplateChoice'
+
+const ready = vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get')
+const failure = vi.spyOn(HTMLMediaElement.prototype, 'error', 'get')
+
+beforeEach(() => {
+  ready.mockReturnValue(4)
+  failure.mockReturnValue(null)
+})
+
+afterEach(() => {
+  ready.mockReset()
+  failure.mockReset()
+})
 
 const FIRST = 'luc_favre_20260906_090000.mp4'
 const SECOND = 'luc_favre_20260906_090300.mp4'
@@ -63,7 +76,7 @@ const open = async (
     )
   )
   await render(createElement(FilmEditor, { groupId: 'g1', day: '06.09.2026', onClose: () => {} }))
-  await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+  await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`).first()).toBeVisible()
 }
 
 const later = {
@@ -132,6 +145,106 @@ describe('the film editor', () => {
 
     await expect.poll(() => document.querySelectorAll('video')[1]?.getAttribute('poster')).toBe(`/api/file/o/${PHOTO}`)
     expect(document.querySelectorAll('video')[1]?.getAttribute('src')).toBeNull()
+  })
+
+  test('has the next clip ready in the layer under the picture, and shows it at the seam without loading it then', async () => {
+    await open()
+    const [under, top] = document.querySelectorAll('video')
+
+    expect(under.getAttribute('src')).toBeNull()
+    await playheadAt(6)
+    expect(under.getAttribute('src')).toBe(`/api/file/o/${SECOND}`)
+    expect(under.classList.contains('invisible')).toBe(true)
+    await playheadAt(4)
+
+    expect(under.getAttribute('src')).toBe(`/api/file/o/${SECOND}`)
+    expect(under.classList.contains('invisible')).toBe(false)
+    expect(top.classList.contains('invisible')).toBe(true)
+  })
+
+  test('keeps the cued clip hidden and silent in its layer until the seam', async () => {
+    await open()
+    const [under] = document.querySelectorAll('video')
+    await playheadAt(6)
+
+    expect(under.volume).toBe(0)
+    expect(under.classList.contains('invisible')).toBe(true)
+  })
+
+  test('keeps each clip in the layer that already holds it when the playhead goes back over a seam', async () => {
+    await open()
+    const [under, top] = document.querySelectorAll('video')
+    await playheadAt(10)
+    for (let i = 0; i < 10; i++) await userEvent.keyboard('{ArrowLeft}')
+
+    expect(top.getAttribute('src')).toBe(`/api/file/o/${FIRST}`)
+    expect(under.getAttribute('src')).toBe(`/api/file/o/${SECOND}`)
+    expect(top.classList.contains('invisible')).toBe(false)
+  })
+
+  test('keeps the picture on screen until the layer it moves to has a frame', async () => {
+    await open()
+    const [under, top] = document.querySelectorAll('video')
+    ready.mockReturnValue(0)
+    await playheadAt(11)
+
+    expect(under.getAttribute('src')).toBe(`/api/file/o/${SECOND}`)
+    expect(top.classList.contains('invisible')).toBe(false)
+    expect(under.classList.contains('invisible')).toBe(true)
+    ready.mockReturnValue(4)
+    under.dispatchEvent(new Event('seeked'))
+
+    await expect.poll(() => top.classList.contains('invisible')).toBe(true)
+    expect(under.classList.contains('invisible')).toBe(false)
+  })
+
+  test('moves to the layer cued at the in-point when two pieces of the same file touch', async () => {
+    await open({
+      clips: [
+        { id: 'clip-1', name: FIRST, start: 0, end: 5, sound: false },
+        { id: 'clip-2', name: FIRST, start: 5, end: 10, sound: false }
+      ]
+    })
+    const decks = [...document.querySelectorAll<HTMLVideoElement>('.film-stage video')]
+    const shownDeck = () => decks.findIndex((one) => !one.classList.contains('invisible'))
+    await playheadAt(4)
+    const before = shownDeck()
+    expect(decks[1 - before]!.dataset.src).toBe(`/api/file/o/${FIRST}`)
+    const cued = decks[1 - before]!.currentTime
+
+    await playheadAt(1)
+
+    expect(shownDeck()).toBe(1 - before)
+    expect(decks[1 - before]!.currentTime).toBe(cued)
+  })
+
+  test('shows the next picture when the layer it moves to fails to load', async () => {
+    await open()
+    const [under, top] = document.querySelectorAll('video')
+    ready.mockReturnValue(0)
+    await playheadAt(11)
+    expect(top.classList.contains('invisible')).toBe(false)
+    failure.mockReturnValue({} as MediaError)
+    under.dispatchEvent(new Event('error'))
+
+    await expect.poll(() => top.classList.contains('invisible')).toBe(true)
+  })
+
+  test('shows a text above the picture, where it can be picked', async () => {
+    await open(later)
+    await playheadAt(2)
+
+    const rect = document.querySelector('.film-text')!.getBoundingClientRect()
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)
+    expect(hit?.closest('.film-text')).not.toBeNull()
+  })
+
+  test('has the next photo ready as the poster of the layer under the picture', async () => {
+    await open({ clips: [...answer.edit.clips.slice(0, 1), { id: 'clip-3', name: PHOTO, start: 0, end: 5, sound: false }] }, [], [photo])
+    await playheadAt(6)
+
+    await expect.poll(() => document.querySelectorAll('video')[0]?.getAttribute('poster')).toBe(`/api/file/o/${PHOTO}`)
+    expect(document.querySelectorAll('video')[0].classList.contains('invisible')).toBe(true)
   })
 
   test('has the clips on the left, the picture in the middle and what is picked on the right', async () => {
@@ -821,15 +934,15 @@ describe('a crossfade between two clips', () => {
     expect(layers()[0]!.className).toContain('invisible')
 
     await playheadAt(2)
-    expect(layers()[0]!.className).not.toContain('invisible')
-    expect(layers()[0]!.dataset.src).toContain(FIRST)
-    expect(layers()[1]!.dataset.src).toContain(SECOND)
-    expect(opacities()[1]).toBeCloseTo(0.5, 2)
-    expect(layers()[0]!.volume).toBeCloseTo(0.5, 2)
+    expect(layers()[1]!.className).not.toContain('invisible')
+    expect(layers()[1]!.dataset.src).toContain(FIRST)
+    expect(layers()[0]!.dataset.src).toContain(SECOND)
+    expect(opacities()[0]).toBeCloseTo(0.5, 2)
+    expect(layers()[1]!.volume).toBeCloseTo(0.5, 2)
 
     await playheadAt(1)
-    expect(layers()[0]!.className).toContain('invisible')
-    expect(opacities()[1]).toBe(1)
+    expect(layers()[1]!.className).toContain('invisible')
+    expect(opacities()[0]).toBe(1)
   })
 })
 

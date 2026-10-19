@@ -1409,6 +1409,9 @@ opacity that goes from 0 to 1 across the overlap, and the sound of each rising o
 when playing and when the playhead is moved into it. In the rendered film a crossfade is a
 dissolve between the two clips with the sound crossing as well, a clip without sound or with its
 speaker off staying silent through it, and a cut, a gap and a crossfade can follow each other in one film.
+The stage never goes empty at the seam between two clips that touch, whether the film plays or the playhead
+is moved across it: the clip (or photo) that comes next, when it starts within five seconds, is loaded and held at its first frame in the second
+layer while the current one shows, and takes the picture at the seam. When the playhead jumps to a clip that is not loaded yet, the picture that was shown stays until the new one has a frame, but a clip reached by turning back right after a seam may show one empty frame while it loads. A clip that follows the incoming clip of a crossfade closely is cued only when the crossfade is over.
 
 **Cutting, Ripple and Snap.** _Select_ is the tool the editor is always in, shown pressed. _Cut at
 playhead_ — also the C key, under the same focus rules as Space and Delete, and not with Alt or
@@ -1452,12 +1455,13 @@ its colour and how long it is shown. It is placed by dragging it in the picture,
 middle either way and a frame shows the edge a screen may cut. The picture draws text the way the film
 will have it.
 
-**The picture plays the edit.** It plays from the proxies, with the music and the camera sound as they
-will be heard; Space plays and stops, and the jump marks of the clip at the playhead are buttons that
-go to them.
 The five looks are cards in the Text tab, each with a small sky-blue picture of its sample text (the passenger's name for the title, _Your text_ for the others) where and in the type it will have, its name and how it comes in. The effects of a picked text are cards too, and the fonts and the colours are buttons that show what they give. A film template's texts have the same cards. A card is named by its look only, not by its sample text.
 
 Hovering or focusing a card plays its effect in the small picture, and the effect of the picked text plays on its own, in a loop of a few seconds whose fade and pop last as long as the film's. The slide is shorter and the curve is not the same, so the card is an approximation of the film. A touch screen has no hover and shows the still card. Whoever asks their system for less motion sees the final frame and nothing moves.
+
+**The picture plays the edit.** It plays from the proxies, with the music and the camera sound as they
+will be heard; Space plays and stops, and the jump marks of the clip at the playhead are buttons that
+go to them.
 
 **Rendering is one press.** _Render the film_ saves the edit and makes the film from the processed
 copies — never the proxies — into the montage's folder under the film's own name: MP4 with H.264 video
