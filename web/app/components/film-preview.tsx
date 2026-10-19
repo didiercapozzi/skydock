@@ -1,6 +1,7 @@
 import { t } from '@lingui/core/macro'
-import { textLookAt } from '@skydock/scripts/client'
-import type { EditText, FilmEdit, TextFont } from '@skydock/scripts/client'
+import { layerFadesOf, rampAt, textLookAt } from '@skydock/scripts/client'
+import type { EditLayer, EditText, FilmEdit, TextFont } from '@skydock/scripts/client'
+import { getFileUrl } from './utils'
 import { useState } from 'react'
 
 const CENTRE_PULL = 0.02
@@ -81,6 +82,79 @@ const TextOnFilm = ({
   )
 }
 
+const urlOfImage = (images: Array<{ name: string; path: string }>, name: string | undefined) => {
+  const found = images.find((one) => one.name === name)
+  return found ? getFileUrl(found.path) : null
+}
+
+const LayerOnFilm = ({
+  layer,
+  url,
+  at,
+  picked,
+  onPick,
+  onMove
+}: {
+  layer: EditLayer
+  url: string | null
+  at: number
+  picked: boolean
+  onPick: () => void
+  onMove: (x: number, y: number) => void
+}) => {
+  const into = at - layer.at
+  if (into < 0 || into > layer.seconds) return null
+  const { fadeIn, fadeOut } = layerFadesOf(layer)
+  const opacity = rampAt(into, layer.seconds, fadeIn, fadeOut)
+  if (layer.colour !== undefined)
+    return (
+      <div
+        data-layer=''
+        style={{ background: layer.colour, opacity }}
+        className='pointer-events-none absolute inset-0'
+      />
+    )
+  const grab = (e: React.PointerEvent<HTMLImageElement>) => {
+    const stage = e.currentTarget.parentElement?.getBoundingClientRect()
+    if (!stage) return
+    e.preventDefault()
+    e.stopPropagation()
+    onPick()
+    const target = e.currentTarget
+    target.setPointerCapture(e.pointerId)
+    const follow = (move: PointerEvent) =>
+      onMove(
+        Math.min(1, Math.max(0, (move.clientX - stage.left) / stage.width)),
+        Math.min(1, Math.max(0, (move.clientY - stage.top) / stage.height))
+      )
+    const done = () => {
+      target.removeEventListener('pointermove', follow)
+      target.removeEventListener('pointerup', done)
+      target.removeEventListener('pointercancel', done)
+    }
+    target.addEventListener('pointermove', follow)
+    target.addEventListener('pointerup', done)
+    target.addEventListener('pointercancel', done)
+  }
+  return url === null ? null : (
+    <img
+      data-layer=''
+      src={url}
+      alt=''
+      draggable={false}
+      onPointerDown={grab}
+      style={{
+        left: `${layer.x * 100}%`,
+        top: `${layer.y * 100}%`,
+        width: `${layer.width * 100}%`,
+        opacity: picked ? Math.max(opacity, 0.55) : opacity,
+        transform: 'translate(-50%, -50%)'
+      }}
+      className={`absolute max-h-none max-w-none cursor-move ${picked ? 'outline-2 outline-offset-2 outline-pick outline-dashed' : ''}`}
+    />
+  )
+}
+
 const FilmPreview = ({
   edit,
   at,
@@ -95,8 +169,12 @@ const FilmPreview = ({
   framed,
   videoRef,
   underRef,
+  images,
+  pickedLayer,
   onPickText,
   onMoveText,
+  onPickLayer,
+  onMoveLayer,
   onShape
 }: {
   edit: FilmEdit
@@ -112,8 +190,12 @@ const FilmPreview = ({
   framed: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
   underRef: React.RefObject<HTMLVideoElement | null>
+  images: Array<{ name: string; path: string }>
+  pickedLayer: string | null
   onPickText: (id: string) => void
   onMoveText: (id: string, x: number, y: number) => void
+  onPickLayer: (id: string) => void
+  onMoveLayer: (id: string, x: number, y: number) => void
   onShape: (upright: boolean) => void
 }) => {
   const [guides, setGuides] = useState({ x: false, y: false })
@@ -163,6 +245,17 @@ const FilmPreview = ({
         {guides.y && (
           <div className='pointer-events-none absolute inset-x-0 top-1/2 h-px bg-pick' />
         )}
+        {(edit.layers ?? []).map((layer) => (
+          <LayerOnFilm
+            key={layer.id}
+            layer={layer}
+            url={urlOfImage(images, layer.name)}
+            at={at}
+            picked={pickedLayer === layer.id}
+            onPick={() => onPickLayer(layer.id)}
+            onMove={(x, y) => onMoveLayer(layer.id, x, y)}
+          />
+        ))}
         {edit.texts.map((text) => (
           <TextOnFilm
             key={text.id}

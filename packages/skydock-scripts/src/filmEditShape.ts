@@ -12,6 +12,7 @@ const OUTPUT_CRF = { h264: 18, h265: 22, av1: 28 } as const
 const CRF_RANGE = { least: 12, most: 40 }
 const STILL_MAX = 60
 const STILL_EXTENSIONS = ['.jpg', '.jpeg', '.png'] as const
+const IMAGE_EXTENSIONS = ['.png', '.jpg', '.jpeg', '.webp'] as const
 const TEXT_FADE = 0.6
 const POP = 0.35
 const DUCK_RAMP = 0.8
@@ -72,7 +73,8 @@ const editTextSchema = z.object({
   size: z.number().min(0.02).max(0.3),
   colour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   fadeIn: fadeLength,
-  fadeOut: fadeLength
+  fadeOut: fadeLength,
+  group: z.string().min(1).optional()
 })
 
 const outputSchema = z.object({
@@ -84,11 +86,37 @@ const outputSchema = z.object({
   crf: z.number().int().min(CRF_RANGE.least).max(CRF_RANGE.most).optional()
 })
 
+const aPictureOrAColour = (layer: { name?: string | undefined; colour?: string | undefined }) =>
+  (layer.name === undefined) !== (layer.colour === undefined)
+
+const editLayerObject = z.object({
+  id: z.string().min(1),
+  at: seconds,
+  seconds: z.number().min(0.5).max(600),
+  name: z.string().min(1).optional(),
+  colour: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  x: fraction,
+  y: fraction,
+  width: z.number().min(0.02).max(1),
+  fadeIn: fadeLength,
+  fadeOut: fadeLength,
+  group: z.string().min(1).optional()
+})
+
+const editLayerSchema = editLayerObject.refine(
+  aPictureOrAColour,
+  'a layer is a picture or a colour'
+)
+
 const filmEditSchema = z.object({
   version: z.literal(1),
   clips: z.array(editClipSchema),
   music: z.array(editMusicSchema),
   texts: z.array(editTextSchema),
+  layers: z.array(editLayerSchema).optional(),
   underSound: fraction,
   output: outputSchema.optional()
 })
@@ -108,6 +136,13 @@ const editSourceSchema = z.object({
   still: z.boolean().optional()
 })
 
+const imageSourceSchema = z.object({
+  name: z.string(),
+  path: z.string(),
+  width: z.number(),
+  height: z.number()
+})
+
 const musicSourceSchema = z.object({
   name: z.string(),
   path: z.string(),
@@ -123,6 +158,7 @@ const editAnswerSchema = z.discriminatedUnion('ok', [
     saved: z.boolean(),
     sources: z.array(editSourceSchema),
     music: z.array(musicSourceSchema),
+    images: z.array(imageSourceSchema).default([]),
     rendering: z.boolean(),
     film: z.string().nullable(),
     formats: z.array(z.enum(OUTPUT_FORMATS)).default(['h264'])
@@ -136,6 +172,8 @@ type EditText = FilmEdit['texts'][number]
 type EditMarker = NonNullable<EditClip['markers']>[number]
 type EditSource = z.infer<typeof editSourceSchema>
 type MusicSource = z.infer<typeof musicSourceSchema>
+type ImageSource = z.infer<typeof imageSourceSchema>
+type EditLayer = NonNullable<FilmEdit['layers']>[number]
 type TextEffect = (typeof TEXT_EFFECTS)[number]
 type TextFont = (typeof TEXT_FONTS)[number]
 type Span = { from: number; to: number }
@@ -166,6 +204,11 @@ const textFadesOf = (text: EditText) => ({
   fadeOut: halved(text.fadeOut, text.seconds)
 })
 
+const layerFadesOf = (layer: EditLayer) => ({
+  fadeIn: halved(layer.fadeIn, layer.seconds),
+  fadeOut: halved(layer.fadeOut, layer.seconds)
+})
+
 const musicFadesOf = (piece: EditMusic) => ({
   fadeIn: halved(piece.fadeIn ?? 0, piece.end - piece.start),
   fadeOut: halved(piece.fadeOut ?? 0, piece.end - piece.start)
@@ -193,6 +236,7 @@ const timelineEnd = (edit: FilmEdit) =>
   Math.max(
     filmLength(edit),
     ...edit.texts.map((text) => text.at + text.seconds),
+    ...(edit.layers ?? []).map((layer) => layer.at + layer.seconds),
     ...edit.music.map((piece) => piece.at + piece.end - piece.start)
   )
 
@@ -257,6 +301,9 @@ export {
   DUCK_RAMP,
   duckAt,
   editAnswerSchema,
+  aPictureOrAColour,
+  editLayerObject,
+  editLayerSchema,
   editMarkSchema,
   editSourceSchema,
   editTextSchema,
@@ -264,12 +311,14 @@ export {
   fadeInOf,
   fadeInto,
   fadeOutOf,
+  layerFadesOf,
   filmEditSchema,
   filmLength,
   heardSpans,
   MUSIC_EXTENSIONS,
   musicFadesOf,
   musicLevelAt,
+  imageSourceSchema,
   musicSourceSchema,
   POP,
   rampAt,
@@ -283,6 +332,7 @@ export {
   OUTPUT_CRF,
   OUTPUT_FORMATS,
   OUTPUT_FPS,
+  IMAGE_EXTENSIONS,
   STILL_EXTENSIONS,
   STILL_MAX,
   STILL_SECONDS,
@@ -290,6 +340,8 @@ export {
 }
 export type {
   EditClip,
+  EditLayer,
+  ImageSource,
   EditMarker,
   EditMusic,
   EditSource,

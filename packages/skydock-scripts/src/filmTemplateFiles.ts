@@ -1,7 +1,7 @@
 import { constants } from 'node:fs'
 import { copyFile, link, mkdir, readdir, readFile, rename, rm, stat } from 'node:fs/promises'
 import * as path from 'node:path'
-import { getMusicDir, isMusicFile } from './filmEdit'
+import { getImagesDir, getMusicDir, isMusicFile } from './filmEdit'
 import { filmTemplateSchema } from './filmTemplate'
 import type { FilmTemplate } from './filmTemplate'
 import { jsonText } from './lib/json'
@@ -64,6 +64,7 @@ const listFilmTemplates = async (outputDir: string) => {
   const music = new Set(
     (await readdir(getMusicDir(outputDir)).catch(() => [])).filter((name) => isMusicFile(name))
   )
+  const pictures = new Set(await readdir(getImagesDir(outputDir)).catch(() => []))
   const names = (await readdir(folderOf(outputDir)).catch(() => []))
     .filter((file) => !file.startsWith('.') && file.endsWith(SUFFIX))
     .map((file) => file.slice(0, -SUFFIX.length))
@@ -78,7 +79,12 @@ const listFilmTemplates = async (outputDir: string) => {
             {
               name,
               template,
-              missing: template.music.map((p) => p.name).filter((n) => !music.has(n))
+              missing: [
+                ...template.music.map((p) => p.name).filter((n) => !music.has(n)),
+                ...(template.layers ?? [])
+                  .flatMap((l) => (l.name ? [l.name] : []))
+                  .filter((n) => !pictures.has(n))
+              ]
             }
           ]
         : []

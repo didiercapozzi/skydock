@@ -50,7 +50,7 @@ const listed = async () =>
 
 describe('the film templates', () => {
   it('are listed with the music the film editor offers', async () => {
-    expect(await listed()).toEqual({ templates: [], broken: [], music: [] })
+    expect(await listed()).toEqual({ templates: [], broken: [], music: [], images: [] })
     await send({ intent: 'save', name: 'Club', template })
     expect((await listed()).templates).toEqual([
       { name: 'Club', template, missing: ['Summer.mp3'] }

@@ -2537,3 +2537,154 @@ describe('the markers of a clip and of a piece of music', () => {
     await expect.poll(() => sent.at(-1)?.edit.music[0]?.markers?.map((mark) => mark.at)).toEqual([1])
   })
 })
+
+describe('the layers of a film: pictures and backgrounds over the video', () => {
+  const logo = { name: 'logo.png', path: '/o/images/logo.png', width: 2752, height: 1134 }
+  type Sent = { url: string; body: unknown }
+  const start = async (edit: Record<string, unknown> = {}, images: unknown[] = [logo]) => {
+    const sent: Sent[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url: String(url), body: init.body instanceof FormData ? 'form' : JSON.parse(String(init.body)) })
+        return String(url).includes('/api/images')
+          ? Response.json({ ok: true, images })
+          : Response.json({ ok: true })
+      }
+      return Response.json({ ...answer, images, edit: { ...answer.edit, ...edit } })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+  const layersSaved = (sent: Sent[]) =>
+    (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as { edit: { layers?: Array<Record<string, unknown>> } } | undefined)?.edit.layers
+  const images = () => page.getByRole('button', { name: 'Images', exact: true })
+
+  test('are made from the Images tab: a picture is added at the playhead, with the width of a third of the frame', async () => {
+    const sent = await start()
+    await playheadAt(2)
+
+    await userEvent.click(images())
+    await expect.element(page.getByText('logo.png', { exact: true }).first()).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Add', exact: true }).first())
+
+    await expect
+      .poll(() => layersSaved(sent))
+      .toMatchObject([{ name: 'logo.png', at: 2, seconds: 5, x: 0.5, y: 0.5 }])
+    await expect.element(page.getByTitle('logo.png', { exact: true }).last()).toBeVisible()
+  })
+
+  test('are made from the same tab as a white or a black background, that covers the frame', async () => {
+    const sent = await start()
+
+    await userEvent.click(images())
+    await userEvent.click(page.getByRole('button', { name: 'White background' }))
+    await userEvent.click(page.getByRole('button', { name: 'Black background' }))
+
+    await expect.poll(() => layersSaved(sent)?.map((one) => one.colour)).toEqual(['#ffffff', '#000000'])
+    await expect.poll(() => document.querySelectorAll('[data-layer]').length).toBeGreaterThan(0)
+  })
+
+  test('are stacked on rows when they are on at the same moment', async () => {
+    await start({
+      layers: [
+        { id: 'layer-1', at: 0, seconds: 5, colour: '#ffffff', x: 0.5, y: 0.5, width: 1 },
+        { id: 'layer-2', at: 2, seconds: 5, name: 'logo.png', x: 0.5, y: 0.5, width: 0.3 }
+      ]
+    })
+
+    const white = page.getByTitle('#ffffff', { exact: true }).element().getBoundingClientRect()
+    const picture = page.getByTitle('logo.png', { exact: true }).last().element().getBoundingClientRect()
+    expect(picture.top).toBeGreaterThan(white.top + white.height - 2)
+  })
+
+  test('are changed from the Inspector, where the place, the width and the fades are, and taken away with Delete', async () => {
+    const sent = await start({
+      layers: [{ id: 'layer-1', at: 1, seconds: 4, name: 'logo.png', x: 0.5, y: 0.5, width: 0.3 }]
+    })
+    await userEvent.click(page.getByTitle('logo.png', { exact: true }).last())
+
+    await expect.element(page.getByRole('heading', { name: 'logo.png' })).toBeVisible()
+    page.getByRole('slider', { name: 'Width' }).element().focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await expect.poll(() => layersSaved(sent)?.[0]?.width).toBeGreaterThan(0.3)
+    await userEvent.fill(page.getByRole('textbox', { name: 'Fade in' }), '1')
+    await userEvent.keyboard('{Enter}')
+    await expect.poll(() => layersSaved(sent)?.[0]?.fadeIn).toBe(1)
+
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+    await expect.poll(() => layersSaved(sent)).toBeUndefined()
+  })
+
+  test('bring in a picture from the computer, which is then in the list', async () => {
+    const sent = await start({}, [])
+    await userEvent.click(images())
+    const input = document.querySelector<HTMLInputElement>('input[type=file][accept*="image"]')!
+
+    await userEvent.upload(input, new File(['png'], 'logo.png', { type: 'image/png' }))
+
+    await expect.poll(() => sent.some((one) => one.url.includes('/api/images'))).toBe(true)
+  })
+})
+
+describe('texts and pictures grouped to move together', () => {
+  type Sent = { url: string; body: unknown }
+  const look = { seconds: 3, effect: 'fade', font: 'bold', x: 0.5, y: 0.5, size: 0.09, colour: '#ffffff' }
+  const start = async () => {
+    const sent: Sent[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        return Response.json({ ok: true })
+      }
+      return Response.json({
+        ...answer,
+        edit: {
+          ...answer.edit,
+          texts: [
+            { ...look, id: 'text-1', text: 'Alpha', at: 1 },
+            { ...look, id: 'text-2', text: 'Beta', at: 6 }
+          ],
+          layers: [{ id: 'layer-1', at: 1, seconds: 4, colour: '#000000', x: 0.5, y: 0.5, width: 1 }]
+        }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+  const saved = (sent: Sent[]) =>
+    (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as {
+      edit: { texts: Array<{ group?: string }>; layers?: Array<{ group?: string }> }
+    } | undefined)?.edit
+  const addWithShift = async (name: string) => {
+    await userEvent.keyboard('{Shift>}')
+    await userEvent.click(page.getByText(name, { exact: true }).first(), { force: true })
+    await userEvent.keyboard('{/Shift}')
+  }
+
+  test('are grouped with Shift-click and Group, and one Delete takes the whole group away', async () => {
+    const sent = await start()
+    await userEvent.click(page.getByText('Alpha', { exact: true }).first(), { force: true })
+    await addWithShift('Beta')
+    await userEvent.click(page.getByRole('button', { name: 'Group', exact: true }))
+
+    await expect.poll(() => saved(sent)?.texts.map((text) => text.group)).toEqual(['group-1', 'group-1'])
+    expect(saved(sent)?.layers?.[0]?.group).toBeUndefined()
+
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+    await expect.poll(() => saved(sent)?.texts).toEqual([])
+    expect(saved(sent)?.layers).toHaveLength(1)
+  })
+
+  test('are ungrouped from the Inspector', async () => {
+    const sent = await start()
+    await userEvent.click(page.getByText('Alpha', { exact: true }).first(), { force: true })
+    await addWithShift('Beta')
+    await userEvent.click(page.getByRole('button', { name: 'Group', exact: true }))
+    await expect.poll(() => saved(sent)?.texts[0]?.group).toBe('group-1')
+
+    await userEvent.click(page.getByRole('button', { name: 'Ungroup', exact: true }))
+    await expect.poll(() => saved(sent)?.texts.map((text) => text.group)).toEqual([undefined, undefined])
+  })
+})

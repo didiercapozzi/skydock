@@ -1,6 +1,21 @@
 import { z } from 'zod'
-import { editTextSchema, filmLength, musicSourceSchema, UNDER_SOUND } from './filmEditShape'
-import type { EditMusic, EditText, FilmEdit, MusicSource } from './filmEditShape'
+import {
+  aPictureOrAColour,
+  editLayerObject,
+  editTextSchema,
+  filmLength,
+  imageSourceSchema,
+  musicSourceSchema,
+  UNDER_SOUND
+} from './filmEditShape'
+import type {
+  EditLayer,
+  EditMusic,
+  EditText,
+  FilmEdit,
+  ImageSource,
+  MusicSource
+} from './filmEditShape'
 
 const seconds = z.number().min(0)
 const from = z.enum(['start', 'end'])
@@ -11,6 +26,15 @@ const filmTemplateSchema = z.object({
   underSound: z.number().min(0).max(1),
   fade: z.number().gt(0).finite().optional(),
   texts: z.array(editTextSchema.omit({ id: true, at: true }).extend({ from, at: seconds })).max(50),
+  layers: z
+    .array(
+      editLayerObject
+        .omit({ id: true, at: true })
+        .extend({ from, at: seconds })
+        .refine(aPictureOrAColour)
+    )
+    .max(30)
+    .optional(),
   music: z
     .array(
       z
@@ -34,7 +58,8 @@ const filmTemplatesAnswerSchema = z.object({
     z.object({ name: z.string(), template: filmTemplateSchema, missing: z.array(z.string()) })
   ),
   broken: z.array(z.string()).default([]),
-  music: z.array(musicSourceSchema)
+  music: z.array(musicSourceSchema),
+  images: z.array(imageSourceSchema).default([])
 })
 
 type FilmTemplate = z.infer<typeof filmTemplateSchema>
@@ -94,14 +119,28 @@ const captureTemplate = (edit: FilmEdit, who: Who): FilmTemplate => {
     music: edit.music.map(({ id: _id, at, ...rest }) => ({
       ...rest,
       ...placed(film, at, at + rest.end - rest.start)
-    }))
+    })),
+    ...((edit.layers ?? []).length > 0 && {
+      layers: (edit.layers ?? []).map(({ id: _id, at, ...rest }) => ({
+        ...rest,
+        ...placed(film, at, at + rest.seconds)
+      }))
+    })
   }
 }
 
 const applyTemplate = (
   edit: FilmEdit,
   template: FilmTemplate,
-  { name, day, music }: Who & { music: Pick<MusicSource, 'name' | 'seconds'>[] | null }
+  {
+    name,
+    day,
+    music,
+    images = null
+  }: Who & {
+    music: Pick<MusicSource, 'name' | 'seconds'>[] | null
+    images?: Pick<ImageSource, 'name'>[] | null
+  }
 ) => {
   const film = filmLength(edit)
   const startOf = (item: { from: 'start' | 'end'; at: number }) =>
@@ -148,6 +187,20 @@ const applyTemplate = (
       }
     ]
   })
+  const layers = (template.layers ?? []).flatMap(({ from, at, ...rest }) => {
+    if (rest.name !== undefined && images && !images.some((one) => one.name === rest.name)) {
+      left.push(rest.name)
+      return []
+    }
+    const length = film > 0 ? Math.min(rest.seconds, Math.max(0.5, film)) : rest.seconds
+    const begin =
+      film > 0
+        ? Math.min(startOf({ from, at }), Math.max(0, film - length))
+        : from === 'end'
+          ? 0
+          : at
+    return [{ ...rest, seconds: length, at: begin, id: '' }]
+  })
   const numbered = <T extends { id: string }>(list: T[], prefix: string) =>
     list.map((one, index) => ({ ...one, id: `${prefix}-${index + 1}` }))
   return {
@@ -160,7 +213,8 @@ const applyTemplate = (
         : edit.clips,
       underSound: template.underSound,
       texts: numbered<EditText>(texts, 'text'),
-      music: numbered<EditMusic>(pieces, 'music')
+      music: numbered<EditMusic>(pieces, 'music'),
+      ...(layers.length > 0 && { layers: numbered<EditLayer>(layers, 'layer') })
     },
     left,
     cut

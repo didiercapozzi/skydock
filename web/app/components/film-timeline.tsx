@@ -5,6 +5,7 @@ import {
   fadeInto,
   fadeOutOf,
   heardSpans,
+  layerFadesOf,
   musicFadesOf,
   musicLevelAt,
   speedOf,
@@ -17,10 +18,13 @@ import {
   clockOf,
   FADE,
   fadeMost,
+  groupOf,
+  layerRows,
   moveClip,
   nearestBoundary,
   placeClip,
   setItemFade,
+  shiftItems,
   placed,
   setFade,
   snapPoints,
@@ -30,10 +34,11 @@ import {
   unturnedFrame,
   zoomAround
 } from '../helpers/filmTimeline'
+import type { Grouped } from '../helpers/filmTimeline'
 import { Icon } from './icons'
 import { getThumbUrl } from './utils'
 
-type Picked = { kind: 'clip' | 'music' | 'text'; id: string } | null
+type Picked = { kind: 'clip' | 'music' | 'text' | 'layer'; id: string } | null
 
 const ZOOM = { min: 2, max: 80 }
 const WHEEL_ZOOM = 0.0015
@@ -187,11 +192,13 @@ const FilmTimeline = ({
   pps,
   at,
   picked,
+  also,
   snap,
   ripple,
   onSeek,
   onZoom,
   onPick,
+  onAlso,
   onChange,
   onOpenPart,
   onDropClip
@@ -202,11 +209,13 @@ const FilmTimeline = ({
   pps: number
   at: number
   picked: Picked
+  also: Grouped[]
   snap: boolean
   ripple: boolean
   onSeek: (t: number) => void
   onZoom: (pps: number) => void
   onPick: (picked: Picked) => void
+  onAlso: (item: Grouped | null) => void
   onChange: (edit: FilmEdit) => void
   onOpenPart: (id: string) => void
   onDropClip: (name: string, index: number) => void
@@ -221,6 +230,9 @@ const FilmTimeline = ({
   const apart = useRef(0)
   const dragging = useRef(new Set<number>())
   const cancels = useRef(new Set<() => void>())
+  const layers = edit.layers ?? []
+  const rows = layerRows(layers)
+  const rowCount = Math.max(1, ...[...rows.values()].map((row) => row + 1))
   const total = timelineEnd(edit)
   const width = Math.max(room - HEAD, total * pps + 240)
   const step = stepFor(pps)
@@ -411,7 +423,7 @@ const FilmTimeline = ({
 
   const fadeOfItem = (
     original: FilmEdit,
-    kind: 'clips' | 'texts' | 'music',
+    kind: 'clips' | 'texts' | 'music' | 'layers',
     id: string,
     side: 'fadeIn' | 'fadeOut'
   ) => {
@@ -419,6 +431,8 @@ const FilmTimeline = ({
       const index = original.clips.findIndex((one) => one.id === id)
       return side === 'fadeIn' ? fadeInOf(original.clips, index) : fadeOutOf(original.clips, index)
     }
+    const layer = (original.layers ?? []).find((one) => one.id === id)
+    if (kind === 'layers') return layer ? layerFadesOf(layer)[side] : 0
     const text = original.texts.find((one) => one.id === id)
     const piece = original.music.find((one) => one.id === id)
     return kind === 'texts'
@@ -431,7 +445,7 @@ const FilmTimeline = ({
   }
 
   const fadeHandle = (
-    kind: 'clips' | 'texts' | 'music',
+    kind: 'clips' | 'texts' | 'music' | 'layers',
     id: string,
     side: 'fadeIn' | 'fadeOut',
     name: string,
@@ -444,7 +458,17 @@ const FilmTimeline = ({
       label={side === 'fadeIn' ? t`Fade in of ${name}` : t`Fade out of ${name}`}
       chosen={chosen}
       onGrab={(e) => {
-        onPick({ kind: kind === 'clips' ? 'clip' : kind === 'texts' ? 'text' : 'music', id })
+        onPick({
+          kind:
+            kind === 'clips'
+              ? 'clip'
+              : kind === 'texts'
+                ? 'text'
+                : kind === 'layers'
+                  ? 'layer'
+                  : 'music',
+          id
+        })
         const start = fadeOfItem(edit, kind, id, side)
         drag(e, (seconds, original) =>
           onChange(
@@ -479,29 +503,82 @@ const FilmTimeline = ({
     })
   }
 
+  const lit = (kind: Grouped['kind'], id: string) =>
+    also.some((one) => one.kind === kind && one.id === id) ||
+    (picked !== null &&
+      (picked.kind === 'text' || picked.kind === 'layer') &&
+      groupOf(edit, { kind: picked.kind, id: picked.id } as Grouped).some(
+        (one) => one.kind === kind && one.id === id
+      ))
+
   const moveText = (e: React.PointerEvent<HTMLElement>, id: string, part: 'body' | 'end') => {
+    if (e.shiftKey) return onAlso({ kind: 'text', id })
+    onAlso(null)
     onPick({ kind: 'text', id })
-    drag(e, (seconds, original) =>
-      onChange({
-        ...original,
-        texts: original.texts.map((text) =>
-          text.id !== id
-            ? text
-            : part === 'body'
-              ? { ...text, at: Math.max(0, blockAt(original, id, text.at + seconds, text.seconds)) }
-              : {
-                  ...text,
-                  seconds: Math.min(
-                    60,
-                    Math.max(
-                      SHORTEST_TEXT,
-                      edgeAt(original, text.at + text.seconds + seconds, id) - text.at
-                    )
-                  )
-                }
-        )
-      })
-    )
+    drag(e, (seconds, original) => {
+      const text = original.texts.find((one) => one.id === id)
+      if (!text) return
+      onChange(
+        part === 'body'
+          ? shiftItems(
+              original,
+              groupOf(original, { kind: 'text', id }),
+              Math.max(0, blockAt(original, id, text.at + seconds, text.seconds)) - text.at
+            )
+          : {
+              ...original,
+              texts: original.texts.map((one) =>
+                one.id !== id
+                  ? one
+                  : {
+                      ...one,
+                      seconds: Math.min(
+                        60,
+                        Math.max(
+                          SHORTEST_TEXT,
+                          edgeAt(original, one.at + one.seconds + seconds, id) - one.at
+                        )
+                      )
+                    }
+              )
+            }
+      )
+    })
+  }
+
+  const moveLayer = (e: React.PointerEvent<HTMLElement>, id: string, part: 'body' | 'end') => {
+    if (e.shiftKey) return onAlso({ kind: 'layer', id })
+    onAlso(null)
+    onPick({ kind: 'layer', id })
+    drag(e, (seconds, original) => {
+      const layer = original.layers?.find((one) => one.id === id)
+      if (!layer) return
+      onChange(
+        part === 'body'
+          ? shiftItems(
+              original,
+              groupOf(original, { kind: 'layer', id }),
+              Math.max(0, blockAt(original, id, layer.at + seconds, layer.seconds)) - layer.at
+            )
+          : {
+              ...original,
+              layers: (original.layers ?? []).map((one) =>
+                one.id !== id
+                  ? one
+                  : {
+                      ...one,
+                      seconds: Math.min(
+                        600,
+                        Math.max(
+                          SHORTEST_TEXT,
+                          edgeAt(original, one.at + one.seconds + seconds, id) - one.at
+                        )
+                      )
+                    }
+              )
+            }
+      )
+    })
   }
 
   const moveMusic = (e: React.PointerEvent<HTMLElement>, id: string, part: 'body' | 'end') => {
@@ -846,6 +923,71 @@ const FilmTimeline = ({
           })}
         </Lane>
 
+        {layers.length > 0 && (
+          <Lane
+            name={t`Images`}
+            tag='I1'
+            note={t`Over the video`}
+            height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, rowCount)]!}>
+            {layers.map((layer) => {
+              const row = rows.get(layer.id) ?? 0
+              const chosen =
+                lit('layer', layer.id) || (picked?.kind === 'layer' && picked.id === layer.id)
+              return (
+                <div
+                  key={layer.id}
+                  title={layer.name ?? layer.colour}
+                  onPointerDown={(e) => moveLayer(e, layer.id, 'body')}
+                  style={{
+                    left: layer.at * pps,
+                    width: Math.max(8, layer.seconds * pps - 2),
+                    top: `${(row / rowCount) * 100}%`,
+                    height: `${100 / rowCount}%`
+                  }}
+                  className='group absolute cursor-grab p-1'>
+                  <div
+                    className={`relative size-full truncate rounded-corner bg-well px-2 text-micro leading-text font-semibold text-ink-2 ${
+                      chosen ? 'shadow-ring-2' : 'shadow-hairline'
+                    }`}>
+                    <Ramps
+                      {...layerFadesOf(layer)}
+                      pps={pps}
+                    />
+                    {fadeHandle(
+                      'layers',
+                      layer.id,
+                      'fadeIn',
+                      layer.name ?? layer.colour ?? '',
+                      chosen
+                    )}
+                    {fadeHandle(
+                      'layers',
+                      layer.id,
+                      'fadeOut',
+                      layer.name ?? layer.colour ?? '',
+                      chosen
+                    )}
+                    <span className='pointer-events-none flex h-full items-center gap-1.5'>
+                      {layer.colour !== undefined && (
+                        <i
+                          style={{ background: layer.colour }}
+                          className='size-3 flex-none rounded-corner shadow-hairline'
+                        />
+                      )}
+                      {layer.name ?? layer.colour}
+                    </span>
+                    <span
+                      onPointerDown={(e) => moveLayer(e, layer.id, 'end')}
+                      aria-label={t`Make the picture longer or shorter`}
+                      className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </Lane>
+        )}
+
         <Lane
           name={t`Text`}
           tag='T1'
@@ -857,7 +999,7 @@ const FilmTimeline = ({
               onPointerDown={(e) => moveText(e, text.id, 'body')}
               style={{ left: text.at * pps, width: Math.max(8, text.seconds * pps - 2) }}
               className={`group absolute inset-y-1.5 cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
-                picked?.kind === 'text' && picked.id === text.id
+                lit('text', text.id) || (picked?.kind === 'text' && picked.id === text.id)
                   ? 'shadow-ring-2'
                   : 'shadow-hairline'
               }`}>

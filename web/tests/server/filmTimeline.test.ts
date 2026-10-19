@@ -4,11 +4,17 @@ import {
   boundaries,
   clipAt,
   FADE,
+  groupItems,
+  groupOf,
+  shiftItems,
+  ungroup,
+  withoutItems,
   fadeAt,
   fadeBlock,
   addMarkerAt,
   importMarkers,
   insertClip,
+  layerRows,
   lookGeometry,
   moveClip,
   placeClip,
@@ -932,5 +938,88 @@ describe('the markers of a clip and of a piece of music', () => {
     expect(snapPoints(marked, new Map(), 0)).toEqual(expect.arrayContaining([5, 15]))
     expect(snapPoints(marked, new Map(), 0, 'clip-1')).not.toContain(5)
     expect(snapPoints(marked, new Map(), 0, 'music-1')).not.toContain(15)
+  })
+})
+
+describe('the rows that layers are stacked on', () => {
+  const layer = (id: string, at: number, seconds: number) => ({
+    id,
+    at,
+    seconds,
+    colour: '#ffffff',
+    x: 0.5,
+    y: 0.5,
+    width: 1
+  })
+
+  it('are one for layers that do not meet, and one more for each that is on at the same moment', () => {
+    const rows = layerRows([layer('a', 0, 5), layer('b', 5, 5), layer('c', 2, 5), layer('d', 3, 1)])
+
+    expect(rows.get('a')).toBe(0)
+    expect(rows.get('b')).toBe(0)
+    expect(rows.get('c')).toBe(1)
+    expect(rows.get('d')).toBe(2)
+  })
+
+  it('are none when there are no layers, and kept apart however the layers are listed', () => {
+    expect(layerRows([]).size).toBe(0)
+    const rows = layerRows([layer('late', 6, 2), layer('early', 0, 8)])
+    expect(rows.get('early')).toBe(0)
+    expect(rows.get('late')).toBe(1)
+  })
+})
+
+describe('texts and pictures grouped to move together', () => {
+  const stacked: FilmEdit = {
+    ...edit,
+    texts: [
+      { ...edit.texts[0]!, id: 'text-1', at: 2 },
+      { ...edit.texts[0]!, id: 'text-2', at: 3 },
+      { ...edit.texts[0]!, id: 'text-3', at: 8 }
+    ],
+    layers: [{ id: 'layer-1', at: 2, seconds: 4, colour: '#000000', x: 0.5, y: 0.5, width: 1 }]
+  }
+  const one = { kind: 'text', id: 'text-1' } as const
+  const two = { kind: 'text', id: 'text-2' } as const
+  const back = { kind: 'layer', id: 'layer-1' } as const
+
+  it('joins texts and layers under one group, and finds the whole group from any member', () => {
+    const grouped = groupItems(stacked, [one, two, back])
+
+    expect(groupOf(grouped, two)).toEqual([one, two, back])
+    expect(groupOf(grouped, { kind: 'text', id: 'text-3' })).toEqual([
+      { kind: 'text', id: 'text-3' }
+    ])
+  })
+
+  it('needs two items, and joining a member of a group takes the others of that group along', () => {
+    expect(groupItems(stacked, [one])).toBe(stacked)
+    const first = groupItems(stacked, [one, two])
+    const wider = groupItems(first, [two, back])
+    expect(groupOf(wider, back)).toEqual([one, two, back])
+  })
+
+  it('moves every member by the same seconds and stops the group at the start of the film', () => {
+    const grouped = groupItems(stacked, [one, two, back])
+    const later = shiftItems(grouped, groupOf(grouped, one), 1.5)
+    expect(later.texts.map((text) => text.at)).toEqual([3.5, 4.5, 8])
+    expect(later.layers?.[0]?.at).toBe(3.5)
+
+    const earlier = shiftItems(grouped, groupOf(grouped, one), -5)
+    expect(earlier.texts.map((text) => text.at)).toEqual([0, 1, 8])
+    expect(earlier.layers?.[0]?.at).toBe(0)
+  })
+
+  it('leaves the group when it is undone, and drops the mark from every member', () => {
+    const grouped = groupItems(stacked, [one, two])
+    const apart = ungroup(grouped, one)
+    expect(apart.texts.some((text) => 'group' in text)).toBe(false)
+    expect(groupOf(apart, two)).toEqual([two])
+  })
+
+  it('takes items away, and the layers key with them when none is left', () => {
+    const gone = withoutItems(stacked, [two, back])
+    expect(gone.texts.map((text) => text.id)).toEqual(['text-1', 'text-3'])
+    expect('layers' in gone).toBe(false)
   })
 })

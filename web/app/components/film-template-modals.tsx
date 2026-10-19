@@ -231,7 +231,13 @@ const FilmTemplateModal = ({
   const templates = data?.templates ?? []
   const chosen = templates.find((one) => one.name === picked)
   const result =
-    chosen && data && applyTemplate(edit, chosen.template, { ...who, music: data.music })
+    chosen &&
+    data &&
+    applyTemplate(edit, chosen.template, {
+      ...who,
+      music: data.music,
+      images: data.images
+    })
 
   return (
     <Modal

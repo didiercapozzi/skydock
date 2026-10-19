@@ -267,3 +267,58 @@ describe('applyTemplate', () => {
     expect(filmLength(film({ clips: [clip('a', 120)] }))).toBe(120)
   })
 })
+
+describe('the layers of a film in a template', () => {
+  const layered = film({
+    layers: [
+      { id: 'layer-1', at: 0, seconds: 5, name: 'logo.png', x: 0.5, y: 0.5, width: 0.4, fadeIn: 1 },
+      { id: 'layer-2', at: 115, seconds: 5, colour: '#000000', x: 0.5, y: 0.5, width: 1 }
+    ]
+  })
+  const logo = [{ name: 'logo.png' }]
+
+  it('are kept with the end of the film, and the start, as the texts are', () => {
+    const template = captureTemplate(layered, who)
+
+    expect(
+      template.layers?.map((layer) => [layer.from, layer.at, layer.name ?? layer.colour])
+    ).toEqual([
+      ['start', 0, 'logo.png'],
+      ['end', 5, '#000000']
+    ])
+    expect(captureTemplate(film(), who)).not.toHaveProperty('layers')
+  })
+
+  it('are given back to another film, at the end of it for those that were there', () => {
+    const applied = applyTemplate(film({ clips: [clip('c', 60)] }), captureTemplate(layered, who), {
+      ...who,
+      music: [],
+      images: logo
+    })
+
+    expect(applied.edit.layers?.map((layer) => [layer.id, layer.at])).toEqual([
+      ['layer-1', 0],
+      ['layer-2', 55]
+    ])
+    expect(applied.edit.layers?.[0]).toMatchObject({ name: 'logo.png', width: 0.4, fadeIn: 1 })
+  })
+
+  it('leave out a picture that is not in the images folder, and say which', () => {
+    const applied = applyTemplate(film(), captureTemplate(layered, who), {
+      ...who,
+      music: [],
+      images: []
+    })
+
+    expect(applied.edit.layers?.map((layer) => layer.id)).toEqual(['layer-1'])
+    expect(applied.left).toContain('logo.png')
+  })
+
+  it('are read from a file that has none, and from one that has them', () => {
+    const template = captureTemplate(layered, who)
+
+    expect(filmTemplateSchema.safeParse(template).success).toBe(true)
+    const { layers: _, ...bare } = template
+    expect(filmTemplateSchema.safeParse(bare).success).toBe(true)
+  })
+})

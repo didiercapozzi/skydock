@@ -20,6 +20,7 @@ const routes = [
   route('api/edit', 'routes/api.edit.ts'),
   route('api/film-templates', 'routes/api.film-templates.ts'),
   route('api/music', 'routes/api.music.ts'),
+  route('api/images', 'routes/api.images.ts'),
   route('api/transfers', 'routes/api.transfers.ts'),
   route('api/events', 'routes/api.events.ts'),
   route('api/remote-files', 'routes/api.remote-files.ts'),

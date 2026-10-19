@@ -63,6 +63,23 @@ describe('film template files', () => {
     expect((await listFilmTemplates(outputDir)).templates[0]?.missing).toEqual([])
   })
 
+  it('reports the pictures that are not in the images folder', async () => {
+    const withLogo = {
+      ...template,
+      layers: [
+        { name: 'logo.png', from: 'start' as const, at: 0, seconds: 5, x: 0.5, y: 0.5, width: 0.5 }
+      ]
+    }
+    await saveFilmTemplate({ outputDir, name: 'Club', template: withLogo, replace: false })
+    expect((await listFilmTemplates(outputDir)).templates[0]?.missing).toEqual([
+      'Summer.mp3',
+      'logo.png'
+    ])
+    fs.mkdirSync(path.join(outputDir, 'images'))
+    fs.writeFileSync(path.join(outputDir, 'images', 'logo.png'), 'x')
+    expect((await listFilmTemplates(outputDir)).templates[0]?.missing).toEqual(['Summer.mp3'])
+  })
+
   it('cleans the name and refuses an empty or a long one', async () => {
     expect(await saveFilmTemplate({ outputDir, name: ' a/b ', template, replace: false })).toBe(
       'a b'

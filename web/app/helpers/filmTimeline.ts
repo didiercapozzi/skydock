@@ -1,6 +1,7 @@
 import { clipLength, fadeInto, filmLength, speedOf, timelineEnd } from '@skydock/scripts/client'
 import type {
   EditClip,
+  EditLayer,
   EditMarker,
   EditMusic,
   EditSource,
@@ -15,8 +16,8 @@ const HAIR = 1e-6
 const TILE_LOOP = 4
 const FADE = { default: 1, least: 0.2, most: 3, shortest: 0.4 }
 
-type FadeKind = 'clips' | 'texts' | 'music'
-type Faded = EditClip | EditText | EditMusic
+type FadeKind = 'clips' | 'texts' | 'music' | 'layers'
+type Faded = EditClip | EditText | EditMusic | EditLayer
 
 type Placed = { clip: EditClip; index: number; from: number; to: number }
 
@@ -78,7 +79,9 @@ const lengthOfItem = (kind: FadeKind, one: Faded) =>
     ? clipLength(one as EditClip)
     : kind === 'texts'
       ? (one as EditText).seconds
-      : (one as EditMusic).end - (one as EditMusic).start
+      : kind === 'layers'
+        ? (one as EditLayer).seconds
+        : (one as EditMusic).end - (one as EditMusic).start
 
 const setItemFade = (
   edit: FilmEdit,
@@ -87,7 +90,7 @@ const setItemFade = (
   side: 'fadeIn' | 'fadeOut',
   seconds: number
 ): FilmEdit => {
-  const items: Faded[] = edit[kind]
+  const items: Faded[] = edit[kind] ?? []
   const one = items.find((item) => item.id === id)
   if (!one) return edit
   const value = Math.min(Math.max(0, Math.round(seconds * 10) / 10), lengthOfItem(kind, one) / 2)
@@ -114,7 +117,8 @@ const fitItemFades = (edit: FilmEdit): FilmEdit => {
     ...edit,
     clips: fit('clips', edit.clips),
     texts: fit('texts', edit.texts),
-    music: fit('music', edit.music)
+    music: fit('music', edit.music),
+    ...(edit.layers ? { layers: fit('layers', edit.layers) } : {})
   }
   return changed ? next : edit
 }
@@ -291,6 +295,137 @@ const markerTimes = (edit: FilmEdit, skip?: string) => [
         .map((mark) => piece.at + mark.at - piece.start)
     )
 ]
+
+const withoutLayer = (edit: FilmEdit, id: string): FilmEdit => {
+  const { layers, ...rest } = edit
+  const kept = (layers ?? []).filter((layer) => layer.id !== id)
+  return kept.length > 0 ? { ...rest, layers: kept } : rest
+}
+
+type Grouped = { kind: 'text' | 'layer'; id: string }
+
+const groupedItems = (edit: FilmEdit) => [
+  ...edit.texts.map((one) => ({ kind: 'text' as const, id: one.id, group: one.group })),
+  ...(edit.layers ?? []).map((one) => ({ kind: 'layer' as const, id: one.id, group: one.group }))
+]
+
+const groupOf = (edit: FilmEdit, item: Grouped): Grouped[] => {
+  const all = groupedItems(edit)
+  const group = all.find((one) => one.kind === item.kind && one.id === item.id)?.group
+  return group === undefined
+    ? [item]
+    : all.filter((one) => one.group === group).map(({ kind, id }) => ({ kind, id }))
+}
+
+const mapItems = (
+  edit: FilmEdit,
+  items: Grouped[],
+  change: (one: { group?: string | undefined; at: number }) => object
+): FilmEdit => {
+  const has = (kind: Grouped['kind'], id: string) =>
+    items.some((one) => one.kind === kind && one.id === id)
+  const next: FilmEdit = {
+    ...edit,
+    texts: edit.texts.map((one) => (has('text', one.id) ? { ...one, ...change(one) } : one))
+  }
+  return edit.layers
+    ? {
+        ...next,
+        layers: edit.layers.map((one) => (has('layer', one.id) ? { ...one, ...change(one) } : one))
+      }
+    : next
+}
+
+const groupItems = (edit: FilmEdit, items: Grouped[]): FilmEdit => {
+  const members = items.flatMap((item) => groupOf(edit, item))
+  const unique = members.filter(
+    (one, at) => members.findIndex((other) => other.kind === one.kind && other.id === one.id) === at
+  )
+  if (unique.length < 2) return edit
+  const taken = groupedItems(edit).flatMap((one) => (one.group ? [{ id: one.group }] : []))
+  const group = nextId('group', taken)
+  return mapItems(edit, unique, () => ({ group }))
+}
+
+const ungroup = (edit: FilmEdit, item: Grouped): FilmEdit => {
+  const members = groupOf(edit, item)
+  const strip = <T extends { group?: string | undefined }>(one: T) => {
+    const { group: _group, ...rest } = one
+    return rest
+  }
+  const has = (kind: Grouped['kind'], id: string) =>
+    members.some((one) => one.kind === kind && one.id === id)
+  return {
+    ...edit,
+    texts: edit.texts.map((one) => (has('text', one.id) ? strip(one) : one)),
+    ...(edit.layers
+      ? { layers: edit.layers.map((one) => (has('layer', one.id) ? strip(one) : one)) }
+      : {})
+  }
+}
+
+const shiftItems = (edit: FilmEdit, items: Grouped[], seconds: number): FilmEdit => {
+  const earliest = Math.min(
+    ...items.flatMap((item) => {
+      const one =
+        item.kind === 'text'
+          ? edit.texts.find((t) => t.id === item.id)
+          : edit.layers?.find((l) => l.id === item.id)
+      return one ? [one.at] : []
+    })
+  )
+  const by = Math.max(seconds, -earliest)
+  return mapItems(edit, items, (one) => ({ at: one.at + by }))
+}
+
+const moveLook = (edit: FilmEdit, item: Grouped, x: number, y: number): FilmEdit => {
+  const one =
+    item.kind === 'text'
+      ? edit.texts.find((text) => text.id === item.id)
+      : edit.layers?.find((layer) => layer.id === item.id)
+  if (!one) return edit
+  const [dx, dy] = [x - one.x, y - one.y]
+  const clamp = (value: number) => Math.min(1, Math.max(0, value))
+  const members = groupOf(edit, item)
+  const has = (kind: Grouped['kind'], id: string) =>
+    members.some((m) => m.kind === kind && m.id === id)
+  const shift = <T extends { x: number; y: number }>(look: T) => ({
+    ...look,
+    x: clamp(look.x + dx),
+    y: clamp(look.y + dy)
+  })
+  return {
+    ...edit,
+    texts: edit.texts.map((text) => (has('text', text.id) ? shift(text) : text)),
+    ...(edit.layers
+      ? { layers: edit.layers.map((layer) => (has('layer', layer.id) ? shift(layer) : layer)) }
+      : {})
+  }
+}
+
+const withoutItems = (edit: FilmEdit, items: Grouped[]): FilmEdit => {
+  const gone = (kind: Grouped['kind'], id: string) =>
+    items.some((one) => one.kind === kind && one.id === id)
+  const { layers, ...rest } = edit
+  const kept = (layers ?? []).filter((one) => !gone('layer', one.id))
+  return {
+    ...rest,
+    texts: edit.texts.filter((one) => !gone('text', one.id)),
+    ...(kept.length > 0 ? { layers: kept } : {})
+  }
+}
+
+const layerRows = (layers: Array<{ id: string; at: number; seconds: number }>) => {
+  const ends: number[] = []
+  const rows = new Map<string, number>()
+  for (const layer of [...layers].sort((a, b) => a.at - b.at)) {
+    const free = ends.findIndex((end) => end <= layer.at + HAIR)
+    const row = free < 0 ? ends.length : free
+    ends[row] = layer.at + layer.seconds
+    rows.set(layer.id, row)
+  }
+  return rows
+}
 
 const fadeBlock = (edit: FilmEdit, id: string) => {
   const index = edit.clips.findIndex((clip) => clip.id === id)
@@ -559,6 +694,7 @@ export {
   addMarkerAt,
   importMarkers,
   insertClip,
+  layerRows,
   lookGeometry,
   markerTimes,
   moveClip,
@@ -582,6 +718,13 @@ export {
   timelineEnd,
   trimClip,
   unturnedFrame,
+  moveLook,
+  withoutItems,
+  withoutLayer,
+  groupItems,
+  groupOf,
+  shiftItems,
+  ungroup,
   zoomAround
 }
-export type { Placed }
+export type { Grouped, Placed }

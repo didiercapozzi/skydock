@@ -895,6 +895,10 @@ msgid "A new montage{copied}"
 msgstr "A new montage{copied}"
 
 #: app/components/film-editor.tsx
+msgid "A picture or a background goes in at the playhead, over the video and under the texts. Drag it in the picture to place it."
+msgstr "A picture or a background goes in at the playhead, over the video and under the texts. Drag it in the picture to place it."
+
+#: app/components/film-editor.tsx
 msgid "A render is running"
 msgstr "A render is running"
 
@@ -921,6 +925,10 @@ msgstr "About SkyDock…"
 #: app/components/preview-drawer.tsx
 msgid "across"
 msgstr "across"
+
+#: app/components/film-editor.tsx
+msgid "Across"
+msgstr "Across"
 
 #: app/components/delivered-list.tsx
 #: app/components/montage-view.tsx
@@ -1127,6 +1135,10 @@ msgstr "Back to the first template"
 msgid "Back to the measured marks"
 msgstr "Back to the measured marks"
 
+#: app/components/film-editor.tsx
+msgid "Background"
+msgstr "Background"
+
 #: app/components/templates-dialog.tsx
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
@@ -1152,6 +1164,10 @@ msgstr "bigger or smaller thumbnails"
 #: app/helpers/places.ts
 msgid "Bin"
 msgstr "Bin"
+
+#: app/components/film-editor.tsx
+msgid "Black background"
+msgstr "Black background"
 
 #: app/components/email-dialog.tsx
 #: app/components/film-editor.tsx
@@ -1182,6 +1198,10 @@ msgstr "Bring back to Fresh files"
 msgid "Bring in music…"
 msgstr "Bring in music…"
 
+#: app/components/film-editor.tsx
+msgid "Bring in pictures…"
+msgstr "Bring in pictures…"
+
 #: app/components/jobs-panel.tsx
 msgid "Bringing back from the storage"
 msgstr "Bringing back from the storage"
@@ -1205,6 +1225,10 @@ msgstr "Bringing in {bringing}…"
 #: app/components/film-editor.tsx
 msgid "Bringing the music in…"
 msgstr "Bringing the music in…"
+
+#: app/components/film-editor.tsx
+msgid "Bringing the pictures in…"
+msgstr "Bringing the pictures in…"
 
 #: app/components/jobs-panel.tsx
 #: app/components/transfers-panel.tsx
@@ -2015,6 +2039,10 @@ msgid "down"
 msgstr "down"
 
 #: app/components/film-editor.tsx
+msgid "Down"
+msgstr "Down"
+
+#: app/components/film-editor.tsx
 msgid "Drag a clip onto the video track, between two clips or at either end."
 msgstr "Drag a clip onto the video track, between two clips or at either end."
 
@@ -2787,6 +2815,7 @@ msgstr "Going over the camera — its files appear here as they are reached."
 msgid "Greet by first name"
 msgstr "Greet by first name"
 
+#: app/components/film-editor.tsx
 #: app/components/place-pane.tsx
 msgid "Group"
 msgstr "Group"
@@ -2855,6 +2884,11 @@ msgstr "How big the whole board is drawn — or ⌘/ctrl with + and −, and 0 f
 #: app/components/board-header.tsx
 msgid "How files are shown"
 msgstr "How files are shown"
+
+#: app/components/film-editor.tsx
+#: app/components/film-timeline.tsx
+msgid "Images"
+msgstr "Images"
 
 #: app/components/film-editor.tsx
 msgid "Import the jump marks"
@@ -3314,6 +3348,10 @@ msgid "Make the music longer or shorter"
 msgstr "Make the music longer or shorter"
 
 #: app/components/film-timeline.tsx
+msgid "Make the picture longer or shorter"
+msgstr "Make the picture longer or shorter"
+
+#: app/components/film-timeline.tsx
 msgid "Make the text longer or shorter"
 msgstr "Make the text longer or shorter"
 
@@ -3647,6 +3685,10 @@ msgstr "No music yet. Bring some in below."
 #: app/helpers/places.ts
 msgid "No name yet"
 msgstr "No name yet"
+
+#: app/components/film-editor.tsx
+msgid "No pictures yet. Bring some in below."
+msgstr "No pictures yet. Bring some in below."
 
 #: app/components/file-list.tsx
 msgid "no proxy"
@@ -4089,6 +4131,10 @@ msgstr "Originals"
 #: app/components/montage-panel.tsx
 msgid "Originals in"
 msgstr "Originals in"
+
+#: app/components/film-timeline.tsx
+msgid "Over the video"
+msgstr "Over the video"
 
 #: app/components/frame-cropper.tsx
 msgid "Part of the picture to keep"
@@ -4869,6 +4915,10 @@ msgid "Shift cannot be held with a letter"
 msgstr "Shift cannot be held with a letter"
 
 #: app/components/film-editor.tsx
+msgid "Shift-click texts and pictures on the timeline, then group them to move together"
+msgstr "Shift-click texts and pictures on the timeline, then group them to move together"
+
+#: app/components/film-editor.tsx
 msgid "Shortcuts"
 msgstr "Shortcuts"
 
@@ -5514,6 +5564,10 @@ msgstr "the originals are exactly what the backup holds"
 msgid "the photos"
 msgstr "the photos"
 
+#: app/components/film-editor.tsx
+msgid "The pictures could not be brought in."
+msgstr "The pictures could not be brought in."
+
 #: app/components/free-dialog.tsx
 msgid "the processed copies and the working copies made for the editor"
 msgstr "the processed copies and the working copies made for the editor"
@@ -5921,6 +5975,10 @@ msgstr "Undo (Ctrl+Z)"
 msgid "Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims"
 msgstr "Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims"
 
+#: app/components/film-editor.tsx
+msgid "Ungroup"
+msgstr "Ungroup"
+
 #: app/helpers/notes.ts
 msgid "unknown reason"
 msgstr "unknown reason"
@@ -6201,6 +6259,10 @@ msgstr "Where to look"
 msgid "Which date should the merged jump have? The chosen jump keeps its times."
 msgstr "Which date should the merged jump have? The chosen jump keeps its times."
 
+#: app/components/film-editor.tsx
+msgid "White background"
+msgstr "White background"
+
 #: app/components/inspector.tsx
 #: app/components/montage-panel.tsx
 msgid "Who it is for"
@@ -6213,6 +6275,10 @@ msgstr "Whole frame — the whole picture goes out as shot"
 #: app/components/preview-drawer.tsx
 msgid "Widescreen"
 msgstr "Widescreen"
+
+#: app/components/film-editor.tsx
+msgid "Width"
+msgstr "Width"
 
 #: app/components/places-tree.tsx
 msgid "Work"

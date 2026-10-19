@@ -14,6 +14,7 @@ import { createValidatedFormAction } from '../../../packages/ui/forms/server'
 import { filmEditSchema } from '../../../packages/skydock-scripts/src/filmEditShape'
 import {
   editPathOf,
+  imageSources,
   editSources,
   firstEdit,
   musicSources,
@@ -71,6 +72,7 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     saved: saved !== null,
     sources,
     music: await musicSources(outputDir),
+    images: await imageSources(outputDir),
     rendering: isRendering(group.id),
     formats: await availableFormats(),
     film: (await pathExists(path.join(dir, filmNameOf(baseName)))) ? filmNameOf(baseName) : null

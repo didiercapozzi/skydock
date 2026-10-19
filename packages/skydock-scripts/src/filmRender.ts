@@ -1,7 +1,7 @@
 import { mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
-import { editSources, musicSources } from './filmEdit'
+import { editSources, imageSources, musicSources } from './filmEdit'
 import {
   clipLength,
   DUCK_RAMP,
@@ -24,6 +24,7 @@ import type {
   EditSource,
   EditText,
   FilmEdit,
+  ImageSource,
   MusicSource,
   Span,
   TextFont
@@ -135,6 +136,7 @@ const framed = (clip: EditClip) => {
 const filmArgs = ({
   edit,
   sources,
+  images = new Map(),
   music,
   width,
   height,
@@ -144,6 +146,7 @@ const filmArgs = ({
 }: {
   edit: FilmEdit
   sources: Map<string, EditSource>
+  images?: Map<string, ImageSource>
   music: Map<string, MusicSource>
   width: number
   height: number
@@ -217,10 +220,35 @@ const filmArgs = ({
     length += run.parts.reduce((total, part) => total + part.length, 0) - run.fade
   })
   graph.push(`[${video}]null[joined]`, `[${heard}]anull[camera]`)
+  const layers = edit.layers ?? []
+  const layerBase = edit.clips.length + edit.music.length
+  let beneath = 'joined'
+  layers.forEach((layer, index) => {
+    const until = layer.at + layer.seconds
+    const fades = [
+      ...(layer.fadeIn ? [`fade=t=in:st=${n(layer.at)}:d=${n(layer.fadeIn)}:alpha=1`] : []),
+      ...(layer.fadeOut
+        ? [`fade=t=out:st=${n(until - layer.fadeOut)}:d=${n(layer.fadeOut)}:alpha=1`]
+        : [])
+    ]
+    const shown = `setpts=PTS-STARTPTS+${n(layer.at)}/TB${fades.map((one) => `,${one}`).join('')}`
+    const file = layer.name === undefined ? null : images.get(layer.name)
+    if (layer.name !== undefined && !file)
+      throw new Error(`The image ${layer.name} is not in the images folder any more.`)
+    graph.push(
+      layer.colour !== undefined
+        ? `color=c=0x${layer.colour.slice(1)}:s=${width}x${height}:r=${fps}:d=${n(layer.seconds)},format=rgba,${shown}[layer${index}]`
+        : `[${layerBase + index}:v]scale=${Math.max(2, Math.round(width * layer.width))}:-2,format=rgba,${shown}[layer${index}]`
+    )
+    graph.push(
+      `[${beneath}][layer${index}]overlay=x=${layer.colour !== undefined ? '0' : `W*${n(layer.x)}-w/2`}:y=${layer.colour !== undefined ? '0' : `H*${n(layer.y)}-h/2`}:eof_action=pass:enable=${quoted(`between(t,${n(layer.at)},${n(until)})`)}[over${index}]`
+    )
+    beneath = `over${index}`
+  })
   graph.push(
     edit.texts.length === 0
-      ? '[joined]null[film]'
-      : `[joined]${edit.texts
+      ? `[${beneath}]null[film]`
+      : `[${beneath}]${edit.texts
           .map((text) =>
             textFilter(text, textFileOf(text.id), fonts[text.font] ?? null, Math.min(width, height))
           )
@@ -237,6 +265,13 @@ const filmArgs = ({
     graph.push(
       `[${edit.clips.length + index}:a]atrim=start=${n(piece.start)}:end=${n(piece.end)},asetpts=PTS-STARTPTS,${stereo},${[...(fadeIn > 0 ? [`afade=t=in:d=${n(fadeIn)}`] : []), ...(fadeOut > 0 ? [`afade=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])].map((one) => `${one},`).join('')}adelay=${delay}:all=1,volume=${quoted(musicLevel(piece.volume, edit.underSound, duck))}:eval=frame[m${index}]`
     )
+  })
+  layers.forEach((layer) => {
+    const file = layer.name === undefined ? null : images.get(layer.name)
+    if (file)
+      inputs.push('-loop', '1', '-framerate', String(fps), '-t', n(layer.seconds), '-i', file.path)
+    else if (layer.name !== undefined)
+      throw new Error(`The image ${layer.name} is not in the images folder any more.`)
   })
   graph.push(
     edit.music.length === 0
@@ -355,6 +390,7 @@ const renderFilm = async ({
           (await editSources(manifest, outputDir, group)).map((one) => [one.name, one])
         )
         const music = new Map((await musicSources(outputDir)).map((one) => [one.name, one]))
+        const images = new Map((await imageSources(outputDir)).map((one) => [one.name, one]))
         const used = [...new Set(edit.texts.map((text) => text.font))]
         const fonts = Object.fromEntries(
           await Promise.all(used.map(async (font) => [font, await fontFile(font)] as const))
@@ -365,6 +401,7 @@ const renderFilm = async ({
         const args = filmArgs({
           edit,
           sources,
+          images,
           music,
           ...(await filmShape(sources.get(edit.clips[0]!.name))),
           fonts,

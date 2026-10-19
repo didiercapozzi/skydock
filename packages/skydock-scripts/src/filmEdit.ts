@@ -2,6 +2,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import * as path from 'node:path'
 import {
   filmEditSchema,
+  IMAGE_EXTENSIONS,
   MUSIC_EXTENSIONS,
   STILL_EXTENSIONS,
   STILL_MAX,
@@ -14,7 +15,7 @@ import { mediaHasSound, mediaSeconds } from './lib/media'
 import { MOMENTS } from './moments'
 import { editNameOf } from './montageNames'
 import { getGroupProcessedDir } from './process'
-import { getCutProxyDir } from './proxy'
+import { getCutProxyDir, videoShape } from './proxy'
 import type { Manifest, ManifestGroup } from './types'
 import { mapWithLimit } from './utils'
 import { passengerOf } from './workspace'
@@ -27,6 +28,11 @@ const editPathOf = (outputDir: string, group: ManifestGroup) => {
 }
 
 const getMusicDir = (outputDir: string) => path.join(outputDir, 'music')
+
+const getImagesDir = (outputDir: string) => path.join(outputDir, 'images')
+
+const isImageFile = (name: string) =>
+  IMAGE_EXTENSIONS.some((ending) => name.toLowerCase().endsWith(ending))
 
 const isMusicFile = (name: string) =>
   MUSIC_EXTENSIONS.some((ending) => name.toLowerCase().endsWith(ending))
@@ -93,6 +99,22 @@ const editSources = async (
   return [...found.filter((one) => one !== null), ...stills]
 }
 
+const imageSources = async (outputDir: string) => {
+  const dir = getImagesDir(outputDir)
+  const names = (await readdir(dir, { withFileTypes: true }).catch(() => []))
+    .filter((entry) => entry.isFile() && !entry.name.startsWith('.') && isImageFile(entry.name))
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b))
+  const found = await mapWithLimit(names, SOURCES_PARALLEL, async (name) => {
+    const full = path.join(dir, name)
+    const shape = await videoShape(full)
+    return shape?.width && shape.height
+      ? { name, path: full, width: shape.width, height: shape.height }
+      : null
+  })
+  return found.filter((one) => one !== null)
+}
+
 const musicSources = async (outputDir: string) => {
   const dir = getMusicDir(outputDir)
   const names = (await readdir(dir, { withFileTypes: true }).catch(() => []))
@@ -154,7 +176,10 @@ export {
   editPathOf,
   editSources,
   firstEdit,
+  getImagesDir,
   getMusicDir,
+  imageSources,
+  isImageFile,
   isMusicFile,
   musicSources,
   readEdit,

@@ -1,7 +1,7 @@
 import { getOutputDir, messageOf } from '@skydock/scripts'
 import { z } from 'zod'
 import { createValidatedFormAction } from '../../../packages/ui/forms/server'
-import { musicSources } from '../../../packages/skydock-scripts/src/filmEdit'
+import { imageSources, musicSources } from '../../../packages/skydock-scripts/src/filmEdit'
 import { filmTemplateSchema } from '../../../packages/skydock-scripts/src/filmTemplate'
 import {
   createFilmTemplate,
@@ -25,7 +25,8 @@ const loader = async () => {
   const outputDir = getOutputDir()
   return Response.json({
     ...(await listFilmTemplates(outputDir)),
-    music: await musicSources(outputDir)
+    music: await musicSources(outputDir),
+    images: await imageSources(outputDir)
   })
 }
 
