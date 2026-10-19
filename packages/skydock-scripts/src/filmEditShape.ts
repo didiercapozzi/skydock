@@ -17,7 +17,9 @@ const editClipSchema = z
     name: z.string().min(1),
     start: seconds,
     end: seconds,
-    sound: z.boolean()
+    sound: z.boolean(),
+    gap: seconds.finite().optional(),
+    fade: z.number().gt(0).finite().optional()
   })
   .refine((clip) => clip.end > clip.start, 'a clip ends after it starts')
 
@@ -99,17 +101,37 @@ type Span = { from: number; to: number }
 
 const clipLength = (clip: { start: number; end: number }) => clip.end - clip.start
 
+const fadeInto = (clips: EditClip[], index: number) => {
+  const clip = clips[index]
+  const before = clips[index - 1]
+  return clip?.fade && before && !clip.gap
+    ? Math.min(clip.fade, clipLength(before) / 2, clipLength(clip) / 2)
+    : 0
+}
+
 const filmLength = (edit: FilmEdit) =>
-  edit.clips.reduce((total, clip) => total + clipLength(clip), 0)
+  edit.clips.reduce(
+    (total, clip, index) =>
+      total + (clip.gap ?? 0) - fadeInto(edit.clips, index) + clipLength(clip),
+    0
+  )
+
+const timelineEnd = (edit: FilmEdit) =>
+  Math.max(
+    filmLength(edit),
+    ...edit.texts.map((text) => text.at + text.seconds),
+    ...edit.music.map((piece) => piece.at + piece.end - piece.start)
+  )
 
 const heardSpans = (edit: FilmEdit, heard: (clip: EditClip) => boolean) => {
   let at = 0
   const spans: Span[] = []
-  for (const clip of edit.clips) {
+  for (const [index, clip] of edit.clips.entries()) {
     const length = clipLength(clip)
+    at += (clip.gap ?? 0) - fadeInto(edit.clips, index)
     if (clip.sound && heard(clip)) {
       const last = spans.at(-1)
-      if (last && Math.abs(last.to - at) < 0.001) last.to = at + length
+      if (last && at <= last.to + 0.001) last.to = at + length
       else spans.push({ from: at, to: at + length })
     }
     at += length
@@ -157,6 +179,7 @@ export {
   editAnswerSchema,
   editMarkSchema,
   editSourceSchema,
+  fadeInto,
   filmEditSchema,
   filmLength,
   heardSpans,
@@ -168,6 +191,7 @@ export {
   TEXT_FADE,
   TEXT_FONTS,
   textLookAt,
+  timelineEnd,
   UNDER_SOUND
 }
 export type {

@@ -1,19 +1,37 @@
 import { t } from '@lingui/core/macro'
-import { clipLength, filmLength, heardSpans, musicLevelAt } from '@skydock/scripts/client'
+import { clipLength, fadeInto, heardSpans, musicLevelAt } from '@skydock/scripts/client'
 import type { EditSource, FilmEdit, MusicSource } from '@skydock/scripts/client'
-import { useState } from 'react'
-import { clockOf, moveClip, nearestBoundary, placed, trimClip } from '../helpers/filmTimeline'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+  clockOf,
+  FADE,
+  fadeMost,
+  moveClip,
+  nearestBoundary,
+  placeClip,
+  placed,
+  setFade,
+  snapPoints,
+  snapTo,
+  timelineEnd,
+  trimClip,
+  zoomAround
+} from '../helpers/filmTimeline'
 import { Icon } from './icons'
 import { getThumbUrl } from './utils'
 
 type Picked = { kind: 'clip' | 'music' | 'text'; id: string } | null
 
+const ZOOM = { min: 2, max: 80 }
+const WHEEL_ZOOM = 0.0015
+const LINE = 16
 const STEPS = [1, 2, 5, 10, 15, 30, 60, 120]
 const TICK_ROOM = 70
 const ENVELOPE_STEP = 0.25
 const SHORTEST_TEXT = 0.5
 const SHORTEST_MUSIC = 1
 const DOUBLE_CLICK = 350
+const SNAP_REACH = 8
 const CLIP_DRAG = 'skydock/clip'
 
 const markName = (which: 'exit' | 'opening' | 'canopy' | 'landing') =>
@@ -70,7 +88,10 @@ const FilmTimeline = ({
   pps,
   at,
   picked,
+  snap,
+  ripple,
   onSeek,
+  onZoom,
   onPick,
   onChange,
   onOpenPart,
@@ -82,7 +103,10 @@ const FilmTimeline = ({
   pps: number
   at: number
   picked: Picked
+  snap: boolean
+  ripple: boolean
   onSeek: (t: number) => void
+  onZoom: (pps: number) => void
   onPick: (picked: Picked) => void
   onChange: (edit: FilmEdit) => void
   onOpenPart: (id: string) => void
@@ -90,18 +114,129 @@ const FilmTimeline = ({
 }) => {
   const [dropAt, setDropAt] = useState<number | null>(null)
   const [lastDown, setLastDown] = useState<{ id: string; at: number } | null>(null)
-  const total = filmLength(edit)
-  const width = Math.max(total, ...edit.music.map((m) => m.at + m.end - m.start)) * pps + 240
+  const [room, setRoom] = useState(0)
+  const box = useRef<HTMLDivElement>(null)
+  const asked = useRef<{ pps: number; scroll: number } | null>(null)
+  const shown = useRef(pps)
+  const fingers = useRef(new Map<number, { x: number; y: number }>())
+  const apart = useRef(0)
+  const dragging = useRef(new Set<number>())
+  const cancels = useRef(new Set<() => void>())
+  const total = timelineEnd(edit)
+  const width = Math.max(room - HEAD, total * pps + 240)
   const step = stepFor(pps)
   const ticks = Array.from({ length: Math.floor(width / pps / (step / 2)) + 1 }, (_, i) => i)
   const spans = heardSpans(edit, (clip) => sources.get(clip.name)?.sound === true)
+
+  const zoomBy = (factor: number, clientX: number) => {
+    const el = box.current
+    if (!el) return
+    const from = asked.current?.pps ?? pps
+    const to = Math.min(ZOOM.max, Math.max(ZOOM.min, from * factor))
+    if (to === from) return
+    const anchor = Math.max(0, clientX - el.getBoundingClientRect().left - HEAD)
+    asked.current = {
+      pps: to,
+      scroll: zoomAround(asked.current?.scroll ?? el.scrollLeft, anchor, from, to)
+    }
+    onZoom(to)
+  }
+
+  useLayoutEffect(() => {
+    const el = box.current
+    if (!el) return
+    const read = () => setRoom(el.clientWidth)
+    read()
+    const watch = new ResizeObserver(read)
+    watch.observe(el)
+    return () => watch.disconnect()
+  }, [])
+
+  const playhead = useRef(at)
+  useLayoutEffect(() => {
+    playhead.current = at
+  })
+
+  useLayoutEffect(() => {
+    const el = box.current
+    if (el)
+      el.scrollLeft =
+        asked.current?.scroll ??
+        zoomAround(
+          el.scrollLeft,
+          playhead.current * shown.current - el.scrollLeft,
+          shown.current,
+          pps
+        )
+    shown.current = pps
+  }, [pps])
+
+  useLayoutEffect(() => {
+    asked.current = null
+  })
+
+  const zoomer = useRef(zoomBy)
+  useLayoutEffect(() => {
+    zoomer.current = zoomBy
+  })
+
+  useEffect(() => {
+    const el = box.current
+    if (!el) return
+    const wheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return
+      e.preventDefault()
+      zoomer.current(Math.exp(-e.deltaY * (e.deltaMode === 1 ? LINE : 1) * WHEEL_ZOOM), e.clientX)
+    }
+    const forget = () => fingers.current.clear()
+    el.addEventListener('wheel', wheel, { passive: false })
+    window.addEventListener('blur', forget)
+    return () => {
+      el.removeEventListener('wheel', wheel)
+      window.removeEventListener('blur', forget)
+    }
+  }, [])
+
+  const pinch = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'touch' || !fingers.current.has(e.pointerId)) return
+    const before = fingers.current.get(e.pointerId)!
+    fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (fingers.current.size === 1 && !dragging.current.has(e.pointerId) && box.current) {
+      box.current.scrollLeft -= e.clientX - before.x
+      box.current.scrollTop -= e.clientY - before.y
+    }
+    if (fingers.current.size !== 2) return
+    const [a, b] = [...fingers.current.values()] as [
+      { x: number; y: number },
+      { x: number; y: number }
+    ]
+    const gap = Math.hypot(a.x - b.x, a.y - b.y)
+    if (apart.current > 0) zoomBy(gap / apart.current, (a.x + b.x) / 2)
+    apart.current = gap
+  }
+
+  const lift = (e: React.PointerEvent<HTMLDivElement>) => {
+    fingers.current.delete(e.pointerId)
+    apart.current = 0
+  }
+
+  const edgeAt = (original: FilmEdit, value: number, skip?: string) =>
+    snap ? snapTo(snapPoints(original, sources, at, skip), value, SNAP_REACH / pps) : value
+
+  const blockAt = (original: FilmEdit, id: string, start: number, length: number) => {
+    const head = edgeAt(original, start, id)
+    const tail = edgeAt(original, start + length, id) - length
+    if (head === start) return tail
+    return tail === start || Math.abs(head - start) <= Math.abs(tail - start) ? head : tail
+  }
 
   const timeOf = (e: { clientX: number }, lane: Element) =>
     Math.max(0, (e.clientX - lane.getBoundingClientRect().left) / pps)
 
   const drag = (
     e: React.PointerEvent<HTMLElement>,
-    apply: (seconds: number, original: FilmEdit, ended: boolean, pointer: PointerEvent) => void
+    apply: (seconds: number, original: FilmEdit, ended: boolean, pointer: PointerEvent) => void,
+    changes = true
   ) => {
     e.preventDefault()
     e.stopPropagation()
@@ -109,22 +244,43 @@ const FilmTimeline = ({
     target.setPointerCapture(e.pointerId)
     const x0 = e.clientX
     const original = edit
-    const move = (event: PointerEvent) => apply((event.clientX - x0) / pps, original, false, event)
-    const up = (event: PointerEvent) => {
-      apply((event.clientX - x0) / pps, original, true, event)
+    let stopped = fingers.current.size >= 2
+    let changed = false
+    dragging.current.add(e.pointerId)
+    const stop = () => {
+      if (!stopped && changes && changed) onChange(original)
+      stopped = true
+    }
+    cancels.current.add(stop)
+    const move = (event: PointerEvent) => {
+      if (fingers.current.size >= 2) stop()
+      if (stopped) return
+      changed = true
+      apply((event.clientX - x0) / pps, original, false, event)
+    }
+    const end = () => {
+      dragging.current.delete(e.pointerId)
+      cancels.current.delete(stop)
       target.removeEventListener('pointermove', move)
       target.removeEventListener('pointerup', up)
-      target.removeEventListener('pointercancel', up)
+      target.removeEventListener('pointercancel', end)
+      target.removeEventListener('lostpointercapture', end)
+    }
+    const up = (event: PointerEvent) => {
+      if (fingers.current.size >= 2) stop()
+      if (!stopped) apply((event.clientX - x0) / pps, original, true, event)
+      end()
     }
     target.addEventListener('pointermove', move)
     target.addEventListener('pointerup', up)
-    target.addEventListener('pointercancel', up)
+    target.addEventListener('pointercancel', end)
+    target.addEventListener('lostpointercapture', end)
   }
 
   const scrub = (e: React.PointerEvent<HTMLDivElement>) => {
     const lane = e.currentTarget
     onSeek(timeOf(e, lane))
-    drag(e, (_, __, ___, pointer) => onSeek(timeOf(pointer, lane)))
+    drag(e, (_, __, ___, pointer) => onSeek(timeOf(pointer, lane)), false)
   }
 
   const pressClip = (e: React.PointerEvent<HTMLDivElement>, id: string) => {
@@ -136,16 +292,21 @@ const FilmTimeline = ({
     }
     setLastDown({ id, at: now })
     onPick({ kind: 'clip', id })
-    const lane = e.currentTarget.parentElement
-    if (!lane) return
-    drag(e, (seconds, original, ended, pointer) => {
-      if (Math.abs(seconds * pps) < 6) {
-        setDropAt(null)
-        return
-      }
-      const target = nearestBoundary(original, timeOf(pointer, lane))
-      setDropAt(ended ? null : target.at)
-      if (ended) onChange(moveClip(original, id, target.index))
+    e.currentTarget.focus({ preventScroll: true })
+    let moved = false
+    drag(e, (seconds, original) => {
+      moved ||= Math.abs(seconds * pps) >= 6
+      const here = placed(original).find((one) => one.clip.id === id)
+      if (!moved || !here) return
+      const want = blockAt(original, id, here.from + seconds, clipLength(here.clip))
+      const passed = placed(original).filter(
+        (one) => one.index < here.index && (one.from + one.to) / 2 > want
+      ).length
+      onChange(
+        passed > 0
+          ? moveClip(original, id, here.index - passed)
+          : placeClip(original, id, want, ripple)
+      )
     })
   }
 
@@ -155,13 +316,16 @@ const FilmTimeline = ({
       const clip = original.clips.find((one) => one.id === id)
       const source = clip && sources.get(clip.name)
       if (!clip || !source) return
+      const value = (side === 'start' ? clip.start : clip.end) + seconds
+      const marks = source.marks.map((mark) => mark.at)
       onChange(
         trimClip(
           original,
           id,
           side,
-          side === 'start' ? clip.start + seconds : clip.end + seconds,
-          source.seconds
+          snap ? snapTo(marks, value, SNAP_REACH / pps) : value,
+          source.seconds,
+          ripple
         )
       )
     })
@@ -176,8 +340,17 @@ const FilmTimeline = ({
           text.id !== id
             ? text
             : part === 'body'
-              ? { ...text, at: Math.max(0, text.at + seconds) }
-              : { ...text, seconds: Math.min(60, Math.max(SHORTEST_TEXT, text.seconds + seconds)) }
+              ? { ...text, at: Math.max(0, blockAt(original, id, text.at + seconds, text.seconds)) }
+              : {
+                  ...text,
+                  seconds: Math.min(
+                    60,
+                    Math.max(
+                      SHORTEST_TEXT,
+                      edgeAt(original, text.at + text.seconds + seconds, id) - text.at
+                    )
+                  )
+                }
         )
       })
     )
@@ -190,12 +363,12 @@ const FilmTimeline = ({
         ...original,
         music: original.music.map((piece) => {
           if (piece.id !== id) return piece
-          if (part === 'body') return { ...piece, at: Math.max(0, piece.at + seconds) }
+          const length = piece.end - piece.start
+          if (part === 'body')
+            return { ...piece, at: Math.max(0, blockAt(original, id, piece.at + seconds, length)) }
           const longest = music.get(piece.name)?.seconds ?? piece.end
-          return {
-            ...piece,
-            end: Math.min(longest, Math.max(piece.start + SHORTEST_MUSIC, piece.end + seconds))
-          }
+          const end = edgeAt(original, piece.at + length + seconds, id) - piece.at + piece.start
+          return { ...piece, end: Math.min(longest, Math.max(piece.start + SHORTEST_MUSIC, end)) }
         })
       })
     )
@@ -217,7 +390,19 @@ const FilmTimeline = ({
   }
 
   return (
-    <div className='relative min-h-0 flex-1 overflow-auto bg-ground'>
+    <div
+      ref={box}
+      onPointerDownCapture={(e) => {
+        if (e.pointerType === 'touch')
+          fingers.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+        if (fingers.current.size >= 2) cancels.current.forEach((cancel) => cancel())
+        apart.current = 0
+      }}
+      onPointerMove={pinch}
+      onPointerUp={lift}
+      onPointerCancel={lift}
+      onLostPointerCapture={(e) => dragging.current.has(e.pointerId) || lift(e)}
+      className='relative min-h-0 flex-1 touch-none overflow-auto bg-ground'>
       <div
         style={{ width: width + HEAD }}
         className='relative'>
@@ -264,8 +449,18 @@ const FilmTimeline = ({
             onDragLeave={() => setDropAt(null)}
             onDrop={dropOnVideo}
             className='absolute inset-0'>
-            {placed(edit).map(({ clip, from }) => {
+            {placed(edit).map(({ clip, from }) =>
+              clip.gap ? (
+                <span
+                  key={`gap-${clip.id}`}
+                  style={{ left: (from - clip.gap) * pps, width: Math.max(0, clip.gap * pps - 2) }}
+                  className='pointer-events-none absolute inset-y-1.25 rounded-corner border border-dashed border-line-strong'
+                />
+              ) : null
+            )}
+            {placed(edit).map(({ clip, index, from }) => {
               const source = sources.get(clip.name)
+              const lead = fadeInto(edit.clips, index) * pps
               const length = clipLength(clip)
               const chosen = picked?.kind === 'clip' && picked.id === clip.id
               return (
@@ -302,7 +497,9 @@ const FilmTimeline = ({
                       ))}
                     </span>
                   )}
-                  <span className='pointer-events-none absolute top-0.75 right-1.75 left-1.75 truncate text-micro font-medium text-here [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]'>
+                  <span
+                    style={{ marginLeft: lead }}
+                    className='pointer-events-none absolute top-0.75 right-1.75 left-1.75 truncate text-micro font-medium text-here [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]'>
                     {clip.name}
                   </span>
                   {source?.marks
@@ -321,13 +518,68 @@ const FilmTimeline = ({
                   <span
                     onPointerDown={(e) => trim(e, clip.id, 'start')}
                     aria-label={t`Trim the start`}
-                    className={`absolute inset-y-0 left-0 w-2 cursor-ew-resize ${chosen ? GRIP + ' after:left-0.75' : ''}`}
+                    className={`absolute inset-y-0 left-0 w-2 z-5 cursor-ew-resize ${chosen ? GRIP + ' after:left-0.75' : ''}`}
                   />
                   <span
                     onPointerDown={(e) => trim(e, clip.id, 'end')}
                     aria-label={t`Trim the end`}
-                    className={`absolute inset-y-0 right-0 w-2 cursor-ew-resize ${chosen ? GRIP + ' after:right-0.75' : ''}`}
+                    className={`absolute inset-y-0 right-0 w-2 z-5 cursor-ew-resize ${chosen ? GRIP + ' after:right-0.75' : ''}`}
                   />
+                </div>
+              )
+            })}
+            {placed(edit).map(({ clip, index, from }) => {
+              const fade = fadeInto(edit.clips, index)
+              if (!fade) return null
+              const set = (seconds: number) =>
+                onChange(setFade(edit, clip.id, Math.round(seconds * 1000) / 1000, ripple))
+              return (
+                <div
+                  key={`fade-${clip.id}`}
+                  role='slider'
+                  tabIndex={0}
+                  aria-label={t`Fade into ${clip.name}`}
+                  aria-valuemin={FADE.least}
+                  aria-valuemax={fadeMost(edit, clip.id)}
+                  aria-valuenow={fade}
+                  title={t`Drag to make the fade longer or shorter`}
+                  onPointerDown={(e) => {
+                    onPick({ kind: 'clip', id: clip.id })
+                    drag(e, (seconds, original) =>
+                      onChange(
+                        setFade(original, clip.id, Math.max(FADE.least, fade - seconds), ripple)
+                      )
+                    )
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+                    e.preventDefault()
+                    set(
+                      Math.max(
+                        FADE.least,
+                        fade + (e.shiftKey ? 1 : 0.1) * (e.key === 'ArrowLeft' ? 1 : -1)
+                      )
+                    )
+                  }}
+                  style={{
+                    left: from * pps,
+                    width: Math.max(8, fade * pps),
+                    clipPath: 'polygon(0 0, 100% 0, 85% 100%, 0 100%)'
+                  }}
+                  className='absolute inset-y-1.25 cursor-ew-resize bg-accent-soft text-accent focus-visible:outline-2 focus-visible:outline-accent'>
+                  <svg
+                    aria-hidden='true'
+                    preserveAspectRatio='none'
+                    viewBox='0 0 100 100'
+                    className='pointer-events-none absolute inset-0 h-full w-full'>
+                    <path
+                      d='M0 100 L100 0'
+                      fill='none'
+                      stroke='currentColor'
+                      strokeWidth='2'
+                      vectorEffect='non-scaling-stroke'
+                    />
+                  </svg>
                 </div>
               )
             })}
@@ -390,6 +642,17 @@ const FilmTimeline = ({
                 </button>
               </div>
             )
+          })}
+          {placed(edit).map(({ clip, index, from }) => {
+            const fade = fadeInto(edit.clips, index)
+            return fade ? (
+              <span
+                key={`sound-fade-${clip.id}`}
+                aria-hidden='true'
+                style={{ left: from * pps, width: Math.max(8, fade * pps) }}
+                className='pointer-events-none absolute inset-y-1.25 border-l border-accent bg-linear-to-br from-transparent to-accent-soft'
+              />
+            ) : null
           })}
         </Lane>
 
@@ -494,5 +757,5 @@ const FilmTimeline = ({
   )
 }
 
-export { CLIP_DRAG, FilmTimeline, markName }
+export { CLIP_DRAG, ZOOM, FilmTimeline, markName }
 export type { Picked }

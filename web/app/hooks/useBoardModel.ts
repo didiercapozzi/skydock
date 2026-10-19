@@ -33,6 +33,7 @@ import {
   looseIn,
   placeFromParams,
   placeHref,
+  editHref,
   placeKey,
   placeLabel,
   placeNameProblem,
@@ -620,12 +621,12 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   }
   const openKdenlive = (group: ManifestGroup) =>
     send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
+  const openEditor = (group: ManifestGroup) => goTo(editHref(group.id))
   const takeStep = (group: ManifestGroup, step: MontageStep) => {
     if (step === 'Prepared') send(group.id, { intent: 'process', groupId: group.id })
-    if (step === 'Project') setDialog({ kind: 'editor', groupId: group.id })
+    if (step === 'Project') openEditor(group)
     if (step === 'Film') {
-      if (board.montageFacts[group.id]?.edit || !group.montage)
-        setDialog({ kind: 'editor', groupId: group.id })
+      if (board.montageFacts[group.id]?.edit || !group.montage) openEditor(group)
       else openKdenlive(group)
     }
     if (step === 'Uploaded') {
@@ -701,6 +702,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     makeMontage,
     askMontage,
     openKdenlive,
+    openEditor,
     takeStep,
     trimToJump,
     cancelProcess,

@@ -1,5 +1,11 @@
 import { plural, t } from '@lingui/core/macro'
-import { editAnswerSchema, filmLength, heardSpans, musicLevelAt } from '@skydock/scripts/client'
+import {
+  editAnswerSchema,
+  fadeInto,
+  filmLength,
+  heardSpans,
+  musicLevelAt
+} from '@skydock/scripts/client'
 import type {
   EditSource,
   EditText,
@@ -14,21 +20,40 @@ import {
   boundaries,
   clipAt,
   clockOf,
+  FADE,
+  fadeAt,
+  fadeBlock,
+  fadeMost,
   insertClip,
   nextId,
+  placeClip,
   placed,
   removeClip,
+  setFade,
   setPart,
+  splitClip,
+  timelineEnd,
   trimClip
 } from '../helpers/filmTimeline'
+import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
 import { Go, Mini, Seg } from './buttons'
 import { FilmPart } from './film-part'
 import { FONT_LOOK, FilmPreview } from './film-preview'
-import { CLIP_DRAG, FilmTimeline, markName } from './film-timeline'
+import { CLIP_DRAG, FilmTimeline, markName, ZOOM } from './film-timeline'
 import type { Picked } from './film-timeline'
 import { Icon } from './icons'
+import type { Placed } from '../helpers/filmTimeline'
 import { getFileUrl, getThumbUrl } from './utils'
+
+const fadeWhy = (blocked: ReturnType<typeof fadeBlock>) =>
+  blocked === 'first'
+    ? t`The first clip has no clip before it to fade from`
+    : blocked === 'gap'
+      ? t`A gap separates the two clips: close it first`
+      : blocked === 'short'
+        ? t`A clip shorter than 0.4 seconds cannot fade`
+        : t`Fade the picked clip in over the end of the clip before it`
 
 type Loaded = Extract<z.infer<typeof editAnswerSchema>, { ok: true }>
 type Library = 'clips' | 'music' | 'text'
@@ -37,7 +62,6 @@ const SAVE_AFTER = 700
 const DRIFT = 0.3
 const MUSIC_VOLUME = 0.8
 const SHORTEST_MUSIC = 5
-const ZOOM = { min: 2, max: 80 }
 const UNDOABLE = 50
 const ONE_CHANGE = 400
 
@@ -424,6 +448,7 @@ const Inspector = ({
   edit,
   picked,
   sources,
+  ripple,
   onChange,
   onOpenPart,
   onRemove
@@ -431,6 +456,7 @@ const Inspector = ({
   edit: FilmEdit
   picked: Picked
   sources: Map<string, EditSource>
+  ripple: boolean
   onChange: (edit: FilmEdit) => void
   onOpenPart: (id: string) => void
   onRemove: () => void
@@ -447,6 +473,7 @@ const Inspector = ({
     />
   )
   const clip = picked?.kind === 'clip' ? edit.clips.find((one) => one.id === picked.id) : undefined
+  const fade = clip ? fadeInto(edit.clips, edit.clips.indexOf(clip)) : 0
   const piece =
     picked?.kind === 'music' ? edit.music.find((one) => one.id === picked.id) : undefined
   const text = picked?.kind === 'text' ? edit.texts.find((one) => one.id === picked.id) : undefined
@@ -480,12 +507,13 @@ const Inspector = ({
               {(() => {
                 const source = sources.get(clip.name)
                 const trim = (side: 'start' | 'end', value: number) =>
-                  source && onChange(trimClip(edit, clip.id, side, value, source.seconds))
+                  source && onChange(trimClip(edit, clip.id, side, value, source.seconds, ripple))
                 return (
                   <>
                     <TimeBox
                       label={t`Starts at`}
                       value={placed(edit).find((one) => one.clip.id === clip.id)?.from ?? 0}
+                      onCommit={(seconds) => onChange(placeClip(edit, clip.id, seconds, ripple))}
                     />
                     <TimeBox
                       label={t`Length`}
@@ -530,6 +558,30 @@ const Inspector = ({
               />
               {sources.get(clip.name)?.sound ? t`Hear this clip` : t`This clip has no sound`}
             </label>
+            <label className='flex items-center gap-2 text-body'>
+              <input
+                type='checkbox'
+                checked={fade > 0}
+                disabled={fadeBlock(edit, clip.id) !== null}
+                title={fadeWhy(fadeBlock(edit, clip.id))}
+                onChange={(e) =>
+                  onChange(setFade(edit, clip.id, e.target.checked ? FADE.default : 0, ripple))
+                }
+                className='accent-accent'
+              />
+              {t`Fade from the previous clip`}
+            </label>
+            {fade > 0 && (
+              <Slider
+                label={t`Length of the fade`}
+                value={fade}
+                min={FADE.least}
+                max={fadeMost(edit, clip.id)}
+                step={0.1}
+                shown={`${fade.toFixed(1)}s`}
+                onChange={(seconds) => onChange(setFade(edit, clip.id, seconds, ripple))}
+              />
+            )}
             {under}
             {remove}
           </>
@@ -655,6 +707,7 @@ const FilmEditor = ({
   day?: string
   onClose: () => void
 }) => {
+  const cornered = useRoundedWindow()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
   const [edit, setEditNow] = useState<FilmEdit | null>(null)
@@ -669,11 +722,14 @@ const FilmEditor = ({
   const [rendering, setRendering] = useState(false)
   const [readAgain, setReadAgain] = useState(0)
   const [history, setHistory] = useState<FilmEdit[]>([])
+  const [ripple, setRipple] = useState(true)
+  const [snap, setSnap] = useState(true)
   const lastChange = useRef(0)
   const joined = useRef(false)
   const held = useRef(false)
-  const dialog = useRef<HTMLDivElement>(null)
+  const root = useRef<HTMLElement>(null)
   const video = useRef<HTMLVideoElement>(null)
+  const under = useRef<HTMLVideoElement>(null)
   const sounds = useRef(new Map<string, HTMLAudioElement>())
   const latest = useRef<FilmEdit | null>(null)
   const now = useRef(0)
@@ -721,8 +777,19 @@ const FilmEditor = ({
   }
 
   useEffect(() => {
-    dialog.current?.focus()
+    root.current?.focus()
   }, [])
+
+  const leaving = useRef(save)
+  useEffect(() => {
+    leaving.current = save
+  })
+  useEffect(
+    () => () => {
+      if (timer.current) void leaving.current('save')
+    },
+    []
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -742,7 +809,7 @@ const FilmEditor = ({
           setPps(
             Math.min(
               ZOOM.max,
-              Math.max(ZOOM.min, room / Math.max(10, filmLength(parsed.data.edit)))
+              Math.max(ZOOM.min, room / Math.max(10, timelineEnd(parsed.data.edit)))
             )
           )
           if (!parsed.data.saved) void save('save')
@@ -757,24 +824,35 @@ const FilmEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId, readAgain])
 
-  const sync = (t: number, rolling: boolean) => {
-    const current = latest.current
-    if (!current) return
-    const here = clipAt(current, t)
-    const player = video.current
-    const source = here && sources.get(here.clip.name)
-    if (player && here && source) {
+  const drive = (
+    player: HTMLVideoElement | null,
+    one: Placed | null,
+    level: number,
+    t: number,
+    rolling: boolean
+  ) => {
+    const source = one && sources.get(one.clip.name)
+    if (player && one && source) {
       const url = getFileUrl(source.play)
       if (player.dataset.src !== url) {
         player.dataset.src = url
         player.src = url
       }
-      const want = here.clip.start + Math.min(t, here.to) - here.from
+      const want = one.clip.start + Math.min(t, one.to) - one.from
       if (!rolling || Math.abs(player.currentTime - want) > DRIFT) player.currentTime = want
-      player.muted = !(here.clip.sound && source.sound)
+      player.muted = !(one.clip.sound && source.sound)
+      player.volume = Math.min(1, Math.max(0, level))
       if (rolling && player.paused) void player.play().catch(() => undefined)
       if (!rolling && !player.paused) player.pause()
-    }
+    } else if (player && !player.paused) player.pause()
+  }
+
+  const sync = (t: number, rolling: boolean) => {
+    const current = latest.current
+    if (!current) return
+    const blend = fadeAt(current, t)
+    drive(video.current, clipAt(current, t), blend?.mix ?? 1, t, rolling)
+    drive(under.current, blend?.out ?? null, 1 - (blend?.mix ?? 1), t, rolling)
     const spans = heardSpans(current, (clip) => sources.get(clip.name)?.sound === true)
     for (const piece of current.music) {
       const sound = sounds.current.get(piece.id)
@@ -793,7 +871,7 @@ const FilmEditor = ({
   }
 
   const seek = (t: number) => {
-    const total = latest.current ? filmLength(latest.current) : 0
+    const total = latest.current ? timelineEnd(latest.current) : 0
     now.current = Math.min(Math.max(0, t), total)
     setAt(now.current)
     sync(now.current, playing)
@@ -801,11 +879,12 @@ const FilmEditor = ({
 
   useEffect(() => {
     if (!playing) return
-    const total = latest.current ? filmLength(latest.current) : 0
-    if (now.current >= total - 0.05) now.current = 0
+    const end = () => (latest.current ? timelineEnd(latest.current) : 0)
+    if (now.current >= end() - 0.05) now.current = 0
     let last = performance.now()
     let frame = 0
     const tick = (time: number) => {
+      const total = end()
       now.current = Math.min(total, now.current + (time - last) / 1000)
       last = time
       setAt(now.current)
@@ -859,12 +938,36 @@ const FilmEditor = ({
   const removePicked = () => {
     if (!edit || !picked) return
     joined.current = false
-    if (picked.kind === 'clip') change(removeClip(edit, picked.id))
+    if (picked.kind === 'clip') change(removeClip(edit, picked.id, ripple))
     if (picked.kind === 'music')
       change({ ...edit, music: edit.music.filter((one) => one.id !== picked.id) })
     if (picked.kind === 'text')
       change({ ...edit, texts: edit.texts.filter((one) => one.id !== picked.id) })
     setPicked(null)
+  }
+
+  const cut = edit ? splitClip(edit, at) : null
+
+  const pickedId = picked?.kind === 'clip' ? picked.id : null
+  const blocked = edit && pickedId ? fadeBlock(edit, pickedId) : 'first'
+  const fading = Boolean(
+    edit &&
+    fadeInto(
+      edit.clips,
+      edit.clips.findIndex((clip) => clip.id === pickedId)
+    )
+  )
+
+  const fadeHere = () => {
+    if (!edit || !pickedId) return
+    joined.current = false
+    change(setFade(edit, pickedId, fading ? 0 : FADE.default, ripple))
+  }
+
+  const cutHere = () => {
+    if (!cut) return
+    joined.current = false
+    change(cut)
   }
 
   const keys = (e: React.KeyboardEvent) => {
@@ -883,11 +986,31 @@ const FilmEditor = ({
       undo()
     }
     if (control) return
+    if (
+      e.altKey &&
+      (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
+      edit &&
+      picked?.kind === 'clip'
+    ) {
+      e.preventDefault()
+      const from = placed(edit).find((one) => one.clip.id === picked.id)?.from ?? 0
+      const by = (e.shiftKey ? 1 : 0.1) * (e.key === 'ArrowLeft' ? -1 : 1)
+      change(placeClip(edit, picked.id, Math.round((from + by) * 1000) / 1000, ripple))
+    }
     if (e.key === ' ') {
       e.preventDefault()
       setPlaying(!playing)
     }
     if (e.key === 'Delete' || e.key === 'Backspace') removePicked()
+    if (
+      e.key.toLowerCase() === 'c' &&
+      !e.ctrlKey &&
+      !e.metaKey &&
+      !e.altKey &&
+      !e.shiftKey &&
+      !e.repeat
+    )
+      cutHere()
   }
 
   const addClip = (name: string, index?: number) => {
@@ -900,7 +1023,7 @@ const FilmEditor = ({
       end: source.seconds,
       sound: false
     }
-    change(insertClip(edit, index ?? edit.clips.length, clip))
+    change(insertClip(edit, index ?? edit.clips.length, clip, ripple))
     setPicked({ kind: 'clip', id: clip.id })
   }
 
@@ -926,7 +1049,7 @@ const FilmEditor = ({
     const text = {
       id: nextId('text', edit.texts),
       text: preset.title ? (loaded?.title ?? '') : t`Your text`,
-      at: Math.min(at, Math.max(0, filmLength(edit) - preset.seconds)),
+      at: Math.min(at, Math.max(0, timelineEnd(edit) - preset.seconds)),
       seconds: preset.seconds,
       effect: preset.effect,
       font: preset.font,
@@ -939,8 +1062,10 @@ const FilmEditor = ({
     setPicked({ kind: 'text', id: text.id })
   }
 
-  const total = edit ? filmLength(edit) : 0
+  const film = edit ? filmLength(edit) : 0
+  const total = edit ? timelineEnd(edit) : 0
   const here = edit ? clipAt(edit, at) : null
+  const blend = edit ? fadeAt(edit, at) : null
   const heardClip = here && here.clip.sound && sources.get(here.clip.name)?.sound
   const spans = edit ? heardSpans(edit, (clip) => sources.get(clip.name)?.sound === true) : []
   const loudest = edit
@@ -962,10 +1087,8 @@ const FilmEditor = ({
   const openedSource = opened && sources.get(opened.name)
 
   return (
-    <div
-      ref={dialog}
-      role='dialog'
-      aria-modal='true'
+    <main
+      ref={root}
       aria-label={t`Film editor`}
       onKeyDown={keys}
       onPointerDownCapture={() => {
@@ -975,7 +1098,7 @@ const FilmEditor = ({
       onPointerUp={() => (held.current = false)}
       onPointerCancel={() => (held.current = false)}
       tabIndex={-1}
-      className='fixed inset-0 z-40 flex flex-col bg-ground text-ink'>
+      className={`flex h-dvh flex-col bg-ground text-ink ${cornered ? 'overflow-hidden rounded-corner' : ''}`}>
       <header className='flex h-13 flex-none items-center gap-3 border-b border-line bg-pane px-4'>
         <h2 className='m-0 flex min-w-0 items-center gap-2 truncate text-body font-normal text-ink-2'>
           <span className='max-desk:hidden'>{t`Montages`}</span>
@@ -1044,8 +1167,11 @@ const FilmEditor = ({
                 upright={upright}
                 picked={picked?.kind === 'text' ? picked.id : null}
                 heard={heard}
+                blank={!here}
+                mix={blend?.mix ?? 1}
                 framed={picked?.kind === 'text'}
                 videoRef={video}
+                underRef={under}
                 onPickText={(id) => setPicked({ kind: 'text', id })}
                 onMoveText={(id, x, y) =>
                   change({
@@ -1112,13 +1238,33 @@ const FilmEditor = ({
               edit={edit}
               picked={picked}
               sources={sources}
+              ripple={ripple}
               onChange={change}
               onOpenPart={setPartOf}
               onRemove={removePicked}
             />
           </div>
           <div className='flex h-80 flex-none flex-col border-t border-line'>
-            <div className='flex h-12 flex-none items-center gap-1.5 border-b border-line bg-pane px-2.5'>
+            <div className='flex min-h-12 flex-none flex-wrap items-center gap-1.5 border-b border-line bg-pane px-2.5 py-1.5'>
+              <Mini
+                pressed
+                title={t`Select (the tool the editor is always in)`}>
+                <Icon
+                  name='select'
+                  size={13}
+                />
+                {t`Select`}
+              </Mini>
+              <Mini
+                disabled={!cut}
+                title={t`Cut at playhead (C)`}
+                onClick={cutHere}>
+                <Icon
+                  name='scissors'
+                  size={13}
+                />
+                {t`Cut at playhead`}
+              </Mini>
               <Mini
                 disabled={!picked}
                 onClick={removePicked}>
@@ -1127,6 +1273,32 @@ const FilmEditor = ({
                   size={13}
                 />
                 {t`Delete`}
+              </Mini>
+              <Mini
+                pressed={fading}
+                disabled={blocked !== null}
+                title={
+                  pickedId ? fadeWhy(blocked) : t`Pick a clip to fade it in over the one before it`
+                }
+                onClick={fadeHere}>
+                <Icon
+                  name='fade'
+                  size={13}
+                />
+                {t`Fade in`}
+              </Mini>
+              <span className='h-4.5 w-px flex-none bg-line' />
+              <Mini
+                pressed={ripple}
+                title={t`Changing the video pulls the text and the music after it along`}
+                onClick={() => setRipple(!ripple)}>
+                {t`Ripple`}
+              </Mini>
+              <Mini
+                pressed={snap}
+                title={t`Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks`}
+                onClick={() => setSnap(!snap)}>
+                {t`Snap`}
               </Mini>
               <span className='flex-1' />
               <label className='inline-flex items-center gap-1.5 text-small text-ink-3'>
@@ -1150,7 +1322,10 @@ const FilmEditor = ({
               pps={pps}
               at={at}
               picked={picked}
+              snap={snap}
+              ripple={ripple}
               onSeek={seek}
+              onZoom={setPps}
               onPick={setPicked}
               onChange={change}
               onOpenPart={setPartOf}
@@ -1158,7 +1333,7 @@ const FilmEditor = ({
             />
             <div className='flex flex-none flex-wrap gap-4 border-t border-line bg-pane px-3 py-2 text-small text-ink-3'>
               <span>
-                {t`Film`} <b className='font-mono font-medium text-ink-2'>{clockOf(total)}</b>
+                {t`Film`} <b className='font-mono font-medium text-ink-2'>{clockOf(film)}</b>
               </span>
               <span>{t`Edited on the proxies, rendered from the processed copies`}</span>
             </div>
@@ -1190,17 +1365,17 @@ const FilmEditor = ({
           source={openedSource}
           onClose={() => setPartOf(null)}
           onRemove={() => {
-            if (edit) change(removeClip(edit, opened.id))
+            if (edit) change(removeClip(edit, opened.id, ripple))
             setPartOf(null)
             setPicked(null)
           }}
           onPlace={(start, end) => {
-            if (edit) change(setPart(edit, opened.id, start, end))
+            if (edit) change(setPart(edit, opened.id, start, end, ripple))
             setPartOf(null)
           }}
         />
       )}
-    </div>
+    </main>
   )
 }
 

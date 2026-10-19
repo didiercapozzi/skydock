@@ -782,6 +782,10 @@ msgstr "A camera is being copied"
 msgid "A camera SkyDock has not seen before"
 msgstr "A camera SkyDock has not seen before"
 
+#: app/components/film-editor.tsx
+msgid "A clip shorter than 0.4 seconds cannot fade"
+msgstr "A clip shorter than 0.4 seconds cannot fade"
+
 #: app/components/file-list.tsx
 msgid "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
 msgstr "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
@@ -797,6 +801,10 @@ msgstr "a copy of the film"
 #: app/helpers/places.ts
 msgid "A dropzone needs a name."
 msgstr "A dropzone needs a name."
+
+#: app/components/film-editor.tsx
+msgid "A gap separates the two clips: close it first"
+msgstr "A gap separates the two clips: close it first"
 
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
@@ -1220,6 +1228,10 @@ msgstr "Change the name"
 #: app/components/file-status.tsx
 msgid "changed"
 msgstr "changed"
+
+#: app/components/film-editor.tsx
+msgid "Changing the video pulls the text and the music after it along"
+msgstr "Changing the video pulls the text and the music after it along"
 
 #: app/components/camera-files.tsx
 msgid "Check and delete {count, plural, one {# file} other {# files}} from the camera"
@@ -1679,6 +1691,14 @@ msgstr "Cut"
 msgid "Cut a mount or a finger out of the corner. Same keeps the shape the clip already has."
 msgstr "Cut a mount or a finger out of the corner. Same keeps the shape the clip already has."
 
+#: app/components/film-editor.tsx
+msgid "Cut at playhead"
+msgstr "Cut at playhead"
+
+#: app/components/film-editor.tsx
+msgid "Cut at playhead (C)"
+msgstr "Cut at playhead (C)"
+
 #: app/components/board-header.tsx
 msgid "Dark"
 msgstr "Dark"
@@ -1888,6 +1908,10 @@ msgstr "Drag the corners to any shape"
 #: app/components/preview-drawer.tsx
 msgid "Drag the rectangle to move it, a corner to resize. What is dimmed is cut away."
 msgstr "Drag the rectangle to move it, a corner to resize. What is dimmed is cut away."
+
+#: app/components/film-timeline.tsx
+msgid "Drag to make the fade longer or shorter"
+msgstr "Drag to make the fade longer or shorter"
 
 #: app/components/video-cropper.tsx
 msgid "Drag to trim the end"
@@ -2112,6 +2136,23 @@ msgstr "F"
 #: app/components/film-editor.tsx
 msgid "Fade"
 msgstr "Fade"
+
+#: app/components/film-editor.tsx
+msgid "Fade from the previous clip"
+msgstr "Fade from the previous clip"
+
+#: app/components/film-editor.tsx
+msgid "Fade in"
+msgstr "Fade in"
+
+#. placeholder {0}: clip.name
+#: app/components/film-timeline.tsx
+msgid "Fade into {0}"
+msgstr "Fade into {0}"
+
+#: app/components/film-editor.tsx
+msgid "Fade the picked clip in over the end of the clip before it"
+msgstr "Fade the picked clip in over the end of the clip before it"
 
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
@@ -2847,6 +2888,10 @@ msgstr "Leave this unticked for a camera that is not yours — you will pick the
 #: app/components/film-editor.tsx
 msgid "Length"
 msgstr "Length"
+
+#: app/components/film-editor.tsx
+msgid "Length of the fade"
+msgstr "Length of the fade"
 
 #: app/routes/place.tsx
 msgid "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
@@ -3781,6 +3826,10 @@ msgid "Pick {name}"
 msgstr "Pick {name}"
 
 #: app/components/film-editor.tsx
+msgid "Pick a clip to fade it in over the one before it"
+msgstr "Pick a clip to fade it in over the one before it"
+
+#: app/components/film-editor.tsx
 msgid "Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part."
 msgstr "Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part."
 
@@ -4274,6 +4323,10 @@ msgid "Restored {person}’s montage from the storage’s list — named again, 
 msgstr "Restored {person}’s montage from the storage’s list — named again, at the times they had; process it to carry on"
 
 #: app/components/film-editor.tsx
+msgid "Ripple"
+msgstr "Ripple"
+
+#: app/components/film-editor.tsx
 msgid "Rise"
 msgstr "Rise"
 
@@ -4367,6 +4420,14 @@ msgstr "See the clip full screen, at its own size (F)"
 #: app/components/preview-drawer.tsx
 msgid "See the photo full screen, at its own size (F)"
 msgstr "See the photo full screen, at its own size (F)"
+
+#: app/components/film-editor.tsx
+msgid "Select"
+msgstr "Select"
+
+#: app/components/film-editor.tsx
+msgid "Select (the tool the editor is always in)"
+msgstr "Select (the tool the editor is always in)"
 
 #: app/components/inspector.tsx
 msgid "Select its {fileCount, plural, one {# file} other {# files}}"
@@ -4561,6 +4622,14 @@ msgstr "Small copies made"
 #: app/components/board-header.tsx
 msgid "Smaller"
 msgstr "Smaller"
+
+#: app/components/film-editor.tsx
+msgid "Snap"
+msgstr "Snap"
+
+#: app/components/film-editor.tsx
+msgid "Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks"
+msgstr "Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks"
 
 #: app/components/preview-drawer.tsx
 msgid "Solid is saved, dashed is not yet."
@@ -4881,6 +4950,10 @@ msgstr "The film is on the storage, but it has no link to send — make one from
 #: app/components/montage-steps.tsx
 msgid "The film is rendered. Send it, the photos and the originals where you choose."
 msgstr "The film is rendered. Send it, the photos and the originals where you choose."
+
+#: app/components/film-editor.tsx
+msgid "The first clip has no clip before it to fade from"
+msgstr "The first clip has no clip before it to fade from"
 
 #: app/components/work-folder-dialog.tsx
 msgid "The folder could not be changed."

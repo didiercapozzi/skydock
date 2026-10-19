@@ -782,6 +782,10 @@ msgstr "Eine Kamera wird gerade kopiert"
 msgid "A camera SkyDock has not seen before"
 msgstr "Eine Kamera, die SkyDock noch nicht kennt"
 
+#: app/components/film-editor.tsx
+msgid "A clip shorter than 0.4 seconds cannot fade"
+msgstr "Ein Clip unter 0,4 Sekunden kann nicht überblendet werden"
+
 #: app/components/file-list.tsx
 msgid "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
 msgstr "Eine Kopie — derselbe Clip ist auch in einem anderen Sprung. Diese hat ihre eigene Kürzung und Zeit und wird für diesen Sprung aufbereitet. Aus dem Sprung genommen, verschwindet sie einfach: Das Original bleibt, wo es ist."
@@ -797,6 +801,10 @@ msgstr "eine Kopie des Films"
 #: app/helpers/places.ts
 msgid "A dropzone needs a name."
 msgstr "Eine Dropzone braucht einen Namen."
+
+#: app/components/film-editor.tsx
+msgid "A gap separates the two clips: close it first"
+msgstr "Eine Lücke trennt die beiden Clips: Schließ sie zuerst"
 
 #: app/hooks/useDragAndDrop.ts
 msgid "a jump"
@@ -1220,6 +1228,10 @@ msgstr "Namen ändern"
 #: app/components/file-status.tsx
 msgid "changed"
 msgstr "geändert"
+
+#: app/components/film-editor.tsx
+msgid "Changing the video pulls the text and the music after it along"
+msgstr "Eine Änderung am Video zieht den Text und die Musik danach mit"
 
 #: app/components/camera-files.tsx
 msgid "Check and delete {count, plural, one {# file} other {# files}} from the camera"
@@ -1679,6 +1691,14 @@ msgstr "Schnitt"
 msgid "Cut a mount or a finger out of the corner. Same keeps the shape the clip already has."
 msgstr "Schneide eine Halterung oder einen Finger aus der Ecke. Gleich behält die Form, die der Clip schon hat."
 
+#: app/components/film-editor.tsx
+msgid "Cut at playhead"
+msgstr "Am Abspielkopf schneiden"
+
+#: app/components/film-editor.tsx
+msgid "Cut at playhead (C)"
+msgstr "Am Abspielkopf schneiden (C)"
+
 #: app/components/board-header.tsx
 msgid "Dark"
 msgstr "Dunkel"
@@ -1888,6 +1908,10 @@ msgstr "Zieh die Ecken in jede beliebige Form"
 #: app/components/preview-drawer.tsx
 msgid "Drag the rectangle to move it, a corner to resize. What is dimmed is cut away."
 msgstr "Zieh das Rechteck, um es zu verschieben, eine Ecke, um die Größe zu ändern. Was abgedunkelt ist, wird weggeschnitten."
+
+#: app/components/film-timeline.tsx
+msgid "Drag to make the fade longer or shorter"
+msgstr "Zieh, um die Überblendung länger oder kürzer zu machen"
 
 #: app/components/video-cropper.tsx
 msgid "Drag to trim the end"
@@ -2112,6 +2136,23 @@ msgstr "F"
 #: app/components/film-editor.tsx
 msgid "Fade"
 msgstr "Einblenden"
+
+#: app/components/film-editor.tsx
+msgid "Fade from the previous clip"
+msgstr "Überblendung vom vorherigen Clip"
+
+#: app/components/film-editor.tsx
+msgid "Fade in"
+msgstr "Überblenden"
+
+#. placeholder {0}: clip.name
+#: app/components/film-timeline.tsx
+msgid "Fade into {0}"
+msgstr "Überblendung zu {0}"
+
+#: app/components/film-editor.tsx
+msgid "Fade the picked clip in over the end of the clip before it"
+msgstr "Den gewählten Clip über das Ende des vorherigen Clips einblenden"
 
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
@@ -2847,6 +2888,10 @@ msgstr "Lass das bei einer fremden Kamera ungewählt — du wählst jedes Mal di
 #: app/components/film-editor.tsx
 msgid "Length"
 msgstr "Länge"
+
+#: app/components/film-editor.tsx
+msgid "Length of the fade"
+msgstr "Dauer der Überblendung"
 
 #: app/routes/place.tsx
 msgid "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
@@ -3781,6 +3826,10 @@ msgid "Pick {name}"
 msgstr "{name} auswählen"
 
 #: app/components/film-editor.tsx
+msgid "Pick a clip to fade it in over the one before it"
+msgstr "Wähl einen Clip, um ihn über den vorherigen einzublenden"
+
+#: app/components/film-editor.tsx
 msgid "Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part."
 msgstr "Wähle einen Clip, ein Musikstück oder einen Text auf der Zeitleiste, um ihn zu ändern. Doppelklick auf einen Clip wählt seinen Ausschnitt."
 
@@ -4274,6 +4323,10 @@ msgid "Restored {person}’s montage from the storage’s list — named again, 
 msgstr "Montage von {person} aus der Liste des Speichers wiederhergestellt — wieder benannt, zu ihren früheren Zeiten; bereite sie auf, um weiterzumachen"
 
 #: app/components/film-editor.tsx
+msgid "Ripple"
+msgstr "Nachziehen"
+
+#: app/components/film-editor.tsx
 msgid "Rise"
 msgstr "Aufsteigen"
 
@@ -4367,6 +4420,14 @@ msgstr "Clip im Vollbild ansehen, in Originalgröße (F)"
 #: app/components/preview-drawer.tsx
 msgid "See the photo full screen, at its own size (F)"
 msgstr "Foto im Vollbild ansehen, in Originalgröße (F)"
+
+#: app/components/film-editor.tsx
+msgid "Select"
+msgstr "Auswählen"
+
+#: app/components/film-editor.tsx
+msgid "Select (the tool the editor is always in)"
+msgstr "Auswählen (das Werkzeug, in dem der Editor immer ist)"
 
 #: app/components/inspector.tsx
 msgid "Select its {fileCount, plural, one {# file} other {# files}}"
@@ -4561,6 +4622,14 @@ msgstr "Kleine Kopien erstellt"
 #: app/components/board-header.tsx
 msgid "Smaller"
 msgstr "Kleiner"
+
+#: app/components/film-editor.tsx
+msgid "Snap"
+msgstr "Einrasten"
+
+#: app/components/film-editor.tsx
+msgid "Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks"
+msgstr "Texte und Musik rasten an Abspielposition, Schnitten, Sprungmarken und aneinander ein, eine gekürzte Clipkante an den Sprungmarken"
 
 #: app/components/preview-drawer.tsx
 msgid "Solid is saved, dashed is not yet."
@@ -4881,6 +4950,10 @@ msgstr "Der Film liegt auf dem Speicher, hat aber keinen Link zum Senden — ers
 #: app/components/montage-steps.tsx
 msgid "The film is rendered. Send it, the photos and the originals where you choose."
 msgstr "Der Film ist gerendert. Schick ihn, die Fotos und die Originale, wohin du willst."
+
+#: app/components/film-editor.tsx
+msgid "The first clip has no clip before it to fade from"
+msgstr "Der erste Clip hat keinen vorherigen Clip zum Überblenden"
 
 #: app/components/work-folder-dialog.tsx
 msgid "The folder could not be changed."

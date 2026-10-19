@@ -19,6 +19,7 @@ export {
   DUCK_RAMP,
   duckAt,
   editAnswerSchema,
+  fadeInto,
   filmEditSchema,
   filmLength,
   heardSpans,
@@ -26,6 +27,7 @@ export {
   TEXT_EFFECTS,
   TEXT_FONTS,
   textLookAt,
+  timelineEnd,
   UNDER_SOUND
 } from './filmEditShape'
 export type {

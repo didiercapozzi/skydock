@@ -1306,28 +1306,112 @@ about it is stored.
 
 ## The film editor
 
-**A processed montage's film is edited in SkyDock.** _Edit the film_ opens the film editor over the
-board: the montage's clips on the left, the picture in the middle with previous clip, play and next
-clip under it, what is picked on the right, and under them a toolbar with Delete and the zoom, the
-timeline, and a line with the film's length. The timeline has a track for the video, one
-for the camera sound of those clips — where each speaker is turned on — one for the text and one for
-the music, each named at its left with its tag (V1, A1, T1, M1). The header says _Montages_, the
-person and the day of the montage, whether the edit is saved, _Undo_ — also Ctrl or Cmd and Z — and
-_Render the film_. Undo takes back the last change, a drag or a slider counting as one, as far back as
-the editor has been open. On a narrow window the picture takes the top and the two panes sit side by
-side below it, and on a phone they stack, the whole editor scrolling so the timeline is always
-reachable. The first time, every video of the montage is laid end to end in the order shot, whole, with its camera sound
-off, and a title with the person's name opens the film. The edit is saved beside the montage's copies
-as `<name>_<date>.edit.json`, by itself, a moment after each change; that file is the montage's edit,
-so the project step is done and the montage is frozen as an edit freezes it (below), and it is kept
-aside in every version the way a kdenlive project is.
+**A processed montage's film is edited in SkyDock.** _Edit the film_ opens the film editor on its own
+page, at `/edit/<the montage's id>`, which takes the whole window without the board around it, and which
+is read again, and stays, when the page is reloaded. Closing it, _Esc_ and _Render the film_ go back to
+where it was opened from, or to the montage's page when it was the first page loaded; the browser's
+Back leaves it too, and an edit not yet saved is saved on the way out. A montage that is not on the
+board, and one that is not processed, are refused in the editor with the reason, and its close goes to the montages page. In the packed desktop window with its own frame the editor has the same rounded corners as the board. The page has the
+montage's clips on the left, the picture in the middle with previous clip, play and next
+clip under it, what is picked on the right, and under them a toolbar with Select, Cut at playhead,
+Delete, Fade in, Ripple, Snap and the zoom, the timeline, and a line with the film's length. The timeline ends
+where the last of the videos, the texts and the music ends, not where the last video does: the ruler, the
+playhead, the clock under the picture (_now / end_), previous and next clip, and playing all run to that
+end, and after the last video the picture is empty while the text and the music go on. The film's
+length in the line below is the video's, gaps included; the rendered film runs to the end of the
+timeline, so a text or a piece of music that runs past the last video is in it over black. The timeline is always as wide
+as the window, with the ruler's ticks across all of it, and wider when its end needs it; a click or a
+drag past the end puts the playhead at the end. Ctrl and the wheel over it, a pinch on a trackpad where it arrives as Ctrl and the wheel, or two
+fingers drawn apart or together on a touch screen zoom it about the pointer or the fingers, the moment
+under them staying where it is, between the same limits as the zoom slider, which follows; the slider
+and the zoom buttons zoom about the playhead, and the wheel alone scrolls. On a touch screen one finger on the empty timeline scrolls it, and a second finger landing while the first drags a clip, a trim or a text cancels that drag and puts back what it had changed; a finger the screen lost, or the window losing focus, is forgotten. The timeline has
+a track for the video, one for the camera sound of those clips — where each speaker is turned on —
+one for the text and one for the music, each named at its left with its tag (V1, A1, T1, M1). The
+header says _Montages_, the person and the day of the montage, whether the edit is saved, _Undo_ —
+also Ctrl or Cmd and Z — and _Render the film_. Undo takes back the last change, a drag or a slider
+counting as one, as far back as the editor has been open. On a narrow window the picture takes the
+top and the two panes sit side by side below it, and on a phone they stack, the whole editor
+scrolling so the timeline is always reachable. The first time, every video of the montage is laid
+end to end in the order shot, whole, with no gap, with its camera sound off, and a title with the
+person's name opens the film. The edit is saved beside the montage's copies as `<name>_<date>.edit.json`, by
+itself, a moment after each change; that file is the montage's edit, so the project step is done and
+the montage is frozen as an edit freezes it (below), and it is kept aside in every version the way a
+kdenlive project is.
 
 **Clips go in where they are dropped.** A clip dragged from the left onto the video track goes in at
 the nearest cut — between two clips, or at either end — and everything after it moves along; _Add_
-puts it at the end. A clip on the timeline is moved by dragging it to another cut, and removed with
-Delete or from the panel. **Trimming closes the gap**: dragging either edge of a clip shortens or
-lengthens it, and the clips after it follow, so the film never has a hole. Text placed after the clip
-moves with the film; music stays where it was put, since it is cut to the film and not to a clip.
+puts it at the end. A clip on the timeline is removed with Delete or from the panel. Dragging either
+edge of a clip shortens or lengthens it, and the clips after it follow. With Ripple on, the text
+and the music placed after the clip move with the film; with it off they stay where they were put.
+
+**A gap is black and silent.** A clip can have a gap before it, empty time between it and the clip
+before, drawn on the video track as dashed empty space. It is made by dragging the clip to the right
+along the video track, or by moving it from the keyboard: with a clip picked, Alt and the right or
+left arrow move it a tenth of a second, a second with Shift, and the _Starts at_ box in the inspector
+takes a time and does the same. A clip never overlaps its neighbours: moved left it closes its own gap
+and stops against the clip before, and dragged on past the middle of the clip before it takes its place
+in the order, the gaps staying with their places. With Ripple on, the clips after it and the text and the music
+placed from its start on move along with it; with Ripple off they stay where they are, the gap
+before the next clip getting smaller, and the clip stops when that gap is used up. With Ripple off, a
+clip taken away leaves its place empty — the gap before the next clip grows by the clip and its own gap
+— and a clip's start edge trimmed keeps its right edge where it was, the gap growing by what was
+trimmed; with Ripple on a clip taken away closes up, and a trimmed start keeps the clip's start. Cutting
+a clip keeps its gap before the first piece and none before the second, and a gap stays when the clip
+next to it is trimmed at its far edge. In a gap the picture is black, the camera sound is silent, and
+the text and the music go on; the clock and the playhead count it. Moving a clip is one Undo, quick
+presses of the keys too. With Snap on, the dragged clip's edges are pulled to the cuts and edges of the
+others, the playhead and the jump marks. A drag to the right never changes the order: a clip goes
+past the next by dragging the next to the left.
+
+**A crossfade is one click.** With a video clip picked, _Fade in_ in the toolbar — pressed while the
+clip has one — makes the picked clip appear over the end of the clip before it, the two overlapping in
+the film while the second fades in over the first and the camera sound crosses with it; a second click
+takes it off, back to a plain cut. Its length at first is one second, held to half of the shorter of the two clips
+and to three seconds at most. The same switch is in the inspector of the picked clip, as _Fade from the
+previous clip_ with a _Length of the fade_ slider from 0.2 second to what the two clips allow (it stops at
+0.2 second, with its length shown to a tenth; only the switch takes the fade off), and on the timeline the overlap
+is drawn at the start of the clip as a zone with one diagonal edge, the clip's name starting after it and
+a thin line marking it in the camera sound lane too. The zone is a slider named _Fade into_ the clip: it is dragged, or
+moved with the left and right arrows by a tenth of a second, a second with Shift, to make the fade
+longer or shorter, never under 0.2 second, and the trim grips of the two clips at its two ends stay above it. It is off, with the reason in its title, with nothing picked, on the first clip, when a
+gap separates the two clips (a crossfade and a gap exclude each other: a gap given to a clip that has a
+fade — by dragging it to the right past the fade, by the keys or by _Starts at_ — takes the fade off, and
+dragging it to the right short of that makes the fade shorter), and when either clip is under 0.4 second.
+The saved edit has it as an optional `fade`, in seconds, on the clip that fades in; no `fade` is a plain
+cut, and the edit's version and every older file stay as they were. A clip with a fade starts that long
+before the clip before it ends, so the film, the timeline, the clock, the cuts, Snap's points, the
+playhead and the span where the music dips under the camera sound all count the overlap: the film is
+shorter by the fade. Under the playhead, inside the overlap, the picture is the newer clip and the
+camera sound is the newer clip's, the older clip being the one under it for the blend. Cutting inside the overlap cuts the newer clip, the one the picture shows. Cutting a clip keeps its
+fade on the first piece, and the fade into the next clip on the second. Trimming or choosing a
+part of either clip holds the fade to half of the shorter; deleting a clip takes off its fade and the
+next clip's, and so does putting a clip in between two, or moving a clip so that it no longer follows
+the same one. With Ripple on the text and the music after the clip move with the film when a fade is
+made, changed or taken off, as they do for any change in the video's length, but not for a fade that an edit shortens or takes off
+by itself (a trim, a clip put in between), which moves the clips after it without moving them. Making or taking off a fade
+is one Undo. In the stage the overlap shows both clips: the older one under, the newer one over it at an
+opacity that goes from 0 to 1 across the overlap, and the sound of each rising or falling the same way,
+when playing and when the playhead is moved into it. In the rendered film a crossfade is a
+dissolve between the two clips with the sound crossing as well, a clip without sound or with its
+speaker off staying silent through it, and a cut, a gap and a crossfade can follow each other in one film.
+
+**Cutting, Ripple and Snap.** _Select_ is the tool the editor is always in, shown pressed. _Cut at
+playhead_ — also the C key, under the same focus rules as Space and Delete, and not with Alt or
+Shift or when the key repeats — splits the video clip under the playhead into two that meet at the
+cut: the first keeps the clip's id, and the second is a new clip of the same video and sound setting
+from the cut to the old end; the one picked stays the first, the playhead and the film's length do
+not change, and Undo makes it one clip again. It is off where the playhead is not inside a clip, or
+where either piece would be under half a second. _Ripple_ is on at first: whatever starts after the
+point where the video gets longer or shorter — a clip trimmed, chosen a part of, removed or put in —
+moves along by the same time, so it stays on the same moment of the film; a text or a piece of music
+that starts before that point is never moved, and one that starts inside a clip taken away comes to
+the point where the clip was. A clip put in at the very start does not push a text or a piece of music
+that starts at 0; one that starts later is pushed. _Snap_ is on at first: a text or a piece of music
+dragged or cut at its end is pulled to within a few pixels of the film's start, a cut between clips,
+the playhead, a jump mark or the edge of another text or piece of music, whichever of its two edges
+is nearer; a clip edge trimmed is pulled to the jump marks of its own video. Ripple and Snap are
+kept while the editor is open, not in the saved edit; the part window keeps its own snapping to the
+marks.
 
 **Choosing the part.** A double-click on a clip, or _Choose the part…_, opens it whole as a strip of
 frames with a blue part laid over what the film shows. The part is dragged along the clip, or its
@@ -1360,7 +1444,9 @@ go to them.
 **Rendering is one press.** _Render the film_ saves the edit and makes the film from the processed
 copies — never the proxies — into the montage's folder under the film's own name: MP4 with H.264 video
 and AAC sound, 1920 by 1080 at 30 frames a second, or 1080 by 1920 when the first clip is upright,
-each clip fitted inside the frame. It is written aside and put in place whole, so the board never
+each clip fitted inside the frame, each gap a black picture with silence, and running to the end of the
+timeline: after the last video the picture is black, and silent unless there is music, until the end of
+the last text or piece of music. It is written aside and put in place whole, so the board never
 takes half a film for the film, and its progress is in the panel in the corner. One montage renders
 one film at a time; _Render again_ replaces the film with the edit as it now is.
 
@@ -1762,8 +1848,8 @@ Worth knowing, so nobody goes looking:
 - **SkyDock never sends email.** A person sends it from their own mail.
 - **Every photo is handed over.** There is no choosing which photos go into the archive; the
   montage takes the videos only.
-- **The film editor cuts; it does not blend.** Clips follow each other cut to cut: no transitions
-  between them, no colour work, no speed changes, no zones laid out by a template. A film that needs
+- **The film editor cuts and crossfades; it does nothing else between clips.** Clips follow each other cut to cut, with a gap of
+  black between them, or with a crossfade: no other transitions, no colour work, no speed changes, no zones laid out by a template. A film that needs
   more is made in kdenlive, which SkyDock opens but never runs itself.
 - **Nothing is ever doubled on the disk.** A clip copied into another jump is still one original; each
   jump it is in makes a processed copy of its own from it.

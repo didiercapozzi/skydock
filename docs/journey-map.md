@@ -101,6 +101,9 @@ Rewrite it with `UPDATE_JOURNEY_MAP=1 npm run test:node -- journey-coverage`.
 | The film editor | **i1-film** — opens on a prepared montage with its clips laid end to end, and saves the edit beside them |
 | A processed montage's film is edited in SkyDock | **i1-film** — opens on a prepared montage with its clips laid end to end, and saves the edit beside them |
 | Clips go in where they are dropped | **i1-film** — trims a clip by its edge, and the clips after it close the gap<br>**i1-film** — puts a clip in again with Add, at the end of the film |
+| A gap is black and silent | **i1-film** — moves a clip with the keys, which leaves a gap before it, and the render keeps the gap |
+| A crossfade is one click | **i1-film** — fades a clip in over the one before it with one click, which shortens the film, and a second click takes it off |
+| Cutting, Ripple and Snap | **i1-film** — cuts a clip at the playhead into two, and Undo makes it one again |
 | Choosing the part | **i1-film** — chooses the part a clip shows in a window of its own, and keeps it |
 | The music is the film's sound | **i1-film** — hears a clip whose speaker is turned on, and the music dips under it |
 | Music | **i1-film** — brings music in from the computer, puts it in the film, and the saved edit carries it |

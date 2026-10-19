@@ -9,7 +9,6 @@ import type { MontageEntry, MontageLost, MontageFact, freeablePlace } from '@sky
 import { plural, t } from '@lingui/core/macro'
 import { ConnectionDialog } from './connection-dialog'
 import { EmailDialog } from './email-dialog'
-import { FilmEditor } from './film-editor'
 import { FreeDialog } from './free-dialog'
 import { FreePlaceDialog } from './free-place-dialog'
 import { DeleteJumpDialog } from './delete-jump-dialog'
@@ -56,7 +55,6 @@ type BoardDialog =
   | { kind: 'forget-camera'; key: string; name: string }
   | { kind: 'shortcuts' }
   | { kind: 'about' }
-  | { kind: 'editor'; groupId: string }
 
 const DialogHost = ({
   dialog,
@@ -262,13 +260,6 @@ const DialogHost = ({
 
       {dialog?.kind === 'shortcuts' && <ShortcutsDialog onClose={close} />}
       {dialog?.kind === 'about' && <AboutDialog onClose={close} />}
-      {dialog?.kind === 'editor' && (
-        <FilmEditor
-          groupId={dialog.groupId}
-          day={groups.find((g) => g.id === dialog.groupId)?.day}
-          onClose={close}
-        />
-      )}
 
       {dialog?.kind === 'forget-camera' && (
         <ForgetCameraDialog

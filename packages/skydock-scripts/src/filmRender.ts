@@ -2,7 +2,15 @@ import { mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { editSources, musicSources } from './filmEdit'
-import { DUCK_RAMP, filmLength, heardSpans, POP, TEXT_FADE } from './filmEditShape'
+import {
+  DUCK_RAMP,
+  fadeInto,
+  filmLength,
+  heardSpans,
+  POP,
+  TEXT_FADE,
+  timelineEnd
+} from './filmEditShape'
 import type { EditSource, EditText, FilmEdit, MusicSource, Span, TextFont } from './filmEditShape'
 import { inJob } from './live'
 import { filmNameOf } from './montageNames'
@@ -99,11 +107,21 @@ const filmArgs = ({
   const inputs: string[] = []
   const graph: string[] = []
   const stereo = 'aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo'
+  const parts: Array<{ label: string; length: number; fade: number }> = []
+  const black = (name: string, length: number) => {
+    graph.push(
+      `color=c=black:s=${width}x${height}:r=${FPS}:d=${n(length)},setsar=1,format=yuv420p[v${name}]`,
+      `anullsrc=r=48000:cl=stereo,atrim=end=${n(length)},${stereo}[a${name}]`
+    )
+    parts.push({ label: `[v${name}][a${name}]`, length, fade: 0 })
+  }
   edit.clips.forEach((clip, index) => {
     const source = sources.get(clip.name)
     if (!source) throw new Error(`${clip.name} is not in the montage any more.`)
     const length = clip.end - clip.start
     inputs.push('-i', source.path)
+    if (clip.gap) black(`g${index}`, clip.gap)
+    parts.push({ label: `[v${index}][a${index}]`, length, fade: fadeInto(edit.clips, index) })
     graph.push(
       `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=PTS-STARTPTS,fps=${FPS},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p[v${index}]`
     )
@@ -113,9 +131,32 @@ const filmArgs = ({
         : `anullsrc=r=48000:cl=stereo,atrim=end=${n(length)},${stereo}[a${index}]`
     )
   })
-  graph.push(
-    `${edit.clips.map((_, index) => `[v${index}][a${index}]`).join('')}concat=n=${edit.clips.length}:v=1:a=1[joined][camera]`
+  const tail = timelineEnd(edit) - filmLength(edit)
+  if (tail > 0.001) black('t', tail)
+  const runs = parts.reduce<Array<{ parts: typeof parts; fade: number }>>((all, part) => {
+    if (part.fade > 0 || all.length === 0) all.push({ parts: [part], fade: part.fade })
+    else all.at(-1)!.parts.push(part)
+    return all
+  }, [])
+  runs.forEach((run, i) =>
+    graph.push(
+      `${run.parts.map((part) => part.label).join('')}concat=n=${run.parts.length}:v=1:a=1[rv${i}][ra${i}]`
+    )
   )
+  let length = runs[0]!.parts.reduce((total, part) => total + part.length, 0)
+  let video = 'rv0'
+  let heard = 'ra0'
+  runs.slice(1).forEach((run, k) => {
+    const i = k + 1
+    graph.push(
+      `[${video}][rv${i}]xfade=transition=fade:duration=${n(run.fade)}:offset=${n(length - run.fade)}[xv${i}]`,
+      `[${heard}][ra${i}]acrossfade=d=${n(run.fade)}:c1=tri:c2=tri[xa${i}]`
+    )
+    video = `xv${i}`
+    heard = `xa${i}`
+    length += run.parts.reduce((total, part) => total + part.length, 0) - run.fade
+  })
+  graph.push(`[${video}]null[joined]`, `[${heard}]anull[camera]`)
   graph.push(
     edit.texts.length === 0
       ? '[joined]null[film]'
@@ -165,7 +206,7 @@ const filmArgs = ({
     '-movflags',
     '+faststart',
     '-t',
-    n(filmLength(edit)),
+    n(timelineEnd(edit)),
     '-f',
     'mp4',
     out
@@ -248,7 +289,7 @@ const renderFilm = async ({
           await ffmpegPath(),
           args,
           (percent) => rendering.row({ key: 'film', at: 'now', part: percent / 100 }),
-          filmLength(edit)
+          timelineEnd(edit)
         )
         if (!ran.ok) throw new Error(lastComplaint(ran.stderr))
         await rename(partPath, filmPath)

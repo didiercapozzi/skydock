@@ -149,6 +149,9 @@ const fileHref = (place: Place, fileId: string, view: BoardView = {}) =>
     searchParamsArgs: carried(view)
   })
 
+const editHref = (groupId: string) =>
+  routingEngine.href({ url: '/edit/:groupId', params: { groupId } })
+
 const placeNameProblem = (name: string) => {
   const trimmed = name.trim()
   if (!trimmed) return t`A dropzone needs a name.`
@@ -171,6 +174,7 @@ export {
   looseIn,
   placeFromParams,
   placeHref,
+  editHref,
   placeKey,
   placeLabel,
   placeNameProblem,

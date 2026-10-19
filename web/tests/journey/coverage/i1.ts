@@ -39,6 +39,13 @@ const covers: Record<string, string[]> = {
     'trims a clip by its edge, and the clips after it close the gap',
     'puts a clip in again with Add, at the end of the film'
   ],
+  'A gap is black and silent': [
+    'moves a clip with the keys, which leaves a gap before it, and the render keeps the gap'
+  ],
+  'A crossfade is one click': [
+    'fades a clip in over the one before it with one click, which shortens the film, and a second click takes it off'
+  ],
+  'Cutting, Ripple and Snap': ['cuts a clip at the playhead into two, and Undo makes it one again'],
   'Choosing the part': ['chooses the part a clip shows in a window of its own, and keeps it'],
   "The music is the film's sound": [
     'hears a clip whose speaker is turned on, and the music dips under it'

@@ -390,7 +390,7 @@ const MontageMenu = ({
       {facts?.edit && !group.freed && (
         <MenuItem
           icon='montage'
-          onClick={act(() => model.setDialog({ kind: 'editor', groupId: group.id }))}>
+          onClick={act(() => model.openEditor(group))}>
           {t`Edit the film`}
         </MenuItem>
       )}

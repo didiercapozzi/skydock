@@ -1,6 +1,14 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { duckAt, heardSpans, musicLevelAt, textLookAt } from '../src/filmEditShape'
+import {
+  duckAt,
+  filmEditSchema,
+  filmLength,
+  heardSpans,
+  musicLevelAt,
+  textLookAt,
+  timelineEnd
+} from '../src/filmEditShape'
 import type { EditSource, FilmEdit, MusicSource } from '../src/filmEditShape'
 import { duckOf, filmArgs } from '../src/filmRender'
 
@@ -132,5 +140,53 @@ describe('rendering the film', () => {
     expect(() =>
       args(edit({ clips: [{ id: 'clip-9', name: 'gone.mp4', start: 0, end: 1, sound: false }] }))
     ).toThrow(/gone\.mp4 is not in the montage any more/)
+  })
+})
+
+describe('the gap before a clip', () => {
+  const gapped = edit({
+    clips: [
+      { id: 'clip-1', name: 'a.mp4', start: 2, end: 6, sound: true },
+      { id: 'clip-2', name: 'b.mp4', start: 0, end: 3, sound: true, gap: 2 }
+    ],
+    music: [{ id: 'music-1', name: 'song.mp3', at: 5, start: 0, end: 6, volume: 0.8 }]
+  })
+
+  it('is accepted when it is zero or more, and refused when it is below zero or not finite', () => {
+    const parse = (gap: unknown) =>
+      filmEditSchema.safeParse({
+        ...gapped,
+        clips: [{ id: 'c', name: 'a.mp4', start: 0, end: 1, sound: false, gap }]
+      }).success
+    expect(parse(0)).toBe(true)
+    expect(parse(2.5)).toBe(true)
+    expect(parse(undefined)).toBe(true)
+    expect(parse(-1)).toBe(false)
+    expect(parse(Number.POSITIVE_INFINITY)).toBe(false)
+    expect(parse('2')).toBe(false)
+  })
+
+  it('leaves a file without gaps as it was', () => {
+    const old = edit()
+    expect(filmEditSchema.parse(JSON.parse(JSON.stringify(old)))).toEqual(old)
+    expect(filmEditSchema.parse(JSON.parse(JSON.stringify(gapped))).clips[1]!.gap).toBe(2)
+  })
+
+  it('counts in the length of the film, where the camera sound is heard, and the end of the timeline', () => {
+    expect(filmLength(gapped)).toBe(9)
+    expect(heardSpans(gapped, () => true)).toEqual([
+      { from: 0, to: 4 },
+      { from: 6, to: 9 }
+    ])
+    expect(timelineEnd(gapped)).toBe(11)
+    expect(timelineEnd(edit())).toBe(7)
+  })
+
+  it('is a black picture with silence in the graph, and the render runs to the end of the music', () => {
+    const made = args(gapped, [{ name: 'song.mp3', path: '/out/music/song.mp3', seconds: 60 }])
+    const joined = graph(made)
+    expect(joined).toContain('color=c=black:s=1920x1080:r=30:d=2')
+    expect(joined).toContain('[v0][a0][vg1][ag1][v1][a1][vt][at]concat=n=4:v=1:a=1')
+    expect(made.slice(made.indexOf('-t'), made.indexOf('-t') + 2)).toEqual(['-t', '11'])
   })
 })

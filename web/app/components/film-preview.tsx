@@ -87,8 +87,11 @@ const FilmPreview = ({
   upright,
   picked,
   heard,
+  blank,
+  mix,
   framed,
   videoRef,
+  underRef,
   onPickText,
   onMoveText,
   onShape
@@ -98,8 +101,11 @@ const FilmPreview = ({
   upright: boolean
   picked: string | null
   heard: string
+  blank: boolean
+  mix: number
   framed: boolean
   videoRef: React.RefObject<HTMLVideoElement | null>
+  underRef: React.RefObject<HTMLVideoElement | null>
   onPickText: (id: string) => void
   onMoveText: (id: string, x: number, y: number) => void
   onShape: (upright: boolean) => void
@@ -116,14 +122,22 @@ const FilmPreview = ({
         }}
         className='film-stage relative overflow-hidden rounded-corner bg-stage'>
         <video
+          ref={underRef}
+          playsInline
+          muted
+          preload='auto'
+          className={`absolute inset-0 h-full w-full object-contain ${mix < 1 ? '' : 'invisible'}`}
+        />
+        <video
           ref={videoRef}
           playsInline
           muted
           preload='auto'
+          style={{ opacity: mix }}
           onLoadedMetadata={(e) =>
             onShape(e.currentTarget.videoHeight > e.currentTarget.videoWidth)
           }
-          className='absolute inset-0 h-full w-full object-contain'
+          className={`absolute inset-0 h-full w-full object-contain ${blank ? 'invisible' : ''}`}
         />
         {framed && <div className='film-safe pointer-events-none absolute' />}
         {guides.x && (

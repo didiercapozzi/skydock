@@ -29,7 +29,9 @@ const Mini = ({ children, title, disabled, type = 'button', form, onClick, press
     onClick={onClick}
     aria-pressed={pressed}
     className={`inline-flex h-control-sm items-center justify-center gap-1.5 rounded-corner px-3.5 text-body font-bold whitespace-nowrap shadow-card disabled:cursor-default disabled:opacity-40 ${
-      pressed ? 'bg-accent-soft text-accent-ink' : 'bg-pane text-accent-ink hover:bg-accent-soft'
+      pressed
+        ? 'bg-accent-soft text-accent-ink outline-2 -outline-offset-2 outline-accent'
+        : 'bg-pane text-accent-ink hover:bg-accent-soft'
     }`}>
     {children}
   </button>

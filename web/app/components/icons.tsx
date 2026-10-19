@@ -203,6 +203,8 @@ const PATHS = {
       <path d='M8.5 7.5 20 18M8.5 16.5 20 6' />
     </>
   ),
+  select: <path d='M5 3l14 8-6 2-3 6z' />,
+  fade: <path d='M3 5h9l9 14M3 19h9L21 5' />,
   eject: <path d='M12 4 5 12h14zM5 17h14' />,
   copying: <path d='M12 3v14M8 7l4-4 4 4M7 13h10v3a5 5 0 0 1-10 0z' />,
   play: (

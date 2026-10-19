@@ -5,6 +5,7 @@ const routes = [
     index('routes/place.home.tsx'),
     route(':kind/:name?', 'routes/place.tsx', [route('file/:fileId', 'routes/place.file.tsx')])
   ]),
+  route('edit/:groupId', 'routes/edit.tsx'),
   route('api/manifest', 'routes/api.manifest.ts'),
   route('api/nas', 'routes/api.nas.ts'),
   route('api/scan', 'routes/api.scan.ts'),
