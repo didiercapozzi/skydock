@@ -34,7 +34,7 @@ import {
   unturnedFrame,
   zoomAround
 } from '../helpers/filmTimeline'
-import type { Grouped } from '../helpers/filmTimeline'
+import type { Selected } from '../helpers/filmTimeline'
 import { Icon } from './icons'
 import { getThumbUrl } from './utils'
 
@@ -209,13 +209,13 @@ const FilmTimeline = ({
   pps: number
   at: number
   picked: Picked
-  also: Grouped[]
+  also: Selected[]
   snap: boolean
   ripple: boolean
   onSeek: (t: number) => void
   onZoom: (pps: number) => void
   onPick: (picked: Picked) => void
-  onAlso: (item: Grouped | null) => void
+  onAlso: (item: Selected | null) => void
   onChange: (edit: FilmEdit) => void
   onOpenPart: (id: string) => void
   onDropClip: (name: string, index: number) => void
@@ -401,6 +401,8 @@ const FilmTimeline = ({
       onOpenPart(id)
       return
     }
+    if (e.shiftKey) return onAlso({ kind: 'clip', id })
+    onAlso(null)
     setLastDown({ id, at: now })
     onPick({ kind: 'clip', id })
     e.currentTarget.focus({ preventScroll: true })
@@ -503,13 +505,14 @@ const FilmTimeline = ({
     })
   }
 
-  const lit = (kind: Grouped['kind'], id: string) =>
+  const lit = (kind: Selected['kind'], id: string) =>
     also.some((one) => one.kind === kind && one.id === id) ||
     (picked !== null &&
-      (picked.kind === 'text' || picked.kind === 'layer') &&
-      groupOf(edit, { kind: picked.kind, id: picked.id } as Grouped).some(
-        (one) => one.kind === kind && one.id === id
-      ))
+      (picked.kind === 'text' || picked.kind === 'layer'
+        ? groupOf(edit, { kind: picked.kind, id: picked.id }).some(
+            (one) => one.kind === kind && one.id === id
+          )
+        : false))
 
   const moveText = (e: React.PointerEvent<HTMLElement>, id: string, part: 'body' | 'end') => {
     if (e.shiftKey) return onAlso({ kind: 'text', id })
@@ -582,6 +585,8 @@ const FilmTimeline = ({
   }
 
   const moveMusic = (e: React.PointerEvent<HTMLElement>, id: string, part: 'body' | 'end') => {
+    if (e.shiftKey) return onAlso({ kind: 'music', id })
+    onAlso(null)
     onPick({ kind: 'music', id })
     drag(e, (seconds, original) =>
       onChange({
@@ -687,7 +692,8 @@ const FilmTimeline = ({
               const source = sources.get(clip.name)
               const lead = fadeInto(edit.clips, index) * pps
               const length = clipLength(clip)
-              const chosen = picked?.kind === 'clip' && picked.id === clip.id
+              const chosen =
+                lit('clip', clip.id) || (picked?.kind === 'clip' && picked.id === clip.id)
               if (clip.id === SLOT)
                 return (
                   <span
@@ -1064,7 +1070,7 @@ const FilmTimeline = ({
                 title={piece.name}
                 style={{ left: piece.at * pps, width: Math.max(8, length * pps - 2) }}
                 className={`group absolute inset-y-1.5 cursor-grab overflow-hidden rounded-corner bg-up-soft ${
-                  picked?.kind === 'music' && picked.id === piece.id
+                  lit('music', piece.id) || (picked?.kind === 'music' && picked.id === piece.id)
                     ? 'shadow-ring-2'
                     : 'shadow-hairline'
                 }`}>

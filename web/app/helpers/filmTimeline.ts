@@ -302,6 +302,8 @@ const withoutLayer = (edit: FilmEdit, id: string): FilmEdit => {
   return kept.length > 0 ? { ...rest, layers: kept } : rest
 }
 
+type Selected = { kind: 'clip' | 'music' | 'text' | 'layer'; id: string }
+
 type Grouped = { kind: 'text' | 'layer'; id: string }
 
 const groupedItems = (edit: FilmEdit) => [
@@ -400,6 +402,49 @@ const moveLook = (edit: FilmEdit, item: Grouped, x: number, y: number): FilmEdit
     ...(edit.layers
       ? { layers: edit.layers.map((layer) => (has('layer', layer.id) ? shift(layer) : layer)) }
       : {})
+  }
+}
+
+const OWN = ['text', 'name', 'at', 'seconds', 'x', 'y'] as const
+
+const changeLike = (
+  edit: FilmEdit,
+  item: Grouped,
+  change: Record<string, unknown>,
+  also: Selected[]
+): FilmEdit => {
+  const shared = Object.fromEntries(
+    Object.entries(change).filter(([key]) => !(OWN as readonly string[]).includes(key))
+  )
+  const likes = [...groupOf(edit, item), ...also].filter((one) => one.kind === item.kind)
+  const apply = <T extends { id: string }>(ones: T[]) =>
+    ones.map((one) =>
+      one.id === item.id
+        ? { ...one, ...change }
+        : likes.some((like) => like.id === one.id)
+          ? { ...one, ...shared }
+          : one
+    )
+  return item.kind === 'text'
+    ? { ...edit, texts: apply(edit.texts) }
+    : { ...edit, layers: apply(edit.layers ?? []) }
+}
+
+const patchItems = (
+  edit: FilmEdit,
+  items: Selected[],
+  patch: Record<string, unknown>
+): FilmEdit => {
+  const has = (kind: Selected['kind'], id: string) =>
+    items.some((one) => one.kind === kind && one.id === id)
+  const apply = <T extends { id: string }>(kind: Selected['kind'], ones: T[]) =>
+    ones.map((one) => (has(kind, one.id) ? { ...one, ...patch } : one))
+  return {
+    ...edit,
+    clips: apply('clip', edit.clips),
+    music: apply('music', edit.music),
+    texts: apply('text', edit.texts),
+    ...(edit.layers ? { layers: apply('layer', edit.layers) } : {})
   }
 }
 
@@ -719,6 +764,8 @@ export {
   trimClip,
   unturnedFrame,
   moveLook,
+  changeLike,
+  patchItems,
   withoutItems,
   withoutLayer,
   groupItems,
@@ -727,4 +774,4 @@ export {
   ungroup,
   zoomAround
 }
-export type { Grouped, Placed }
+export type { Grouped, Placed, Selected }

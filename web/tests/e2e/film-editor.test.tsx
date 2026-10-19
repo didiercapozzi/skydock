@@ -2687,4 +2687,65 @@ describe('texts and pictures grouped to move together', () => {
     await userEvent.click(page.getByRole('button', { name: 'Ungroup', exact: true }))
     await expect.poll(() => saved(sent)?.texts.map((text) => text.group)).toEqual([undefined, undefined])
   })
+
+  test('share the look changed in the Inspector with the whole group', async () => {
+    const sent = await start()
+    await userEvent.click(page.getByText('Alpha', { exact: true }).first(), { force: true })
+    await addWithShift('Beta')
+    await userEvent.click(page.getByRole('button', { name: 'Group', exact: true }))
+    await expect.poll(() => saved(sent)?.texts[0]?.group).toBe('group-1')
+
+    await userEvent.click(page.getByRole('button', { name: '#ffd84d' }))
+
+    await expect
+      .poll(() => saved(sent)?.texts.map((text) => (text as { colour?: string }).colour))
+      .toEqual(['#ffd84d', '#ffd84d'])
+  })
+})
+
+describe('several clips picked with Shift, changed together', () => {
+  type Sent = { url: string; body: unknown }
+  const start = async () => {
+    const sent: Sent[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        return Response.json({ ok: true })
+      }
+      return Response.json(answer)
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+  const clips = (sent: Sent[]) =>
+    (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as
+      | { edit: { clips: Array<{ id: string; speed?: number }> } }
+      | undefined)?.edit.clips
+  const pickBoth = async () => {
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await userEvent.keyboard('{Shift>}')
+    await userEvent.click(page.getByTitle(`${SECOND} · double-click to choose the part`))
+    await userEvent.keyboard('{/Shift}')
+    await expect.element(page.getByRole('heading', { name: '2 items picked' })).toBeVisible()
+  }
+
+  test('show only the options they have in common, and change them all at once', async () => {
+    const sent = await start()
+    await pickBoth()
+
+    await userEvent.selectOptions(page.getByRole('combobox', { name: 'Speed' }), '2')
+
+    await expect.poll(() => clips(sent)?.map((clip) => clip.speed)).toEqual([2, 2])
+    await expect.element(page.getByRole('button', { name: 'Choose the part…' })).not.toBeInTheDocument()
+  })
+
+  test('are taken away together with Delete', async () => {
+    const sent = await start()
+    await pickBoth()
+
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+
+    await expect.poll(() => clips(sent)).toEqual([])
+  })
 })

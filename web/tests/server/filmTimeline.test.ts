@@ -4,6 +4,8 @@ import {
   boundaries,
   clipAt,
   FADE,
+  patchItems,
+  changeLike,
   groupItems,
   groupOf,
   shiftItems,
@@ -1021,5 +1023,65 @@ describe('texts and pictures grouped to move together', () => {
     const gone = withoutItems(stacked, [two, back])
     expect(gone.texts.map((text) => text.id)).toEqual(['text-1', 'text-3'])
     expect('layers' in gone).toBe(false)
+  })
+
+  it('changes the look of every text of the group, but not what is its own: words, time, place and length', () => {
+    const grouped = groupItems(stacked, [one, two, back])
+    const changed = changeLike(
+      grouped,
+      one,
+      { colour: '#ff0000', size: 0.2, text: 'New', at: 9, x: 0.1 },
+      []
+    )
+
+    expect(changed.texts.map((text) => [text.colour, text.size])).toEqual([
+      ['#ff0000', 0.2],
+      ['#ff0000', 0.2],
+      ['#ffffff', 0.09]
+    ])
+    expect(changed.texts.map((text) => [text.text, text.at, text.x])).toEqual([
+      ['New', 9, 0.1],
+      ['Hi', 3, 0.5],
+      ['Hi', 8, 0.5]
+    ])
+    expect(changed.layers?.[0]?.colour).toBe('#000000')
+  })
+
+  it('changes the layers of the group too, and the other items picked with Shift', () => {
+    const grouped = groupItems(stacked, [one, back])
+    const wide = changeLike(grouped, back, { fadeIn: 1, width: 0.5 }, [
+      { kind: 'layer', id: 'layer-1' }
+    ])
+    expect(wide.layers?.[0]).toMatchObject({ fadeIn: 1, width: 0.5 })
+    expect(wide.texts[0]?.fadeIn).toBeUndefined()
+
+    const picked = changeLike(stacked, one, { font: 'elegant' }, [two])
+    expect(picked.texts.map((text) => text.font)).toEqual(['elegant', 'elegant', 'bold'])
+  })
+})
+
+describe('a look shared by what is picked, whatever its kind', () => {
+  it('sets the same fields on clips, music, texts and layers that are picked, and leaves the rest', () => {
+    const all: FilmEdit = {
+      ...edit,
+      layers: [{ id: 'layer-1', at: 0, seconds: 2, colour: '#000000', x: 0.5, y: 0.5, width: 1 }]
+    }
+    const picked = [
+      { kind: 'clip', id: 'clip-1' },
+      { kind: 'music', id: 'music-1' },
+      { kind: 'text', id: 'text-1' },
+      { kind: 'layer', id: 'layer-1' }
+    ] as const
+
+    const fading = patchItems(all, [...picked], { fadeIn: 0.5 })
+    expect(fading.clips.map((clip) => clip.fadeIn)).toEqual([0.5, undefined])
+    expect([fading.music[0]?.fadeIn, fading.texts[0]?.fadeIn, fading.layers?.[0]?.fadeIn]).toEqual([
+      0.5, 0.5, 0.5
+    ])
+    expect(
+      patchItems(all, [picked[0], { kind: 'clip', id: 'clip-2' }], { sound: false }).clips.map(
+        (clip) => clip.sound
+      )
+    ).toEqual([false, false])
   })
 })

@@ -67,8 +67,10 @@ import {
   lookGeometry,
   unturnedFrame,
   groupItems,
+  changeLike,
   groupOf,
   moveLook,
+  patchItems,
   ungroup,
   withoutItems,
   TILE_LOOP,
@@ -88,7 +90,7 @@ import { useFilmKeys } from '../hooks/useFilmKeys'
 import { CLIP_DRAG, FilmTimeline, markName, ZOOM } from './film-timeline'
 import type { Picked } from './film-timeline'
 import { Icon } from './icons'
-import type { Grouped, Placed } from '../helpers/filmTimeline'
+import type { Grouped, Placed, Selected } from '../helpers/filmTimeline'
 import { getFileUrl, getThumbUrl } from './utils'
 
 const fadeWhy = (blocked: ReturnType<typeof fadeBlock>) =>
@@ -733,6 +735,7 @@ const Markers = ({
 const Inspector = ({
   edit,
   picked,
+  also,
   sources,
   formats,
   ripple,
@@ -748,6 +751,7 @@ const Inspector = ({
 }: {
   edit: FilmEdit
   picked: Picked
+  also: Selected[]
   sources: Map<string, EditSource>
   formats: ReadonlyArray<keyof typeof FORMAT_NAMES>
   ripple: boolean
@@ -772,7 +776,9 @@ const Inspector = ({
       onChange={(underSound) => onChange({ ...edit, underSound })}
     />
   )
-  const clip = picked?.kind === 'clip' ? edit.clips.find((one) => one.id === picked.id) : undefined
+  const many = picked !== null && also.length > 0
+  const solo = many ? null : picked
+  const clip = solo?.kind === 'clip' ? edit.clips.find((one) => one.id === solo.id) : undefined
   const clipIndex = clip ? edit.clips.indexOf(clip) : -1
   const fade = clip ? fadeInto(edit.clips, clipIndex) : 0
   const changeClip = (change: Partial<EditClip>) =>
@@ -786,23 +792,40 @@ const Inspector = ({
       ...edit,
       music: edit.music.map((one) => (one.id === picked?.id ? { ...one, ...change } : one))
     })
-  const piece =
-    picked?.kind === 'music' ? edit.music.find((one) => one.id === picked.id) : undefined
-  const text = picked?.kind === 'text' ? edit.texts.find((one) => one.id === picked.id) : undefined
+  const piece = solo?.kind === 'music' ? edit.music.find((one) => one.id === solo.id) : undefined
+  const text = solo?.kind === 'text' ? edit.texts.find((one) => one.id === solo.id) : undefined
   const layer =
-    picked?.kind === 'layer' ? (edit.layers ?? []).find((one) => one.id === picked.id) : undefined
+    solo?.kind === 'layer' ? (edit.layers ?? []).find((one) => one.id === solo.id) : undefined
   const changeLayer = (change: Partial<EditLayer>) =>
-    layer &&
-    onChange({
-      ...edit,
-      layers: (edit.layers ?? []).map((one) => (one.id === layer.id ? { ...one, ...change } : one))
-    })
+    layer && onChange(changeLike(edit, { kind: 'layer', id: layer.id }, change, also))
   const changeText = (change: Partial<EditText>) =>
-    text &&
-    onChange({
-      ...edit,
-      texts: edit.texts.map((one) => (one.id === text.id ? { ...one, ...change } : one))
-    })
+    text && onChange(changeLike(edit, { kind: 'text', id: text.id }, change, also))
+  const picks: Selected[] = picked ? [{ kind: picked.kind, id: picked.id }, ...also] : []
+  const allOf = (kind: Selected['kind']) =>
+    picks.length > 0 && picks.every((one) => one.kind === kind)
+  const rawFade = (pick: Selected | undefined) => {
+    const one =
+      pick?.kind === 'clip'
+        ? edit.clips.find((c) => c.id === pick.id)
+        : pick?.kind === 'music'
+          ? edit.music.find((c) => c.id === pick.id)
+          : pick?.kind === 'text'
+            ? edit.texts.find((c) => c.id === pick.id)
+            : edit.layers?.find((c) => c.id === pick?.id)
+    return { fadeIn: one?.fadeIn ?? 0, fadeOut: one?.fadeOut ?? 0 }
+  }
+  const shortest = Math.min(
+    ...picks.map((pick) =>
+      pick.kind === 'clip'
+        ? clipLength(edit.clips.find((c) => c.id === pick.id) ?? { start: 0, end: 2 })
+        : pick.kind === 'music'
+          ? (edit.music.find((c) => c.id === pick.id)?.end ?? 2) -
+            (edit.music.find((c) => c.id === pick.id)?.start ?? 0)
+          : ((
+              edit.texts.find((c) => c.id === pick.id) ?? edit.layers?.find((c) => c.id === pick.id)
+            )?.seconds ?? 2)
+    )
+  )
   const apart = (kind: Grouped['kind'], id: string) =>
     groupOf(edit, { kind, id }).length > 1 && (
       <Mini onClick={() => onChange(ungroup(edit, { kind, id }))}>{t`Ungroup`}</Mini>
@@ -998,6 +1021,99 @@ const Inspector = ({
             {remove}
           </>
         )}
+        {many && (
+          <>
+            <h3 className='m-0 truncate text-lead font-semibold'>
+              {plural(picks.length, { other: '# items picked' })}
+            </h3>
+            <div className='grid grid-cols-2 gap-2'>
+              <FadeLengths
+                {...rawFade(picks[0])}
+                max={shortest / 2}
+                onChange={(change) => onChange(patchItems(edit, picks, change))}
+              />
+            </div>
+            {allOf('music') && (
+              <Slider
+                label={t`Volume`}
+                value={edit.music.find((one) => one.id === picks[0]!.id)?.volume ?? 1}
+                min={0}
+                max={1}
+                step={0.01}
+                shown={`${Math.round((edit.music.find((one) => one.id === picks[0]!.id)?.volume ?? 1) * 100)}%`}
+                onChange={(volume) => onChange(patchItems(edit, picks, { volume }))}
+              />
+            )}
+            {allOf('clip') && (
+              <>
+                <Field label={t`Speed`}>
+                  <select
+                    aria-label={t`Speed`}
+                    value={speedOf(edit.clips.find((one) => one.id === picks[0]!.id) ?? {})}
+                    onChange={(e) =>
+                      onChange(
+                        picks.reduce(
+                          (now, pick) =>
+                            sources.get(now.clips.find((one) => one.id === pick.id)?.name ?? '')
+                              ?.still
+                              ? now
+                              : setSpeed(now, pick.id, Number(e.target.value), ripple),
+                          edit
+                        )
+                      )
+                    }
+                    className='h-7 rounded-corner border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
+                    {SPEEDS.map((speed) => (
+                      <option
+                        key={speed}
+                        value={speed}>
+                        {speed === 1 ? t`Normal` : `${speed}×`}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <label className='flex items-center gap-2 text-body'>
+                  <input
+                    type='checkbox'
+                    checked={edit.clips.find((one) => one.id === picks[0]!.id)?.sound ?? false}
+                    onChange={(e) =>
+                      onChange(
+                        patchItems(
+                          edit,
+                          picks.filter(
+                            (pick) =>
+                              sources.get(edit.clips.find((one) => one.id === pick.id)?.name ?? '')
+                                ?.sound
+                          ),
+                          { sound: e.target.checked }
+                        )
+                      )
+                    }
+                    className='accent-accent'
+                  />
+                  {t`Hear these clips`}
+                </label>
+              </>
+            )}
+            {allOf('text') && (
+              <Field label={t`Colour`}>
+                <span className='flex gap-2'>
+                  {COLOURS.map((colour) => (
+                    <button
+                      key={colour}
+                      type='button'
+                      aria-label={colour}
+                      onClick={() => onChange(patchItems(edit, picks, { colour }))}
+                      style={{ background: colour }}
+                      className='size-6 rounded-full shadow-hairline'
+                    />
+                  ))}
+                </span>
+              </Field>
+            )}
+            {remove}
+          </>
+        )}
         {text && (
           <>
             <Field label={t`Text`}>
@@ -1186,7 +1302,7 @@ const Inspector = ({
             {remove}
           </>
         )}
-        {!clip && !piece && !text && !layer && !(renderOpen && !scratch) && (
+        {!many && !clip && !piece && !text && !layer && !(renderOpen && !scratch) && (
           <>
             <h3 className='m-0 text-lead font-bold'>{t`The film`}</h3>
             <p className='text-body text-ink-2'>
@@ -1200,7 +1316,7 @@ const Inspector = ({
             {under}
           </>
         )}
-        {!clip && !piece && !text && !layer && renderOpen && !scratch && (
+        {!many && !clip && !piece && !text && !layer && renderOpen && !scratch && (
           <>
             <h3 className='m-0 text-lead font-bold'>{t`Render the film`}</h3>
             <p className='text-body text-ink-2'>
@@ -1319,7 +1435,7 @@ const FilmEditor = ({
   const [edit, setEditNow] = useState<FilmEdit | null>(null)
   const [saving, setSaving] = useState<'saved' | 'waiting' | 'saving' | 'failed'>('saved')
   const [picked, setPicked] = useState<Picked>(null)
-  const [also, setAlso] = useState<Grouped[]>([])
+  const [also, setAlso] = useState<Selected[]>([])
   const [tab, setTab] = useState<Library>('clips')
   const [at, setAt] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -1759,11 +1875,22 @@ const FilmEditor = ({
   const removePicked = () => {
     if (!edit || !picked) return
     joined.current = false
-    if (picked.kind === 'clip') change(removeClip(edit, picked.id, ripple))
-    if (picked.kind === 'music')
-      change({ ...edit, music: edit.music.filter((one) => one.id !== picked.id) })
-    if (picked.kind === 'text' || picked.kind === 'layer')
-      change(withoutItems(edit, [...groupOf(edit, { kind: picked.kind, id: picked.id }), ...also]))
+    const chosen: Selected[] = [{ kind: picked.kind, id: picked.id }, ...also]
+    const members = chosen.flatMap((one) =>
+      one.kind === 'text' || one.kind === 'layer'
+        ? groupOf(edit, { kind: one.kind, id: one.id })
+        : []
+    )
+    const ids = (kind: Selected['kind']) =>
+      chosen.filter((one) => one.kind === kind).map((one) => one.id)
+    const clipsGone = chosen.filter((one) => one.kind === 'clip')
+    const without = clipsGone.reduce((now, one) => removeClip(now, one.id, ripple), edit)
+    change(
+      withoutItems(
+        { ...without, music: without.music.filter((one) => !ids('music').includes(one.id)) },
+        members
+      )
+    )
     setPicked(null)
     setAlso([])
   }
@@ -2164,6 +2291,7 @@ const FilmEditor = ({
             <Inspector
               edit={edit}
               picked={picked}
+              also={also}
               sources={sources}
               formats={loaded?.formats ?? ['h264']}
               ripple={ripple}
@@ -2202,12 +2330,16 @@ const FilmEditor = ({
               </Mini>
               <Mini
                 disabled={
-                  !(picked?.kind === 'text' || picked?.kind === 'layer') || also.length === 0
+                  !picked ||
+                  also.length === 0 ||
+                  [picked, ...also].some((one) => one.kind === 'clip' || one.kind === 'music')
                 }
                 title={t`Shift-click texts and pictures on the timeline, then group them to move together`}
                 onClick={() => {
-                  if (edit && (picked?.kind === 'text' || picked?.kind === 'layer')) {
-                    change(groupItems(edit, [{ kind: picked.kind, id: picked.id }, ...also]))
+                  if (edit && picked) {
+                    change(
+                      groupItems(edit, [{ kind: picked.kind, id: picked.id }, ...also] as Grouped[])
+                    )
                     setAlso([])
                   }
                 }}>

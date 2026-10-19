@@ -223,6 +223,7 @@ const filmArgs = ({
   const layers = edit.layers ?? []
   const layerBase = edit.clips.length + edit.music.length
   let beneath = 'joined'
+  let picture = layerBase
   layers.forEach((layer, index) => {
     const until = layer.at + layer.seconds
     const fades = [
@@ -238,7 +239,7 @@ const filmArgs = ({
     graph.push(
       layer.colour !== undefined
         ? `color=c=0x${layer.colour.slice(1)}:s=${width}x${height}:r=${fps}:d=${n(layer.seconds)},format=rgba,${shown}[layer${index}]`
-        : `[${layerBase + index}:v]scale=${Math.max(2, Math.round(width * layer.width))}:-2,format=rgba,${shown}[layer${index}]`
+        : `[${picture++}:v]scale=${Math.max(2, Math.round(width * layer.width))}:-2,format=rgba,${shown}[layer${index}]`
     )
     graph.push(
       `[${beneath}][layer${index}]overlay=x=${layer.colour !== undefined ? '0' : `W*${n(layer.x)}-w/2`}:y=${layer.colour !== undefined ? '0' : `H*${n(layer.y)}-h/2`}:eof_action=pass:enable=${quoted(`between(t,${n(layer.at)},${n(until)})`)}[over${index}]`

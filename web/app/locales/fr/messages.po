@@ -199,6 +199,11 @@ msgstr "{0, plural, one {Ce fichier devient un montage dès qu’il a un nom.} o
 msgid "{0, plural, one {this is no longer on the storage:} other {these are no longer on the storage:}}"
 msgstr "{0, plural, one {ceci n’est plus sur le stockage :} other {ceux-ci ne sont plus sur le stockage :}}"
 
+#. placeholder {0}: picks.length
+#: app/components/film-editor.tsx
+msgid "{0, plural, other {# items picked}}"
+msgstr "{0, plural, one {# élément choisi} other {# éléments choisis}}"
+
 #. placeholder {0}: job.label
 #. placeholder {1}: job.done
 #. placeholder {2}: job.total
@@ -2835,6 +2840,10 @@ msgstr "Manuscrite"
 #: app/components/camera-files.tsx
 msgid "handed over, not a drive — slower than a card reader"
 msgstr "transmis, pas un disque — plus lent qu’un lecteur de cartes"
+
+#: app/components/film-editor.tsx
+msgid "Hear these clips"
+msgstr "Entendre ces clips"
 
 #: app/components/film-editor.tsx
 #: app/components/film-timeline.tsx

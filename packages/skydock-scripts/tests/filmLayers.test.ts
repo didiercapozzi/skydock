@@ -146,6 +146,17 @@ describe('the layers of a film', () => {
     expect(red(colourAt(file, 2.5, 160, 90))).toBe(true)
   })
 
+  it('find their picture when a colour is listed before it', () => {
+    const file = render(
+      film([
+        layer({ id: 'layer-1', colour: '#ffffff', at: 0, seconds: 1 }),
+        layer({ id: 'layer-2', name: 'dot.png', x: 0.5, y: 0.5, width: 0.25, at: 2, seconds: 1 })
+      ])
+    )
+
+    expect(colourAt(file, 2.5, 160, 90).r).toBeLessThan(250)
+  })
+
   it('draw a picture where it is put, as wide as asked, over the film', () => {
     const file = render(film([layer({ name: 'dot.png', x: 0.25, y: 0.5, width: 0.25 })]))
 

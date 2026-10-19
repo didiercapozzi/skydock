@@ -199,6 +199,11 @@ msgstr "{0, plural, one {Diese Datei wird zur Montage, sobald sie einen Namen ha
 msgid "{0, plural, one {this is no longer on the storage:} other {these are no longer on the storage:}}"
 msgstr "{0, plural, one {das ist nicht mehr auf dem Speicher:} other {diese sind nicht mehr auf dem Speicher:}}"
 
+#. placeholder {0}: picks.length
+#: app/components/film-editor.tsx
+msgid "{0, plural, other {# items picked}}"
+msgstr "{0, plural, one {# Element gewählt} other {# Elemente gewählt}}"
+
 #. placeholder {0}: job.label
 #. placeholder {1}: job.done
 #. placeholder {2}: job.total
@@ -2835,6 +2840,10 @@ msgstr "Handschrift"
 #: app/components/camera-files.tsx
 msgid "handed over, not a drive — slower than a card reader"
 msgstr "übergeben, kein Laufwerk — langsamer als ein Kartenleser"
+
+#: app/components/film-editor.tsx
+msgid "Hear these clips"
+msgstr "Diese Clips hören"
 
 #: app/components/film-editor.tsx
 #: app/components/film-timeline.tsx
