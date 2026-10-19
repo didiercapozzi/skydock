@@ -300,7 +300,7 @@ const openWindow = (address: string) => {
   const zoom = zoomLevel()
   const window = new BrowserWindow(windowOptions(zoom, { width: 1440, height: 900 }))
   window.webContents.setWindowOpenHandler(({ url: asked }) => {
-    if (isPreviewAddress(asked, address)) {
+    if (isPreviewAddress(asked, window.webContents.getURL())) {
       const open = previewWindow
       if (open && !open.isDestroyed()) {
         void open.loadURL(asked)
