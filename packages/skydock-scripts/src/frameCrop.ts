@@ -136,6 +136,7 @@ export {
   isWholeFrame,
   orientationAfter,
   pictureFilter,
+  ROTATE_FILTER,
   sameFrame,
   turnBy,
   turnedSize,

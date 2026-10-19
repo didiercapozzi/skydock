@@ -11,7 +11,7 @@ import {
   SLOT,
   textFadesOf
 } from '@skydock/scripts/client'
-import type { EditSource, FilmEdit, MusicSource } from '@skydock/scripts/client'
+import type { EditClip, EditSource, FilmEdit, MusicSource } from '@skydock/scripts/client'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   clockOf,
@@ -27,6 +27,7 @@ import {
   snapTo,
   timelineEnd,
   trimClip,
+  unturnedFrame,
   zoomAround
 } from '../helpers/filmTimeline'
 import { Icon } from './icons'
@@ -113,6 +114,32 @@ const Ramps = ({ fadeIn, fadeOut, pps }: { fadeIn: number; fadeOut: number; pps:
     )}
   </>
 )
+
+const thumbLook = (clip: EditClip): React.CSSProperties => {
+  const rotation = clip.rotation ?? 0
+  const box = clip.frame ? unturnedFrame(clip.frame, rotation) : null
+  const view = box
+    ? {
+        objectViewBox: `inset(${box.y * 100}% ${(1 - box.x - box.width) * 100}% ${(1 - box.y - box.height) * 100}% ${box.x * 100}%)`
+      }
+    : {}
+  return rotation % 180 !== 0
+    ? {
+        ...view,
+        left: '50%',
+        top: '50%',
+        width: '100cqh',
+        height: '100cqw',
+        transform: `translate(-50%, -50%) rotate(${rotation}deg)`
+      }
+    : {
+        ...view,
+        inset: 0,
+        width: '100%',
+        height: '100%',
+        ...(rotation ? { transform: `rotate(${rotation}deg)` } : {})
+      }
+}
 
 const FadeHandle = ({
   side,
@@ -611,24 +638,28 @@ const FilmTimeline = ({
                   {source && (
                     <span className='pointer-events-none absolute inset-0 flex'>
                       {Array.from({ length: Math.ceil((length * pps) / FRAME) }, (_, i) => (
-                        <img
+                        <span
                           key={i}
-                          src={getThumbUrl(
-                            source.play,
-                            Math.max(
-                              0,
-                              Math.min(
-                                clip.end - 0.1,
-                                Math.round(clip.start + (i * FRAME * speedOf(clip)) / pps)
-                              )
-                            ),
-                            160
-                          )}
-                          alt=''
-                          loading='lazy'
-                          draggable={false}
-                          className='h-full w-14 flex-none border-r border-black/20 bg-well object-cover'
-                        />
+                          className='relative h-full w-14 flex-none overflow-hidden border-r border-black/20 bg-well [container-type:size]'>
+                          <img
+                            src={getThumbUrl(
+                              source.play,
+                              Math.max(
+                                0,
+                                Math.min(
+                                  clip.end - 0.1,
+                                  Math.round(clip.start + (i * FRAME * speedOf(clip)) / pps)
+                                )
+                              ),
+                              160
+                            )}
+                            alt=''
+                            loading='lazy'
+                            draggable={false}
+                            style={thumbLook(clip)}
+                            className='absolute object-cover'
+                          />
+                        </span>
                       ))}
                     </span>
                   )}

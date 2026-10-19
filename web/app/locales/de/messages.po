@@ -1093,6 +1093,7 @@ msgstr "Zehn Sekunden zurück"
 msgid "Back to as drawn"
 msgstr "Zurück zur Originalgröße"
 
+#: app/components/film-part.tsx
 #: app/components/preview-drawer.tsx
 msgid "Back to as shot"
 msgstr "Zurück wie aufgenommen"
@@ -1105,6 +1106,10 @@ msgstr "Zurück auf den Stand vor dem Aufbereiten — Name, Kürzungen, Bildauss
 #: app/components/take-back-dialog.tsx
 msgid "Back to Fresh files, loose"
 msgstr "Zurück in Neue Dateien, lose"
+
+#: app/components/film-editor.tsx
+msgid "Back to the film"
+msgstr "Zurück zum Film"
 
 #: app/components/email-dialog.tsx
 msgid "Back to the first template"
@@ -1381,6 +1386,10 @@ msgstr "Ordner auf dem Speicher wählen"
 #: app/components/templates-dialog.tsx
 msgid "Choose the folder…"
 msgstr "Ordner wählen…"
+
+#: app/components/film-editor.tsx
+msgid "Choose the format of the film, then render it"
+msgstr "Das Format des Films wählen und ihn dann rendern"
 
 #: app/components/film-part.tsx
 msgid "Choose the part"
@@ -1770,6 +1779,7 @@ msgstr "Strg, Cmd und Alt sind für anderes gedacht"
 msgid "Custom"
 msgstr "Eigene"
 
+#: app/components/film-part.tsx
 #: app/components/film-shortcuts.tsx
 #: app/components/preview-drawer.tsx
 msgid "Cut"
@@ -2020,13 +2030,13 @@ msgstr "Ziehe einen auf ein Ziel in der Seitenleiste — oder öffne ihn und wä
 msgid "Drag onto a zip, or press one to make a new zip."
 msgstr "Auf ein Zip ziehen oder eines drücken, um ein neues Zip zu machen."
 
-#: app/components/film-part.tsx
-msgid "Drag the blue part over what the film shows. It snaps just before each jump mark."
-msgstr "Zieh den blauen Bereich über das, was der Film zeigt. Er rastet kurz vor jeder Sprungmarke ein."
-
 #: app/components/preview-drawer.tsx
 msgid "Drag the corners to any shape"
 msgstr "Zieh die Ecken in jede beliebige Form"
+
+#: app/components/film-part.tsx
+msgid "Drag the ends of the part over what the film shows, or press Start here and End here while it plays."
+msgstr "Ziehen Sie die Enden des Teils über das, was der Film zeigt, oder drücken Sie beim Abspielen auf Start hier und Ende hier."
 
 #: app/components/preview-drawer.tsx
 msgid "Drag the rectangle to move it, a corner to resize. What is dimmed is cut away."
@@ -2549,6 +2559,7 @@ msgstr "Gefunden"
 msgid "frame"
 msgstr "Bildausschnitt"
 
+#: app/components/film-part.tsx
 #: app/components/preview-drawer.tsx
 msgid "Frame"
 msgstr "Bildausschnitt"
@@ -3093,6 +3104,10 @@ msgstr "Zuletzt geprüft: {checkedAt}."
 msgid "Last step"
 msgstr "Letzter Schritt"
 
+#: app/components/film-part.tsx
+msgid "lasts {lasts}"
+msgstr "dauert {lasts}"
+
 #. placeholder {0}: p.name
 #: app/components/upload-dialog.tsx
 msgid "Leave {0} out of this upload"
@@ -3397,10 +3412,6 @@ msgstr "Mehr als 15 Minuten vom Rest seines Sprungs entfernt — die Abstandsreg
 msgid "Move"
 msgstr "Verschieben"
 
-#: app/components/film-part.tsx
-msgid "Move the end"
-msgstr "Ende verschieben"
-
 #: app/components/film-shortcuts.tsx
 msgid "move the picked clip 0.1 second, 1 second with Shift"
 msgstr "den gewählten Clip um 0,1 Sekunde verschieben, mit Umschalt um 1 Sekunde"
@@ -3408,10 +3419,6 @@ msgstr "den gewählten Clip um 0,1 Sekunde verschieben, mit Umschalt um 1 Sekund
 #: app/components/film-shortcuts.tsx
 msgid "move the playhead 0.1 second, 1 second with Shift"
 msgstr "den Abspielkopf um 0,1 Sekunde bewegen, mit Umschalt um 1 Sekunde"
-
-#: app/components/film-part.tsx
-msgid "Move the start"
-msgstr "Anfang verschieben"
 
 #: app/components/film-preview.tsx
 msgid "Move the text"
@@ -3649,6 +3656,7 @@ msgid "None yet"
 msgstr "Noch keiner"
 
 #: app/components/film-editor.tsx
+#: app/components/film-part.tsx
 msgid "Normal"
 msgstr "Normal"
 
@@ -4177,10 +4185,6 @@ msgstr "Abspielen oder pausieren (Enter, Space)"
 msgid "play or stop; in a text box they type instead"
 msgstr "abspielen oder anhalten; in einem Textfeld wird stattdessen getippt"
 
-#: app/components/film-part.tsx
-msgid "Play the part, twice as fast"
-msgstr "Ausschnitt doppelt so schnell abspielen"
-
 #: app/components/film-shortcuts.tsx
 msgid "Playing"
 msgstr "Wiedergabe"
@@ -4553,8 +4557,12 @@ msgid "Render the film first"
 msgstr "Rendere zuerst den Film"
 
 #: app/components/film-editor.tsx
-msgid "Render the film into the montage’s folder: MP4, H.264 and AAC, from the processed copies"
-msgstr "Den Film in den Ordner der Montage rendern: MP4, H.264 und AAC, aus den vorbereiteten Kopien"
+msgid "Render the film into the montage’s folder, from the processed copies"
+msgstr "Den Film aus den verarbeiteten Kopien in den Ordner der Montage rendern"
+
+#: app/components/film-editor.tsx
+msgid "Render…"
+msgstr "Rendern…"
 
 #: app/components/montage-card.tsx
 msgid "rendered {renderedAt}"
@@ -4998,6 +5006,7 @@ msgid "Space"
 msgstr "Leertaste"
 
 #: app/components/film-editor.tsx
+#: app/components/film-part.tsx
 msgid "Speed"
 msgstr "Geschwindigkeit"
 
@@ -5071,7 +5080,6 @@ msgstr "Kamera wird noch durchgegangen — bisher {count, plural, one {# Datei} 
 msgid "Still processing — the board updates itself when it is done"
 msgstr "Wird noch aufbereitet — die Übersicht aktualisiert sich von selbst, wenn es fertig ist"
 
-#: app/components/film-part.tsx
 #: app/components/jobs-panel.tsx
 msgid "Stop"
 msgstr "Stoppen"
@@ -5473,10 +5481,6 @@ msgstr "die Originale"
 msgid "the originals are exactly what the backup holds"
 msgstr "die Originale entsprechen genau dem, was die Sicherung enthält"
 
-#: app/components/film-part.tsx
-msgid "The part the film shows"
-msgstr "Der Ausschnitt, den der Film zeigt"
-
 #: app/helpers/parcels.ts
 msgid "the photos"
 msgstr "die Fotos"
@@ -5800,9 +5804,14 @@ msgstr "Kürzen verändert keine Pixel."
 msgid "turn"
 msgstr "drehen"
 
+#: app/components/film-part.tsx
 #: app/components/preview-drawer.tsx
 msgid "Turn"
 msgstr "Drehen"
+
+#: app/components/film-part.tsx
+msgid "Turn a quarter clockwise"
+msgstr "Eine Vierteldrehung im Uhrzeigersinn"
 
 #: app/components/preview-drawer.tsx
 msgid "Turn a quarter clockwise (R)"
@@ -5828,6 +5837,7 @@ msgstr "Nachziehen ein- oder ausschalten"
 msgid "turn Snap on or off"
 msgstr "Einrasten ein- oder ausschalten"
 
+#: app/components/film-part.tsx
 #: app/components/preview-drawer.tsx
 msgid "Turn upside down"
 msgstr "Auf den Kopf stellen"
@@ -6104,6 +6114,7 @@ msgstr "Was hier steht, wird auf diesem Rechner gespeichert und ist der Entwurf 
 msgid "What the camera felt"
 msgstr "Was die Kamera spürte"
 
+#: app/components/film-part.tsx
 #: app/components/preview-drawer.tsx
 msgid "What to change"
 msgstr "Was geändert wird"

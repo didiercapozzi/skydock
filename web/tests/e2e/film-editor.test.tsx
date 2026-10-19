@@ -2274,8 +2274,8 @@ describe('the fade handles on the timeline', () => {
 })
 
 describe('the output of the film', () => {
-  const start = async (formats: string[]) => {
-    const posts: Array<{ edit: { output?: Record<string, unknown> } }> = []
+  const start = async (formats: string[], onClose: () => void = () => {}) => {
+    const posts: Array<{ intent?: string; edit: { output?: Record<string, unknown> } }> = []
     vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
       if (init?.method === 'POST') {
         posts.push(JSON.parse(String(init.body)))
@@ -2283,13 +2283,29 @@ describe('the output of the film', () => {
       }
       return Response.json({ ...answer, formats })
     })
-    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
     return posts
   }
+  const open = () => userEvent.click(page.getByRole('button', { name: 'Render…' }))
 
-  test('is the format, the frame rate and the quality, chosen from the film when nothing is picked', async () => {
+  test('is not in the Inspector until Render… is pressed, which shows it with the real render button', async () => {
+    await start(['h264', 'h265', 'av1'])
+
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Render the film' })).not.toBeInTheDocument()
+
+    await open()
+
+    await expect.element(page.getByRole('group', { name: 'Format' })).toBeVisible()
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).toBeVisible()
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Render the film' })).toBeEnabled()
+  })
+
+  test('is the format, the frame rate and the quality, kept in the saved edit', async () => {
     const posts = await start(['h264', 'h265', 'av1'])
+    await open()
     const format = page.getByRole('group', { name: 'Format' })
     const rate = page.getByRole('group', { name: 'Frame rate' })
 
@@ -2306,17 +2322,136 @@ describe('the output of the film', () => {
     await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ format: 'h265', fps: 24, crf: 24 })
   })
 
+  test('renders only from the button of the panel, which saves the edit and leaves the editor', async () => {
+    let closed = 0
+    const posts = await start(['h264'], () => closed++)
+    await open()
+    expect(posts.some((one) => one.intent === 'render')).toBe(false)
+
+    await userEvent.click(page.getByRole('button', { name: 'Render the film' }))
+
+    await expect.poll(() => posts.some((one) => one.intent === 'render')).toBe(true)
+    await expect.poll(() => closed).toBe(1)
+  })
+
+  test('goes back to the film when something is picked on the timeline, or Back is pressed', async () => {
+    await start(['h264'])
+    await open()
+
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).not.toBeInTheDocument()
+
+    await open()
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Back to the film' }))
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).not.toBeInTheDocument()
+  })
+
   test('offers only the formats that this computer can make, and none to choose when there is one', async () => {
     await start(['h264'])
+    await open()
 
     await expect.element(page.getByRole('group', { name: 'Format' })).not.toBeInTheDocument()
-    await expect.element(page.getByRole('group', { name: 'Frame rate' })).toBeInTheDocument()
+    await expect.element(page.getByRole('group', { name: 'Frame rate' })).toBeVisible()
   })
 
   test('is not offered in the film template editor, which makes no film', async () => {
     vi.stubGlobal('fetch', async () => Response.json({ templates: [], music: [] }))
     await render(createElement(FilmEditor, { template: 'Club', onClose: () => {} }))
 
-    await expect.element(page.getByRole('group', { name: 'Frame rate' })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Render…' })).not.toBeInTheDocument()
+  })
+})
+
+describe('the frame of a clip on the stage', () => {
+  const decks = () => [...document.querySelectorAll('video')]
+  const turns = () => decks().map((one) => one.style.transform)
+  const widths = () => decks().map((one) => one.style.width)
+
+  test('shows the picture turned and cropped as the film will have it', async () => {
+    await open({
+      clips: [
+        {
+          ...answer.edit.clips[0]!,
+          rotation: 90,
+          frame: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 }
+        },
+        answer.edit.clips[1]!
+      ]
+    })
+
+    await expect.poll(() => turns().some((one) => one.includes('rotate(90deg)'))).toBe(true)
+    expect(widths().some((one) => one.endsWith('px'))).toBe(true)
+    expect(decks().some((one) => one.style.maxWidth === 'none')).toBe(true)
+    expect(decks().map((one) => one.style.clipPath)).toContain('inset(60% 40% 10% 20%)')
+  })
+
+  test('shows a clip with no frame as it is, and gives the next one its own', async () => {
+    await open({
+      clips: [
+        answer.edit.clips[0]!,
+        { ...answer.edit.clips[1]!, rotation: 180, frame: { x: 0, y: 0, width: 0.5, height: 1 } }
+      ]
+    })
+
+    await expect.poll(() => turns().some((one) => one.includes('rotate'))).toBe(false)
+    expect(decks().map((one) => one.style.clipPath).every((one) => one === '')).toBe(true)
+    await userEvent.click(page.getByRole('button', { name: 'Next clip' }))
+    await expect.poll(() => turns().some((one) => one.includes('rotate(180deg)'))).toBe(true)
+  })
+
+  test('shows the frame at once when it is chosen in the window of the part, without moving the playhead', async () => {
+    await open()
+    await expect.poll(() => widths().every((one) => one === '')).toBe(true)
+
+    await userEvent.dblClick(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await userEvent.click(
+      page.getByRole('group', { name: 'What to change' }).getByRole('button', { name: 'Frame', exact: true })
+    )
+    await userEvent.click(page.getByRole('button', { name: '1:1' }))
+    await userEvent.click(page.getByRole('button', { name: 'Use this part' }))
+
+    await expect.poll(() => widths().some((one) => one.endsWith('px'))).toBe(true)
+  })
+})
+
+describe('the part of a clip, when it is chosen', () => {
+  test('puts the playhead at the start of that clip, so that the stage shows what was chosen', async () => {
+    await open()
+    await expect.element(page.getByText('0:00.0 / 0:16.0', { exact: true })).toBeVisible()
+
+    await userEvent.dblClick(page.getByTitle(`${SECOND} · double-click to choose the part`))
+    await userEvent.click(page.getByRole('button', { name: 'Use this part' }))
+
+    await expect.element(page.getByText('0:10.0 / 0:16.0', { exact: true })).toBeVisible()
+  })
+})
+
+describe('the frame of a clip on the timeline', () => {
+  const thumbs = (name: string) =>
+    [
+      ...(page
+        .getByTitle(`${name} · double-click to choose the part`)
+        .element()
+        .querySelectorAll('img') ?? [])
+    ] as HTMLImageElement[]
+
+  test('is shown in the pictures of the clip, turned and cropped as the film will have it', async () => {
+    await open({
+      clips: [
+        {
+          ...answer.edit.clips[0]!,
+          rotation: 90,
+          frame: { x: 0.1, y: 0.2, width: 0.3, height: 0.4 }
+        },
+        answer.edit.clips[1]!
+      ]
+    })
+
+    await expect.poll(() => thumbs(FIRST).length).toBeGreaterThan(0)
+    expect(thumbs(FIRST)[0]!.style.transform).toContain('rotate(90deg)')
+    expect(thumbs(FIRST)[0]!.style.getPropertyValue('object-view-box')).toBe('inset(60% 40% 10% 20%)')
+    expect(thumbs(SECOND)[0]!.style.transform).toBe('')
+    expect(thumbs(SECOND)[0]!.style.getPropertyValue('object-view-box')).toBe('')
   })
 })

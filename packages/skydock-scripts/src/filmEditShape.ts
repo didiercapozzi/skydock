@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { frameCropSchema, rotationSchema } from './types'
 
 const TEXT_EFFECTS = ['fade', 'rise', 'pop', 'lower-third'] as const
 const TEXT_FONTS = ['clean', 'bold', 'elegant', 'hand'] as const
@@ -31,6 +32,8 @@ const editClipSchema = z
     gap: seconds.finite().optional(),
     fade: z.number().gt(0).finite().optional(),
     speed: z.number().min(SPEED.least).max(SPEED.most).optional(),
+    frame: frameCropSchema.optional(),
+    rotation: rotationSchema.optional(),
     fadeIn: fadeLength,
     fadeOut: fadeLength
   })

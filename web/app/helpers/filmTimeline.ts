@@ -1,5 +1,6 @@
 import { clipLength, fadeInto, filmLength, speedOf, timelineEnd } from '@skydock/scripts/client'
 import type { EditClip, EditMusic, EditSource, EditText, FilmEdit } from '@skydock/scripts/client'
+import type { FrameCrop, Rotation } from '@skydock/scripts'
 
 const SHORTEST = 0.5
 const BEFORE_MARK = 1
@@ -109,6 +110,51 @@ const fitItemFades = (edit: FilmEdit): FilmEdit => {
     music: fit('music', edit.music)
   }
   return changed ? next : edit
+}
+
+const setClipFrame = (
+  edit: FilmEdit,
+  id: string,
+  frame: FrameCrop | null,
+  rotation: Rotation
+): FilmEdit => ({
+  ...edit,
+  clips: edit.clips.map((clip) => {
+    if (clip.id !== id) return clip
+    const { frame: _frame, rotation: _rotation, ...bare } = clip
+    return { ...bare, ...(frame ? { frame } : {}), ...(rotation ? { rotation } : {}) }
+  })
+})
+
+const unturnedFrame = (frame: FrameCrop, rotation: Rotation) => {
+  const { x, y, width, height } = frame
+  return rotation === 90
+    ? { x: y, y: 1 - x - width, width: height, height: width }
+    : rotation === 180
+      ? { x: 1 - x - width, y: 1 - y - height, width, height }
+      : rotation === 270
+        ? { x: 1 - y - height, y: x, width: height, height: width }
+        : { x, y, width, height }
+}
+
+const lookGeometry = (
+  source: { width: number; height: number },
+  rotation: Rotation,
+  frame: FrameCrop | null,
+  stage: { width: number; height: number }
+) => {
+  const turned = rotation % 180 !== 0 ? { width: source.height, height: source.width } : source
+  const box = frame ?? { x: 0, y: 0, width: 1, height: 1 }
+  const scale = Math.min(
+    stage.width / (box.width * turned.width),
+    stage.height / (box.height * turned.height)
+  )
+  return {
+    width: source.width * scale,
+    height: source.height * scale,
+    dx: -(box.x + box.width / 2 - 0.5) * turned.width * scale,
+    dy: -(box.y + box.height / 2 - 0.5) * turned.height * scale
+  }
 }
 
 const fadeBlock = (edit: FilmEdit, id: string) => {
@@ -375,6 +421,7 @@ export {
   fadeMost,
   fitItemFades,
   insertClip,
+  lookGeometry,
   moveClip,
   nearestBoundary,
   nextId,
@@ -383,6 +430,7 @@ export {
   removeClip,
   rippleBy,
   setFade,
+  setClipFrame,
   setItemFade,
   setPart,
   setSpeed,
@@ -392,6 +440,7 @@ export {
   splitClip,
   timelineEnd,
   trimClip,
+  unturnedFrame,
   zoomAround
 }
 export type { Placed }

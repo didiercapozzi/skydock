@@ -7,6 +7,7 @@ import {
   fadeAt,
   fadeBlock,
   insertClip,
+  lookGeometry,
   moveClip,
   placeClip,
   placed,
@@ -14,6 +15,7 @@ import {
   fitItemFades,
   rippleBy,
   setFade,
+  setClipFrame,
   setItemFade,
   setPart,
   snapPoints,
@@ -21,6 +23,7 @@ import {
   splitClip,
   timelineEnd,
   trimClip,
+  unturnedFrame,
   zoomAround
 } from '../../app/helpers/filmTimeline'
 import { fadeInOf, fadeOutOf } from '@skydock/scripts/client'
@@ -767,5 +770,85 @@ describe('the fade of a clip, a text and a piece of music', () => {
 
     expect(fitItemFades(fits)).toBe(fits)
     expect(fitItemFades(faded)).toBe(faded)
+  })
+})
+
+describe('the frame of a clip', () => {
+  const frame = { x: 0.25, y: 0, width: 0.5, height: 1 }
+
+  it('is put on the clip with its turn, and taken off when it is none', () => {
+    const framed = setClipFrame(edit, 'clip-1', frame, 90)
+    expect(framed.clips[0]).toMatchObject({ frame, rotation: 90 })
+    expect(framed.clips[1]).toBe(edit.clips[1])
+
+    const bare = setClipFrame(framed, 'clip-1', null, 0)
+    expect(bare.clips[0]).not.toHaveProperty('frame')
+    expect(bare.clips[0]).not.toHaveProperty('rotation')
+  })
+
+  it('stays on both pieces when the clip is cut, and leaves the film as long as it was', () => {
+    const framed = setClipFrame(edit, 'clip-1', frame, 180)
+    const cut = splitClip(framed, 4)!
+
+    expect(cut.clips.slice(0, 2).map((clip) => [clip.frame, clip.rotation])).toEqual([
+      [frame, 180],
+      [frame, 180]
+    ])
+  })
+})
+
+describe('the frame of a turned picture, in the picture as it was shot', () => {
+  const frame = { x: 0.1, y: 0.2, width: 0.3, height: 0.4 }
+
+  it('is the same when the picture is not turned', () => {
+    expect(unturnedFrame(frame, 0)).toEqual(frame)
+  })
+
+  it('is read back through each turn', () => {
+    const near = (got: Record<string, number>, want: Record<string, number>) => {
+      for (const key of Object.keys(want)) expect(got[key]).toBeCloseTo(want[key]!, 6)
+    }
+    near(unturnedFrame(frame, 90), { x: 0.2, y: 0.6, width: 0.4, height: 0.3 })
+    near(unturnedFrame(frame, 180), { x: 0.6, y: 0.4, width: 0.3, height: 0.4 })
+    near(unturnedFrame(frame, 270), { x: 0.4, y: 0.1, width: 0.4, height: 0.3 })
+  })
+})
+
+describe('where a clip is drawn on the stage, turned and cropped', () => {
+  const source = { width: 1920, height: 1080 }
+  const stage = { width: 1600, height: 900 }
+
+  it('fills the stage as it is when it is neither turned nor cropped', () => {
+    const got = lookGeometry(source, 0, null, stage)
+
+    expect(got.width).toBeCloseTo(1600)
+    expect(got.height).toBeCloseTo(900)
+    expect(got.dx).toBeCloseTo(0)
+    expect(got.dy).toBeCloseTo(0)
+  })
+
+  it('is drawn so that the whole cropped part is in the stage, as large as it can be, and moved so that it is in the middle', () => {
+    const got = lookGeometry(source, 0, { x: 0.5, y: 0, width: 0.5, height: 1 }, stage)
+
+    const scale = Math.min(1600 / 960, 900 / 1080)
+    expect(got.width).toBeCloseTo(1920 * scale)
+    expect(got.dx).toBeCloseTo(-0.25 * 1920 * scale)
+    expect(got.dy).toBeCloseTo(0)
+  })
+
+  it('is fitted in the stage after a quarter turn, whose picture is then upright', () => {
+    const got = lookGeometry(source, 90, null, stage)
+
+    const scale = Math.min(1600 / 1080, 900 / 1920)
+    expect(got.width).toBeCloseTo(1920 * scale)
+    expect(got.height).toBeCloseTo(1080 * scale)
+  })
+
+  it('crops what was turned, with the offset in the turned picture', () => {
+    const got = lookGeometry(source, 90, { x: 0, y: 0.5, width: 1, height: 0.5 }, stage)
+
+    const scale = Math.min(1600 / 1080, 900 / 960)
+    expect(got.dy).toBeCloseTo(-0.25 * 1920 * scale)
+    expect(got.dx).toBeCloseTo(0)
   })
 })

@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { FilmEdit } from '../src/filmEditShape'
-import { cancelRendering, isRendering, renderFilm } from '../src/filmRender'
+import { cancelRendering, formatRefusal, isRendering, renderFilm } from '../src/filmRender'
 import { filmNameOf } from '../src/montageNames'
 import { getGroupProcessedDir } from '../src/process'
 import type { Manifest, ManifestGroup } from '../src/types'
@@ -88,7 +88,28 @@ describe('cancelling a render', () => {
     expect(isRendering(group.id)).toBe(false)
   }, 60_000)
 
+  it('starts afresh from what an older running server left behind', () => {
+    globalThis.skydockRendering = new Set(['g1']) as never
+
+    expect(isRendering(group.id)).toBe(false)
+    expect(cancelRendering()).toBe(false)
+  })
+
   it('says nothing is rendering when nothing is', () => {
     expect(cancelRendering()).toBe(false)
+  })
+})
+
+describe('a format that this computer cannot make', () => {
+  afterEach(() => {
+    globalThis.skydockFormats = undefined
+  })
+
+  it('is refused with the reason, before anything is rendered, and H.264 never is', async () => {
+    globalThis.skydockFormats = Promise.resolve(['h264'])
+
+    expect(await formatRefusal({ ...edit, output: { format: 'h265' } })).toMatch(/H\.?265.*H\.264/)
+    expect(await formatRefusal({ ...edit, output: { format: 'h264' } })).toBeNull()
+    expect(await formatRefusal(edit)).toBeNull()
   })
 })

@@ -203,6 +203,8 @@ export type {
 }
 
 export {
+  frameCropSchema,
+  rotationSchema,
   sendPlanSchema,
   destinationSchema,
   groupsFileSchema,

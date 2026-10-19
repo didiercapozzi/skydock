@@ -52,10 +52,13 @@ import {
   placed,
   removeClip,
   setFade,
+  setClipFrame,
   setPart,
   setSpeed,
   splitClip,
   timelineEnd,
+  lookGeometry,
+  unturnedFrame,
   TILE_LOOP,
   trimClip
 } from '../helpers/filmTimeline'
@@ -63,7 +66,7 @@ import { refusalSchema } from '../hooks/useBoardState'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
 import { Go, Mini, Seg } from './buttons'
-import { FilmPart } from './film-part'
+import { FilmPart, SPEEDS } from './film-part'
 import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-template-modals'
 import type { Listed } from './film-template-modals'
 import { FONT_LOOK, FilmPreview } from './film-preview'
@@ -263,8 +266,6 @@ const TimeBox = ({
     />
   </Field>
 )
-
-const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4]
 
 const Slider = ({
   label,
@@ -588,9 +589,14 @@ const Inspector = ({
   formats,
   ripple,
   scratch,
+  renderOpen,
+  rendering,
+  again,
   onChange,
   onOpenPart,
-  onRemove
+  onRemove,
+  onRender,
+  onBack
 }: {
   edit: FilmEdit
   picked: Picked
@@ -598,9 +604,14 @@ const Inspector = ({
   formats: ReadonlyArray<keyof typeof FORMAT_NAMES>
   ripple: boolean
   scratch: boolean
+  renderOpen: boolean
+  rendering: boolean
+  again: boolean
   onChange: (edit: FilmEdit) => void
   onOpenPart: (id: string) => void
   onRemove: () => void
+  onRender: () => void
+  onBack: () => void
 }) => {
   const under = (
     <Slider
@@ -921,7 +932,7 @@ const Inspector = ({
             {remove}
           </>
         )}
-        {!clip && !piece && !text && (
+        {!clip && !piece && !text && !(renderOpen && !scratch) && (
           <>
             <h3 className='m-0 text-lead font-bold'>{t`The film`}</h3>
             <p className='text-body text-ink-2'>
@@ -933,48 +944,63 @@ const Inspector = ({
               {t`Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part.`}
             </p>
             {under}
-            {!scratch && (
-              <>
-                {formats.length > 1 && (
-                  <div className='grid gap-1'>
-                    <span className='text-micro text-ink-2'>{t`Format`}</span>
-                    <Seg
-                      label={t`Format`}
-                      wide
-                      value={edit.output?.format ?? 'h264'}
-                      options={formats.map((one) => [one, FORMAT_NAMES[one]] as const)}
-                      onPick={(format) =>
-                        onChange({ ...edit, output: { ...edit.output, format, crf: undefined } })
-                      }
-                    />
-                  </div>
-                )}
-                <div className='grid gap-1'>
-                  <span className='text-micro text-ink-2'>{t`Frame rate`}</span>
-                  <Seg
-                    label={t`Frame rate`}
-                    wide
-                    value={String(edit.output?.fps ?? 30)}
-                    options={OUTPUT_FPS.map((rate) => [String(rate), String(rate)] as const)}
-                    onPick={(rate) =>
-                      onChange({ ...edit, output: { ...edit.output, fps: Number(rate) } })
-                    }
-                  />
-                </div>
-                <Slider
-                  label={t`Quality`}
-                  value={edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264']}
-                  min={CRF_RANGE.least}
-                  max={CRF_RANGE.most}
-                  step={1}
-                  shown={String(edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264'])}
-                  onChange={(crf) => onChange({ ...edit, output: { ...edit.output, crf } })}
+          </>
+        )}
+        {!clip && !piece && !text && renderOpen && !scratch && (
+          <>
+            <h3 className='m-0 text-lead font-bold'>{t`Render the film`}</h3>
+            <p className='text-body text-ink-2'>
+              {t`${plural(edit.clips.length, { one: '# clip', other: '# clips' })} · ${clockOf(filmLength(edit))}`}
+            </p>
+            {formats.length > 1 && (
+              <div className='grid gap-1'>
+                <span className='text-micro text-ink-2'>{t`Format`}</span>
+                <Seg
+                  label={t`Format`}
+                  wide
+                  value={edit.output?.format ?? 'h264'}
+                  options={formats.map((one) => [one, FORMAT_NAMES[one]] as const)}
+                  onPick={(format) =>
+                    onChange({ ...edit, output: { ...edit.output, format, crf: undefined } })
+                  }
                 />
-                <p className='m-0 text-small text-ink-3'>
-                  {t`The lower the number, the better the picture and the bigger the file.`}
-                </p>
-              </>
+              </div>
             )}
+            <div className='grid gap-1'>
+              <span className='text-micro text-ink-2'>{t`Frame rate`}</span>
+              <Seg
+                label={t`Frame rate`}
+                wide
+                value={String(edit.output?.fps ?? 30)}
+                options={OUTPUT_FPS.map((rate) => [String(rate), String(rate)] as const)}
+                onPick={(rate) =>
+                  onChange({ ...edit, output: { ...edit.output, fps: Number(rate) } })
+                }
+              />
+            </div>
+            <Slider
+              label={t`Quality`}
+              value={edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264']}
+              min={CRF_RANGE.least}
+              max={CRF_RANGE.most}
+              step={1}
+              shown={String(edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264'])}
+              onChange={(crf) => onChange({ ...edit, output: { ...edit.output, crf } })}
+            />
+            <p className='m-0 text-small text-ink-3'>
+              {t`The lower the number, the better the picture and the bigger the file.`}
+            </p>
+            <Go
+              disabled={edit.clips.length === 0 || rendering}
+              title={t`Render the film into the montage’s folder, from the processed copies`}
+              onClick={onRender}>
+              <Icon
+                name='download'
+                size={14}
+              />
+              {again ? t`Render again` : t`Render the film`}
+            </Go>
+            <Mini onClick={onBack}>{t`Back to the film`}</Mini>
           </>
         )}
       </div>
@@ -1046,6 +1072,10 @@ const FilmEditor = ({
   const [upright, setUpright] = useState(false)
   const [part, setPartOf] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
+  const [renderOpen, setRenderOpen] = useState(false)
+  useEffect(() => {
+    if (picked) setRenderOpen(false)
+  }, [picked])
   const [readAgain, setReadAgain] = useState(0)
   const [starting, setStarting] = useState<Listed | null>(null)
   const [templating, setTemplating] = useState(false)
@@ -1209,6 +1239,38 @@ const FilmEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupId, template, readAgain])
 
+  const lookOf = (player: HTMLVideoElement, clip: EditClip) => {
+    const rotation = clip.rotation ?? 0
+    const stage = player.parentElement
+    const framed = (clip.frame !== undefined || rotation !== 0) && stage !== null
+    if (framed && !player.videoWidth)
+      player.addEventListener('loadedmetadata', () => lookOf(player, clip), { once: true })
+    const box = clip.frame ? unturnedFrame(clip.frame, rotation) : null
+    const geometry = framed
+      ? lookGeometry(
+          { width: player.videoWidth || 1920, height: player.videoHeight || 1080 },
+          rotation,
+          clip.frame ?? null,
+          { width: stage.clientWidth, height: stage.clientHeight }
+        )
+      : null
+    Object.assign(player.style, {
+      inset: geometry ? 'auto' : '',
+      top: geometry ? '50%' : '',
+      left: geometry ? '50%' : '',
+      width: geometry ? `${geometry.width}px` : '',
+      height: geometry ? `${geometry.height}px` : '',
+      maxWidth: geometry ? 'none' : '',
+      maxHeight: geometry ? 'none' : '',
+      clipPath: box
+        ? `inset(${box.y * 100}% ${(1 - box.x - box.width) * 100}% ${(1 - box.y - box.height) * 100}% ${box.x * 100}%)`
+        : '',
+      transform: geometry
+        ? `translate(${geometry.dx}px, ${geometry.dy}px) translate(-50%, -50%) rotate(${rotation}deg)`
+        : ''
+    })
+  }
+
   const drive = (
     player: HTMLVideoElement | null,
     one: Placed | null,
@@ -1218,6 +1280,7 @@ const FilmEditor = ({
   ) => {
     const source = one && sources.get(one.clip.name)
     if (player && one && source?.still) {
+      lookOf(player, { ...one.clip, frame: undefined, rotation: undefined })
       const url = getFileUrl(source.play)
       player.poster = url
       if (!decoded.current.has(url)) {
@@ -1246,6 +1309,7 @@ const FilmEditor = ({
         player.src = url
       }
       const want = one.clip.start + (Math.min(t, one.to) - one.from) * speedOf(one.clip)
+      lookOf(player, one.clip)
       player.playbackRate = speedOf(one.clip)
       if (Math.abs(player.currentTime - want) > (rolling ? DRIFT : SEEK_EPS))
         player.currentTime = want
@@ -1389,6 +1453,22 @@ const FilmEditor = ({
     if (loaded) sync(now.current, false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded])
+
+  const syncing = useRef(sync)
+  useEffect(() => {
+    syncing.current = sync
+  })
+  useEffect(() => {
+    const again = () => syncing.current(now.current, running.current)
+    window.addEventListener('resize', again)
+    return () => window.removeEventListener('resize', again)
+  }, [])
+
+  const looks = JSON.stringify(edit?.clips.map((clip) => [clip.frame, clip.rotation, clip.speed]))
+  useEffect(() => {
+    if (loaded) sync(now.current, running.current)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [looks])
 
   const close = async () => {
     setPlaying(false)
@@ -1670,13 +1750,16 @@ const FilmEditor = ({
         {!scratch && (
           <Go
             disabled={!edit || edit.clips.length === 0 || rendering}
-            title={t`Render the film into the montage’s folder: MP4, H.264 and AAC, from the processed copies`}
-            onClick={() => void render()}>
+            title={t`Choose the format of the film, then render it`}
+            onClick={() => {
+              setPicked(null)
+              setRenderOpen(true)
+            }}>
             <Icon
               name='download'
               size={14}
             />
-            {loaded?.film ? t`Render again` : t`Render the film`}
+            {t`Render…`}
           </Go>
         )}
         <button
@@ -1798,9 +1881,14 @@ const FilmEditor = ({
               formats={loaded?.formats ?? ['h264']}
               ripple={ripple}
               scratch={scratch}
+              renderOpen={renderOpen}
+              rendering={rendering}
+              again={Boolean(loaded?.film)}
               onChange={change}
               onOpenPart={setPartOf}
               onRemove={removePicked}
+              onRender={() => void render()}
+              onBack={() => setRenderOpen(false)}
             />
           </div>
           <div className='flex h-80 flex-none flex-col border-t border-line'>
@@ -2007,8 +2095,16 @@ const FilmEditor = ({
             setPartOf(null)
             setPicked(null)
           }}
-          onPlace={(start, end) => {
-            if (edit) change(setPart(edit, opened.id, start, end, ripple))
+          onPlace={({ start, end, speed, frame, rotation }) => {
+            if (edit) {
+              const trimmed = setPart(edit, opened.id, start, end, ripple)
+              const sped =
+                speed === speedOf(opened) ? trimmed : setSpeed(trimmed, opened.id, speed, ripple)
+              const framed = setClipFrame(sped, opened.id, frame, rotation)
+              change(framed)
+              const here = placed(framed).find((one) => one.clip.id === opened.id)
+              if (here) seek(here.from)
+            }
             setPartOf(null)
           }}
         />

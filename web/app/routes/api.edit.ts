@@ -22,6 +22,7 @@ import {
 } from '../../../packages/skydock-scripts/src/filmEdit'
 import {
   availableFormats,
+  formatRefusal,
   isRendering,
   renderFilm
 } from '../../../packages/skydock-scripts/src/filmRender'
@@ -91,6 +92,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       if (data.intent === 'save') return { saved: true, rendering: isRendering(group.id) }
       if (isRendering(group.id)) return refuse('This film is already being rendered.')
       if (data.edit.clips.length === 0) return refuse('Put at least one clip in the film.')
+      const unmakable = await formatRefusal(data.edit)
+      if (unmakable) return refuse(unmakable)
       void renderFilm({ manifest, outputDir, group, edit: data.edit }).catch((e) =>
         console.warn(`[Render] ${passengerOf(group)}: ${messageOf(e)}`)
       )

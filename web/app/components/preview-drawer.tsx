@@ -1418,5 +1418,6 @@ const PreviewDrawer = ({
   )
 }
 
-export { PreviewDrawer }
+export { PreviewDrawer, pictureStyle, RATIOS, savedShape }
+export type { RatioOption }
 export type { VideoRef }

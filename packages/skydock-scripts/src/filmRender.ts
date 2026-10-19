@@ -19,7 +19,16 @@ import {
   textFadesOf,
   timelineEnd
 } from './filmEditShape'
-import type { EditSource, EditText, FilmEdit, MusicSource, Span, TextFont } from './filmEditShape'
+import type {
+  EditClip,
+  EditSource,
+  EditText,
+  FilmEdit,
+  MusicSource,
+  Span,
+  TextFont
+} from './filmEditShape'
+import { isWholeFrame, ROTATE_FILTER } from './frameCrop'
 import { inJob } from './live'
 import { filmNameOf } from './montageNames'
 import { getGroupProcessedDir } from './process'
@@ -111,6 +120,18 @@ const videoArgs = ({ format = 'h264', crf }: NonNullable<FilmEdit['output']>) =>
   ...(format === 'h265' ? ['-tag:v', 'hvc1', '-x265-params', 'log-level=error'] : [])
 ]
 
+const framed = (clip: EditClip) => {
+  const turn = ROTATE_FILTER[clip.rotation ?? 0]
+  const crop = clip.frame && !isWholeFrame({ ...clip.frame, fill: undefined })
+  const even = (side: string, share: number) => `trunc(${side}*${n(share)}/2)*2`
+  return [
+    turn,
+    crop && clip.frame
+      ? `crop=${even('iw', clip.frame.width)}:${even('ih', clip.frame.height)}:${even('iw', clip.frame.x)}:${even('ih', clip.frame.y)}`
+      : null
+  ].filter((part) => part !== null)
+}
+
 const filmArgs = ({
   edit,
   sources,
@@ -162,7 +183,7 @@ const filmArgs = ({
       ...(fadeOut > 0 ? [`${filter}=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])
     ]
     graph.push(
-      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${fps},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
+      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${fps},${[...framed(clip), ''].join(',')}scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
     )
     graph.push(
       clip.sound && source.sound
@@ -281,7 +302,17 @@ const availableFormats = () =>
     )
   })())
 
-const renderingNow = () => (globalThis.skydockRendering ??= new Map())
+const formatRefusal = async (edit: FilmEdit) => {
+  const format = edit.output?.format ?? 'h264'
+  return (await availableFormats()).includes(format)
+    ? null
+    : `This computer's ffmpeg cannot make ${format.toUpperCase()}: choose H.264.`
+}
+
+const renderingNow = () => {
+  if (!(globalThis.skydockRendering instanceof Map)) globalThis.skydockRendering = new Map()
+  return globalThis.skydockRendering
+}
 
 const isRendering = (groupId: string) => renderingNow().has(groupId)
 
@@ -305,9 +336,8 @@ const renderFilm = async ({
   if (isRendering(group.id)) throw new Error('This film is already being rendered.')
   if (edit.clips.length === 0) throw new Error('The film has no clips.')
   if (!(await hasCommand('ffmpeg'))) throw new Error('ffmpeg is not installed.')
-  const format = edit.output?.format ?? 'h264'
-  if (!(await availableFormats()).includes(format))
-    throw new Error(`This computer's ffmpeg cannot make ${format.toUpperCase()}: choose H.264.`)
+  const refused = await formatRefusal(edit)
+  if (refused) throw new Error(refused)
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   const filmPath = path.join(dir, filmNameOf(baseName))
   const partPath = path.join(dir, `.${baseName}.rendering`)
@@ -367,6 +397,7 @@ const renderFilm = async ({
 export {
   availableFormats,
   cancelRendering,
+  formatRefusal,
   duckOf,
   filmArgs,
   filmShape,

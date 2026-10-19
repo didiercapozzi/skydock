@@ -58,9 +58,9 @@ const secondsOf = (file: string) =>
     ]).toString()
   )
 
-const pull = async (label: string, by: number) => {
-  const box = await j.page.getByLabel(label).first().boundingBox()
-  if (!box) throw new Error(`${label} is not on screen`)
+const pull = async (selector: string, by: number) => {
+  const box = await j.page.locator(selector).first().boundingBox()
+  if (!box) throw new Error(`${selector} is not on screen`)
   const y = box.y + box.height / 2
   await j.page.mouse.move(box.x + box.width / 2, y)
   await j.page.mouse.down()
@@ -82,7 +82,7 @@ describe('the film editor', () => {
 
   test('trims a clip by its edge, and the clips after it close the gap', async () => {
     const before = lengthOf(savedEdit().clips[0]!)
-    await pull('Trim the end', -80)
+    await pull('[aria-label="Trim the end"]', -80)
     await expect
       .poll(() => lengthOf(savedEdit().clips[0]!), { timeout: 10_000 })
       .toBeLessThan(before - 0.5)
@@ -139,7 +139,7 @@ describe('the film editor', () => {
     await editor().getByTitle(`${SECOND} · double-click to choose the part`).dblclick()
     const part = dialogNamed(j.page, `Choose the part of ${SECOND}`)
     await part.waitFor()
-    await pull('Move the end', -150)
+    await pull('[data-crop-end-handle]', -150)
     await part.getByRole('button', { name: 'Use this part' }).click()
     await part.waitFor({ state: 'detached' })
     await expect.poll(() => savedEdit().clips[1]!.end, { timeout: 10_000 }).toBeLessThan(3.5)
@@ -170,6 +170,8 @@ describe('the film editor', () => {
   })
 
   test('hears a clip whose speaker is turned on, and the music dips under it', async () => {
+    await editor().getByRole('slider', { name: 'Timeline ruler' }).focus()
+    await j.page.keyboard.press('Home')
     await editor().getByText('Music 80%').waitFor()
     await editor().getByRole('button', { name: 'Hear this clip' }).first().click()
     await editor().getByText('Camera sound · music 12%').waitFor()
@@ -234,6 +236,7 @@ describe('the film editor', () => {
       (total, clip) => total + (clip.gap ?? 0) + lengthOf(clip),
       0
     )
+    await editor().getByRole('button', { name: 'Render…' }).click()
     await editor().getByRole('button', { name: 'Render the film' }).click()
     await editor().waitFor({ state: 'detached' })
     expect(j.page.url()).not.toContain('/edit/')
