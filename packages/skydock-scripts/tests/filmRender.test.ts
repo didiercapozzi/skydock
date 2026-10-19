@@ -190,3 +190,30 @@ describe('the gap before a clip', () => {
     expect(made.slice(made.indexOf('-t'), made.indexOf('-t') + 2)).toEqual(['-t', '11'])
   })
 })
+
+describe('a clip played faster or slower', () => {
+  const graphOf = (speed: number) =>
+    graph(
+      args(
+        edit({
+          clips: [{ id: 'clip-1', name: 'b.mp4', start: 0, end: 4, sound: true, speed }]
+        })
+      )
+    )
+
+  it('speeds the picture and the sound together and lasts its part over its speed', () => {
+    const made = graphOf(2)
+    expect(made).toContain('setpts=(PTS-STARTPTS)/2')
+    expect(made).toContain('atempo=2')
+    expect(made).toContain('apad=whole_dur=2')
+  })
+
+  it('chains the sound tempo when it is slower than half', () => {
+    expect(graphOf(0.25)).toContain('atempo=0.5,atempo=0.5')
+  })
+
+  it('refuses a speed outside a quarter to four times', () => {
+    const bad = { ...edit().clips[0]!, speed: 5 }
+    expect(filmEditSchema.safeParse(edit({ clips: [bad] })).success).toBe(false)
+  })
+})

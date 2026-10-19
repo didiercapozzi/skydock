@@ -105,6 +105,7 @@ Rewrite it with `UPDATE_JOURNEY_MAP=1 npm run test:node -- journey-coverage`.
 | A crossfade is one click | **i1-film** — fades a clip in over the one before it with one click, which shortens the film, and a second click takes it off |
 | Cutting, Ripple and Snap | **i1-film** — cuts a clip at the playhead into two, and Undo makes it one again |
 | Choosing the part | **i1-film** — chooses the part a clip shows in a window of its own, and keeps it |
+| A clip's speed | _not walked:_ undefined |
 | The music is the film's sound | **i1-film** — hears a clip whose speaker is turned on, and the music dips under it |
 | Music | **i1-film** — brings music in from the computer, puts it in the film, and the saved edit carries it |
 | Text | **i1-film** — adds a title from a preset, and the saved edit carries it |

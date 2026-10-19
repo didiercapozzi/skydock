@@ -11,6 +11,8 @@ const TEXT_FADE = 0.6
 const POP = 0.35
 const DUCK_RAMP = 0.8
 
+const SPEED = { least: 0.25, most: 4 }
+
 const seconds = z.number().min(0)
 const fraction = z.number().min(0).max(1)
 const fadeLength = seconds.finite().optional()
@@ -24,6 +26,7 @@ const editClipSchema = z
     sound: z.boolean(),
     gap: seconds.finite().optional(),
     fade: z.number().gt(0).finite().optional(),
+    speed: z.number().min(SPEED.least).max(SPEED.most).optional(),
     fadeIn: fadeLength,
     fadeOut: fadeLength
   })
@@ -110,7 +113,10 @@ type TextEffect = (typeof TEXT_EFFECTS)[number]
 type TextFont = (typeof TEXT_FONTS)[number]
 type Span = { from: number; to: number }
 
-const clipLength = (clip: { start: number; end: number }) => clip.end - clip.start
+const speedOf = (clip: { speed?: number }) => clip.speed ?? 1
+
+const clipLength = (clip: { start: number; end: number; speed?: number }) =>
+  (clip.end - clip.start) / speedOf(clip)
 
 const fadeInto = (clips: EditClip[], index: number) => {
   const clip = clips[index]
@@ -219,6 +225,8 @@ const textLookAt = (text: EditText, t: number) => {
 
 export {
   clipLength,
+  SPEED,
+  speedOf,
   DUCK_RAMP,
   duckAt,
   editAnswerSchema,

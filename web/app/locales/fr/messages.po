@@ -3632,6 +3632,10 @@ msgstr "Aucun choisi pour l'instant"
 msgid "None yet"
 msgstr "Aucun pour l'instant"
 
+#: app/components/film-editor.tsx
+msgid "Normal"
+msgstr "Normale"
+
 #: app/helpers/notes.ts
 msgid "not added — {reasons}"
 msgstr "non ajouté — {reasons}"
@@ -4975,6 +4979,10 @@ msgstr "Fin dans la source"
 #: app/components/shortcuts-dialog.tsx
 msgid "Space"
 msgstr "Espace"
+
+#: app/components/film-editor.tsx
+msgid "Speed"
+msgstr "Vitesse"
 
 #: app/components/preview-drawer.tsx
 msgid "Square"

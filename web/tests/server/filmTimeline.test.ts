@@ -689,3 +689,31 @@ describe('a crossfade between two clips', () => {
     expect(setFade(on, 'clip-2', 0, true).texts[0]!.at).toBe(10.5)
   })
 })
+
+describe('a clip played faster or slower', () => {
+  const fast: FilmEdit = {
+    ...edit,
+    clips: [{ ...edit.clips[0]!, speed: 2 }, edit.clips[1]!]
+  }
+
+  it('lasts its part divided by its speed', () => {
+    expect(placed(fast).map((one) => [one.from, one.to])).toEqual([
+      [0, 5],
+      [5, 11]
+    ])
+  })
+
+  it('is cut where the playhead is in the source, not on the timeline', () => {
+    const cut = splitClip(fast, 2)!
+    expect(cut.clips.slice(0, 2).map((c) => [c.start, c.end, c.speed])).toEqual([
+      [0, 4, 2],
+      [4, 10, 2]
+    ])
+  })
+
+  it('moves what follows by the change in its length when its end is trimmed', () => {
+    const trimmed = trimClip(fast, 'clip-1', 'end', 6, 20, true)
+    expect(placed(trimmed)[1]!.from).toBe(3)
+    expect(trimmed.music[0]!.at).toBe(10)
+  })
+})

@@ -1446,6 +1446,8 @@ edges are, and it snaps a second before each jump mark — the exit, the opening
 ground — so the moment that matters lands just after the cut. The part plays at twice the speed to be
 checked before it is used.
 
+**A clip's speed.** A video clip plays at _Normal_ speed unless the inspector's _Speed_ says another, from a quarter to four times. Its picture and its camera sound go faster or slower together and the sound keeps its pitch. The clip lasts its part divided by its speed, so what follows moves by the change like after any other change of length, with the texts and music following when _Ripple_ is on. Its _Length_ and its place on the timeline are in film time, its _Source in_ and _Source out_ and a cut at the playhead are in the video's own time, and a photo has no speed.
+
 **The music is the film's sound.** A clip is heard only when its speaker is turned on; then, for as
 long as it plays, the music dips to _Music under the camera sound_ — 15% of its own volume unless
 changed — over 0.8 seconds either side, and comes back up after. The music's level is drawn along its
@@ -1880,7 +1882,7 @@ Worth knowing, so nobody goes looking:
 - **Every photo is handed over.** There is no choosing which photos go into the archive; the
   montage takes the videos only.
 - **The film editor cuts and crossfades; it does nothing else between clips.** Clips follow each other cut to cut, with a gap of
-  black between them, or with a crossfade: no other transitions, no colour work, no speed changes, no zones laid out by a template. A film that needs
+  black between them, or with a crossfade: no other transitions, no colour work, no speed ramps (a clip has one speed), no zones laid out by a template. A film that needs
   more is made in kdenlive, which SkyDock opens but never runs itself.
 - **Nothing is ever doubled on the disk.** A clip copied into another jump is still one original; each
   jump it is in makes a processed copy of its own from it.

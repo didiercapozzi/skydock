@@ -1,4 +1,4 @@
-import { clipLength, fadeInto, filmLength, timelineEnd } from '@skydock/scripts/client'
+import { clipLength, fadeInto, filmLength, speedOf, timelineEnd } from '@skydock/scripts/client'
 import type { EditClip, EditSource, FilmEdit } from '@skydock/scripts/client'
 
 const SHORTEST = 0.5
@@ -138,7 +138,7 @@ const removeClip = (edit: FilmEdit, id: string, ripple: boolean) => {
 const splitClip = (edit: FilmEdit, at: number) => {
   const here = newestAt(placed(edit), at)
   if (!here || at < here.from + SHORTEST - HAIR || at > here.to - SHORTEST + HAIR) return null
-  const cut = here.clip.start + at - here.from
+  const cut = here.clip.start + (at - here.from) * speedOf(here.clip)
   const { fadeIn: _, ...second } = here.clip
   const { fadeOut: __, ...first } = here.clip
   const clips = [...edit.clips]
@@ -235,6 +235,24 @@ const setPart = (edit: FilmEdit, id: string, start: number, end: number, ripple:
   )
 }
 
+const setSpeed = (edit: FilmEdit, id: string, speed: number, ripple: boolean) => {
+  const here = placed(edit).find((one) => one.clip.id === id)
+  if (!here) return edit
+  const { speed: _, ...bare } = here.clip
+  const next = speed === 1 ? bare : { ...bare, speed }
+  const by = clipLength(next) - clipLength(here.clip)
+  return fitFades(
+    rippleBy(
+      { ...edit, clips: edit.clips.map((one) => (one.id === id ? next : one)) },
+      here.to,
+      by,
+      ripple
+    ),
+    edit,
+    ripple
+  )
+}
+
 const snapPart = (
   start: number,
   length: number,
@@ -316,6 +334,7 @@ export {
   rippleBy,
   setFade,
   setPart,
+  setSpeed,
   snapPart,
   snapPoints,
   snapTo,

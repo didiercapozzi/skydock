@@ -6,6 +6,7 @@ import {
   fadeOutOf,
   heardSpans,
   musicLevelAt,
+  speedOf,
   SLOT,
   textFadesOf
 } from '@skydock/scripts/client'
@@ -346,7 +347,7 @@ const FilmTimeline = ({
       const clip = original.clips.find((one) => one.id === id)
       const source = clip && sources.get(clip.name)
       if (!clip || !source) return
-      const value = (side === 'start' ? clip.start : clip.end) + seconds
+      const value = (side === 'start' ? clip.start : clip.end) + seconds * speedOf(clip)
       const marks = source.marks.map((mark) => mark.at)
       onChange(
         trimClip(
@@ -526,7 +527,10 @@ const FilmTimeline = ({
                             source.play,
                             Math.max(
                               0,
-                              Math.min(clip.end - 0.1, Math.round(clip.start + (i * FRAME) / pps))
+                              Math.min(
+                                clip.end - 0.1,
+                                Math.round(clip.start + (i * FRAME * speedOf(clip)) / pps)
+                              )
                             ),
                             160
                           )}
@@ -554,7 +558,7 @@ const FilmTimeline = ({
                       <span
                         key={mark.which}
                         title={markName(mark.which)}
-                        style={{ left: (mark.at - clip.start) * pps }}
+                        style={{ left: ((mark.at - clip.start) / speedOf(clip)) * pps }}
                         className='pointer-events-none absolute inset-y-0 w-0.5 bg-local-bar'>
                         <span className='absolute top-0 left-1 rounded-full bg-local-bar px-1.5 text-micro font-semibold text-here'>
                           {markName(mark.which)}

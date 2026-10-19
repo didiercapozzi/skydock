@@ -3632,6 +3632,10 @@ msgstr "Noch keiner gewählt"
 msgid "None yet"
 msgstr "Noch keiner"
 
+#: app/components/film-editor.tsx
+msgid "Normal"
+msgstr "Normal"
+
 #: app/helpers/notes.ts
 msgid "not added — {reasons}"
 msgstr "nicht hinzugefügt — {reasons}"
@@ -4975,6 +4979,10 @@ msgstr "Ende in der Quelle"
 #: app/components/shortcuts-dialog.tsx
 msgid "Space"
 msgstr "Leertaste"
+
+#: app/components/film-editor.tsx
+msgid "Speed"
+msgstr "Geschwindigkeit"
 
 #: app/components/preview-drawer.tsx
 msgid "Square"

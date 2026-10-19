@@ -16,6 +16,8 @@ export {
 } from './frameCrop'
 export {
   clipLength,
+  SPEED,
+  speedOf,
   DUCK_RAMP,
   duckAt,
   editAnswerSchema,

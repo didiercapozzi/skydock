@@ -3632,6 +3632,10 @@ msgstr "None chosen yet"
 msgid "None yet"
 msgstr "None yet"
 
+#: app/components/film-editor.tsx
+msgid "Normal"
+msgstr "Normal"
+
 #: app/helpers/notes.ts
 msgid "not added — {reasons}"
 msgstr "not added — {reasons}"
@@ -4975,6 +4979,10 @@ msgstr "Source out"
 #: app/components/shortcuts-dialog.tsx
 msgid "Space"
 msgstr "Space"
+
+#: app/components/film-editor.tsx
+msgid "Speed"
+msgstr "Speed"
 
 #: app/components/preview-drawer.tsx
 msgid "Square"

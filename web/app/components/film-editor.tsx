@@ -17,6 +17,7 @@ import {
   NAME_TOKEN,
   SLOT,
   slotEdit,
+  speedOf,
   STILL_SECONDS,
   TEXT_FADE,
   textFadesOf
@@ -48,6 +49,7 @@ import {
   removeClip,
   setFade,
   setPart,
+  setSpeed,
   splitClip,
   timelineEnd,
   TILE_LOOP,
@@ -257,6 +259,8 @@ const TimeBox = ({
     />
   </Field>
 )
+
+const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4]
 
 const Slider = ({
   label,
@@ -658,8 +662,8 @@ const Inspector = ({
                     />
                     <TimeBox
                       label={t`Length`}
-                      value={clip.end - clip.start}
-                      onCommit={(seconds) => trim('end', clip.start + seconds)}
+                      value={clipLength(clip)}
+                      onCommit={(seconds) => trim('end', clip.start + seconds * speedOf(clip))}
                     />
                     {!source?.still && (
                       <>
@@ -705,6 +709,25 @@ const Inspector = ({
                 />
                 {t`Choose the part…`}
               </Mini>
+            )}
+            {!sources.get(clip.name)?.still && (
+              <Field label={t`Speed`}>
+                <select
+                  aria-label={t`Speed`}
+                  value={speedOf(clip)}
+                  onChange={(e) =>
+                    onChange(setSpeed(edit, clip.id, Number(e.target.value), ripple))
+                  }
+                  className='h-7 rounded-corner border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
+                  {SPEEDS.map((speed) => (
+                    <option
+                      key={speed}
+                      value={speed}>
+                      {speed === 1 ? t`Normal` : `${speed}×`}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             )}
             <label className='flex items-center gap-2 text-body'>
               <input
@@ -1172,7 +1195,8 @@ const FilmEditor = ({
         player.dataset.src = url
         player.src = url
       }
-      const want = one.clip.start + Math.min(t, one.to) - one.from
+      const want = one.clip.start + (Math.min(t, one.to) - one.from) * speedOf(one.clip)
+      player.playbackRate = speedOf(one.clip)
       if (Math.abs(player.currentTime - want) > (rolling ? DRIFT : SEEK_EPS))
         player.currentTime = want
       player.muted = !(one.clip.sound && source.sound)
@@ -1206,7 +1230,7 @@ const FilmEditor = ({
       const url = getFileUrl(sources.get(one.clip.name)?.play ?? '')
       const has = (player: HTMLVideoElement | null, deck: number) =>
         !taken[deck] && (player?.dataset.src === url || player?.getAttribute('poster') === url)
-      const want = one.clip.start + Math.min(at, one.to) - one.from
+      const want = one.clip.start + (Math.min(at, one.to) - one.from) * speedOf(one.clip)
       const deck =
         [0, 1]
           .filter((k) => has(players[k]!, k))
@@ -1709,7 +1733,9 @@ const FilmEditor = ({
                     <Mini
                       key={mark.which}
                       title={t`Go to this mark`}
-                      onClick={() => seek(here!.from + mark.at - here!.clip.start)}>
+                      onClick={() =>
+                        seek(here!.from + (mark.at - here!.clip.start) / speedOf(here!.clip))
+                      }>
                       {markName(mark.which)}
                     </Mini>
                   ))}

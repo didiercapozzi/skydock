@@ -3,6 +3,7 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { editSources, musicSources } from './filmEdit'
 import {
+  clipLength,
   DUCK_RAMP,
   fadeInOf,
   fadeInto,
@@ -11,6 +12,7 @@ import {
   heardSpans,
   musicFadesOf,
   POP,
+  speedOf,
   TEXT_FADE,
   textFadesOf,
   timelineEnd
@@ -124,7 +126,9 @@ const filmArgs = ({
   edit.clips.forEach((clip, index) => {
     const source = sources.get(clip.name)
     if (!source) throw new Error(`${clip.name} is not in the montage any more.`)
-    const length = clip.end - clip.start
+    const length = clipLength(clip)
+    const speed = speedOf(clip)
+    const tempo = speed < 0.5 ? `atempo=0.5,atempo=${n(speed / 0.5)}` : `atempo=${n(speed)}`
     inputs.push(
       ...(source.still ? ['-loop', '1', '-framerate', String(FPS), '-t', n(clip.end)] : []),
       '-i',
@@ -139,11 +143,11 @@ const filmArgs = ({
       ...(fadeOut > 0 ? [`${filter}=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])
     ]
     graph.push(
-      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=PTS-STARTPTS,fps=${FPS},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
+      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${FPS},scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
     )
     graph.push(
       clip.sound && source.sound
-        ? `[${index}:a]atrim=start=${n(clip.start)}:end=${n(clip.end)},asetpts=PTS-STARTPTS,${stereo},apad=whole_dur=${n(length)},atrim=end=${n(length)}${['', ...dim('afade')].join(',')}[a${index}]`
+        ? `[${index}:a]atrim=start=${n(clip.start)}:end=${n(clip.end)},asetpts=PTS-STARTPTS,${speed === 1 ? '' : `${tempo},`}${stereo},apad=whole_dur=${n(length)},atrim=end=${n(length)}${['', ...dim('afade')].join(',')}[a${index}]`
         : `anullsrc=r=48000:cl=stereo,atrim=end=${n(length)},${stereo}[a${index}]`
     )
   })
