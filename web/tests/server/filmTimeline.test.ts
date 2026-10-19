@@ -11,8 +11,10 @@ import {
   placeClip,
   placed,
   removeClip,
+  fitItemFades,
   rippleBy,
   setFade,
+  setItemFade,
   setPart,
   snapPoints,
   snapTo,
@@ -715,5 +717,55 @@ describe('a clip played faster or slower', () => {
     const trimmed = trimClip(fast, 'clip-1', 'end', 6, 20, true)
     expect(placed(trimmed)[1]!.from).toBe(3)
     expect(trimmed.music[0]!.at).toBe(10)
+  })
+})
+
+describe('the fade of a clip, a text and a piece of music', () => {
+  const faded: FilmEdit = {
+    ...edit,
+    texts: [
+      {
+        id: 'text-1',
+        text: 'Hi',
+        at: 1,
+        seconds: 4,
+        effect: 'fade',
+        font: 'bold',
+        x: 0.5,
+        y: 0.5,
+        size: 0.09,
+        colour: '#ffffff'
+      }
+    ],
+    music: [{ id: 'music-1', name: 's.mp3', at: 0, start: 0, end: 6, volume: 1 }]
+  }
+
+  it('is set to a tenth of a second and held to half of the item', () => {
+    expect(setItemFade(faded, 'clips', 'clip-1', 'fadeIn', 1.26).clips[0]).toMatchObject({
+      fadeIn: 1.3
+    })
+    expect(setItemFade(faded, 'clips', 'clip-1', 'fadeOut', 99).clips[0]).toMatchObject({
+      fadeOut: 5
+    })
+    expect(setItemFade(faded, 'texts', 'text-1', 'fadeIn', 9).texts[0]).toMatchObject({ fadeIn: 2 })
+    expect(setItemFade(faded, 'music', 'music-1', 'fadeOut', -2).music[0]).toMatchObject({
+      fadeOut: 0
+    })
+    expect(setItemFade(faded, 'music', 'nope', 'fadeIn', 1)).toBe(faded)
+  })
+
+  it('follows the size of the item when it is trimmed, and does not come back when it grows', () => {
+    const long = setItemFade(faded, 'clips', 'clip-1', 'fadeIn', 4)
+    const trimmed = fitItemFades(trimClip(long, 'clip-1', 'end', 2, 10, true))
+
+    expect(trimmed.clips[0]).toMatchObject({ end: 2, fadeIn: 1 })
+    expect(trimClip(trimmed, 'clip-1', 'end', 10, 10, true).clips[0]).toMatchObject({ fadeIn: 1 })
+  })
+
+  it('leaves a fade that fits, and an item with none, as they are', () => {
+    const fits = setItemFade(faded, 'texts', 'text-1', 'fadeOut', 1)
+
+    expect(fitItemFades(fits)).toBe(fits)
+    expect(fitItemFades(faded)).toBe(faded)
   })
 })

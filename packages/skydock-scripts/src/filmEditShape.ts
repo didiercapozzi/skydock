@@ -5,6 +5,8 @@ const TEXT_FONTS = ['clean', 'bold', 'elegant', 'hand'] as const
 const MUSIC_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.flac'] as const
 const UNDER_SOUND = 0.15
 const STILL_SECONDS = 5
+const OUTPUT_SIZES = { full: 1080, small: 720 } as const
+const OUTPUT_CRF = { small: 26, normal: 18, high: 14 } as const
 const STILL_MAX = 60
 const STILL_EXTENSIONS = ['.jpg', '.jpeg', '.png'] as const
 const TEXT_FADE = 0.6
@@ -60,12 +62,18 @@ const editTextSchema = z.object({
   fadeOut: fadeLength
 })
 
+const outputSchema = z.object({
+  size: z.enum(['full', 'small']).optional(),
+  quality: z.enum(['small', 'normal', 'high']).optional()
+})
+
 const filmEditSchema = z.object({
   version: z.literal(1),
   clips: z.array(editClipSchema),
   music: z.array(editMusicSchema),
   texts: z.array(editTextSchema),
-  underSound: fraction
+  underSound: fraction,
+  output: outputSchema.optional()
 })
 
 const editMarkSchema = z.object({
@@ -252,6 +260,8 @@ export {
   textFadesOf,
   textLookAt,
   timelineEnd,
+  OUTPUT_CRF,
+  OUTPUT_SIZES,
   STILL_EXTENSIONS,
   STILL_MAX,
   STILL_SECONDS,

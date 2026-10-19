@@ -1,11 +1,14 @@
 import { clipLength, fadeInto, filmLength, speedOf, timelineEnd } from '@skydock/scripts/client'
-import type { EditClip, EditSource, FilmEdit } from '@skydock/scripts/client'
+import type { EditClip, EditMusic, EditSource, EditText, FilmEdit } from '@skydock/scripts/client'
 
 const SHORTEST = 0.5
 const BEFORE_MARK = 1
 const HAIR = 1e-6
 const TILE_LOOP = 4
 const FADE = { default: 1, least: 0.2, most: 3, shortest: 0.4 }
+
+type FadeKind = 'clips' | 'texts' | 'music'
+type Faded = EditClip | EditText | EditMusic
 
 type Placed = { clip: EditClip; index: number; from: number; to: number }
 
@@ -60,6 +63,52 @@ const fitFades = (edit: FilmEdit, before: FilmEdit | undefined, ripple: boolean)
     const had = fadeInto(index < 0 ? edit.clips : before!.clips, index < 0 ? one.index : index)
     return rippleBy(all, one.from, had - fadeInto(all.clips, one.index), ripple)
   }, fitted)
+}
+
+const lengthOfItem = (kind: FadeKind, one: Faded) =>
+  kind === 'clips'
+    ? clipLength(one as EditClip)
+    : kind === 'texts'
+      ? (one as EditText).seconds
+      : (one as EditMusic).end - (one as EditMusic).start
+
+const setItemFade = (
+  edit: FilmEdit,
+  kind: FadeKind,
+  id: string,
+  side: 'fadeIn' | 'fadeOut',
+  seconds: number
+): FilmEdit => {
+  const items: Faded[] = edit[kind]
+  const one = items.find((item) => item.id === id)
+  if (!one) return edit
+  const value = Math.min(Math.max(0, Math.round(seconds * 10) / 10), lengthOfItem(kind, one) / 2)
+  return {
+    ...edit,
+    [kind]: items.map((item) => (item.id === id ? { ...item, [side]: value } : item))
+  }
+}
+
+const fitItemFades = (edit: FilmEdit): FilmEdit => {
+  let changed = false
+  const fit = <T extends Faded>(kind: FadeKind, items: T[]) =>
+    items.map((item) => {
+      const half = lengthOfItem(kind, item) / 2
+      if ((item.fadeIn ?? 0) <= half && (item.fadeOut ?? 0) <= half) return item
+      changed = true
+      return {
+        ...item,
+        ...(item.fadeIn !== undefined ? { fadeIn: Math.min(item.fadeIn, half) } : {}),
+        ...(item.fadeOut !== undefined ? { fadeOut: Math.min(item.fadeOut, half) } : {})
+      }
+    })
+  const next = {
+    ...edit,
+    clips: fit('clips', edit.clips),
+    texts: fit('texts', edit.texts),
+    music: fit('music', edit.music)
+  }
+  return changed ? next : edit
 }
 
 const fadeBlock = (edit: FilmEdit, id: string) => {
@@ -324,6 +373,7 @@ export {
   fadeAt,
   fadeBlock,
   fadeMost,
+  fitItemFades,
   insertClip,
   moveClip,
   nearestBoundary,
@@ -333,6 +383,7 @@ export {
   removeClip,
   rippleBy,
   setFade,
+  setItemFade,
   setPart,
   setSpeed,
   snapPart,

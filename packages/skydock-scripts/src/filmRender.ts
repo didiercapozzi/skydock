@@ -11,6 +11,8 @@ import {
   filmLength,
   heardSpans,
   musicFadesOf,
+  OUTPUT_CRF,
+  OUTPUT_SIZES,
   POP,
   speedOf,
   TEXT_FADE,
@@ -28,8 +30,6 @@ import { ffmpegPath, hasCommand } from './utils'
 import { passengerOf } from './workspace'
 
 const FPS = 30
-const LONG_SIDE = 1920
-const SHORT_SIDE = 1080
 
 const FONT_PATTERNS: Record<TextFont, string> = {
   clean: 'sans-serif',
@@ -50,7 +50,7 @@ const easing = (at: number) => `pow(max(0,1-(t-${n(at)})/${n(TEXT_FADE)}),2)`
 const fadedBy = (at: number, until: number, fadeIn: number, fadeOut: number) =>
   `${fadeIn > 0 ? `*clip((t-${n(at)})/${n(fadeIn)},0,1)` : ''}${fadeOut > 0 ? `*clip((${n(until)}-t)/${n(fadeOut)},0,1)` : ''}`
 
-const textFilter = (text: EditText, file: string, font: string | null) => {
+const textFilter = (text: EditText, file: string, font: string | null, short: number) => {
   const until = text.at + text.seconds
   const { fadeIn, fadeOut } = textFadesOf(text)
   const size =
@@ -76,7 +76,7 @@ const textFilter = (text: EditText, file: string, font: string | null) => {
     'shadowx=2',
     'shadowy=2',
     ...(text.effect === 'lower-third'
-      ? ['box=1', 'boxcolor=black@0.45', `boxborderw=${Math.round(SHORT_SIDE * 0.02)}`]
+      ? ['box=1', 'boxcolor=black@0.45', `boxborderw=${Math.round(short * 0.02)}`]
       : []),
     `enable=${quoted(`between(t,${n(text.at)},${n(until)})`)}`
   ].join(':')
@@ -181,7 +181,9 @@ const filmArgs = ({
     edit.texts.length === 0
       ? '[joined]null[film]'
       : `[joined]${edit.texts
-          .map((text) => textFilter(text, textFileOf(text.id), fonts[text.font] ?? null))
+          .map((text) =>
+            textFilter(text, textFileOf(text.id), fonts[text.font] ?? null, Math.min(width, height))
+          )
           .join(',')}[film]`
   )
   const duck = duckOf(heardSpans(edit, (clip) => sources.get(clip.name)?.sound === true))
@@ -213,7 +215,7 @@ const filmArgs = ({
     '-c:v',
     'libx264',
     '-crf',
-    '18',
+    String(OUTPUT_CRF[edit.output?.quality ?? 'normal']),
     '-preset',
     'medium',
     '-pix_fmt',
@@ -240,16 +242,16 @@ const fontFile = async (font: TextFont) => {
   return ran.ok && ran.stdout.trim() !== '' ? ran.stdout.trim() : null
 }
 
-const filmShape = async (first: EditSource | undefined) => {
+const filmShape = async (first: EditSource | undefined, size: 'full' | 'small' = 'full') => {
   const shape = first ? await videoShape(first.path) : null
   const upright = shape
     ? shape.turned
       ? shape.width > shape.height
       : shape.height > shape.width
     : false
-  return upright
-    ? { width: SHORT_SIDE, height: LONG_SIDE }
-    : { width: LONG_SIDE, height: SHORT_SIDE }
+  const short = OUTPUT_SIZES[size]
+  const long = Math.round((short * 16) / 9)
+  return upright ? { width: short, height: long } : { width: long, height: short }
 }
 
 declare global {
@@ -301,7 +303,7 @@ const renderFilm = async ({
           edit,
           sources,
           music,
-          ...(await filmShape(sources.get(edit.clips[0]!.name))),
+          ...(await filmShape(sources.get(edit.clips[0]!.name), edit.output?.size)),
           fonts,
           textFileOf: (id) => path.join(scratch, `${id}.txt`),
           out: partPath
@@ -326,4 +328,4 @@ const renderFilm = async ({
   }
 }
 
-export { duckOf, filmArgs, isRendering, musicLevel, renderFilm }
+export { duckOf, filmArgs, filmShape, isRendering, musicLevel, renderFilm }

@@ -4,7 +4,7 @@ import { createRoutesStub, Link, Outlet } from 'react-router'
 import { cleanup, render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { POP, TEXT_FADE } from '@skydock/scripts/client'
-import { TILE_LOOP } from '../../app/helpers/filmTimeline'
+import { clockOf, TILE_LOOP } from '../../app/helpers/filmTimeline'
 import { FilmEditor } from '../../app/components/film-editor'
 import { FilmShortcuts } from '../../app/components/film-shortcuts'
 import { remembered } from '../../app/hooks/remembered'
@@ -2210,5 +2210,103 @@ describe('the fade in and the fade out of clips, texts and music', () => {
 
     await expect.element(box('Fade out')).toHaveValue('0:02.0')
     await expect.poll(() => posts.at(-1)?.edit.music[0]).toMatchObject({ fadeOut: 2 })
+  })
+})
+
+describe('the fade handles on the timeline', () => {
+  const handle = (side: 'in' | 'out', name: string) =>
+    page.getByRole('slider', { name: `Fade ${side} of ${name}` })
+
+  test('sit at both ends of a clip, a text and a piece of music, and are moved with the keys', async () => {
+    await open(later)
+
+    await expect.element(handle('in', FIRST)).toHaveAttribute('aria-valuenow', '0')
+    await expect.element(handle('out', SECOND)).toBeInTheDocument()
+    await expect.element(handle('in', 'Hello there')).toBeInTheDocument()
+    await expect.element(handle('out', 'song.mp3')).toBeInTheDocument()
+
+    handle('in', FIRST).element().focus()
+    await userEvent.keyboard('{ArrowRight}')
+    await expect.element(handle('in', FIRST)).toHaveAttribute('aria-valuenow', '0.1')
+    await userEvent.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    await expect.element(handle('in', FIRST)).toHaveAttribute('aria-valuenow', '1.1')
+    handle('out', FIRST).element().focus()
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect.element(handle('out', FIRST)).toHaveAttribute('aria-valuenow', '0.1')
+  })
+
+  test('set the fade of a clip when they are dragged, and the Inspector shows it', async () => {
+    await open()
+
+    await userEvent.dragAndDrop(
+      handle('in', FIRST),
+      page.getByTitle(`${FIRST} · double-click to choose the part`),
+      { targetPosition: { x: 80, y: 20 } }
+    )
+
+    const grown = Number(handle('in', FIRST).element().getAttribute('aria-valuenow'))
+    expect(grown).toBeGreaterThan(0.5)
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await expect.element(page.getByRole('textbox', { name: 'Fade in' })).toHaveValue(clockOf(grown))
+  })
+
+  test('are not offered where a crossfade already fades the clip in', async () => {
+    await open({ clips: [answer.edit.clips[0]!, { ...answer.edit.clips[1]!, fade: 1 }] })
+
+    await expect.element(handle('in', SECOND)).not.toBeInTheDocument()
+    await expect.element(handle('out', FIRST)).not.toBeInTheDocument()
+    await expect.element(handle('in', FIRST)).toBeInTheDocument()
+    await expect.element(handle('out', SECOND)).toBeInTheDocument()
+  })
+
+  test('follow the size of a clip when it is trimmed, and stay short when it grows again', async () => {
+    await open({ clips: [{ ...answer.edit.clips[0]!, fadeIn: 4 }, answer.edit.clips[1]!] })
+
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await userEvent.fill(page.getByRole('textbox', { name: 'Length' }), '0:02.0')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(handle('in', FIRST)).toHaveAttribute('aria-valuenow', '1')
+
+    await userEvent.fill(page.getByRole('textbox', { name: 'Length' }), '0:10.0')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(handle('in', FIRST)).toHaveAttribute('aria-valuenow', '1')
+  })
+})
+
+describe('the output of the film', () => {
+  const saved = () => {
+    const posts: Array<{ edit: { output?: Record<string, string> } }> = []
+    return posts
+  }
+
+  test('is chosen from the film when nothing is picked, and kept in the saved edit', async () => {
+    const posts = saved()
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        posts.push(JSON.parse(String(init.body)))
+        return Response.json({ ok: true })
+      }
+      return Response.json(answer)
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+
+    const size = page.getByRole('group', { name: 'Size' })
+    const quality = page.getByRole('group', { name: 'Quality' })
+    await expect.element(size.getByRole('button', { name: 'Full' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(quality.getByRole('button', { name: 'Normal' })).toHaveAttribute('aria-pressed', 'true')
+
+    await userEvent.click(size.getByRole('button', { name: 'Small' }))
+    await userEvent.click(quality.getByRole('button', { name: 'High' }))
+
+    await expect.element(size.getByRole('button', { name: 'Small' })).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ size: 'small', quality: 'high' })
+  })
+
+  test('is not offered in the film template editor, which makes no film', async () => {
+    vi.stubGlobal('fetch', async () => Response.json({ templates: [], music: [] }))
+    await render(createElement(FilmEditor, { template: 'Club', onClose: () => {} }))
+
+    await expect.element(page.getByRole('group', { name: 'Size' })).not.toBeInTheDocument()
   })
 })

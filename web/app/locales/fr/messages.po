@@ -2306,6 +2306,10 @@ msgctxt "a fade from black, not a crossfade"
 msgid "Fade in"
 msgstr "Fondu d’entrée"
 
+#: app/components/film-timeline.tsx
+msgid "Fade in of {name}"
+msgstr "Fondu d’entrée de {name}"
+
 #. placeholder {0}: clip.name
 #: app/components/film-timeline.tsx
 msgid "Fade into {0}"
@@ -2314,6 +2318,10 @@ msgstr "Fondu enchaîné vers {0}"
 #: app/components/film-editor.tsx
 msgid "Fade out"
 msgstr "Fondu de sortie"
+
+#: app/components/film-timeline.tsx
+msgid "Fade out of {name}"
+msgstr "Fondu de sortie de {name}"
 
 #: app/components/film-editor.tsx
 msgid "Fade the picked clip in over the end of the clip before it"
@@ -2675,6 +2683,10 @@ msgstr "De la sortie d’avion à quelques secondes après l’atterrissage."
 msgid "From the music"
 msgstr "De la musique"
 
+#: app/components/film-editor.tsx
+msgid "Full"
+msgstr "Complète"
+
 #: app/components/preview-drawer.tsx
 msgid "Full screen"
 msgstr "Plein écran"
@@ -2804,6 +2816,10 @@ msgstr "Masquer les détails"
 #: app/components/progress-panel.tsx
 msgid "Hide the list"
 msgstr "Masquer la liste"
+
+#: app/components/film-editor.tsx
+msgid "High"
+msgstr "Haute"
 
 #: app/hooks/useBoardModel.ts
 msgid "Hold alt while dropping to copy it into the other jump instead."
@@ -4390,6 +4406,7 @@ msgstr "QR code"
 msgid "QR code of the link"
 msgstr "QR code du lien"
 
+#: app/components/film-editor.tsx
 #: app/components/preview-drawer.tsx
 msgid "Quality"
 msgstr "Qualité"
@@ -4943,9 +4960,17 @@ msgstr "SkyDock n’envoie rien : il copie l’e-mail et ouvre un nouveau messag
 msgid "SkyDock works in"
 msgstr "SkyDock travaille dans"
 
+#: app/components/film-editor.tsx
+msgid "Small"
+msgstr "Réduite"
+
 #: app/components/jobs-panel.tsx
 msgid "Small copies made"
 msgstr "Petites copies créées"
+
+#: app/components/film-editor.tsx
+msgid "Small file"
+msgstr "Petit fichier"
 
 #: app/components/board-header.tsx
 msgid "Smaller"

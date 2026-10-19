@@ -32,6 +32,8 @@ export {
   musicLevelAt,
   POP,
   rampAt,
+  OUTPUT_CRF,
+  OUTPUT_SIZES,
   STILL_SECONDS,
   TEXT_EFFECTS,
   TEXT_FADE,

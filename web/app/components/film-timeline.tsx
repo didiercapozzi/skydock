@@ -5,6 +5,7 @@ import {
   fadeInto,
   fadeOutOf,
   heardSpans,
+  musicFadesOf,
   musicLevelAt,
   speedOf,
   SLOT,
@@ -19,6 +20,7 @@ import {
   moveClip,
   nearestBoundary,
   placeClip,
+  setItemFade,
   placed,
   setFade,
   snapPoints,
@@ -110,6 +112,45 @@ const Ramps = ({ fadeIn, fadeOut, pps }: { fadeIn: number; fadeOut: number; pps:
       />
     )}
   </>
+)
+
+const FadeHandle = ({
+  side,
+  value,
+  pps,
+  label,
+  chosen,
+  onGrab,
+  onNudge
+}: {
+  side: 'in' | 'out'
+  value: number
+  pps: number
+  label: string
+  chosen: boolean
+  onGrab: (e: React.PointerEvent<HTMLSpanElement>) => void
+  onNudge: (seconds: number) => void
+}) => (
+  <span
+    role='slider'
+    tabIndex={0}
+    aria-label={label}
+    aria-valuemin={0}
+    aria-valuenow={value}
+    aria-valuetext={clockOf(value)}
+    onPointerDown={onGrab}
+    onKeyDown={(e) => {
+      const by = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
+      if (by === 0) return
+      e.preventDefault()
+      e.stopPropagation()
+      onNudge((side === 'in' ? by : -by) * (e.shiftKey ? 1 : 0.1))
+    }}
+    style={side === 'in' ? { left: value * pps + 6 } : { right: value * pps + 6 }}
+    className={`absolute top-0.5 z-5 size-3 cursor-ew-resize touch-none rounded-full border-2 border-accent bg-pane focus-visible:opacity-100 group-hover:opacity-100 ${
+      chosen ? 'opacity-100' : 'opacity-0'
+    }`}
+  />
 )
 
 const FilmTimeline = ({
@@ -341,6 +382,55 @@ const FilmTimeline = ({
     })
   }
 
+  const fadeOfItem = (
+    original: FilmEdit,
+    kind: 'clips' | 'texts' | 'music',
+    id: string,
+    side: 'fadeIn' | 'fadeOut'
+  ) => {
+    if (kind === 'clips') {
+      const index = original.clips.findIndex((one) => one.id === id)
+      return side === 'fadeIn' ? fadeInOf(original.clips, index) : fadeOutOf(original.clips, index)
+    }
+    const text = original.texts.find((one) => one.id === id)
+    const piece = original.music.find((one) => one.id === id)
+    return kind === 'texts'
+      ? text
+        ? textFadesOf(text)[side]
+        : 0
+      : piece
+        ? musicFadesOf(piece)[side]
+        : 0
+  }
+
+  const fadeHandle = (
+    kind: 'clips' | 'texts' | 'music',
+    id: string,
+    side: 'fadeIn' | 'fadeOut',
+    name: string,
+    chosen: boolean
+  ) => (
+    <FadeHandle
+      side={side === 'fadeIn' ? 'in' : 'out'}
+      value={fadeOfItem(edit, kind, id, side)}
+      pps={pps}
+      label={side === 'fadeIn' ? t`Fade in of ${name}` : t`Fade out of ${name}`}
+      chosen={chosen}
+      onGrab={(e) => {
+        onPick({ kind: kind === 'clips' ? 'clip' : kind === 'texts' ? 'text' : 'music', id })
+        const start = fadeOfItem(edit, kind, id, side)
+        drag(e, (seconds, original) =>
+          onChange(
+            setItemFade(original, kind, id, side, start + (side === 'fadeIn' ? seconds : -seconds))
+          )
+        )
+      }}
+      onNudge={(seconds) =>
+        onChange(setItemFade(edit, kind, id, side, fadeOfItem(edit, kind, id, side) + seconds))
+      }
+    />
+  )
+
   const trim = (e: React.PointerEvent<HTMLSpanElement>, id: string, side: 'start' | 'end') => {
     onPick({ kind: 'clip', id })
     drag(e, (seconds, original) => {
@@ -517,7 +607,7 @@ const FilmTimeline = ({
                     source?.still ? clip.name : t`${clip.name} · double-click to choose the part`
                   }
                   style={{ left: from * pps, width: Math.max(4, length * pps - 2) }}
-                  className={`absolute inset-y-1.25 cursor-grab overflow-hidden rounded-corner border bg-proc-soft ${ring(chosen)}`}>
+                  className={`group absolute inset-y-1.25 cursor-grab overflow-hidden rounded-corner border bg-proc-soft ${ring(chosen)}`}>
                   {source && (
                     <span className='pointer-events-none absolute inset-0 flex'>
                       {Array.from({ length: Math.ceil((length * pps) / FRAME) }, (_, i) => (
@@ -547,6 +637,10 @@ const FilmTimeline = ({
                     fadeOut={fadeOutOf(edit.clips, index)}
                     pps={pps}
                   />
+                  {fadeInto(edit.clips, index) === 0 &&
+                    fadeHandle('clips', clip.id, 'fadeIn', clip.name, chosen)}
+                  {fadeInto(edit.clips, index + 1) === 0 &&
+                    fadeHandle('clips', clip.id, 'fadeOut', clip.name, chosen)}
                   <span
                     style={{ marginLeft: lead }}
                     className='pointer-events-none absolute top-0.75 right-1.75 left-1.75 truncate text-micro font-medium text-here [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]'>
@@ -717,7 +811,7 @@ const FilmTimeline = ({
               key={text.id}
               onPointerDown={(e) => moveText(e, text.id, 'body')}
               style={{ left: text.at * pps, width: Math.max(8, text.seconds * pps - 2) }}
-              className={`absolute inset-y-1.5 cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
+              className={`group absolute inset-y-1.5 cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
                 picked?.kind === 'text' && picked.id === text.id
                   ? 'shadow-ring-2'
                   : 'shadow-hairline'
@@ -726,6 +820,20 @@ const FilmTimeline = ({
                 {...textFadesOf(text)}
                 pps={pps}
               />
+              {fadeHandle(
+                'texts',
+                text.id,
+                'fadeIn',
+                text.text || t`Text`,
+                picked?.kind === 'text' && picked.id === text.id
+              )}
+              {fadeHandle(
+                'texts',
+                text.id,
+                'fadeOut',
+                text.text || t`Text`,
+                picked?.kind === 'text' && picked.id === text.id
+              )}
               <span className='pointer-events-none flex h-full items-center'>
                 {text.text || t`Text`}
               </span>
@@ -768,7 +876,7 @@ const FilmTimeline = ({
                 onPointerDown={(e) => moveMusic(e, piece.id, 'body')}
                 title={piece.name}
                 style={{ left: piece.at * pps, width: Math.max(8, length * pps - 2) }}
-                className={`absolute inset-y-1.5 cursor-grab overflow-hidden rounded-corner bg-up-soft ${
+                className={`group absolute inset-y-1.5 cursor-grab overflow-hidden rounded-corner bg-up-soft ${
                   picked?.kind === 'music' && picked.id === piece.id
                     ? 'shadow-ring-2'
                     : 'shadow-hairline'
@@ -786,6 +894,20 @@ const FilmTimeline = ({
                     vectorEffect='non-scaling-stroke'
                   />
                 </svg>
+                {fadeHandle(
+                  'music',
+                  piece.id,
+                  'fadeIn',
+                  piece.name,
+                  picked?.kind === 'music' && picked.id === piece.id
+                )}
+                {fadeHandle(
+                  'music',
+                  piece.id,
+                  'fadeOut',
+                  piece.name,
+                  picked?.kind === 'music' && picked.id === piece.id
+                )}
                 <span className='pointer-events-none absolute top-1 left-2 truncate text-micro font-semibold text-up'>
                   {piece.name} · {Math.round(piece.volume * 100)}%
                 </span>

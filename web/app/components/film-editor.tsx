@@ -42,6 +42,7 @@ import {
   fadeAt,
   fadeBlock,
   fadeMost,
+  fitItemFades,
   insertClip,
   nextId,
   placeClip,
@@ -58,7 +59,7 @@ import {
 import { refusalSchema } from '../hooks/useBoardState'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
-import { Go, Mini } from './buttons'
+import { Go, Mini, Seg } from './buttons'
 import { FilmPart } from './film-part'
 import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-template-modals'
 import type { Listed } from './film-template-modals'
@@ -925,6 +926,37 @@ const Inspector = ({
               {t`Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part.`}
             </p>
             {under}
+            {!scratch && (
+              <>
+                <div className='grid gap-1'>
+                  <span className='text-micro text-ink-2'>{t`Size`}</span>
+                  <Seg
+                    label={t`Size`}
+                    wide
+                    value={edit.output?.size ?? 'full'}
+                    options={[
+                      ['full', t`Full`],
+                      ['small', t`Small`]
+                    ]}
+                    onPick={(size) => onChange({ ...edit, output: { ...edit.output, size } })}
+                  />
+                </div>
+                <div className='grid gap-1'>
+                  <span className='text-micro text-ink-2'>{t`Quality`}</span>
+                  <Seg
+                    label={t`Quality`}
+                    wide
+                    value={edit.output?.quality ?? 'normal'}
+                    options={[
+                      ['small', t`Small file`],
+                      ['normal', t`Normal`],
+                      ['high', t`High`]
+                    ]}
+                    onPick={(quality) => onChange({ ...edit, output: { ...edit.output, quality } })}
+                  />
+                </div>
+              </>
+            )}
           </>
         )}
       </div>
@@ -1072,7 +1104,7 @@ const FilmEditor = ({
       setHistory((kept) => [...kept.slice(1 - UNDOABLE), was])
     joined.current = true
     lastChange.current = moment
-    apply(scratch && was ? slotKept(was, next) : next)
+    apply(fitItemFades(scratch && was ? slotKept(was, next) : next))
   }
 
   useEffect(() => {

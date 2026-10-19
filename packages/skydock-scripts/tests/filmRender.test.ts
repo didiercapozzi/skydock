@@ -10,7 +10,7 @@ import {
   timelineEnd
 } from '../src/filmEditShape'
 import type { EditSource, FilmEdit, MusicSource } from '../src/filmEditShape'
-import { duckOf, filmArgs } from '../src/filmRender'
+import { duckOf, filmArgs, filmShape } from '../src/filmRender'
 
 const source = (name: string, sound = true): EditSource => ({
   name,
@@ -215,5 +215,36 @@ describe('a clip played faster or slower', () => {
   it('refuses a speed outside a quarter to four times', () => {
     const bad = { ...edit().clips[0]!, speed: 5 }
     expect(filmEditSchema.safeParse(edit({ clips: [bad] })).success).toBe(false)
+  })
+})
+
+describe('the output of the film', () => {
+  const crf = (film: FilmEdit) => {
+    const made = args(film)
+    return made[made.indexOf('-crf') + 1]
+  }
+
+  it('is as it always was when nothing is chosen', () => {
+    expect(crf(edit())).toBe('18')
+    expect(crf(edit({ output: {} }))).toBe('18')
+  })
+
+  it('is compressed more for a small file and less for a high quality', () => {
+    expect(crf(edit({ output: { quality: 'small' } }))).toBe('26')
+    expect(crf(edit({ output: { quality: 'normal' } }))).toBe('18')
+    expect(crf(edit({ output: { quality: 'high' } }))).toBe('14')
+  })
+
+  it('is full size or small, and never anything else', async () => {
+    expect(await filmShape(undefined, undefined)).toEqual({ width: 1920, height: 1080 })
+    expect(await filmShape(undefined, 'full')).toEqual({ width: 1920, height: 1080 })
+    expect(await filmShape(undefined, 'small')).toEqual({ width: 1280, height: 720 })
+    expect(
+      filmEditSchema.safeParse(edit({ output: { size: 'small', quality: 'high' } })).success
+    ).toBe(true)
+    expect(filmEditSchema.safeParse({ ...edit(), output: { size: 'huge' } }).success).toBe(false)
+    expect(filmEditSchema.safeParse({ ...edit(), output: { quality: 'ultra' } }).success).toBe(
+      false
+    )
   })
 })
