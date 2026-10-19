@@ -440,6 +440,7 @@ output/
 ├── proxies/                  the small copies, and for each montage a set cut to match its processed clips
 ├── templates/                one editing template per folder, with the music and logos it uses
 ├── music/                    the music the film editor offers, brought in from the computer
+├── film-templates/           one film template per file, for the film editor
 ├── .thumbs/                  the frames the board draws, cut once and kept
 └── .projects/                every version of each montage's editing project, kept and never deleted
 ```
@@ -839,7 +840,7 @@ jump is a photograph of its own footage with its name on it, and a thumbnail is 
 are set in Sora, the rest in Plus Jakarta Sans, and file names in JetBrains Mono. Dark is
 the same design on deep navy. The toolbar holds what is used every day:
 scanning, rows or thumbnails, finding anything (Ctrl or ⌘ with F goes there), the keys the board
-knows, and behind _Settings_ light or dark, the language, the editing templates, the work folder and
+knows, and behind _Settings_ light or dark, the language, the editing templates, the film templates, the work folder and
 _About SkyDock_, which says which version this is — the one the installer is named after — who made it
 (Capo, with a link to donkeyfall.com that opens in the machine's own browser) and under what licence. The
 status bar says what is going on: the storage — whether it is connected, as whom
@@ -1338,7 +1339,6 @@ itself, a moment after each change; that file is the montage's edit, so the proj
 the montage is frozen as an edit freezes it (below), and it is kept aside in every version the way a
 kdenlive project is.
 
-**Clips go in where they are dropped.** A clip dragged from the left onto the video track goes in at
 Photos are clips too. The montage's photos (JPEG and PNG) are listed on the left with the videos, each marked _Photo_, and go in the same way — dropped on the video track or put at the end with _Add_ — as a clip that holds the picture for five seconds, with no sound, and that is not laid on the timeline the first time. It is shortened or lengthened by its edges or its _Length_ box, up to a minute, like a video; it can be cut at the playhead, given a gap, faded into and out of, and moved like one. There is no _Source in_ and _Source out_ for it and no part to choose, and the picture is shown in the editor and rendered fitted into the film's frame, with black around it, as a video is.
 
 A film template is the part of a film that is the same from film to film: its titles, its music, how quiet the music goes under the camera's sound and, when the film had fades between its clips, the fade most of them had. It holds no clips. It is not the editing template of the kdenlive project, it is used only by the film editor, and SkyDock ships none.
@@ -1351,6 +1351,7 @@ A new film asks which film template to start from, only when there is one (the l
 
 A film template file that cannot be read is listed in the _Film templates_ dialog, where it can be deleted. Renaming, duplicating and deleting are in that dialog, and deleting asks first. A name is held to 60 characters and 200 bytes and may not be a name the file system reserves; the characters a file name cannot hold become spaces, and ".zip" and the like are kept as typed.
 
+**Clips go in where they are dropped.** A clip dragged from the left onto the video track goes in at
 the nearest cut — between two clips, or at either end — and everything after it moves along; _Add_
 puts it at the end. A clip on the timeline is removed with Delete or from the panel. Dragging either
 edge of a clip shortens or lengthens it, and the clips after it follow. With Ripple on, the text

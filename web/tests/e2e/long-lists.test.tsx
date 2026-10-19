@@ -82,6 +82,7 @@ describe('the thumbnails', () => {
         scanning: false,
         onScan: () => {},
         onTemplates: () => {},
+    onFilmTemplates: () => {},
         onWorkFolder: () => {},
         onShortcuts: () => {},
         onAbout: () => {},

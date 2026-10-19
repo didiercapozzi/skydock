@@ -183,6 +183,7 @@ export {
   editAnswerSchema,
   editMarkSchema,
   editSourceSchema,
+  editTextSchema,
   fadeInto,
   filmEditSchema,
   filmLength,

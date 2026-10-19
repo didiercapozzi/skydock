@@ -1,10 +1,17 @@
 import { plural, t } from '@lingui/core/macro'
 import {
+  applyTemplate,
+  captureTemplate,
+  DAY_TOKEN,
   editAnswerSchema,
   fadeInto,
   filmLength,
+  filmTemplatesAnswerSchema,
   heardSpans,
   musicLevelAt,
+  NAME_TOKEN,
+  SLOT,
+  slotEdit,
   STILL_SECONDS
 } from '@skydock/scripts/client'
 import type {
@@ -36,10 +43,13 @@ import {
   timelineEnd,
   trimClip
 } from '../helpers/filmTimeline'
+import { refusalSchema } from '../hooks/useBoardState'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
 import { Go, Mini, Seg } from './buttons'
 import { FilmPart } from './film-part'
+import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-template-modals'
+import type { Listed } from './film-template-modals'
 import { FONT_LOOK, FilmPreview } from './film-preview'
 import { CLIP_DRAG, FilmTimeline, markName, ZOOM } from './film-timeline'
 import type { Picked } from './film-timeline'
@@ -59,17 +69,13 @@ const fadeWhy = (blocked: ReturnType<typeof fadeBlock>) =>
 type Loaded = Extract<z.infer<typeof editAnswerSchema>, { ok: true }>
 type Library = 'clips' | 'music' | 'text'
 
+const LENGTH = { min: 5, max: 3600 }
 const SAVE_AFTER = 700
 const DRIFT = 0.3
 const MUSIC_VOLUME = 0.8
 const SHORTEST_MUSIC = 5
 const UNDOABLE = 50
 const ONE_CHANGE = 400
-
-const refusalSchema = z.object({
-  success: z.literal(false),
-  globalErrors: z.array(z.string()).optional()
-})
 
 const musicAnswerSchema = z.object({ ok: z.boolean(), error: z.string().optional() })
 
@@ -266,6 +272,7 @@ const Library = ({
   sources,
   music,
   title,
+  scratch,
   onAddClip,
   onAddMusic,
   onAddText,
@@ -276,6 +283,7 @@ const Library = ({
   sources: EditSource[]
   music: MusicSource[]
   title: string
+  scratch: boolean
   onAddClip: (name: string) => void
   onAddMusic: (name: string) => void
   onAddText: (preset: (typeof PRESETS)[number]) => void
@@ -327,7 +335,12 @@ const Library = ({
         ))}
       </div>
       <div className='flex min-h-0 flex-1 flex-col gap-1.5 overflow-auto p-2.5'>
-        {tab === 'clips' && (
+        {tab === 'clips' && scratch && (
+          <p className='mx-0.5 mt-1 text-small text-ink-3'>
+            {t`A film template has no clips. Your clips take the place of the grey bar when it is used.`}
+          </p>
+        )}
+        {tab === 'clips' && !scratch && (
           <>
             <p className='eyebrow mx-0.5 mt-1 mb-1'>
               {t`${title} · ${plural(sources.filter((one) => !one.still).length, { one: '# video', other: '# videos' })}`}
@@ -452,6 +465,7 @@ const Inspector = ({
   picked,
   sources,
   ripple,
+  scratch,
   onChange,
   onOpenPart,
   onRemove
@@ -460,6 +474,7 @@ const Inspector = ({
   picked: Picked
   sources: Map<string, EditSource>
   ripple: boolean
+  scratch: boolean
   onChange: (edit: FilmEdit) => void
   onOpenPart: (id: string) => void
   onRemove: () => void
@@ -627,6 +642,11 @@ const Inspector = ({
                 className='resize-none rounded-corner border border-line-strong bg-pane px-3 py-2 text-body text-ink focus:border-accent focus:outline-none'
               />
             </Field>
+            {scratch && (
+              <p className='m-0 text-small text-ink-3'>
+                {t`Write ${NAME_TOKEN} and ${DAY_TOKEN} where the name and the day go.`}
+              </p>
+            )}
             <Field label={t`Effect`}>
               <Seg
                 label={t`Effect`}
@@ -694,7 +714,9 @@ const Inspector = ({
           <>
             <h3 className='m-0 text-lead font-bold'>{t`The film`}</h3>
             <p className='text-body text-ink-2'>
-              {t`${plural(edit.clips.length, { one: '# clip', other: '# clips' })} · ${clockOf(filmLength(edit))}`}
+              {scratch
+                ? clockOf(filmLength(edit))
+                : t`${plural(edit.clips.length, { one: '# clip', other: '# clips' })} · ${clockOf(filmLength(edit))}`}
             </p>
             <p className='text-small text-ink-3'>
               {t`Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part.`}
@@ -707,15 +729,57 @@ const Inspector = ({
   )
 }
 
+const slotKept = (was: FilmEdit, next: FilmEdit): FilmEdit => {
+  const end = next.clips.find((one) => one.id === SLOT)?.end
+  return {
+    ...next,
+    clips: was.clips.map((one) =>
+      one.id === SLOT && end !== undefined
+        ? { ...one, end: Math.min(LENGTH.max, Math.max(LENGTH.min, end)) }
+        : one
+    )
+  }
+}
+
+const templateNamed = (raw: unknown, name: string) => {
+  const listed = filmTemplatesAnswerSchema.safeParse(raw)
+  return listed.success ? listed.data.templates.find((kept) => kept.name === name) : undefined
+}
+
+const asEdit = (raw: unknown, name: string) => {
+  const listed = filmTemplatesAnswerSchema.safeParse(raw)
+  if (!listed.success) return null
+  const one = templateNamed(raw, name)
+  return one
+    ? {
+        ok: true,
+        title: name,
+        saved: true,
+        sources: [],
+        music: listed.data.music,
+        rendering: false,
+        film: null,
+        edit: applyTemplate(slotEdit(one.template.length), one.template, {
+          name: NAME_TOKEN,
+          day: DAY_TOKEN,
+          music: null
+        }).edit
+      }
+    : { ok: false, reason: t`This film template is gone.` }
+}
+
 const FilmEditor = ({
-  groupId,
+  groupId = '',
   day,
+  template,
   onClose
 }: {
-  groupId: string
+  groupId?: string
   day?: string
+  template?: string
   onClose: () => void
 }) => {
+  const scratch = template !== undefined
   const cornered = useRoundedWindow()
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [problem, setProblem] = useState<string | null>(null)
@@ -730,6 +794,9 @@ const FilmEditor = ({
   const [part, setPartOf] = useState<string | null>(null)
   const [rendering, setRendering] = useState(false)
   const [readAgain, setReadAgain] = useState(0)
+  const [starting, setStarting] = useState<Listed | null>(null)
+  const [templating, setTemplating] = useState(false)
+  const [typed, setTyped] = useState<string | null>(null)
   const [history, setHistory] = useState<FilmEdit[]>([])
   const [ripple, setRipple] = useState(true)
   const [snap, setSnap] = useState(true)
@@ -742,6 +809,7 @@ const FilmEditor = ({
   const sounds = useRef(new Map<string, HTMLAudioElement>())
   const latest = useRef<FilmEdit | null>(null)
   const now = useRef(0)
+  const fade = useRef<number | undefined>(undefined)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const sources = new Map((loaded?.sources ?? []).map((one) => [one.name, one]))
@@ -753,6 +821,16 @@ const FilmEditor = ({
     const current = latest.current
     if (!current) return false
     setSaving('saving')
+    if (scratch) {
+      const { said } = await askFilmTemplates({
+        intent: 'update',
+        name: template,
+        template: { ...captureTemplate(current, { name: '', day: '' }), fade: fade.current }
+      })
+      setSaving(said === null ? 'saved' : 'failed')
+      if (said !== null) setProblem(said)
+      return said === null
+    }
     const answer = await routingEngine
       .action({
         url: '/api/edit',
@@ -782,7 +860,7 @@ const FilmEditor = ({
       setHistory((kept) => [...kept.slice(1 - UNDOABLE), was])
     joined.current = true
     lastChange.current = moment
-    apply(next)
+    apply(scratch && was ? slotKept(was, next) : next)
   }
 
   useEffect(() => {
@@ -800,10 +878,46 @@ const FilmEditor = ({
     []
   )
 
+  const begin = async () => {
+    const offered = filmTemplatesAnswerSchema.safeParse(
+      await routingEngine.loader({ url: '/api/film-templates' }).catch(() => null)
+    )
+    if (offered.success && offered.data.templates.length > 0) setStarting(offered.data.templates)
+    else {
+      if (!offered.success) setProblem(t`The film templates could not be read.`)
+      void save('save')
+    }
+  }
+
+  const startFrom = (name: string | null) => {
+    const chosen = starting?.find((one) => one.name === name)?.template
+    const first = latest.current
+    setStarting(null)
+    if (!chosen || !first) return void save('save')
+    const {
+      edit: next,
+      left,
+      cut
+    } = applyTemplate(first, chosen, {
+      name: loaded?.title ?? '',
+      day: day ?? '',
+      music: loaded?.music ?? []
+    })
+    apply(next)
+    const list = (left.length > 0 ? left : cut).join(', ')
+    if (left.length > 0) setProblem(t`Not in the music folder, left out: ${list}`)
+    else if (cut.length > 0) setProblem(t`Does not fit this film, left out: ${list}`)
+  }
+
   useEffect(() => {
     let cancelled = false
-    routingEngine
-      .loader({ url: '/api/edit', searchParamsArgs: { groupId } })
+    const asked = scratch
+      ? routingEngine.loader({ url: '/api/film-templates' }).then((raw) => {
+          fade.current = templateNamed(raw, template)?.template.fade
+          return asEdit(raw, template)
+        })
+      : routingEngine.loader({ url: '/api/edit', searchParamsArgs: { groupId } })
+    asked
       .then((raw) => {
         if (cancelled) return
         const parsed = editAnswerSchema.safeParse(raw)
@@ -821,7 +935,7 @@ const FilmEditor = ({
               Math.max(ZOOM.min, room / Math.max(10, timelineEnd(parsed.data.edit)))
             )
           )
-          if (!parsed.data.saved) void save('save')
+          if (!parsed.data.saved) void begin()
         }
       })
       .catch(() => {
@@ -831,7 +945,7 @@ const FilmEditor = ({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [groupId, readAgain])
+  }, [groupId, template, readAgain])
 
   const drive = (
     player: HTMLVideoElement | null,
@@ -964,7 +1078,7 @@ const FilmEditor = ({
     setPicked(null)
   }
 
-  const cut = edit ? splitClip(edit, at) : null
+  const cut = edit && !scratch ? splitClip(edit, at) : null
 
   const pickedId = picked?.kind === 'clip' ? picked.id : null
   const blocked = edit && pickedId ? fadeBlock(edit, pickedId) : 'first'
@@ -1066,7 +1180,7 @@ const FilmEditor = ({
     if (!edit) return
     const text = {
       id: nextId('text', edit.texts),
-      text: preset.title ? (loaded?.title ?? '') : t`Your text`,
+      text: preset.title ? (scratch ? NAME_TOKEN : (loaded?.title ?? '')) : t`Your text`,
       at: Math.min(at, Math.max(0, timelineEnd(edit) - preset.seconds)),
       seconds: preset.seconds,
       effect: preset.effect,
@@ -1081,6 +1195,8 @@ const FilmEditor = ({
   }
 
   const film = edit ? filmLength(edit) : 0
+  const slot = scratch ? edit?.clips.find((one) => one.id === SLOT) : undefined
+  const badLength = typed !== null && !(Number(typed) >= LENGTH.min && Number(typed) <= LENGTH.max)
   const total = edit ? timelineEnd(edit) : 0
   const here = edit ? clipAt(edit, at) : null
   const blend = edit ? fadeAt(edit, at) : null
@@ -1119,7 +1235,7 @@ const FilmEditor = ({
       className={`flex h-dvh flex-col bg-ground text-ink ${cornered ? 'overflow-hidden rounded-corner' : ''}`}>
       <header className='flex h-13 flex-none items-center gap-3 border-b border-line bg-pane px-4'>
         <h2 className='m-0 flex min-w-0 items-center gap-2 truncate text-body font-normal text-ink-2'>
-          <span className='max-desk:hidden'>{t`Montages`}</span>
+          <span className='max-desk:hidden'>{scratch ? t`Film templates` : t`Montages`}</span>
           <span className='text-ink-3 max-desk:hidden'>/</span>
           <strong className='truncate font-semibold text-ink'>
             {loaded ? loaded.title : t`Film editor`}
@@ -1137,16 +1253,21 @@ const FilmEditor = ({
           onClick={undo}>
           {t`Undo`}
         </Mini>
-        <Go
-          disabled={!edit || edit.clips.length === 0 || rendering}
-          title={t`Render the film into the montage’s folder: MP4, H.264 and AAC, from the processed copies`}
-          onClick={() => void render()}>
-          <Icon
-            name='download'
-            size={14}
-          />
-          {loaded?.film ? t`Render again` : t`Render the film`}
-        </Go>
+        {edit && loaded && !scratch && (
+          <Mini onClick={() => setTemplating(true)}>{t`Film template…`}</Mini>
+        )}
+        {!scratch && (
+          <Go
+            disabled={!edit || edit.clips.length === 0 || rendering}
+            title={t`Render the film into the montage’s folder: MP4, H.264 and AAC, from the processed copies`}
+            onClick={() => void render()}>
+            <Icon
+              name='download'
+              size={14}
+            />
+            {loaded?.film ? t`Render again` : t`Render the film`}
+          </Go>
+        )}
         <button
           type='button'
           title={t`Close (Esc)`}
@@ -1172,7 +1293,8 @@ const FilmEditor = ({
               onTab={setTab}
               sources={loaded.sources}
               music={loaded.music}
-              title={loaded.title}
+              title={scratch ? NAME_TOKEN : loaded.title}
+              scratch={scratch}
               onAddClip={(name) => addClip(name)}
               onAddMusic={addMusic}
               onAddText={addText}
@@ -1257,6 +1379,7 @@ const FilmEditor = ({
               picked={picked}
               sources={sources}
               ripple={ripple}
+              scratch={scratch}
               onChange={change}
               onOpenPart={setPartOf}
               onRemove={removePicked}
@@ -1319,6 +1442,41 @@ const FilmEditor = ({
                 {t`Snap`}
               </Mini>
               <span className='flex-1' />
+              {slot && (
+                <>
+                  <label className='inline-flex items-center gap-1.5 text-small text-ink-3'>
+                    {t`Film length (seconds)`}
+                    <input
+                      type='number'
+                      min={LENGTH.min}
+                      max={LENGTH.max}
+                      step={1}
+                      value={typed ?? String(slot.end)}
+                      aria-invalid={badLength}
+                      onChange={(e) => {
+                        setTyped(e.target.value)
+                        const seconds = Math.round(Number(e.target.value))
+                        if (seconds >= LENGTH.min && seconds <= LENGTH.max)
+                          change({
+                            ...edit,
+                            clips: edit.clips.map((one) =>
+                              one.id === SLOT ? { ...one, end: seconds } : one
+                            )
+                          })
+                      }}
+                      onBlur={() => setTyped(null)}
+                      className='h-control-sm w-20 rounded-corner border border-line-strong bg-pane px-2 text-body text-ink aria-invalid:border-local'
+                    />
+                  </label>
+                  {badLength && (
+                    <span
+                      role='alert'
+                      className='text-small text-local'>
+                      {t`Between ${LENGTH.min} and ${LENGTH.max} seconds`}
+                    </span>
+                  )}
+                </>
+              )}
               <label className='inline-flex items-center gap-1.5 text-small text-ink-3'>
                 {t`Zoom`}
                 <input
@@ -1353,7 +1511,11 @@ const FilmEditor = ({
               <span>
                 {t`Film`} <b className='font-mono font-medium text-ink-2'>{clockOf(film)}</b>
               </span>
-              <span>{t`Edited on the proxies, rendered from the processed copies`}</span>
+              <span>
+                {scratch
+                  ? t`Texts and music that end with the film stay at the end, whatever its length.`
+                  : t`Edited on the proxies, rendered from the processed copies`}
+              </span>
             </div>
           </div>
           {edit.music.map((piece) => {
@@ -1375,6 +1537,26 @@ const FilmEditor = ({
         !problem && (
           <p className='grid flex-1 place-items-center text-body text-ink-3'>{t`Opening the film…`}</p>
         )
+      )}
+
+      {starting && (
+        <FilmTemplatePicker
+          templates={starting}
+          onChoose={startFrom}
+        />
+      )}
+
+      {templating && edit && (
+        <FilmTemplateModal
+          edit={edit}
+          who={{ name: loaded?.title ?? '', day: day ?? '' }}
+          onApply={(next) => {
+            joined.current = false
+            setPicked(null)
+            change(next)
+          }}
+          onClose={() => setTemplating(false)}
+        />
       )}
 
       {opened && openedSource && (

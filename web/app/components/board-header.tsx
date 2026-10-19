@@ -58,6 +58,7 @@ const BoardHeader = ({
   scanning,
   onScan,
   onTemplates,
+  onFilmTemplates,
   onWorkFolder,
   onShortcuts,
   onAbout,
@@ -66,6 +67,7 @@ const BoardHeader = ({
   scanning: boolean
   onScan: () => void
   onTemplates: () => void
+  onFilmTemplates: () => void
   onWorkFolder: () => void
   onShortcuts: () => void
   onAbout: () => void
@@ -173,6 +175,14 @@ const BoardHeader = ({
                   onTemplates()
                 }}>
                 {t`Templates…`}
+              </MenuItem>
+              <MenuItem
+                title={t`The titles and music a film is started from — make one, or tidy them`}
+                onClick={() => {
+                  close()
+                  onFilmTemplates()
+                }}>
+                {t`Film templates…`}
               </MenuItem>
               <MenuItem
                 title={t`The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in`}

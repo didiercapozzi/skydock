@@ -152,6 +152,9 @@ const fileHref = (place: Place, fileId: string, view: BoardView = {}) =>
 const editHref = (groupId: string) =>
   routingEngine.href({ url: '/edit/:groupId', params: { groupId } })
 
+const filmTemplateHref = (name: string) =>
+  routingEngine.href({ url: '/film-template/:name', params: { name } })
+
 const placeNameProblem = (name: string) => {
   const trimmed = name.trim()
   if (!trimmed) return t`A dropzone needs a name.`
@@ -175,6 +178,7 @@ export {
   placeFromParams,
   placeHref,
   editHref,
+  filmTemplateHref,
   placeKey,
   placeLabel,
   placeNameProblem,

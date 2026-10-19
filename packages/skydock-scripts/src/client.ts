@@ -41,6 +41,17 @@ export type {
   TextEffect,
   TextFont
 } from './filmEditShape'
+export {
+  applyTemplate,
+  captureTemplate,
+  DAY_TOKEN,
+  filmTemplateSchema,
+  filmTemplatesAnswerSchema,
+  NAME_TOKEN,
+  SLOT,
+  slotEdit
+} from './filmTemplate'
+export type { FilmTemplate } from './filmTemplate'
 export { freeablePlace } from './freeable'
 export { goneFromStorage, goneSent } from './gone'
 export { cutFrom, jumpTrim } from './jumpMoments'

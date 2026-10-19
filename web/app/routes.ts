@@ -6,6 +6,7 @@ const routes = [
     route(':kind/:name?', 'routes/place.tsx', [route('file/:fileId', 'routes/place.file.tsx')])
   ]),
   route('edit/:groupId', 'routes/edit.tsx'),
+  route('film-template/:name', 'routes/film-template.tsx'),
   route('api/manifest', 'routes/api.manifest.ts'),
   route('api/nas', 'routes/api.nas.ts'),
   route('api/scan', 'routes/api.scan.ts'),
@@ -17,6 +18,7 @@ const routes = [
   route('api/dropped', 'routes/api.dropped.ts'),
   route('api/templates', 'routes/api.templates.ts'),
   route('api/edit', 'routes/api.edit.ts'),
+  route('api/film-templates', 'routes/api.film-templates.ts'),
   route('api/music', 'routes/api.music.ts'),
   route('api/transfers', 'routes/api.transfers.ts'),
   route('api/events', 'routes/api.events.ts'),

@@ -143,7 +143,7 @@ describe('the editing templates, from the header', () => {
     await renderBoard()
 
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
-    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Templates…', exact: true }))
 
     await expect.element(dialog().getByText('epco', { exact: true })).toBeInTheDocument()
     await expect.element(dialog().getByText('every file here')).toBeInTheDocument()
@@ -159,7 +159,7 @@ describe('the editing templates, from the header', () => {
     }))
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
-    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Templates…', exact: true }))
 
     await userEvent.upload(
       dialog().getByLabelText('The template and its files'),
@@ -176,7 +176,7 @@ describe('the editing templates, from the header', () => {
     }))
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
-    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Templates…', exact: true }))
 
     await userEvent.upload(
       dialog().getByLabelText('The template and its files'),
@@ -196,7 +196,7 @@ describe('the editing templates, from the header', () => {
     })
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
-    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Templates…', exact: true }))
 
     await userEvent.upload(dialog().getByLabelText('The template and its files'), [
       new File(['<mlt/>'], 'club.kdenlive'),
@@ -216,7 +216,7 @@ describe('the editing templates, from the header', () => {
     })
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
-    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Templates…', exact: true }))
 
     await userEvent.click(dialog().getByRole('button', { name: 'Use by default' }).nth(1))
 
@@ -232,7 +232,7 @@ describe('the editing templates, from the header', () => {
     })
     await renderBoard()
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
-    await userEvent.click(page.getByRole('button', { name: 'Templates…' }))
+    await userEvent.click(page.getByRole('button', { name: 'Templates…', exact: true }))
 
     await userEvent.upload(
       dialog().getByLabelText('The folder kdenlive left'),

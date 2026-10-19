@@ -73,7 +73,7 @@ const read = (...parts: string[]) => fs.readFileSync(path.join(templates(), ...p
 
 const openTemplates = async () => {
   await j.page.getByRole('button', { name: 'Settings' }).click()
-  await j.page.getByRole('button', { name: 'Templates…' }).click()
+  await j.page.getByRole('button', { name: 'Templates…', exact: true }).click()
   await templatesDialog(j.page).waitFor()
 }
 

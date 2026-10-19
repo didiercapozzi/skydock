@@ -47,8 +47,8 @@ describe('the toolbar and the status bar', () => {
     const settings = j.page.getByRole('group', { name: 'Settings' })
     await settings.getByRole('group', { name: 'Theme' }).waitFor()
     await settings.getByRole('group', { name: 'Language' }).waitFor()
-    for (const name of ['Templates…', 'Work folder…'])
-      await settings.getByRole('button', { name }).waitFor()
+    for (const name of ['Templates…', 'Film templates…', 'Work folder…'])
+      await settings.getByRole('button', { name, exact: true }).waitFor()
     await j.page.getByRole('button', { name: 'Settings' }).click()
     await j.page.getByText('Connect the storage').waitFor()
     await j.page.getByText('Transfers', { exact: true }).waitFor()
@@ -154,7 +154,10 @@ describe('dialogs', () => {
     opener.evaluate((el) => el === document.activeElement)
   const fromSettings = async (name: string) => {
     await j.page.getByRole('button', { name: 'Settings' }).click()
-    await j.page.getByRole('group', { name: 'Settings' }).getByRole('button', { name }).click()
+    await j.page
+      .getByRole('group', { name: 'Settings' })
+      .getByRole('button', { name, exact: true })
+      .click()
   }
 
   const closesWithEscapeAndOutsideClick = async (name: string, open: () => Promise<void>) => {

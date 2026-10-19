@@ -5,6 +5,7 @@ import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 import { FilmEditor } from '../../app/components/film-editor'
 import Edit from '../../app/routes/edit'
+import { setFilmTemplateChoice } from '../../app/hooks/useFilmTemplateChoice'
 
 const FIRST = 'luc_favre_20260906_090000.mp4'
 const SECOND = 'luc_favre_20260906_090300.mp4'
@@ -896,6 +897,253 @@ describe('the film editor’s own page', () => {
     await userEvent.click(page.getByRole('link', { name: 'Elsewhere' }))
 
     await expect.element(page.getByText('Somewhere else')).toBeVisible()
-    expect(posts).toHaveLength(1)
+    await expect.poll(() => posts.length).toBe(1)
+  })
+})
+
+describe('the film editor and the film templates', () => {
+  const posts: Array<{ url: string; body: Record<string, any> }> = []
+
+  const summer = { name: 'Summer.mp3', path: '/m/Summer.mp3', seconds: 300 }
+
+  const look = {
+    effect: 'fade',
+    font: 'bold',
+    x: 0.5,
+    y: 0.5,
+    size: 0.09,
+    colour: '#ffffff'
+  }
+
+  const club = {
+    name: 'Club',
+    missing: [] as string[],
+    template: {
+      version: 1,
+      length: 16,
+      underSound: 0.3,
+      texts: [{ ...look, text: '{name} on {day}', from: 'start', at: 0, seconds: 4 }],
+      music: [{ name: 'Summer.mp3', from: 'start', at: 0, start: 0, end: 60, volume: 0.8 }]
+    }
+  }
+
+  const titled = {
+    texts: [{ ...look, id: 'text-1', text: 'Luc Favre', at: 0, seconds: 4 }],
+    music: []
+  }
+
+  const start = async ({
+    saved = true,
+    templates = [club],
+    listed = true,
+    edit = {}
+  }: {
+    saved?: boolean
+    templates?: unknown[]
+    listed?: boolean
+    edit?: Record<string, unknown>
+  } = {}) => {
+    posts.length = 0
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        posts.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        return Response.json({ ok: true })
+      }
+      if (String(url).includes('/api/film-templates'))
+        return Response.json(listed ? { templates, music: [summer] } : { nope: true })
+      return Response.json({ ...answer, saved, music: [summer], edit: { ...answer.edit, ...edit } })
+    })
+    const Stub = createRoutesStub([
+      {
+        path: '/',
+        Component: () => <FilmEditor groupId='g1' day='06.09.2026' onClose={() => {}} />
+      }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+  }
+
+  const edits = () => posts.filter((one) => one.url.includes('/api/edit'))
+  const picker = () => page.getByRole('dialog', { name: 'Start the film from a film template?' })
+  const modal = () => page.getByRole('dialog', { name: 'Film template' })
+
+  test('starts the film as usual when there is no film template, or the list cannot be read', async () => {
+    await start({ saved: false, templates: [] })
+    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
+    await expect.element(picker()).not.toBeInTheDocument()
+  })
+
+  test('starts the film as usual when the list of film templates cannot be read', async () => {
+    await start({ saved: false, listed: false })
+    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
+    await expect.element(picker()).not.toBeInTheDocument()
+    await expect.element(page.getByText('The film templates could not be read.')).toBeVisible()
+  })
+
+  test('names the music of the chosen film template that is left out', async () => {
+    const lost = {
+      ...club,
+      name: 'Lost',
+      template: {
+        ...club.template,
+        music: [{ name: 'Gone.mp3', from: 'start', at: 0, start: 0, end: 20, volume: 1 }]
+      }
+    }
+    await start({ saved: false, templates: [lost] })
+    await userEvent.click(picker().getByRole('radio', { name: /Lost/ }))
+    await userEvent.click(picker().getByRole('button', { name: 'Start the film' }))
+    await expect
+      .element(page.getByText('Not in the music folder, left out: Gone.mp3'))
+      .toBeVisible()
+  })
+
+  test('does not ask when the film was started before', async () => {
+    await start()
+    await expect.element(picker()).not.toBeInTheDocument()
+  })
+
+  test('asks which film template to start from, with the last one ticked, and saves nothing before the choice', async () => {
+    setFilmTemplateChoice('Club')
+    await start({ saved: false })
+
+    await expect.element(picker()).toBeVisible()
+    await expect.element(picker().getByRole('radio', { name: /Club/ })).toBeChecked()
+    await expect.element(picker().getByRole('radio', { name: /No film template/ })).not.toBeChecked()
+    await expect
+      .element(picker().getByText('1 text · 1 piece of music · 0:16'))
+      .toBeVisible()
+    await new Promise((done) => setTimeout(done, 1200))
+    expect(edits()).toEqual([])
+
+    await userEvent.click(picker().getByRole('button', { name: 'Start the film' }))
+
+    await expect.element(picker()).not.toBeInTheDocument()
+    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
+    const saved = edits()[0]!.body.edit
+    expect(saved.texts.map((one: { text: string }) => one.text)).toEqual(['Luc Favre on 06.09.2026'])
+    expect(saved.music[0]).toMatchObject({ name: 'Summer.mp3', end: 16, volume: 0.8 })
+    expect(saved.underSound).toBe(0.3)
+    setFilmTemplateChoice('')
+  })
+
+  test('starts with none when the choice is dismissed with Escape', async () => {
+    await start({ saved: false })
+    await expect.element(picker().getByRole('radio', { name: /No film template/ })).toBeChecked()
+
+    await userEvent.keyboard('{Escape}')
+
+    await expect.element(picker()).not.toBeInTheDocument()
+    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
+    expect(edits()[0]!.body.edit.texts).toEqual([])
+  })
+
+  test('applies a film template in one Undo step and says what it replaces and what is left out', async () => {
+    const lost = {
+      ...club,
+      name: 'Lost',
+      template: {
+        ...club.template,
+        music: [{ name: 'Gone.mp3', from: 'start', at: 0, start: 0, end: 20, volume: 1 }]
+      }
+    }
+    await start({ edit: titled, templates: [club, lost] })
+    await userEvent.click(page.getByRole('button', { name: 'Film template…' }))
+    const apply = modal().getByRole('button', { name: 'Apply' })
+    await expect.element(apply).toBeDisabled()
+
+    await userEvent.click(modal().getByRole('radio', { name: /Lost/ }))
+
+    await expect
+      .element(
+        modal().getByText(
+          'It replaces the 1 text, the 0 pieces of music and the camera-sound level of this film. Your clips stay. Undo brings it back.'
+        )
+      )
+      .toBeVisible()
+    await expect
+      .element(modal().getByText('Not in the music folder, left out: Gone.mp3'))
+      .toBeVisible()
+    await userEvent.click(modal().getByRole('radio', { name: /Club/ }))
+    await userEvent.click(apply)
+
+    await expect.element(modal()).not.toBeInTheDocument()
+    await expect.element(page.getByText('Luc Favre on 06.09.2026').first()).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Undo' }))
+    await expect.element(page.getByText('Luc Favre on 06.09.2026')).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Undo' })).toBeDisabled()
+  })
+
+  test('drops the selection when a film template is applied and keeps the old film after Undo', async () => {
+    await start({ edit: titled })
+    const title = () =>
+      [...document.querySelectorAll<HTMLElement>('div.cursor-grab')].find((one) =>
+        one.textContent?.includes('Luc Favre')
+      )!
+    await userEvent.click(title())
+    await expect.element(page.getByRole('textbox')).toHaveValue('Luc Favre')
+
+    await userEvent.click(page.getByRole('button', { name: 'Film template…' }))
+    await userEvent.click(modal().getByRole('radio', { name: /Club/ }))
+    await userEvent.click(modal().getByRole('button', { name: 'Apply' }))
+
+    await expect.element(page.getByText('Luc Favre on 06.09.2026').first()).toBeVisible()
+    await expect.element(page.getByRole('textbox')).not.toBeInTheDocument()
+    await userEvent.click(page.getByRole('button', { name: 'Undo' }))
+    await expect.element(page.getByText('Luc Favre on 06.09.2026')).not.toBeInTheDocument()
+    expect(title()).toBeTruthy()
+    await expect.element(page.getByRole('textbox')).not.toBeInTheDocument()
+  })
+
+  test('forgets a remembered film template that is no longer there, and ticks none', async () => {
+    setFilmTemplateChoice('Gone')
+    await start({ saved: false })
+
+    await expect.element(picker().getByRole('radio', { name: /No film template/ })).toBeChecked()
+    await expect.poll(() => localStorage.getItem('skydock.filmTemplate')).toBeNull()
+  })
+
+  test('says so when the film has no texts or music yet', async () => {
+    await start()
+    await userEvent.click(page.getByRole('button', { name: 'Film template…' }))
+    await userEvent.click(modal().getByRole('radio', { name: /Club/ }))
+    await expect
+      .element(modal().getByText('This film has no texts or music yet. Your clips stay.'))
+      .toBeVisible()
+  })
+
+  test('keeps the film as a film template under a name and offers to replace one that is there', async () => {
+    await start({ edit: titled })
+    await userEvent.click(page.getByRole('button', { name: 'Film template…' }))
+    await expect
+      .element(
+        modal().getByText(
+          'Keeps 1 text, 0 pieces of music and the camera-sound level. The clips stay with this film.'
+        )
+      )
+      .toBeVisible()
+    await expect
+      .element(
+        modal().getByText(
+          "Texts are saved as typed, apart from the passenger's name and the day, which become {name} and {day} and are filled in again for each film. Any other personal text stays in the film template file."
+        )
+      )
+      .toBeVisible()
+
+    await userEvent.fill(modal().getByLabelText('Name'), 'Mine')
+    await userEvent.click(modal().getByRole('button', { name: 'Save', exact: true }))
+
+    await expect
+      .element(modal().getByText('Saved as film template Mine.'))
+      .toBeVisible()
+    const kept = posts.find((one) => one.url.includes('/api/film-templates'))!.body
+    expect(kept).toMatchObject({ intent: 'save', name: 'Mine', replace: false })
+    expect(kept.template.texts[0]).toMatchObject({ text: '{name}', from: 'start', at: 0 })
+
+    await userEvent.fill(modal().getByLabelText('Name'), 'Club')
+    await expect
+      .element(modal().getByText('A film template called Club is already there.'))
+      .toBeVisible()
+    await userEvent.click(modal().getByRole('button', { name: 'Replace it' }))
+    await expect.poll(() => posts.at(-1)!.body.replace).toBe(true)
   })
 })

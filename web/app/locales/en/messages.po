@@ -158,6 +158,13 @@ msgstr "{0, plural, one {# montage} other {# montages}} · freed from this machi
 msgid "{0, plural, one {# photo} other {# photos}}"
 msgstr "{0, plural, one {# photo} other {# photos}}"
 
+#. placeholder {0}: template.texts.length
+#. placeholder {1}: template.music.length
+#. placeholder {2}: clock(template.length)
+#: app/components/film-template-modals.tsx
+msgid "{0, plural, one {# text} other {# texts}} · {1, plural, one {# piece of music} other {# pieces of music}} · {2}"
+msgstr "{0, plural, one {# text} other {# texts}} · {1, plural, one {# piece of music} other {# pieces of music}} · {2}"
+
 #. placeholder {0}: lane.length
 #: app/components/file-list.tsx
 msgid "{0, plural, one {# video} other {# videos}}"
@@ -471,6 +478,10 @@ msgstr "{name} can be unplugged now."
 #: app/routes/place.tsx
 msgid "{name} could not be ejected."
 msgstr "{name} could not be ejected."
+
+#: app/components/film-templates-dialog.tsx
+msgid "{name} goes. Films already made with it stay as they are."
+msgstr "{name} goes. Films already made with it stay as they are."
 
 #: app/components/places-tree.tsx
 msgid "{name} hands its files over rather than showing them as a drive, so reading it is slower than the same card in a reader."
@@ -807,6 +818,14 @@ msgstr "a copy of the film"
 msgid "A dropzone needs a name."
 msgstr "A dropzone needs a name."
 
+#: app/components/film-template-modals.tsx
+msgid "A film template called {name} is already there."
+msgstr "A film template called {name} is already there."
+
+#: app/components/film-editor.tsx
+msgid "A film template has no clips. Your clips take the place of the grey bar when it is used."
+msgstr "A film template has no clips. Your clips take the place of the grey bar when it is used."
+
 #: app/components/film-editor.tsx
 msgid "A gap separates the two clips: close it first"
 msgstr "A gap separates the two clips: close it first"
@@ -980,6 +999,7 @@ msgstr "and"
 msgid "Applied the next time this file is processed."
 msgstr "Applied the next time this file is processed."
 
+#: app/components/film-template-modals.tsx
 #: app/components/video-cropper.tsx
 msgid "Apply"
 msgstr "Apply"
@@ -1061,6 +1081,12 @@ msgstr "Back to the measured marks"
 #: app/components/templates-dialog.tsx
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
+
+#. placeholder {0}: LENGTH.min
+#. placeholder {1}: LENGTH.max
+#: app/components/film-editor.tsx
+msgid "Between {0} and {1} seconds"
+msgstr "Between {0} and {1} seconds"
 
 #: app/components/film-editor.tsx
 msgid "Big moment"
@@ -1187,6 +1213,7 @@ msgstr "cancel"
 #: app/components/connection-dialog.tsx
 #: app/components/delete-jump-dialog.tsx
 #: app/components/film-part.tsx
+#: app/components/film-template-modals.tsx
 #: app/components/free-dialog.tsx
 #: app/components/free-place-dialog.tsx
 #: app/components/jobs-panel.tsx
@@ -1384,6 +1411,7 @@ msgstr "close"
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/film-editor.tsx
+#: app/components/film-templates-dialog.tsx
 #: app/components/reset-fresh-dialog.tsx
 #: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
@@ -1678,6 +1706,10 @@ msgstr "Create"
 msgid "Create a link"
 msgstr "Create a link"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Create and open"
+msgstr "Create and open"
+
 #: app/components/montage-card.tsx
 #: app/components/montage-panel.tsx
 #: app/routes/place.tsx
@@ -1714,6 +1746,7 @@ msgid "Day"
 msgstr "Day"
 
 #: app/components/film-editor.tsx
+#: app/components/film-templates-dialog.tsx
 #: app/components/take-back-dialog.tsx
 msgid "Delete"
 msgstr "Delete"
@@ -1721,6 +1754,10 @@ msgstr "Delete"
 #: app/components/delete-jump-dialog.tsx
 msgid "Delete {label}"
 msgstr "Delete {label}"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Delete {name}"
+msgstr "Delete {name}"
 
 #: app/components/camera-files.tsx
 msgid "Delete {picks, plural, one {# file} other {# files}} from the camera…"
@@ -1746,6 +1783,10 @@ msgstr "Delete from the camera…"
 msgid "Delete from this machine what {name} has on the storage, once the storage is proved to hold it. Asks first."
 msgstr "Delete from this machine what {name} has on the storage, once the storage is proved to hold it. Asks first."
 
+#: app/components/film-templates-dialog.tsx
+msgid "Delete it"
+msgstr "Delete it"
+
 #: app/components/montage-card.tsx
 #: app/components/montage-view.tsx
 msgid "Delete it from this machine — only once the storage is proved to hold every file"
@@ -1768,6 +1809,10 @@ msgstr "Delete montage…"
 #: app/components/shortcuts-dialog.tsx
 msgid "Delete or ⌫"
 msgstr "Delete or ⌫"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Delete this film template?"
+msgstr "Delete this film template?"
 
 #: app/components/bin-files.tsx
 #: app/components/jobs-panel.tsx
@@ -1859,6 +1904,11 @@ msgstr "Disconnect the storage"
 #: app/components/notice.tsx
 msgid "Dismiss"
 msgstr "Dismiss"
+
+#: app/components/film-editor.tsx
+#: app/components/film-template-modals.tsx
+msgid "Does not fit this film, left out: {list}"
+msgstr "Does not fit this film, left out: {list}"
 
 #: app/components/file-browser.tsx
 #: app/components/progress-panel.tsx
@@ -1954,6 +2004,14 @@ msgstr "Drop here: it makes a zip"
 msgid "Drop on the Montages heading"
 msgstr "Drop on the Montages heading"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Duplicate"
+msgstr "Duplicate"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Duplicate {name}"
+msgstr "Duplicate {name}"
+
 #: app/components/inspector.tsx
 msgid "Each clip from its exit to a few seconds after its landing"
 msgstr "Each clip from its exit to a few seconds after its landing"
@@ -1961,6 +2019,14 @@ msgstr "Each clip from its exit to a few seconds after its landing"
 #: app/components/free-dialog.tsx
 msgid "each file that went up is hashed here and by the storage, and both must match what was sent:"
 msgstr "each file that went up is hashed here and by the storage, and both must match what was sent:"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Edit"
+msgstr "Edit"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Edit {name}"
+msgstr "Edit {name}"
 
 #: app/components/montage-card.tsx
 msgid "edit and render it"
@@ -2240,10 +2306,32 @@ msgstr "Film editor"
 msgid "Film in"
 msgstr "Film in"
 
+#: app/components/film-editor.tsx
+msgid "Film length (seconds)"
+msgstr "Film length (seconds)"
+
 #: app/components/jobs-panel.tsx
 #: app/components/montage-steps.tsx
 msgid "Film rendered"
 msgstr "Film rendered"
+
+#: app/components/film-template-modals.tsx
+msgid "Film template"
+msgstr "Film template"
+
+#: app/components/film-editor.tsx
+msgid "Film template…"
+msgstr "Film template…"
+
+#: app/components/film-editor.tsx
+#: app/components/film-template-modals.tsx
+#: app/components/film-templates-dialog.tsx
+msgid "Film templates"
+msgstr "Film templates"
+
+#: app/components/board-header.tsx
+msgid "Film templates…"
+msgstr "Film templates…"
 
 #: app/components/page-head.tsx
 #: app/components/place-pane.tsx
@@ -2689,6 +2777,12 @@ msgstr "It holds {fresh, plural, one {# file} other {# files}} that {fresh, plur
 msgid "It needs a name first — a person, an event. The name becomes its folder, its file names and its film."
 msgstr "It needs a name first — a person, an event. The name becomes its folder, its file names and its film."
 
+#. placeholder {0}: edit.texts.length
+#. placeholder {1}: edit.music.length
+#: app/components/film-template-modals.tsx
+msgid "It replaces the {0, plural, one {# text} other {# texts}}, the {1, plural, one {# piece of music} other {# pieces of music}} and the camera-sound level of this film. Your clips stay. Undo brings it back."
+msgstr "It replaces the {0, plural, one {# text} other {# texts}}, the {1, plural, one {# piece of music} other {# pieces of music}} and the camera-sound level of this film. Your clips stay. Undo brings it back."
+
 #: app/components/remove-place-dialog.tsx
 msgid "it stops being linked to {linked} on the storage"
 msgstr "it stops being linked to {linked} on the storage"
@@ -2789,9 +2883,11 @@ msgid "Keep editing"
 msgstr "Keep editing"
 
 #: app/components/camera-dialogs.tsx
+#: app/components/film-templates-dialog.tsx
 msgid "Keep it"
 msgstr "Keep it"
 
+#: app/components/film-template-modals.tsx
 #: app/components/jump-name.tsx
 #: app/components/templates-dialog.tsx
 msgid "Keep it under 60 characters"
@@ -2804,6 +2900,12 @@ msgstr "Keep the shape this clip already has"
 #: app/components/preview-drawer.tsx
 msgid "Keeps"
 msgstr "Keeps"
+
+#. placeholder {0}: edit.texts.length
+#. placeholder {1}: edit.music.length
+#: app/components/film-template-modals.tsx
+msgid "Keeps {0, plural, one {# text} other {# texts}}, {1, plural, one {# piece of music} other {# pieces of music}} and the camera-sound level. The clips stay with this film."
+msgstr "Keeps {0, plural, one {# text} other {# texts}}, {1, plural, one {# piece of music} other {# pieces of music}} and the camera-sound level. The clips stay with this film."
 
 #. placeholder {0}: percent(frame.width * frame.height)
 #: app/components/preview-drawer.tsx
@@ -3247,6 +3349,7 @@ msgstr "Must be a valid URL (e.g. https://nas.local:5001)"
 msgid "Mute the camera sound"
 msgstr "Mute the camera sound"
 
+#: app/components/film-template-modals.tsx
 #: app/components/jump-name.tsx
 #: app/components/montage-card.tsx
 #: app/components/montage-panel.tsx
@@ -3282,6 +3385,10 @@ msgstr "Narrow by name"
 #: app/components/places-tree.tsx
 msgid "New destination"
 msgstr "New destination"
+
+#: app/components/film-templates-dialog.tsx
+msgid "New film template"
+msgstr "New film template"
 
 #: app/components/nas-folder-browser.tsx
 msgid "New folder name"
@@ -3327,6 +3434,18 @@ msgstr "No files yet"
 #: app/components/upload-dialog.tsx
 msgid "No film rendered yet — render it first."
 msgstr "No film rendered yet — render it first."
+
+#: app/components/film-template-modals.tsx
+msgid "No film template"
+msgstr "No film template"
+
+#: app/components/film-templates-dialog.tsx
+msgid "No film template yet. Make one here, or keep a film you have edited from its editor."
+msgstr "No film template yet. Make one here, or keep a film you have edited from its editor."
+
+#: app/components/film-template-modals.tsx
+msgid "No film template yet. Save this film as one below."
+msgstr "No film template yet. Save this film as one below."
 
 #: app/components/nas-folder-browser.tsx
 msgid "No folders in here. Make one, or use this folder as it is."
@@ -3432,6 +3551,15 @@ msgstr "not deleted"
 #: app/routes/place.tsx
 msgid "Not in the list"
 msgstr "Not in the list"
+
+#: app/components/film-editor.tsx
+#: app/components/film-template-modals.tsx
+msgid "Not in the music folder, left out: {list}"
+msgstr "Not in the music folder, left out: {list}"
+
+#: app/components/film-template-modals.tsx
+msgid "Not in the music folder: {list}"
+msgstr "Not in the music folder: {list}"
 
 #: app/components/file-status.tsx
 msgid "Not processed yet"
@@ -3843,6 +3971,10 @@ msgstr "Pick a clip, a piece of music or a text on the timeline to change it. Do
 msgid "Pick a file not copied yet to copy just that one. Only a file already copied here, uploaded or not, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased."
 msgstr "Pick a file not copied yet to copy just that one. Only a file already copied here, uploaded or not, or one whose copy here went in the bin, can be deleted — deleted files go to the bin, never erased."
 
+#: app/components/film-template-modals.tsx
+msgid "Pick a film template first"
+msgstr "Pick a film template first"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "pick a run of files"
 msgstr "pick a run of files"
@@ -4148,6 +4280,10 @@ msgstr "reading it…"
 msgid "Reading the camera…"
 msgstr "Reading the camera…"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Reading the film templates…"
+msgstr "Reading the film templates…"
+
 #: app/components/templates-dialog.tsx
 msgid "Reading the templates…"
 msgstr "Reading the templates…"
@@ -4227,9 +4363,14 @@ msgstr "Remove… (⌫)"
 msgid "Removing…"
 msgstr "Removing…"
 
+#: app/components/film-templates-dialog.tsx
 #: app/components/inspector.tsx
 msgid "Rename"
 msgstr "Rename"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Rename {name}"
+msgstr "Rename {name}"
 
 #: app/components/inspector.tsx
 msgid "Rename this jump"
@@ -4263,6 +4404,10 @@ msgstr "Rendering"
 #: app/components/jobs-panel.tsx
 msgid "Rendering {label}’s film"
 msgstr "Rendering {label}’s film"
+
+#: app/components/film-template-modals.tsx
+msgid "Replace it"
+msgstr "Replace it"
 
 #: app/hooks/useBoardState.ts
 msgid "Request failed"
@@ -4348,10 +4493,15 @@ msgstr "safe"
 msgid "Same"
 msgstr "Same"
 
+#: app/components/film-template-modals.tsx
 #: app/components/montage-card.tsx
 #: app/components/preview-drawer.tsx
 msgid "Save"
 msgstr "Save"
+
+#: app/components/film-template-modals.tsx
+msgid "Save as film template"
+msgstr "Save as film template"
 
 #: app/components/preview-drawer.tsx
 msgid "Save the changes to this file?"
@@ -4360,6 +4510,10 @@ msgstr "Save the changes to this file?"
 #: app/components/film-editor.tsx
 msgid "Saved"
 msgstr "Saved"
+
+#: app/components/film-template-modals.tsx
+msgid "Saved as film template {kept}."
+msgstr "Saved as film template {kept}."
 
 #: app/components/pending.tsx
 msgid "Saving the moment…"
@@ -4665,6 +4819,10 @@ msgstr "Square"
 msgid "Start"
 msgstr "Start"
 
+#: app/components/film-template-modals.tsx
+msgid "Start from a film template"
+msgstr "Start from a film template"
+
 #: app/components/preview-drawer.tsx
 #: app/components/video-cropper.tsx
 msgid "Start here"
@@ -4673,6 +4831,14 @@ msgstr "Start here"
 #: app/components/preview-drawer.tsx
 msgid "Start the clip at the playhead"
 msgstr "Start the clip at the playhead"
+
+#: app/components/film-template-modals.tsx
+msgid "Start the film"
+msgstr "Start the film"
+
+#: app/components/film-template-modals.tsx
+msgid "Start the film from a film template?"
+msgstr "Start the film from a film template?"
 
 #: app/components/jump-name.tsx
 msgid "Started"
@@ -4839,6 +5005,18 @@ msgstr "Templates…"
 msgid "Text"
 msgstr "Text"
 
+#: app/components/film-editor.tsx
+msgid "Texts and music that end with the film stay at the end, whatever its length."
+msgstr "Texts and music that end with the film stay at the end, whatever its length."
+
+#: app/components/film-template-modals.tsx
+msgid "Texts are saved as typed, apart from the passenger's name and the day, which become {NAME_TOKEN} and {DAY_TOKEN} and are filled in again for each film. Any other personal text stays in the film template file."
+msgstr "Texts are saved as typed, apart from the passenger's name and the day, which become {NAME_TOKEN} and {DAY_TOKEN} and are filled in again for each film. Any other personal text stays in the film template file."
+
+#: app/components/film-template-modals.tsx
+msgid "That did not work."
+msgstr "That did not work."
+
 #: app/components/take-back-dialog.tsx
 msgid "the archives, and the record of what was uploaded"
 msgstr "the archives, and the record of what was uploaded"
@@ -4956,6 +5134,12 @@ msgstr "The film is on the storage, but it has no link to send — make one from
 #: app/components/montage-steps.tsx
 msgid "The film is rendered. Send it, the photos and the originals where you choose."
 msgstr "The film is rendered. Send it, the photos and the originals where you choose."
+
+#: app/components/film-editor.tsx
+#: app/components/film-template-modals.tsx
+#: app/components/film-templates-dialog.tsx
+msgid "The film templates could not be read."
+msgstr "The film templates could not be read."
 
 #: app/components/film-editor.tsx
 msgid "The first clip has no clip before it to fade from"
@@ -5155,6 +5339,10 @@ msgstr "The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘
 msgid "the times that were corrected — every file goes back to the time its camera gave it"
 msgstr "the times that were corrected — every file goes back to the time its camera gave it"
 
+#: app/components/board-header.tsx
+msgid "The titles and music a film is started from — make one, or tidy them"
+msgstr "The titles and music a film is started from — make one, or tidy them"
+
 #: app/components/preview-drawer.tsx
 msgid "The trim, frame or turn you set has not been saved yet."
 msgstr "The trim, frame or turn you set has not been saved yet."
@@ -5162,6 +5350,10 @@ msgstr "The trim, frame or turn you set has not been saved yet."
 #: app/components/templates-dialog.tsx
 msgid "the usual one"
 msgstr "the usual one"
+
+#: app/components/film-template-modals.tsx
+msgid "The videos end to end, and the name as the title"
+msgstr "The videos end to end, and the name as the title"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "the whole board bigger, smaller, as drawn"
@@ -5229,6 +5421,18 @@ msgstr "This clip has no sound"
 #: app/components/camera-preview.tsx
 msgid "This file cannot be played here. Copy it to look at it with the board's own player."
 msgstr "This file cannot be played here. Copy it to look at it with the board's own player."
+
+#: app/components/film-templates-dialog.tsx
+msgid "This file cannot be read as a film template."
+msgstr "This file cannot be read as a film template."
+
+#: app/components/film-template-modals.tsx
+msgid "This film has no texts or music yet. Your clips stay."
+msgstr "This film has no texts or music yet. Your clips stay."
+
+#: app/components/film-editor.tsx
+msgid "This film template is gone."
+msgstr "This film template is gone."
 
 #: app/components/work-folder-dialog.tsx
 msgid "this folder stays exactly as it is, and can be chosen again"
@@ -5750,6 +5954,10 @@ msgstr "Work folder…"
 msgid "Working"
 msgstr "Working"
 
+#: app/components/film-editor.tsx
+msgid "Write {NAME_TOKEN} and {DAY_TOKEN} where the name and the day go."
+msgstr "Write {NAME_TOKEN} and {DAY_TOKEN} where the name and the day go."
+
 #: app/components/montage-card.tsx
 msgid "Write a kdenlive project from a template instead, and open it"
 msgstr "Write a kdenlive project from a template instead, and open it"
@@ -5778,6 +5986,10 @@ msgstr "Yes — mark as sent"
 #: app/routes/place.tsx
 msgid "You can free {0} on this machine. It asks first."
 msgstr "You can free {0} on this machine. It asks first."
+
+#: app/components/film-timeline.tsx
+msgid "Your clips"
+msgstr "Your clips"
 
 #: app/components/film-editor.tsx
 msgid "Your text"

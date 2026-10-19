@@ -1,5 +1,5 @@
 import { t } from '@lingui/core/macro'
-import { clipLength, fadeInto, heardSpans, musicLevelAt } from '@skydock/scripts/client'
+import { clipLength, fadeInto, heardSpans, musicLevelAt, SLOT } from '@skydock/scripts/client'
 import type { EditSource, FilmEdit, MusicSource } from '@skydock/scripts/client'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
@@ -463,6 +463,15 @@ const FilmTimeline = ({
               const lead = fadeInto(edit.clips, index) * pps
               const length = clipLength(clip)
               const chosen = picked?.kind === 'clip' && picked.id === clip.id
+              if (clip.id === SLOT)
+                return (
+                  <span
+                    key={clip.id}
+                    style={{ left: from * pps, width: Math.max(4, length * pps - 2) }}
+                    className='absolute inset-y-1.25 flex items-center overflow-hidden rounded-corner border border-line-strong bg-well px-2 text-micro font-medium text-ink-3'>
+                    {t`Your clips`}
+                  </span>
+                )
               return (
                 <div
                   key={clip.id}
@@ -601,6 +610,7 @@ const FilmTimeline = ({
           height='h-11'>
           {placed(edit).map(({ clip, from }) => {
             const source = sources.get(clip.name)
+            if (clip.id === SLOT) return null
             return (
               <div
                 key={clip.id}

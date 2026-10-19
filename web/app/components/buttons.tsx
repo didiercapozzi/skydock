@@ -1,6 +1,7 @@
 type Props = {
   children: React.ReactNode
   title?: string
+  label?: string
   disabled?: boolean
   type?: 'button' | 'submit'
   form?: string
@@ -20,11 +21,21 @@ const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props
   </button>
 )
 
-const Mini = ({ children, title, disabled, type = 'button', form, onClick, pressed }: Props) => (
+const Mini = ({
+  children,
+  title,
+  label,
+  disabled,
+  type = 'button',
+  form,
+  onClick,
+  pressed
+}: Props) => (
   <button
     type={type}
     form={form}
     title={title}
+    aria-label={label}
     disabled={disabled}
     onClick={onClick}
     aria-pressed={pressed}

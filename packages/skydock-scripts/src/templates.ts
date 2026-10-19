@@ -192,5 +192,5 @@ const importTemplate = async ({
   return made
 }
 
-export { importTemplate, listTemplates, setDefaultTemplate }
+export { folderNameOf, importTemplate, listTemplates, setDefaultTemplate }
 export type { Arriving }

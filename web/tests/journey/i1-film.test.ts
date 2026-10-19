@@ -187,6 +187,22 @@ describe('the film editor', () => {
       .toEqual(['Luc Favre', 'Luc Favre'])
   })
 
+  test('keeps the titles and the music of the film as a film template, with the name as {name}', async () => {
+    await editor().getByRole('button', { name: 'Film template…' }).click()
+    const modal = dialogNamed(j.page, 'Film template')
+    await modal.getByLabel('Name').fill('Club')
+    await modal.getByRole('button', { name: 'Save', exact: true }).click()
+    await modal.getByText('Saved as film template Club.').waitFor()
+    const file = path.join(j.world.output, 'film-templates', 'Club.film-template.json')
+    const kept = z
+      .object({ texts: z.array(z.object({ text: z.string() })), music: z.array(z.object({})) })
+      .parse(JSON.parse(fs.readFileSync(file, 'utf8')))
+    expect(kept.texts.map((text) => text.text)).toEqual(['{name}', '{name}'])
+    expect(kept.music).toHaveLength(1)
+    await modal.getByTitle('Close (Esc)').click()
+    await modal.waitFor({ state: 'hidden' })
+  })
+
   test('plays the edit in the picture, and stops where it is', async () => {
     await editor().getByRole('button', { name: 'Play', exact: true }).click()
     await editor().getByRole('button', { name: 'Pause', exact: true }).waitFor()

@@ -307,6 +307,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
           scanning={board.scanning}
           onScan={board.scan}
           onTemplates={() => setDialog({ kind: 'templates' })}
+          onFilmTemplates={() => setDialog({ kind: 'filmTemplates' })}
           onWorkFolder={() => setDialog({ kind: 'work-folder' })}
           onShortcuts={() => setDialog({ kind: 'shortcuts' })}
           onAbout={() => setDialog({ kind: 'about' })}

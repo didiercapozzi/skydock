@@ -19,6 +19,7 @@ import { NameMontageDialog } from './name-montage-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
 import { TakeBackDialog } from './take-back-dialog'
+import { FilmTemplatesDialog } from './film-templates-dialog'
 import { TemplatesDialog } from './templates-dialog'
 import type { TakeBackMode } from './take-back-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
@@ -49,6 +50,7 @@ type BoardDialog =
   | { kind: 'email'; groupId?: string }
   | { kind: 'reset-fresh'; files: number; decided: number }
   | { kind: 'templates'; groupId?: string }
+  | { kind: 'filmTemplates' }
   | { kind: 'name-montage'; groupId?: string; fileIds?: string[]; keeps?: string }
   | { kind: 'work-folder' }
   | { kind: 'delete-jump'; groupId: string }
@@ -362,6 +364,8 @@ const DialogHost = ({
           onReset={onResetFresh}
         />
       )}
+
+      {dialog?.kind === 'filmTemplates' && <FilmTemplatesDialog onClose={close} />}
 
       {dialog?.kind === 'templates' &&
         (() => {
