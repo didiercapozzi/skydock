@@ -7,6 +7,7 @@ type Props = {
   form?: string
   onClick?: () => void
   pressed?: boolean
+  keys?: string
 }
 
 const Go = ({ children, title, disabled, type = 'button', form, onClick }: Props) => (
@@ -29,13 +30,15 @@ const Mini = ({
   type = 'button',
   form,
   onClick,
-  pressed
+  pressed,
+  keys
 }: Props) => (
   <button
     type={type}
     form={form}
     title={title}
     aria-label={label}
+    aria-keyshortcuts={keys}
     disabled={disabled}
     onClick={onClick}
     aria-pressed={pressed}

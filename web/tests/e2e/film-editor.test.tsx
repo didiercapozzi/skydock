@@ -342,14 +342,6 @@ describe('the film editor', () => {
     expect(clipsOnTimeline()).toHaveLength(1)
   })
 
-  test('lets Space press a focused button instead of playing', async () => {
-    await open()
-    page.getByRole('button', { name: 'Next clip' }).element().focus()
-    await userEvent.keyboard(' ')
-    await expect.element(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
-    await expect.element(page.getByText('0:10.0 / 0:16.0', { exact: true })).toBeVisible()
-  })
-
   test('has Select, Cut at playhead, Delete, Ripple and Snap above the timeline', async () => {
     await open()
 
@@ -374,6 +366,19 @@ describe('the film editor', () => {
     await expect.element(page.getByText('0:04.0 / 0:16.0', { exact: true })).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Undo' }))
     expect(clipsOnTimeline()).toHaveLength(2)
+  })
+
+  test('picks the piece after the cut, so that the next cut or delete is of that one', async () => {
+    await open()
+    const pressed = () => [...clipsOnTimeline()].map((one) => one.getAttribute('aria-pressed'))
+
+    await playheadAt(4)
+    await userEvent.keyboard('c')
+
+    expect(pressed()).toEqual(['false', 'true', 'false'])
+    await playheadAt(2)
+    await userEvent.keyboard('c')
+    expect(pressed()).toEqual(['false', 'false', 'true', 'false'])
   })
 
   test('cuts with the C key, and not where a piece would be too short', async () => {
@@ -771,7 +776,7 @@ describe('a crossfade between two clips', () => {
     await expect.element(fadeButton()).toBeDisabled()
     await pick(FIRST)
     await expect.element(fadeButton()).toBeDisabled()
-    await expect.element(fadeButton()).toHaveAttribute('title', 'The first clip has no clip before it to fade from')
+    await expect.element(fadeButton()).toHaveAttribute('title', 'The first clip has no clip before it to fade from (F)')
   })
 
   test('is not offered beside a gap, and says why', async () => {
@@ -784,7 +789,7 @@ describe('a crossfade between two clips', () => {
     await pick(SECOND)
 
     await expect.element(fadeButton()).toBeDisabled()
-    await expect.element(fadeButton()).toHaveAttribute('title', 'A gap separates the two clips: close it first')
+    await expect.element(fadeButton()).toHaveAttribute('title', 'A gap separates the two clips: close it first (F)')
   })
 
   test('is not offered when a clip is shorter than 0.4 seconds', async () => {
@@ -797,7 +802,7 @@ describe('a crossfade between two clips', () => {
     await pick(SECOND)
 
     await expect.element(fadeButton()).toBeDisabled()
-    await expect.element(fadeButton()).toHaveAttribute('title', 'A clip shorter than 0.4 seconds cannot fade')
+    await expect.element(fadeButton()).toHaveAttribute('title', 'A clip shorter than 0.4 seconds cannot fade (F)')
   })
 
   test('is taken back in one step by Undo', async () => {
@@ -1081,6 +1086,27 @@ describe('the film editor and the film templates', () => {
   const edits = () => posts.filter((one) => one.url.includes('/api/edit'))
   const picker = () => page.getByRole('dialog', { name: 'Start the film from a film template?' })
   const modal = () => page.getByRole('dialog', { name: 'Film template' })
+
+  test('does not let a key through to the editor from the picker or the film template dialog', async () => {
+    const pressed = (name: string) =>
+      page.getByRole('button', { name, exact: true }).element().getAttribute('aria-pressed')
+    await start({ saved: false })
+    await expect.element(picker()).toBeVisible()
+    await userEvent.keyboard('r')
+    await userEvent.keyboard('s')
+    await userEvent.keyboard('{End}')
+    expect([pressed('Ripple'), pressed('Snap')]).toEqual(['true', 'true'])
+    await expect.element(page.getByText('0:00.0 / 0:16.0', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(picker()).not.toBeInTheDocument()
+
+    await userEvent.click(page.getByRole('button', { name: 'Film template…' }))
+    await expect.element(modal()).toBeVisible()
+    await userEvent.keyboard('r')
+    await userEvent.keyboard('{End}')
+    expect(pressed('Ripple')).toBe('true')
+    await expect.element(page.getByText('0:00.0 / 0:16.0', { exact: true })).toBeVisible()
+  })
 
   test('starts the film as usual when there is no film template, or the list cannot be read', async () => {
     await start({ saved: false, templates: [] })
@@ -1380,5 +1406,370 @@ describe('the film editor text cards', () => {
     expect(cardNamed('Elegant').className).toContain('italic')
     await userEvent.click(page.getByRole('button', { name: 'Elegant', exact: true }))
     expect(cardNamed('Elegant').getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
+describe('the preview at a seam', () => {
+  const holdDecodes = () => {
+    const waiting: Array<() => void> = []
+    const spy = vi.spyOn(Image.prototype, 'decode').mockImplementation(
+      () => new Promise<void>((resolve) => waiting.push(resolve))
+    )
+    return { release: () => waiting.splice(0).forEach((resolve) => resolve()), spy }
+  }
+
+  test('does not start a video when a photo finishes decoding after the playhead was paused', async () => {
+    const held = holdDecodes()
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue()
+    await open(
+      {
+        clips: [
+          { id: 'clip-1', name: PHOTO, start: 0, end: 3, sound: false },
+          { id: 'clip-2', name: FIRST, start: 0, end: 5, sound: false }
+        ]
+      },
+      [],
+      [photo]
+    )
+    await playheadAt(3)
+    await userEvent.click(page.getByRole('button', { name: 'Play', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Pause', exact: true }))
+    const before = play.mock.calls.length
+    held.release()
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    expect(play.mock.calls.length).toBe(before)
+    held.spy.mockRestore()
+    play.mockRestore()
+  })
+
+  test('keeps the picture of the layer in front until the layer a far jump moves to has its frame', async () => {
+    const held = holdDecodes()
+    await open(
+      {
+        clips: [
+          { id: 'clip-1', name: FIRST, start: 0, end: 3, sound: false },
+          { id: 'clip-2', name: SECOND, start: 0, end: 3, sound: false },
+          { id: 'clip-3', name: PHOTO, start: 0, end: 3, sound: false }
+        ]
+      },
+      [],
+      [photo]
+    )
+    const decks = [...document.querySelectorAll<HTMLVideoElement>('.film-stage video')]
+    const inFront = () => decks.findIndex((one) => !one.classList.contains('invisible'))
+    const front = inFront()
+    ready.mockReturnValue(0)
+    await playheadAt(7)
+
+    expect(inFront()).toBe(front)
+    expect(decks[front]!.dataset.src).toBe(`/api/file/o/${FIRST}`)
+    expect(decks[1 - front]!.getAttribute('poster')).toBe(`/api/file/o/${PHOTO}`)
+    held.release()
+
+    await expect.poll(inFront).toBe(1 - front)
+    held.spy.mockRestore()
+  })
+})
+
+describe('the film editor keys', () => {
+  const playing = () => page.getByRole('button', { name: 'Pause', exact: true })
+  const stopped = () => page.getByRole('button', { name: 'Play', exact: true })
+  const clock = () => page.getByText(/^\d:\d\d\.\d \//).element().textContent
+  const pick = (name: string) => userEvent.click(page.getByTitle(`${name} · double-click to choose the part`))
+  const tool = (name: string) => page.getByRole('button', { name, exact: true })
+
+  test('plays and stops with Enter and with Space', async () => {
+    await open()
+
+    await userEvent.keyboard('{Enter}')
+    await expect.element(playing()).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+    await expect.element(stopped()).toBeVisible()
+    await userEvent.keyboard(' ')
+    await expect.element(playing()).toBeVisible()
+    await userEvent.keyboard(' ')
+    await expect.element(stopped()).toBeVisible()
+  })
+
+  test('plays on a held key only once', async () => {
+    await open()
+    await userEvent.keyboard('{Enter>3/}')
+    await userEvent.keyboard('{/Enter}')
+
+    await expect.element(playing()).toBeVisible()
+  })
+
+  test('types a space in a text box, and commits a value with Enter, without playing', async () => {
+    await open()
+    await pick(SECOND)
+    const box = page.getByRole('textbox', { name: 'Starts at' })
+    await userEvent.click(box)
+    await userEvent.keyboard(' ')
+    expect((box.element() as HTMLInputElement).value).toContain(' ')
+    await userEvent.keyboard('{Enter}')
+
+    await expect.element(stopped()).toBeVisible()
+  })
+
+  test('plays instead of ticking a checkbox that the mouse focused', async () => {
+    await open()
+    await pick(SECOND)
+    const box = page.getByRole('checkbox', { name: 'Fade from the previous clip' })
+    await userEvent.click(box)
+    await expect.element(box).toBeChecked()
+    await userEvent.keyboard(' ')
+
+    await expect.element(box).toBeChecked()
+    await expect.element(playing()).toBeVisible()
+  })
+
+  test('plays instead of pressing a button that the mouse focused', async () => {
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Next clip' }))
+    await expect.element(page.getByText('0:10.0 / 0:16.0', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+
+    await expect.element(playing()).toBeVisible()
+    expect(clock()).not.toBe('0:16.0 / 0:16.0')
+    await userEvent.keyboard(' ')
+    await expect.element(stopped()).toBeVisible()
+  })
+
+  test('plays instead of nudging a slider that the mouse focused', async () => {
+    await open()
+    const zoom = page.getByRole('slider', { name: 'Zoom the timeline' })
+    await userEvent.click(zoom)
+    const was = (zoom.element() as HTMLInputElement).value
+    await userEvent.keyboard('{Enter}')
+
+    await expect.element(playing()).toBeVisible()
+    expect((zoom.element() as HTMLInputElement).value).toBe(was)
+  })
+
+  test('does not press a button that the mouse focused when Enter is held', async () => {
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Next clip' }))
+    await expect.element(page.getByText('0:10.0 / 0:16.0', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{Enter>3/}')
+    await userEvent.keyboard('{/Enter}')
+
+    await expect.element(page.getByText('0:10.0 / 0:16.0', { exact: true })).toBeVisible()
+    await expect.element(playing()).toBeVisible()
+  })
+
+  test('lets the music file input that Tab reached keep its Enter', async () => {
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Music', exact: true }))
+    const input = document.querySelector<HTMLInputElement>('input[type=file]')!
+    for (let i = 0; i < 80 && document.activeElement !== input; i++) await userEvent.tab()
+    expect(document.activeElement).toBe(input)
+    await userEvent.keyboard('{Enter}')
+
+    await expect.element(stopped()).toBeVisible()
+  })
+
+  test('does not close the editor with Esc after a click on the dead space of a dialog', async () => {
+    await open()
+    await userEvent.keyboard('?')
+    const help = page.getByRole('dialog', { name: 'Film editor shortcuts' })
+    await userEvent.click(help)
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await userEvent.keyboard('{Escape}')
+
+    await expect.element(page.getByRole('main', { name: 'Film editor' })).toBeVisible()
+  })
+
+  test('does not delete the picked clip with Delete on a button that Tab reached', async () => {
+    await open()
+    await pick(SECOND)
+    const next = page.getByRole('button', { name: 'Next clip' }).element()
+    for (let i = 0; i < 60 && document.activeElement !== next; i++) await userEvent.tab()
+    const before = clipsOnTimeline().length
+    await userEvent.keyboard('{Delete}')
+
+    expect(clipsOnTimeline().length).toBe(before)
+  })
+
+  test('lets a button that Tab reached keep its Enter and its Space', async () => {
+    await open()
+    const next = page.getByRole('button', { name: 'Next clip' }).element()
+    for (let i = 0; i < 60 && document.activeElement !== next; i++) await userEvent.tab()
+    expect(document.activeElement).toBe(next)
+    await userEvent.keyboard('{Enter}')
+
+    await expect.element(page.getByText('0:10.0 / 0:16.0', { exact: true })).toBeVisible()
+    await expect.element(stopped()).toBeVisible()
+    await userEvent.keyboard(' ')
+    await expect.element(stopped()).toBeVisible()
+  })
+
+  test('plays on Space and Enter with a clip block that Tab reached', async () => {
+    await open()
+    const block = clipsOnTimeline()[0] as HTMLElement
+    for (let i = 0; i < 80 && document.activeElement !== block; i++) await userEvent.tab()
+    expect(document.activeElement).toBe(block)
+    await userEvent.keyboard(' ')
+
+    await expect.element(playing()).toBeVisible()
+  })
+
+  test('plays on Space after a Tab-focused button lost its focus to a click on empty space', async () => {
+    await open()
+    const next = page.getByRole('button', { name: 'Next clip' }).element()
+    for (let i = 0; i < 60 && document.activeElement !== next; i++) await userEvent.tab()
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    await userEvent.keyboard(' ')
+
+    await expect.element(playing()).toBeVisible()
+  })
+
+  test('toggles twice for two quick presses of Space', async () => {
+    await open()
+    await userEvent.keyboard('  ')
+
+    await expect.element(stopped()).toBeVisible()
+  })
+
+  test('toggles Fade in with F for the picked clip, only where the button is enabled', async () => {
+    await open()
+    await userEvent.keyboard('f')
+    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'false')
+    await pick(FIRST)
+    await userEvent.keyboard('f')
+    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'false')
+    await pick(SECOND)
+    await userEvent.keyboard('f')
+    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.keyboard('f')
+    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('deletes the picked clip with Delete and with Backspace', async () => {
+    await open()
+    await pick(SECOND)
+    await userEvent.keyboard('{Backspace}')
+    expect(clipsOnTimeline()).toHaveLength(1)
+    await pick(FIRST)
+    await userEvent.keyboard('{Delete}')
+    expect(clipsOnTimeline()).toHaveLength(0)
+  })
+
+  test('turns Ripple on and off with R, and Snap with S', async () => {
+    await open()
+    await userEvent.keyboard('r')
+    await expect.element(tool('Ripple')).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.keyboard('r')
+    await expect.element(tool('Ripple')).toHaveAttribute('aria-pressed', 'true')
+    await userEvent.keyboard('s')
+    await expect.element(tool('Snap')).toHaveAttribute('aria-pressed', 'false')
+  })
+
+  test('adds a text at the playhead with T, and picks it', async () => {
+    await open()
+    await playheadAt(2)
+    await userEvent.keyboard('t')
+
+    await expect.element(page.getByRole('textbox', { name: 'Text' })).toBeVisible()
+    await userEvent.keyboard('{Control>}z{/Control}')
+    await expect.element(page.getByRole('textbox', { name: 'Text' })).not.toBeInTheDocument()
+  })
+
+  test('selects with V', async () => {
+    await open()
+    await userEvent.keyboard('v')
+
+    await expect.element(tool('Select')).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  test('steps the playhead with the arrows, a second with Shift, and to the ends with Home and End', async () => {
+    await open()
+    await userEvent.keyboard('{ArrowRight}')
+    await expect.element(page.getByText('0:00.1 / 0:16.0', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{Shift>}{ArrowRight}{/Shift}')
+    await expect.element(page.getByText('0:01.1 / 0:16.0', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{ArrowLeft}')
+    await expect.element(page.getByText('0:01.0 / 0:16.0', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{End}')
+    await expect.element(page.getByText('0:16.0 / 0:16.0', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{Home}')
+    await expect.element(page.getByText('0:00.0 / 0:16.0', { exact: true })).toBeVisible()
+  })
+
+  test('leaves the arrows to a slider that has focus', async () => {
+    await open()
+    const zoom = page.getByRole('slider', { name: 'Zoom the timeline' })
+    await userEvent.click(zoom)
+    const was = Number((zoom.element() as HTMLInputElement).value)
+    await userEvent.keyboard('{ArrowRight}')
+
+    expect(Number((zoom.element() as HTMLInputElement).value)).toBe(was + 1)
+    await expect.element(page.getByText('0:00.0 / 0:16.0', { exact: true })).toBeVisible()
+  })
+
+  test('ignores the tool keys with Ctrl, Cmd or Alt held', async () => {
+    await open()
+    await userEvent.keyboard('{Control>}r{/Control}')
+    await userEvent.keyboard('{Meta>}s{/Meta}')
+    await userEvent.keyboard('{Alt>}t{/Alt}')
+
+    await expect.element(tool('Ripple')).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(tool('Snap')).toHaveAttribute('aria-pressed', 'true')
+    expect(document.querySelectorAll('div.cursor-grab').length).toBe(clipsOnTimeline().length)
+  })
+
+  test('names its key in the title and the keyshortcuts of each tool', async () => {
+    await open()
+    const keyed: Array<[string, string, string]> = [
+      ['Cut at playhead', 'C', 'C'],
+      ['Delete', 'Delete, Backspace', 'Delete Backspace'],
+      ['Fade in', 'F', 'F'],
+      ['Ripple', 'R', 'R'],
+      ['Snap', 'S', 'S']
+    ]
+    for (const [name, key, shortcuts] of keyed) {
+      const button = tool(name).element()
+      expect(button.getAttribute('title')).toContain(`(${key})`)
+      expect(button.getAttribute('aria-keyshortcuts')).toBe(shortcuts)
+    }
+  })
+
+  test('lists the keys in a Shortcuts help, opened with ? or its button, closed with Esc, and gives the focus back', async () => {
+    await open()
+    await userEvent.keyboard('?')
+    const help = page.getByRole('dialog', { name: 'Film editor shortcuts' })
+    await expect.element(help).toBeVisible()
+    await expect.element(help.getByText('Enter, Space')).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(help).not.toBeInTheDocument()
+
+    const opener = page.getByRole('button', { name: 'Shortcuts' })
+    await userEvent.click(opener)
+    await expect.element(help).toBeVisible()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(help).not.toBeInTheDocument()
+    expect(document.activeElement).toBe(opener.element())
+    await expect.element(page.getByRole('main', { name: 'Film editor' })).toBeVisible()
+  })
+
+  test('does not let a key through to the editor from an open dialog', async () => {
+    await open()
+    await userEvent.keyboard('?')
+    await expect.element(page.getByRole('dialog', { name: 'Film editor shortcuts' })).toBeVisible()
+    await userEvent.keyboard('r')
+    await userEvent.keyboard('{ArrowRight}')
+    await userEvent.keyboard('{End}')
+
+    await expect.element(tool('Ripple')).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(page.getByText('0:00.0 / 0:16.0', { exact: true })).toBeVisible()
+  })
+
+  test('stops listening to the window when the editor is gone', async () => {
+    const removed = vi.spyOn(window, 'removeEventListener')
+    const screen = await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await screen.unmount()
+
+    expect(removed.mock.calls.some(([type]) => type === 'keydown')).toBe(true)
+    removed.mockRestore()
   })
 })

@@ -1315,7 +1315,7 @@ Back leaves it too, and an edit not yet saved is saved on the way out. A montage
 board, and one that is not processed, are refused in the editor with the reason, and its close goes to the montages page. In the packed desktop window with its own frame the editor has the same rounded corners as the board. The page has the
 montage's clips on the left, the picture in the middle with previous clip, play and next
 clip under it, what is picked on the right, and under them a toolbar with Select, Cut at playhead,
-Delete, Fade in, Ripple, Snap and the zoom, the timeline, and a line with the film's length. The timeline ends
+Delete, Fade in, Ripple, Snap and the zoom, the timeline, and a line with the film's length, with a Shortcuts button beside Undo in the header. The timeline ends
 where the last of the videos, the texts and the music ends, not where the last video does: the ruler, the
 playhead, the clock under the picture (_now / end_), previous and next clip, and playing all run to that
 end, and after the last video the picture is empty while the text and the music go on. The film's
@@ -1409,15 +1409,17 @@ opacity that goes from 0 to 1 across the overlap, and the sound of each rising o
 when playing and when the playhead is moved into it. In the rendered film a crossfade is a
 dissolve between the two clips with the sound crossing as well, a clip without sound or with its
 speaker off staying silent through it, and a cut, a gap and a crossfade can follow each other in one film.
-The stage never goes empty at the seam between two clips that touch, whether the film plays or the playhead
-is moved across it: the clip (or photo) that comes next, when it starts within five seconds, is loaded and held at its first frame in the second
-layer while the current one shows, and takes the picture at the seam. When the playhead jumps to a clip that is not loaded yet, the picture that was shown stays until the new one has a frame, but a clip reached by turning back right after a seam may show one empty frame while it loads. A clip that follows the incoming clip of a crossfade closely is cued only when the crossfade is over.
+The stage has two video layers and never goes empty at the seam between two clips that touch, whether the film plays or the playhead is moved across it. The clip (or photo) at the playhead goes to the layer that already holds its file, the one nearest to the wanted moment if both do, and otherwise to the layer that is not on screen; in a crossfade the older clip takes the other layer. A layer comes to the screen only when it has a frame to show: a video that has loaded and is not seeking, or failed to load, or a photo that has been decoded. Until then the layer on screen keeps its file and its picture. So a jump to a clip that is not loaded keeps the old picture until the new one has a frame, and a photo that finishes decoding after the film was paused changes the picture but starts nothing.
+
+The clip (or photo) that comes next, when it starts within five seconds and the one at the playhead has its frame, is loaded and held at its first frame, silent and hidden, in the free layer, and takes the picture at the seam; when the one at the playhead has no frame yet it is loaded as soon as it has. A clip that follows the incoming clip of a crossfade closely is cued only when the crossfade is over. Turning back right after a seam loads the clip just left again from its start, since its layer was already given to the next clip, and may show one empty frame, about a sixtieth of a second, before it has its frame.
+
+The keys of the editor are heard on the whole window while the editor is open, not while a dialog is open over it (the film template dialogs, the part of a clip, the Shortcuts list), and not when a key repeats, except the arrows, which keep moving, and Enter and Space, which do not play again or press anything while held. Enter and Space play and stop. _C_ is Cut at playhead, _F_ is Fade in for the picked clip (only where its button is on), Delete and Backspace delete the picked item (not from a button or a checkbox that the keyboard focused), _R_ is Ripple, _S_ is Snap and _T_ adds a Title text at the playhead; these single keys do nothing with Ctrl, Cmd or Alt held. The left and right arrows move the playhead a tenth of a second, a second with Shift, Home and End go to the start and the end, also from the ruler, Alt with the arrows moves the picked clip, Ctrl or Cmd with Z undoes, and _?_ or the Shortcuts button opens the list of these keys, which Esc closes, giving the focus back. The title of each tool, and of Play, says its key, and the tool carries it as its keyboard shortcut. In a text box (text, number or search, a text area, an editable text) and in a menu every key is the field's own, so Space types and Enter commits; only Esc reaches the editor, and with a dialog open Esc is the dialog's alone, wherever the focus is. On a button, a checkbox, a slider or the ruler that a click gave the focus, Enter and Space play and stop and do not press or tick it. A control that the keyboard gave the focus (the browser's focus-visible, so Tab, or a dialog that the keyboard opened giving the focus back, but not a click) keeps Enter and Space when it is a button, a link, a field other than a slider or a summary, so that the editor can be used without a mouse; any other element, such as a clip block, lets Enter and Space play and stop. The arrows are left to a slider that has the focus, and Home and End to the zoom. The film template editor has the same keys, but Cut is off there.
 
 **Cutting, Ripple and Snap.** _Select_ is the tool the editor is always in, shown pressed. _Cut at
-playhead_ — also the C key, under the same focus rules as Space and Delete, and not with Alt or
+playhead_ — also the C key, under the focus rules of the keys of the editor, and not with Alt or
 Shift or when the key repeats — splits the video clip under the playhead into two that meet at the
 cut: the first keeps the clip's id, and the second is a new clip of the same video and sound setting
-from the cut to the old end; the one picked stays the first, the playhead and the film's length do
+from the cut to the old end; the second is the one picked afterwards, so that the next cut, fade or delete is of it, the playhead and the film's length do
 not change, and Undo makes it one clip again. It is off where the playhead is not inside a clip, or
 where either piece would be under half a second. _Ripple_ is on at first: whatever starts after the
 point where the video gets longer or shorter — a clip trimmed, chosen a part of, removed or put in —
@@ -1460,7 +1462,7 @@ The five looks are cards in the Text tab, each with a small sky-blue picture of 
 Hovering or focusing a card plays its effect in the small picture, and the effect of the picked text plays on its own, in a loop of a few seconds whose fade and pop last as long as the film's. The slide is shorter and the curve is not the same, so the card is an approximation of the film. A touch screen has no hover and shows the still card. Whoever asks their system for less motion sees the final frame and nothing moves.
 
 **The picture plays the edit.** It plays from the proxies, with the music and the camera sound as they
-will be heard; Space plays and stops, and the jump marks of the clip at the playhead are buttons that
+will be heard; Enter and Space play and stop, and the jump marks of the clip at the playhead are buttons that
 go to them.
 
 **Rendering is one press.** _Render the film_ saves the edit and makes the film from the processed

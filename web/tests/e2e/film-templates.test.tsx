@@ -328,6 +328,26 @@ describe('the film template editor', () => {
     expect(page.getByRole('button', { name: 'Elegant', exact: true }).element().textContent).toBe('Aa')
   })
 
+  test('plays with Enter, adds a text with T, and has no cutting, in the film template editor', async () => {
+    await openScratch()
+    await expect.element(bar()).toBeVisible()
+    await userEvent.keyboard('{Enter}')
+    await expect.element(page.getByRole('button', { name: 'Pause', exact: true })).toBeVisible()
+    await userEvent.keyboard(' ')
+    await expect.element(page.getByRole('button', { name: 'Play', exact: true })).toBeVisible()
+    await userEvent.keyboard('t')
+    await expect.element(page.getByRole('textbox', { name: 'Text' })).toBeVisible()
+    await userEvent.keyboard('c')
+    await expect.element(page.getByText('Your clips', { exact: true })).toBeVisible()
+    expect(document.querySelectorAll('[title$="double-click to choose the part"]')).toHaveLength(0)
+
+    await userEvent.keyboard('?')
+    const help = page.getByRole('dialog', { name: 'Film editor shortcuts' })
+    await expect.element(help).toBeVisible()
+    await expect.element(help.getByText('cut at the playhead')).not.toBeInTheDocument()
+    await expect.element(help.getByText('add a text at the playhead')).toBeVisible()
+  })
+
   test('says so when the film template is gone', async () => {
     await openScratch('Nobody', [])
     await expect.element(page.getByText('This film template is gone.')).toBeVisible()

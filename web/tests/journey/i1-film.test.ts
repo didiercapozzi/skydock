@@ -213,6 +213,20 @@ describe('the film editor', () => {
     ).not.toMatch(/^0:00\.0 /)
   })
 
+  test('plays and stops with Enter, even with a button focused by the mouse', async () => {
+    const clock = () =>
+      editor()
+        .getByText(/^\d:\d\d\.\d \/ /)
+        .innerText()
+    const before = await clock()
+    await j.page.keyboard.press('Enter')
+    await editor().getByRole('button', { name: 'Pause', exact: true }).waitFor()
+    await j.page.waitForTimeout(600)
+    await j.page.keyboard.press('Enter')
+    await editor().getByRole('button', { name: 'Play', exact: true }).waitFor()
+    expect(await clock()).not.toBe(before)
+  })
+
   test('renders the film into the montage’s folder, and the board takes it as the film', async () => {
     const length = savedEdit().clips.reduce(
       (total, clip) => total + (clip.gap ?? 0) + lengthOf(clip),

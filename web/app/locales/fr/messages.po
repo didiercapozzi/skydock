@@ -790,6 +790,10 @@ msgstr "🔒 projet"
 msgid "2-step verification code"
 msgstr "Code de validation en deux étapes"
 
+#: app/components/film-shortcuts.tsx
+msgid "A button you clicked does not take Enter or Space: they play. Reach it with Tab and they press it."
+msgstr "Un bouton cliqué ne prend pas Entrée ni Espace : ils lancent la lecture. Atteignez-le avec Tab et ils l’actionnent."
+
 #: app/routes/board.tsx
 msgid "A camera is being copied"
 msgstr "Une caméra est en cours de copie"
@@ -919,6 +923,10 @@ msgstr "Ajoutez une destination, puis glissez dessus ce qui doit y aller."
 #: app/components/places-tree.tsx
 msgid "Add a destination…"
 msgstr "Ajouter une destination…"
+
+#: app/components/film-shortcuts.tsx
+msgid "add a text at the playhead"
+msgstr "ajouter un texte à la tête de lecture"
 
 #: app/components/email-dialog.tsx
 msgid "Add link"
@@ -1411,6 +1419,7 @@ msgstr "fermer"
 #: app/components/comparison-dialog.tsx
 #: app/components/email-dialog.tsx
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 #: app/components/film-templates-dialog.tsx
 #: app/components/reset-fresh-dialog.tsx
 #: app/components/shortcuts-dialog.tsx
@@ -1431,6 +1440,10 @@ msgstr "Fermer (Esc)"
 #: app/components/montage-card.tsx
 msgid "Close the player"
 msgstr "Fermer le lecteur"
+
+#: app/components/film-shortcuts.tsx
+msgid "close this list, or the editor"
+msgstr "fermer cette liste, ou l’éditeur"
 
 #: app/components/montage-card.tsx
 msgid "Close what is inside"
@@ -1736,6 +1749,10 @@ msgstr "Couper à la tête de lecture"
 msgid "Cut at playhead (C)"
 msgstr "Couper à la tête de lecture (C)"
 
+#: app/components/film-shortcuts.tsx
+msgid "cut at the playhead"
+msgstr "couper à la tête de lecture"
+
 #: app/components/board-header.tsx
 msgid "Dark"
 msgstr "Sombre"
@@ -1809,6 +1826,14 @@ msgstr "Supprimer le montage…"
 #: app/components/shortcuts-dialog.tsx
 msgid "Delete or ⌫"
 msgstr "Suppr ou ⌫"
+
+#: app/components/film-shortcuts.tsx
+msgid "delete the picked item"
+msgstr "supprimer l’élément choisi"
+
+#: app/components/film-editor.tsx
+msgid "Delete the picked item (Delete, Backspace)"
+msgstr "Supprimer l’élément choisi (Delete, Backspace)"
 
 #: app/components/film-templates-dialog.tsx
 msgid "Delete this film template?"
@@ -2046,6 +2071,10 @@ msgstr "Modifier le modèle…"
 msgid "Edited on the proxies, rendered from the processed copies"
 msgstr "Monté sur les proxies, rendu depuis les copies traitées"
 
+#: app/components/film-shortcuts.tsx
+msgid "Editing"
+msgstr "Édition"
+
 #: app/components/templates-dialog.tsx
 msgid "Editing templates"
 msgstr "Modèles de montage"
@@ -2225,6 +2254,10 @@ msgstr "Fondu enchaîné vers {0}"
 msgid "Fade the picked clip in over the end of the clip before it"
 msgstr "Faire apparaître le clip choisi en fondu sur la fin du clip précédent"
 
+#: app/components/film-shortcuts.tsx
+msgid "fade the picked clip in over the one before it, or take the fade off"
+msgstr "enchaîner le clip choisi en fondu sur le précédent, ou retirer le fondu"
+
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
 msgid "failed"
@@ -2301,6 +2334,10 @@ msgstr "Film monté"
 #: app/components/film-editor.tsx
 msgid "Film editor"
 msgstr "Éditeur de film"
+
+#: app/components/film-shortcuts.tsx
+msgid "Film editor shortcuts"
+msgstr "Raccourcis de l’éditeur de film"
 
 #: app/components/montage-panel.tsx
 msgid "Film in"
@@ -2629,6 +2666,10 @@ msgstr "Aller à"
 #: app/components/preview-drawer.tsx
 msgid "Go to the {moment}"
 msgstr "Aller à : {moment}"
+
+#: app/components/film-shortcuts.tsx
+msgid "go to the start or the end of the timeline"
+msgstr "aller au début ou à la fin de la timeline"
 
 #: app/components/film-editor.tsx
 msgid "Go to this mark"
@@ -3274,6 +3315,14 @@ msgstr "À plus de 15 minutes du reste de son saut — la règle d’écart ne l
 #: app/components/film-part.tsx
 msgid "Move the end"
 msgstr "Déplacer la fin"
+
+#: app/components/film-shortcuts.tsx
+msgid "move the picked clip 0.1 second, 1 second with Shift"
+msgstr "déplacer le clip choisi de 0,1 seconde, de 1 seconde avec Maj"
+
+#: app/components/film-shortcuts.tsx
+msgid "move the playhead 0.1 second, 1 second with Shift"
+msgstr "déplacer la tête de lecture de 0,1 seconde, de 1 seconde avec Maj"
 
 #: app/components/film-part.tsx
 msgid "Move the start"
@@ -4028,12 +4077,20 @@ msgid "play or pause"
 msgstr "lecture ou pause"
 
 #: app/components/film-editor.tsx
-msgid "Play or pause (Space)"
-msgstr "Lire ou mettre en pause (Espace)"
+msgid "Play or pause (Enter, Space)"
+msgstr "Lire ou mettre en pause (Enter, Space)"
+
+#: app/components/film-shortcuts.tsx
+msgid "play or stop; in a text box they type instead"
+msgstr "lire ou arrêter ; dans un champ de texte, on saisit à la place"
 
 #: app/components/film-part.tsx
 msgid "Play the part, twice as fast"
 msgstr "Lire le passage, deux fois plus vite"
+
+#: app/components/film-shortcuts.tsx
+msgid "Playing"
+msgstr "Lecture"
 
 #: app/components/camera-page.tsx
 msgid "Plug it in to look at it"
@@ -4587,7 +4644,7 @@ msgstr "Sélectionner"
 
 #: app/components/film-editor.tsx
 msgid "Select (the tool the editor is always in)"
-msgstr "Sélectionner (l'outil dans lequel l'éditeur est toujours)"
+msgstr "\"Sélectionner (l’outil dans lequel l’éditeur se trouve toujours)"
 
 #: app/components/inspector.tsx
 msgid "Select its {fileCount, plural, one {# file} other {# files}}"
@@ -4657,6 +4714,14 @@ msgstr "Dossiers partagés"
 #: app/components/shortcuts-dialog.tsx
 msgid "Shift + ↑ ↓"
 msgstr "Maj + ↑ ↓"
+
+#: app/components/film-editor.tsx
+msgid "Shortcuts"
+msgstr "Raccourcis"
+
+#: app/components/film-editor.tsx
+msgid "Shortcuts (?)"
+msgstr "Raccourcis (?)"
 
 #: app/components/inspector.tsx
 #: app/components/preview-drawer.tsx
@@ -5450,6 +5515,7 @@ msgstr "Ce saut devient un montage dès qu’il a un nom."
 msgid "This jump runs from {start} to {end}"
 msgstr "Ce saut va de {start} à {end}"
 
+#: app/components/film-shortcuts.tsx
 #: app/components/shortcuts-dialog.tsx
 msgid "this list"
 msgstr "cette liste"
@@ -5511,6 +5577,10 @@ msgstr "à ranger"
 #: app/components/upload-dialog.tsx
 msgid "to send"
 msgstr "à envoyer"
+
+#: app/components/film-shortcuts.tsx
+msgid "Tools"
+msgstr "Outils"
 
 #: app/components/inspector.tsx
 msgid "Total size"
@@ -5596,6 +5666,14 @@ msgstr "Faire pivoter chaque clip de ce saut de la même façon — une caméra 
 msgid "Turn every photo in this jump the same way — a camera on its side is on its side for the whole jump"
 msgstr "Faire pivoter chaque photo de ce saut de la même façon — une caméra couchée l’est pour tout le saut"
 
+#: app/components/film-shortcuts.tsx
+msgid "turn Ripple on or off"
+msgstr "activer ou désactiver la propagation"
+
+#: app/components/film-shortcuts.tsx
+msgid "turn Snap on or off"
+msgstr "activer ou désactiver le magnétisme"
+
 #: app/components/preview-drawer.tsx
 msgid "Turn upside down"
 msgstr "Retourner"
@@ -5631,6 +5709,10 @@ msgstr "sous voile"
 #: app/components/progress-panel.tsx
 msgid "under way"
 msgstr "en cours"
+
+#: app/components/film-shortcuts.tsx
+msgid "undo"
+msgstr "annuler"
 
 #: app/components/email-dialog.tsx
 #: app/components/film-editor.tsx

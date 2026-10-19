@@ -53,6 +53,7 @@ import { FilmPart } from './film-part'
 import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-template-modals'
 import type { Listed } from './film-template-modals'
 import { FONT_LOOK, FilmPreview } from './film-preview'
+import { FilmShortcuts } from './film-shortcuts'
 import { CLIP_DRAG, FilmTimeline, markName, ZOOM } from './film-timeline'
 import type { Picked } from './film-timeline'
 import { Icon } from './icons'
@@ -82,6 +83,12 @@ const UNDOABLE = 50
 const ONE_CHANGE = 400
 
 const musicAnswerSchema = z.object({ ok: z.boolean(), error: z.string().optional() })
+
+const TEXT_INPUTS = /^(text|number|search|email|url|tel|password)$/
+const REPEATING = /^(Arrow\w+|Enter| )$/
+const NATIVE = 'button, a[href], input:not([type=range]), summary'
+const PRESSED = 'button, input[type=checkbox]'
+const ARROWED = '[role=slider], input[type=range]'
 
 const COLOURS = ['#ffffff', '#ffd84d', '#ff8a5c', '#7fd3ff', '#0f2f47'] as const
 
@@ -875,6 +882,7 @@ const FilmEditor = ({
   const [history, setHistory] = useState<FilmEdit[]>([])
   const [ripple, setRipple] = useState(true)
   const [snap, setSnap] = useState(true)
+  const [help, setHelp] = useState(false)
   const lastChange = useRef(0)
   const joined = useRef(false)
   const held = useRef(false)
@@ -1265,26 +1273,32 @@ const FilmEditor = ({
     if (!cut) return
     joined.current = false
     change(cut)
+    const second = cut.clips.find((one) => !edit?.clips.some((was) => was.id === one.id))
+    if (second) setPicked({ kind: 'clip', id: second.id })
   }
 
-  const keys = (e: React.KeyboardEvent) => {
+  const keys = (e: KeyboardEvent) => {
+    const target = e.target instanceof HTMLElement ? e.target : null
     const typing =
-      e.target instanceof HTMLTextAreaElement ||
-      (e.target instanceof HTMLInputElement && !['range', 'checkbox'].includes(e.target.type))
-    const control =
-      typing || e.target instanceof HTMLInputElement || e.target instanceof HTMLButtonElement
-    if (e.key === 'Escape' && !part) {
-      e.stopPropagation()
-      void close()
-    }
+      target !== null &&
+      (target.isContentEditable ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        (target instanceof HTMLInputElement && TEXT_INPUTS.test(target.type)))
+    if (document.querySelector('[aria-modal="true"]')) return
+    if (e.key === 'Escape' && !part) void close()
     if (typing) return
-    if (e.key.toLowerCase() === 'z' && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
+    if (e.repeat && !REPEATING.test(e.key)) return
+    const arrowed = target?.matches(ARROWED)
+    const command = e.ctrlKey || e.metaKey
+    if (e.key.toLowerCase() === 'z' && command && !e.shiftKey) {
       e.preventDefault()
       undo()
     }
-    if (control) return
     if (
       e.altKey &&
+      !command &&
+      !arrowed &&
       (e.key === 'ArrowLeft' || e.key === 'ArrowRight') &&
       edit &&
       picked?.kind === 'clip'
@@ -1294,21 +1308,60 @@ const FilmEditor = ({
       const by = (e.shiftKey ? 1 : 0.1) * (e.key === 'ArrowLeft' ? -1 : 1)
       change(placeClip(edit, picked.id, Math.round((from + by) * 1000) / 1000, ripple))
     }
-    if (e.key === ' ') {
+    if (command || e.altKey) return
+    if (e.key === ' ' || e.key === 'Enter') {
+      if (keyFocus.current && target?.matches(NATIVE)) return
       e.preventDefault()
-      setPlaying(!playing)
+      if (!e.repeat) setPlaying((was) => !was)
     }
-    if (e.key === 'Delete' || e.key === 'Backspace') removePicked()
     if (
-      e.key.toLowerCase() === 'c' &&
-      !e.ctrlKey &&
-      !e.metaKey &&
-      !e.altKey &&
-      !e.shiftKey &&
-      !e.repeat
+      (e.key === 'Delete' || e.key === 'Backspace') &&
+      !(keyFocus.current && target?.matches(PRESSED))
     )
-      cutHere()
+      removePicked()
+    if (e.key === '?') setHelp(true)
+    if (!arrowed && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+      e.preventDefault()
+      seek(
+        Math.round(
+          (now.current + (e.shiftKey ? 1 : 0.1) * (e.key === 'ArrowLeft' ? -1 : 1)) * 1000
+        ) / 1000
+      )
+    }
+    if ((e.key === 'Home' || e.key === 'End') && !target?.matches('input[type=range]')) {
+      e.preventDefault()
+      seek(e.key === 'Home' ? 0 : total)
+    }
+    if (e.shiftKey) return
+    const letter = e.key.toLowerCase()
+    if (letter === 'c') cutHere()
+    if (letter === 'f' && pickedId && blocked === null) fadeHere()
+    if (letter === 'r') setRipple((was) => !was)
+    if (letter === 's') setSnap((was) => !was)
+    if (letter === 't') addText(PRESETS[0]!)
   }
+
+  const keyFocus = useRef(false)
+  const typedKeys = useRef(keys)
+  useEffect(() => {
+    typedKeys.current = keys
+  })
+  useEffect(() => {
+    const listen = (e: KeyboardEvent) => typedKeys.current(e)
+    const focused = (e: FocusEvent) =>
+      (keyFocus.current = e.target instanceof Element && e.target.matches(':focus-visible'))
+    const left = (e: FocusEvent) => {
+      if (!e.relatedTarget) keyFocus.current = false
+    }
+    window.addEventListener('keydown', listen)
+    window.addEventListener('focusin', focused)
+    window.addEventListener('focusout', left)
+    return () => {
+      window.removeEventListener('keydown', listen)
+      window.removeEventListener('focusin', focused)
+      window.removeEventListener('focusout', left)
+    }
+  }, [])
 
   const addClip = (name: string, index?: number) => {
     const source = sources.get(name)
@@ -1389,7 +1442,6 @@ const FilmEditor = ({
     <main
       ref={root}
       aria-label={t`Film editor`}
-      onKeyDown={keys}
       onPointerDownCapture={() => {
         joined.current = false
         held.current = true
@@ -1417,6 +1469,12 @@ const FilmEditor = ({
           title={t`Undo (Ctrl+Z)`}
           onClick={undo}>
           {t`Undo`}
+        </Mini>
+        <Mini
+          keys='?'
+          title={t`Shortcuts (?)`}
+          onClick={() => setHelp(true)}>
+          {t`Shortcuts`}
         </Mini>
         {edit && loaded && !scratch && (
           <Mini onClick={() => setTemplating(true)}>{t`Film template…`}</Mini>
@@ -1509,7 +1567,8 @@ const FilmEditor = ({
                 <button
                   type='button'
                   aria-label={playing ? t`Pause` : t`Play`}
-                  title={t`Play or pause (Space)`}
+                  title={t`Play or pause (Enter, Space)`}
+                  aria-keyshortcuts='Enter Space'
                   onClick={() => setPlaying(!playing)}
                   className='grid size-9.5 place-items-center rounded-full bg-ink text-pane'>
                   <Icon
@@ -1567,6 +1626,7 @@ const FilmEditor = ({
               <Mini
                 disabled={!cut}
                 title={t`Cut at playhead (C)`}
+                keys='C'
                 onClick={cutHere}>
                 <Icon
                   name='scissors'
@@ -1576,6 +1636,8 @@ const FilmEditor = ({
               </Mini>
               <Mini
                 disabled={!picked}
+                keys='Delete Backspace'
+                title={t`Delete the picked item (Delete, Backspace)`}
                 onClick={removePicked}>
                 <Icon
                   name='bin'
@@ -1586,9 +1648,10 @@ const FilmEditor = ({
               <Mini
                 pressed={fading}
                 disabled={blocked !== null}
-                title={
+                keys='F'
+                title={`${
                   pickedId ? fadeWhy(blocked) : t`Pick a clip to fade it in over the one before it`
-                }
+                } (F)`}
                 onClick={fadeHere}>
                 <Icon
                   name='fade'
@@ -1599,13 +1662,15 @@ const FilmEditor = ({
               <span className='h-4.5 w-px flex-none bg-line' />
               <Mini
                 pressed={ripple}
-                title={t`Changing the video pulls the text and the music after it along`}
+                keys='R'
+                title={`${t`Changing the video pulls the text and the music after it along`} (R)`}
                 onClick={() => setRipple(!ripple)}>
                 {t`Ripple`}
               </Mini>
               <Mini
                 pressed={snap}
-                title={t`Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks`}
+                keys='S'
+                title={`${t`Snap texts and music to the playhead, the cuts, the jump marks and each other, and a trimmed clip edge to the jump marks`} (S)`}
                 onClick={() => setSnap(!snap)}>
                 {t`Snap`}
               </Mini>
@@ -1705,6 +1770,13 @@ const FilmEditor = ({
         !problem && (
           <p className='grid flex-1 place-items-center text-body text-ink-3'>{t`Opening the film…`}</p>
         )
+      )}
+
+      {help && (
+        <FilmShortcuts
+          scratch={scratch}
+          onClose={() => setHelp(false)}
+        />
       )}
 
       {starting && (
