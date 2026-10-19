@@ -119,7 +119,11 @@ const filmArgs = ({
     const source = sources.get(clip.name)
     if (!source) throw new Error(`${clip.name} is not in the montage any more.`)
     const length = clip.end - clip.start
-    inputs.push('-i', source.path)
+    inputs.push(
+      ...(source.still ? ['-loop', '1', '-framerate', String(FPS), '-t', n(clip.end)] : []),
+      '-i',
+      source.path
+    )
     if (clip.gap) black(`g${index}`, clip.gap)
     parts.push({ label: `[v${index}][a${index}]`, length, fade: fadeInto(edit.clips, index) })
     graph.push(

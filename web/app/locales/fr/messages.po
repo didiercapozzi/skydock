@@ -11,6 +11,11 @@ msgstr ""
 msgid " — copied, {keeps} keeps its own"
 msgstr " — copiés, {keeps} garde les siens"
 
+#. placeholder {0}: sources.filter((one) => one.still).length
+#: app/components/film-editor.tsx
+msgid " · {0, plural, one {# photo} other {# photos}}"
+msgstr " · {0, plural, one {# photo} other {# photos}}"
+
 #: app/components/email-dialog.tsx
 msgid " · empty here"
 msgstr " · vide ici"
@@ -597,7 +602,7 @@ msgstr "{there} déjà là"
 msgid "{times}× upscale, will look soft"
 msgstr "agrandi {times}×, sera flou"
 
-#. placeholder {0}: sources.length
+#. placeholder {0}: sources.filter((one) => !one.still).length
 #: app/components/film-editor.tsx
 msgid "{title} · {0, plural, one {# video} other {# videos}}"
 msgstr "{title} · {0, plural, one {# vidéo} other {# vidéos}}"
@@ -3807,6 +3812,7 @@ msgstr "Pause"
 msgid "photo"
 msgstr "photo"
 
+#: app/components/film-editor.tsx
 #: app/components/inspector.tsx
 msgid "Photo"
 msgstr "Photo"

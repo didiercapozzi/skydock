@@ -283,9 +283,9 @@ const FilmTimeline = ({
     drag(e, (_, __, ___, pointer) => onSeek(timeOf(pointer, lane)), false)
   }
 
-  const pressClip = (e: React.PointerEvent<HTMLDivElement>, id: string) => {
+  const pressClip = (e: React.PointerEvent<HTMLDivElement>, id: string, still?: boolean) => {
     const now = e.timeStamp
-    if (lastDown?.id === id && now - lastDown.at < DOUBLE_CLICK) {
+    if (!still && lastDown?.id === id && now - lastDown.at < DOUBLE_CLICK) {
       setLastDown(null)
       onOpenPart(id)
       return
@@ -466,14 +466,16 @@ const FilmTimeline = ({
               return (
                 <div
                   key={clip.id}
-                  onPointerDown={(e) => pressClip(e, clip.id)}
+                  onPointerDown={(e) => pressClip(e, clip.id, source?.still)}
                   onKeyDown={(e) =>
                     (e.key === 'Enter' || e.key === ' ') && onPick({ kind: 'clip', id: clip.id })
                   }
                   role='button'
                   tabIndex={0}
                   aria-pressed={chosen}
-                  title={t`${clip.name} · double-click to choose the part`}
+                  title={
+                    source?.still ? clip.name : t`${clip.name} · double-click to choose the part`
+                  }
                   style={{ left: from * pps, width: Math.max(4, length * pps - 2) }}
                   className={`absolute inset-y-1.25 cursor-grab overflow-hidden rounded-corner border bg-proc-soft ${ring(chosen)}`}>
                   {source && (

@@ -4,6 +4,9 @@ const TEXT_EFFECTS = ['fade', 'rise', 'pop', 'lower-third'] as const
 const TEXT_FONTS = ['clean', 'bold', 'elegant', 'hand'] as const
 const MUSIC_EXTENSIONS = ['.mp3', '.m4a', '.aac', '.wav', '.ogg', '.flac'] as const
 const UNDER_SOUND = 0.15
+const STILL_SECONDS = 5
+const STILL_MAX = 60
+const STILL_EXTENSIONS = ['.jpg', '.jpeg', '.png'] as const
 const TEXT_FADE = 0.6
 const POP = 0.35
 const DUCK_RAMP = 0.8
@@ -66,7 +69,8 @@ const editSourceSchema = z.object({
   play: z.string(),
   seconds: z.number(),
   sound: z.boolean(),
-  marks: z.array(editMarkSchema)
+  marks: z.array(editMarkSchema),
+  still: z.boolean().optional()
 })
 
 const musicSourceSchema = z.object({
@@ -192,6 +196,9 @@ export {
   TEXT_FONTS,
   textLookAt,
   timelineEnd,
+  STILL_EXTENSIONS,
+  STILL_MAX,
+  STILL_SECONDS,
   UNDER_SOUND
 }
 export type {

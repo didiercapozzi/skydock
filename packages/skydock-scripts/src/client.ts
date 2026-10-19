@@ -24,6 +24,7 @@ export {
   filmLength,
   heardSpans,
   musicLevelAt,
+  STILL_SECONDS,
   TEXT_EFFECTS,
   TEXT_FONTS,
   textLookAt,

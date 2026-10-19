@@ -1,6 +1,12 @@
 import { readdir, readFile } from 'node:fs/promises'
 import * as path from 'node:path'
-import { filmEditSchema, MUSIC_EXTENSIONS, UNDER_SOUND } from './filmEditShape'
+import {
+  filmEditSchema,
+  MUSIC_EXTENSIONS,
+  STILL_EXTENSIONS,
+  STILL_MAX,
+  UNDER_SOUND
+} from './filmEditShape'
 import type { EditSource, FilmEdit } from './filmEditShape'
 import { jsonText } from './lib/json'
 import { pathExists, writeJsonAtomic } from './lib/fs'
@@ -27,7 +33,11 @@ const isMusicFile = (name: string) =>
 
 const SOURCES_PARALLEL = 4
 
-const editSources = async (manifest: Manifest, outputDir: string, group: ManifestGroup) => {
+const editSources = async (
+  manifest: Manifest,
+  outputDir: string,
+  group: ManifestGroup
+): Promise<EditSource[]> => {
   const { dir } = getGroupProcessedDir(outputDir, group)
   const videos = path.join(dir, 'videos')
   const names = (await readdir(videos, { withFileTypes: true }).catch(() => []))
@@ -62,7 +72,25 @@ const editSources = async (manifest: Manifest, outputDir: string, group: Manifes
       marks
     }
   })
-  return found.filter((one) => one !== null)
+  const photos = path.join(dir, 'photos')
+  const stills = (await readdir(photos, { withFileTypes: true }).catch(() => []))
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        !entry.name.startsWith('.') &&
+        STILL_EXTENSIONS.some((ending) => entry.name.toLowerCase().endsWith(ending))
+    )
+    .map((entry) => ({
+      name: entry.name,
+      path: path.join(photos, entry.name),
+      play: path.join(photos, entry.name),
+      seconds: STILL_MAX,
+      sound: false,
+      marks: [],
+      still: true
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
+  return [...found.filter((one) => one !== null), ...stills]
 }
 
 const musicSources = async (outputDir: string) => {
@@ -83,13 +111,15 @@ const firstEdit = (group: ManifestGroup, sources: EditSource[]) => {
   const title = passengerOf(group).trim()
   return {
     version: 1 as const,
-    clips: sources.map((source, index) => ({
-      id: `clip-${index + 1}`,
-      name: source.name,
-      start: 0,
-      end: source.seconds,
-      sound: false
-    })),
+    clips: sources
+      .filter((source) => !source.still)
+      .map((source, index) => ({
+        id: `clip-${index + 1}`,
+        name: source.name,
+        start: 0,
+        end: source.seconds,
+        sound: false
+      })),
     music: [],
     texts: title
       ? [

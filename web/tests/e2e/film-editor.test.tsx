@@ -36,14 +36,25 @@ const answer = {
   }
 }
 
-const open = async (edit: Record<string, unknown> = {}, marks: Array<{ which: string; at: number }> = []) => {
+const PHOTO = 'luc_favre_20260906_090500.jpg'
+
+const photo = { name: PHOTO, path: `/o/${PHOTO}`, play: `/o/${PHOTO}`, seconds: 60, sound: false, marks: [], still: true }
+
+const open = async (
+  edit: Record<string, unknown> = {},
+  marks: Array<{ which: string; at: number }> = [],
+  more: unknown[] = []
+) => {
   vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) =>
     Response.json(
       init?.method === 'POST'
         ? { ok: true }
         : {
             ...answer,
-            sources: answer.sources.map((one) => (one.name === FIRST ? { ...one, marks } : one)),
+            sources: [
+              ...answer.sources.map((one) => (one.name === FIRST ? { ...one, marks } : one)),
+              ...more
+            ],
             edit: { ...answer.edit, ...edit }
           }
     )
@@ -90,6 +101,36 @@ const leftOf = (element: Element) => (element as HTMLElement).style.left
 const clipsOnTimeline = () => document.querySelectorAll('[title$="double-click to choose the part"]')
 
 describe('the film editor', () => {
+  test('lists the photos of the montage with the videos, and puts one at the end as a five second clip', async () => {
+    await open({}, [], [photo])
+
+    await expect.element(page.getByText(PHOTO, { exact: true }).first()).toBeVisible()
+    await expect.element(page.getByText('Photo', { exact: true })).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Add', exact: true }).nth(2))
+
+    await expect.element(page.getByText('0:00.0 / 0:21.0', { exact: true })).toBeVisible()
+    await expect.element(page.getByTitle(`${PHOTO} · double-click to choose the part`)).not.toBeInTheDocument()
+    await expect.element(page.getByTitle(PHOTO, { exact: true }).last()).toBeVisible()
+  })
+
+  test('trims a photo clip to any length up to a minute, with no part to choose', async () => {
+    await open({ clips: [...answer.edit.clips, { id: 'clip-3', name: PHOTO, start: 0, end: 5, sound: false }] }, [], [photo])
+
+    await userEvent.click(page.getByTitle(PHOTO, { exact: true }).last())
+    await userEvent.fill(page.getByRole('textbox', { name: 'Length' }), '0:20.0')
+    await userEvent.keyboard('{Enter}')
+
+    await expect.element(page.getByText('0:00.0 / 0:36.0', { exact: true })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Choose the part…' })).not.toBeInTheDocument()
+  })
+
+  test('shows a photo as the picture, with the video left empty, while the playhead is on it', async () => {
+    await open({ clips: [{ id: 'clip-0', name: PHOTO, start: 0, end: 5, sound: false }, ...answer.edit.clips] }, [], [photo])
+
+    await expect.poll(() => document.querySelectorAll('video')[1]?.getAttribute('poster')).toBe(`/api/file/o/${PHOTO}`)
+    expect(document.querySelectorAll('video')[1]?.getAttribute('src')).toBeNull()
+  })
+
   test('has the clips on the left, the picture in the middle and what is picked on the right', async () => {
     await open()
 

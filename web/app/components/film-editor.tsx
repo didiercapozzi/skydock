@@ -4,7 +4,8 @@ import {
   fadeInto,
   filmLength,
   heardSpans,
-  musicLevelAt
+  musicLevelAt,
+  STILL_SECONDS
 } from '@skydock/scripts/client'
 import type {
   EditSource,
@@ -329,7 +330,9 @@ const Library = ({
         {tab === 'clips' && (
           <>
             <p className='eyebrow mx-0.5 mt-1 mb-1'>
-              {t`${title} · ${plural(sources.length, { one: '# video', other: '# videos' })}`}
+              {t`${title} · ${plural(sources.filter((one) => !one.still).length, { one: '# video', other: '# videos' })}`}
+              {sources.some((one) => one.still) &&
+                t` · ${plural(sources.filter((one) => one.still).length, { one: '# photo', other: '# photos' })}`}
             </p>
             <p className='mx-0.5 mb-1 text-small text-ink-3'>
               {t`Drag a clip onto the video track, between two clips or at either end.`}
@@ -353,7 +356,7 @@ const Library = ({
                 name={source.name}
                 meta={
                   <>
-                    <span>{clockOf(source.seconds)}</span>
+                    <span>{source.still ? t`Photo` : clockOf(source.seconds)}</span>
                     {source.marks.length > 0 && (
                       <span>
                         {plural(source.marks.length, { one: '# mark', other: '# marks' })}
@@ -520,27 +523,33 @@ const Inspector = ({
                       value={clip.end - clip.start}
                       onCommit={(seconds) => trim('end', clip.start + seconds)}
                     />
-                    <TimeBox
-                      label={t`Source in`}
-                      value={clip.start}
-                      onCommit={(seconds) => trim('start', seconds)}
-                    />
-                    <TimeBox
-                      label={t`Source out`}
-                      value={clip.end}
-                      onCommit={(seconds) => trim('end', seconds)}
-                    />
+                    {!source?.still && (
+                      <>
+                        <TimeBox
+                          label={t`Source in`}
+                          value={clip.start}
+                          onCommit={(seconds) => trim('start', seconds)}
+                        />
+                        <TimeBox
+                          label={t`Source out`}
+                          value={clip.end}
+                          onCommit={(seconds) => trim('end', seconds)}
+                        />
+                      </>
+                    )}
                   </>
                 )
               })()}
             </div>
-            <Mini onClick={() => onOpenPart(clip.id)}>
-              <Icon
-                name='scissors'
-                size={13}
-              />
-              {t`Choose the part…`}
-            </Mini>
+            {!sources.get(clip.name)?.still && (
+              <Mini onClick={() => onOpenPart(clip.id)}>
+                <Icon
+                  name='scissors'
+                  size={13}
+                />
+                {t`Choose the part…`}
+              </Mini>
+            )}
             <label className='flex items-center gap-2 text-body'>
               <input
                 type='checkbox'
@@ -832,7 +841,16 @@ const FilmEditor = ({
     rolling: boolean
   ) => {
     const source = one && sources.get(one.clip.name)
-    if (player && one && source) {
+    if (player && one && source?.still) {
+      player.poster = getFileUrl(source.play)
+      if (player.dataset.src) {
+        delete player.dataset.src
+        player.removeAttribute('src')
+        player.load()
+      }
+      if (!player.paused) player.pause()
+    } else if (player && one && source) {
+      if (player.poster) player.removeAttribute('poster')
       const url = getFileUrl(source.play)
       if (player.dataset.src !== url) {
         player.dataset.src = url
@@ -1020,7 +1038,7 @@ const FilmEditor = ({
       id: nextId('clip', edit.clips),
       name,
       start: 0,
-      end: source.seconds,
+      end: source.still ? STILL_SECONDS : source.seconds,
       sound: false
     }
     change(insertClip(edit, index ?? edit.clips.length, clip, ripple))
