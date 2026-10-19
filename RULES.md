@@ -1383,9 +1383,9 @@ and to three seconds at most. The same switch is in the inspector of the picked 
 previous clip_ with a _Length of the fade_ slider from 0.2 second to what the two clips allow (it stops at
 0.2 second, with its length shown to a tenth; only the switch takes the fade off), and on the timeline the overlap
 is drawn at the start of the clip as a zone with one diagonal edge, the clip's name starting after it and
-a thin line marking it in the camera sound lane too. The zone is a slider named _Fade into_ the clip: it is dragged, or
-moved with the left and right arrows by a tenth of a second, a second with Shift, to make the fade
-longer or shorter, never under 0.2 second, and the trim grips of the two clips at its two ends stay above it. It is off, with the reason in its title, with nothing picked, on the first clip, when a
+a thin line marking it in the camera sound lane too. The zone is a slider named _Fade into_ the clip: it is dragged to the left, or
+moved with the left arrow by a tenth of a second, a second with Shift, to make the fade
+longer, and to the right or with the right arrow to make it shorter, never under 0.2 second, and the trim grips of the two clips at its two ends stay above it. It is off, with the reason in its title, with nothing picked, on the first clip, when a
 gap separates the two clips (a crossfade and a gap exclude each other: a gap given to a clip that has a
 fade — by dragging it to the right past the fade, by the keys or by _Starts at_ — takes the fade off, and
 dragging it to the right short of that makes the fade shorter), and when either clip is under 0.4 second.
@@ -1399,10 +1399,12 @@ fade on the first piece, and the fade into the next clip on the second. Trimming
 part of either clip holds the fade to half of the shorter; deleting a clip takes off its fade and the
 next clip's, and so does putting a clip in between two, or moving a clip so that it no longer follows
 the same one. With Ripple on the text and the music after the clip move with the film when a fade is
-made, changed or taken off, as they do for any change in the video's length, but not for a fade that an edit shortens or takes off
-by itself (a trim, a clip put in between), which moves the clips after it without moving them. Making or taking off a fade
+made, changed or taken off, as they do for any change in the video's length, and also when an edit shortens or takes off a fade by
+itself (a trim, a part chosen, a clip deleted or put in between), so that they stay with the clip after
+it; cutting a clip and moving a clip do not move them. A saved fade that does not fit (on the first clip,
+beside a gap, or longer than half of the shorter clip) is read as the fade that fits. Making or taking off a fade
 is one Undo. In the stage the overlap shows both clips: the older one under, the newer one over it at an
-opacity that goes from 0 to 1 across the overlap, and the sound of each rising or falling the same way,
+opacity that goes from 0 to 1 across the overlap, and the sound of each rising or falling the same way, in a straight line like the render's,
 when playing and when the playhead is moved into it. In the rendered film a crossfade is a
 dissolve between the two clips with the sound crossing as well, a clip without sound or with its
 speaker off staying silent through it, and a cut, a gap and a crossfade can follow each other in one film.

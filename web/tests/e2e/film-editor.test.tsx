@@ -718,8 +718,8 @@ describe('a crossfade between two clips', () => {
 
     const grip = handle().element() as HTMLElement
     await userEvent.dragAndDrop(grip, grip, {
-      sourcePosition: { x: 20, y: 5 },
-      targetPosition: { x: 20 - pps, y: 5 }
+      sourcePosition: { x: 1.5 * pps, y: 5 },
+      targetPosition: { x: 0.5 * pps, y: 5 }
     })
     await expect.element(handle()).toHaveAttribute('aria-valuenow', '2.9')
   })
