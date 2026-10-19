@@ -1455,6 +1455,9 @@ will have it.
 **The picture plays the edit.** It plays from the proxies, with the music and the camera sound as they
 will be heard; Space plays and stops, and the jump marks of the clip at the playhead are buttons that
 go to them.
+The five looks are cards in the Text tab, each with a small sky-blue picture of its sample text (the passenger's name for the title, _Your text_ for the others) where and in the type it will have, its name and how it comes in. The effects of a picked text are cards too, and the fonts and the colours are buttons that show what they give. A film template's texts have the same cards. A card is named by its look only, not by its sample text.
+
+Hovering or focusing a card plays its effect in the small picture, and the effect of the picked text plays on its own, in a loop of a few seconds whose fade and pop last as long as the film's. The slide is shorter and the curve is not the same, so the card is an approximation of the film. A touch screen has no hover and shows the still card. Whoever asks their system for less motion sees the final frame and nothing moves.
 
 **Rendering is one press.** _Render the film_ saves the edit and makes the film from the processed
 copies — never the proxies — into the montage's folder under the film's own name: MP4 with H.264 video

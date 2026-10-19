@@ -313,6 +313,21 @@ describe('the film template editor', () => {
     expect(saves().at(-1)?.template).toMatchObject({ fade: 1.5 })
   })
 
+  test('shows the effects and fonts of a text of the film template as cards', async () => {
+    await openScratch()
+    await expect.element(bar()).toBeVisible()
+    await userEvent.click(
+      [...document.querySelectorAll<HTMLElement>('div.cursor-grab')].find((one) =>
+        one.textContent?.includes('Thanks, {day}')
+      )!
+    )
+
+    const fade = page.getByRole('button', { name: 'Fade', exact: true }).element()
+    expect(fade.getAttribute('aria-pressed')).toBe('true')
+    expect(fade.querySelector('[data-effect="fade"] .fx-text')).not.toBeNull()
+    expect(page.getByRole('button', { name: 'Elegant', exact: true }).element().textContent).toBe('Aa')
+  })
+
   test('says so when the film template is gone', async () => {
     await openScratch('Nobody', [])
     await expect.element(page.getByText('This film template is gone.')).toBeVisible()
@@ -339,7 +354,7 @@ describe('the film template editor', () => {
     await expect.element(page.getByText('Between 5 and 3600 seconds')).not.toBeInTheDocument()
 
     await userEvent.click(page.getByRole('button', { name: 'Text', exact: true }))
-    await userEvent.click(page.getByRole('button', { name: /{name}/ }))
+    await userEvent.click(page.getByRole('button', { name: 'Title', exact: true }))
     await expect
       .element(page.getByText('Write {name} and {day} where the name and the day go.'))
       .toBeVisible()

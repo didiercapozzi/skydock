@@ -105,6 +105,7 @@
   --gradient-avatar-2: linear-gradient(135deg, #7a5ad2, #b3a0ef);
   --gradient-avatar-3: linear-gradient(135deg, #d98a3a, #f0b877);
   --gradient-avatar-4: linear-gradient(135deg, #1f8a5a, #6fcf9f);
+  --gradient-sky: linear-gradient(180deg, #3f7fd0, #9cc3ec);
   --gradient-picture: linear-gradient(135deg, #c9e1f3, #e4f1fc);
   --gradient-marker: linear-gradient(90deg, #7fb0ff, #9a8cff);
   --gradient-veil-bottom: linear-gradient(
@@ -397,6 +398,24 @@
     background: var(--color-film-box);
     padding: 0.2em 0.5em;
   }
+  .fx-tile {
+    background: var(--gradient-sky);
+  }
+  .fx-card:is(:hover, :focus-visible, [aria-pressed='true']) .fx-text {
+    animation: linear infinite;
+  }
+  .fx-card:is(:hover, :focus-visible, [aria-pressed='true']) [data-effect='fade'] .fx-text {
+    animation-name: fx-fade;
+  }
+  .fx-card:is(:hover, :focus-visible, [aria-pressed='true']) [data-effect='rise'] .fx-text {
+    animation-name: fx-rise;
+  }
+  .fx-card:is(:hover, :focus-visible, [aria-pressed='true']) [data-effect='pop'] .fx-text {
+    animation-name: fx-pop;
+  }
+  .fx-card:is(:hover, :focus-visible, [aria-pressed='true']) [data-effect='lower-third'] .fx-text {
+    animation-name: fx-lower;
+  }
   .film-safe {
     inset: 5%;
     border: 1px dashed var(--color-film-safe);
@@ -515,7 +534,72 @@
   }
 }
 
+@keyframes fx-fade {
+  0%,
+  100% {
+    opacity: 0;
+  }
+  25%,
+  75% {
+    opacity: 1;
+  }
+}
+
+@keyframes fx-rise {
+  0% {
+    opacity: 0;
+    transform: translateY(0.3em);
+    animation-timing-function: ease-out;
+  }
+  25%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes fx-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  14.58% {
+    transform: scale(1);
+  }
+  25%,
+  75% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+@keyframes fx-lower {
+  0% {
+    opacity: 0;
+    transform: translateX(-0.3em);
+    animation-timing-function: ease-out;
+  }
+  25%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .fx-card .fx-text {
+    animation: none !important;
+  }
   .pending-line {
     animation: none;
     background-position: 50% 0;

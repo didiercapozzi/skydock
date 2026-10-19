@@ -3,6 +3,8 @@ import { describe, expect, test, vi } from 'vitest'
 import { createRoutesStub, Link, Outlet } from 'react-router'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
+import { POP, TEXT_FADE } from '@skydock/scripts/client'
+import { TILE_LOOP } from '../../app/helpers/filmTimeline'
 import { FilmEditor } from '../../app/components/film-editor'
 import Edit from '../../app/routes/edit'
 import { setFilmTemplateChoice } from '../../app/hooks/useFilmTemplateChoice'
@@ -1145,5 +1147,125 @@ describe('the film editor and the film templates', () => {
       .toBeVisible()
     await userEvent.click(modal().getByRole('button', { name: 'Replace it' }))
     await expect.poll(() => posts.at(-1)!.body.replace).toBe(true)
+  })
+})
+
+describe('the film editor text cards', () => {
+  const tileOf = (card: Element) => card.querySelector<HTMLElement>('[data-effect]')!
+  const animationOf = (card: Element) =>
+    getComputedStyle(tileOf(card).querySelector('.fx-text')!).animationName
+  const cardNamed = (name: string | RegExp) => page.getByRole('button', { name }).element()
+
+  const openTextTab = async () => {
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Text', exact: true }))
+  }
+
+  const pickText = async () => {
+    await open(later)
+    await userEvent.click(textBlock())
+  }
+
+  test('shows each text preset as a card with a sky tile, the sample text, its name and its effect', async () => {
+    await openTextTab()
+
+    const subtitle = cardNamed(/Subtitle/)
+    expect(tileOf(subtitle).dataset.effect).toBe('rise')
+    expect(tileOf(subtitle).textContent).toBe('Your text')
+    expect(getComputedStyle(tileOf(subtitle)).backgroundImage).toContain('linear-gradient')
+    expect(subtitle.textContent).toContain('Rise')
+    expect(tileOf(cardNamed(/Title/)).textContent).toBe('Luc Favre')
+    expect(tileOf(cardNamed(/Big moment/)).dataset.effect).toBe('pop')
+  })
+
+  test('names a card by its preset only and grows the sample text from its centre', async () => {
+    await openTextTab()
+
+    const subtitle = page.getByRole('button', { name: 'Subtitle', exact: true }).element()
+    const sample = tileOf(subtitle).querySelector<HTMLElement>('.fx-text')!
+    expect(tileOf(subtitle).getAttribute('aria-hidden')).toBe('true')
+    expect(Math.abs(parseFloat(getComputedStyle(sample).transformOrigin) - sample.offsetWidth / 2)).toBeLessThan(1)
+  })
+
+  test('plays the effect of a preset in its tile on hover and on focus, and not otherwise', async () => {
+    await openTextTab()
+
+    const subtitle = cardNamed(/Subtitle/)
+    expect(animationOf(subtitle)).toBe('none')
+    await userEvent.hover(page.getByRole('button', { name: /Subtitle/ }))
+    expect(animationOf(subtitle)).toBe('fx-rise')
+    expect(getComputedStyle(tileOf(subtitle).querySelector('.fx-text')!).animationDuration).toBe(`${TILE_LOOP * TEXT_FADE}s`)
+    await userEvent.hover(page.getByRole('button', { name: /Big moment/ }))
+    expect(animationOf(cardNamed(/Big moment/))).toBe('fx-pop')
+    await userEvent.hover(page.getByRole('button', { name: /Lower third/ }))
+    expect(animationOf(cardNamed(/Lower third/))).toBe('fx-lower')
+    await userEvent.hover(page.getByRole('button', { name: 'Undo' }))
+    expect(animationOf(subtitle)).toBe('none')
+    await userEvent.keyboard('{Tab}')
+    subtitle.focus()
+    expect(animationOf(subtitle)).toBe('fx-rise')
+  })
+
+  test('keeps the pop of a card as long as the pop of the film', () => {
+    const keyframes = [...document.styleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .find((rule): rule is CSSKeyframesRule => rule instanceof CSSKeyframesRule && rule.name === 'fx-pop')!
+    const offsets = [...keyframes.cssRules].map((rule) => parseFloat((rule as CSSKeyframeRule).keyText))
+    const at = (POP / (TILE_LOOP * TEXT_FADE)) * 100
+    expect(offsets.some((offset) => Math.abs(offset - at) < 0.005)).toBe(true)
+  })
+
+  test('still puts the text at the playhead when a card is clicked', async () => {
+    await openTextTab()
+
+    await userEvent.click(page.getByRole('button', { name: /Subtitle/ }))
+
+    await expect.element(page.getByRole('textbox', { name: 'Text' })).toHaveValue('Your text')
+  })
+
+  test('stops the animations of the cards for people who ask for less motion', async () => {
+    await openTextTab()
+
+    const rules = [...document.styleSheets]
+      .flatMap((sheet) => [...sheet.cssRules])
+      .filter((rule): rule is CSSMediaRule => rule instanceof CSSMediaRule)
+      .filter((rule) => rule.conditionText.includes('prefers-reduced-motion'))
+      .flatMap((rule) => [...rule.cssRules].map((one) => one.cssText))
+    expect(rules.some((text) => text.startsWith('.fx-card .fx-text') && text.includes('animation') && text.includes('none !important'))).toBe(true)
+  })
+
+  test('shows the effects of a picked text as cards, the current one pressed and playing', async () => {
+    await pickText()
+
+    const fade = cardNamed('Fade')
+    expect(fade.getAttribute('aria-pressed')).toBe('true')
+    expect(tileOf(fade).dataset.effect).toBe('fade')
+    expect(animationOf(fade)).toBe('fx-fade')
+    expect(cardNamed('Rise').getAttribute('aria-pressed')).toBe('false')
+    expect(animationOf(cardNamed('Rise'))).toBe('none')
+    await userEvent.hover(page.getByRole('button', { name: 'Rise', exact: true }))
+    expect(animationOf(cardNamed('Rise'))).toBe('fx-rise')
+  })
+
+  test('changes the effect with one click on its card and takes it back with one Undo', async () => {
+    await pickText()
+
+    await userEvent.click(page.getByRole('button', { name: 'Pop', exact: true }))
+    expect(cardNamed('Pop').getAttribute('aria-pressed')).toBe('true')
+    expect(cardNamed('Fade').getAttribute('aria-pressed')).toBe('false')
+    await userEvent.click(page.getByRole('button', { name: 'Undo' }))
+    expect(cardNamed('Fade').getAttribute('aria-pressed')).toBe('true')
+  })
+
+  test('shows each font as a button with Aa in that font, the current one pressed', async () => {
+    await pickText()
+
+    for (const name of ['Clean', 'Bold', 'Elegant', 'Hand']) {
+      expect(cardNamed(name).textContent).toBe('Aa')
+    }
+    expect(cardNamed('Bold').getAttribute('aria-pressed')).toBe('true')
+    expect(cardNamed('Elegant').className).toContain('italic')
+    await userEvent.click(page.getByRole('button', { name: 'Elegant', exact: true }))
+    expect(cardNamed('Elegant').getAttribute('aria-pressed')).toBe('true')
   })
 })

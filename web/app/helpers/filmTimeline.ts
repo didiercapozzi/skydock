@@ -4,6 +4,7 @@ import type { EditClip, EditSource, FilmEdit } from '@skydock/scripts/client'
 const SHORTEST = 0.5
 const BEFORE_MARK = 1
 const HAIR = 1e-6
+const TILE_LOOP = 4
 const FADE = { default: 1, least: 0.2, most: 3, shortest: 0.4 }
 
 type Placed = { clip: EditClip; index: number; from: number; to: number }
@@ -295,6 +296,7 @@ const clockOf = (t: number) => {
 }
 
 export {
+  TILE_LOOP,
   boundaries,
   clipAt,
   clockOf,

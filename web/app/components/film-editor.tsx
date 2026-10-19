@@ -12,7 +12,8 @@ import {
   NAME_TOKEN,
   SLOT,
   slotEdit,
-  STILL_SECONDS
+  STILL_SECONDS,
+  TEXT_FADE
 } from '@skydock/scripts/client'
 import type {
   EditSource,
@@ -41,12 +42,13 @@ import {
   setPart,
   splitClip,
   timelineEnd,
+  TILE_LOOP,
   trimClip
 } from '../helpers/filmTimeline'
 import { refusalSchema } from '../hooks/useBoardState'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
-import { Go, Mini, Seg } from './buttons'
+import { Go, Mini } from './buttons'
 import { FilmPart } from './film-part'
 import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-template-modals'
 import type { Listed } from './film-template-modals'
@@ -80,6 +82,10 @@ const ONE_CHANGE = 400
 const musicAnswerSchema = z.object({ ok: z.boolean(), error: z.string().optional() })
 
 const COLOURS = ['#ffffff', '#ffd84d', '#ff8a5c', '#7fd3ff', '#0f2f47'] as const
+
+const SAMPLE_SIZE = 0.07
+const SAMPLE_SCALE = { min: 0.7, max: 1.3 }
+const SAMPLE_TOP = { min: 30, max: 65 }
 
 const PRESETS: Array<{
   name: () => string
@@ -152,6 +158,47 @@ const FONTS = (): Array<readonly [TextFont, string]> => [
   ['elegant', t`Elegant`],
   ['hand', t`Hand`]
 ]
+
+const Tile = ({
+  effect,
+  font,
+  text,
+  x = 0.5,
+  y = 0.5,
+  size = SAMPLE_SIZE,
+  height
+}: {
+  effect: TextEffect
+  font: TextFont
+  text: string
+  x?: number
+  y?: number
+  size?: number
+  height: string
+}) => (
+  <span
+    data-effect={effect}
+    aria-hidden='true'
+    className={`fx-tile relative block overflow-hidden rounded-corner ${height}`}>
+    <span
+      style={{
+        left: `${x * 100}%`,
+        top: `${Math.min(SAMPLE_TOP.max, Math.max(SAMPLE_TOP.min, 25 + y * 50))}%`
+      }}
+      className='absolute max-w-full -translate-x-1/2 -translate-y-1/2'>
+      <span
+        style={{
+          animationDuration: `${TILE_LOOP * TEXT_FADE}s`,
+          fontSize: `calc(var(--text-subhead) * ${Math.min(SAMPLE_SCALE.max, Math.max(SAMPLE_SCALE.min, size / SAMPLE_SIZE))})`
+        }}
+        className={`fx-text film-text block truncate text-on-accent ${FONT_LOOK[font]} ${
+          effect === 'lower-third' ? 'film-text-box' : ''
+        }`}>
+        {text}
+      </span>
+    </span>
+  </span>
+)
 
 const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <label className='grid gap-1'>
@@ -432,27 +479,30 @@ const Library = ({
             <p className='text-small text-ink-3'>
               {t`A text goes in at the playhead. Drag it in the picture to place it.`}
             </p>
-            {PRESETS.map((preset) => (
-              <button
-                key={preset.name()}
-                type='button'
-                onClick={() => onAddText(preset)}
-                className='flex h-16 items-center justify-between rounded-corner bg-stage px-4 text-left text-paper shadow-card hover:shadow-ring'>
-                <span
-                  className={
-                    preset.font === 'bold'
-                      ? 'font-bold'
-                      : preset.font === 'hand'
-                        ? 'film-hand'
-                        : 'font-medium'
-                  }>
-                  {preset.title ? title : preset.name()}
-                </span>
-                <span className='text-micro text-paper/70'>
-                  {EFFECTS().find(([effect]) => effect === preset.effect)?.[1]}
-                </span>
-              </button>
-            ))}
+            <span className='grid gap-2'>
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset.name()}
+                  type='button'
+                  aria-label={preset.name()}
+                  onClick={() => onAddText(preset)}
+                  className='fx-card grid gap-0.5 rounded-corner border border-line bg-pane p-2 text-left hover:border-line-strong hover:bg-well focus-visible:border-accent'>
+                  <Tile
+                    effect={preset.effect}
+                    font={preset.font}
+                    text={preset.title ? title : t`Your text`}
+                    x={preset.x}
+                    y={preset.y}
+                    size={preset.size}
+                    height='h-12'
+                  />
+                  <span className='mt-1 text-body font-medium text-ink'>{preset.name()}</span>
+                  <span className='text-micro text-ink-3'>
+                    {EFFECTS().find(([effect]) => effect === preset.effect)?.[1]}
+                  </span>
+                </button>
+              ))}
+            </span>
           </>
         )}
       </div>
@@ -648,26 +698,49 @@ const Inspector = ({
               </p>
             )}
             <Field label={t`Effect`}>
-              <Seg
-                label={t`Effect`}
-                wide
-                value={text.effect}
-                options={EFFECTS()}
-                onPick={(effect) => changeText({ effect })}
-              />
+              <span
+                role='group'
+                aria-label={t`Effect`}
+                className='grid grid-cols-2 gap-1.5'>
+                {EFFECTS().map(([effect, name]) => (
+                  <button
+                    key={effect}
+                    type='button'
+                    aria-label={name}
+                    aria-pressed={text.effect === effect}
+                    onClick={() => changeText({ effect })}
+                    className={`fx-card grid gap-1 overflow-hidden rounded-corner border border-line bg-pane pb-1.5 text-micro text-ink-2 ${
+                      text.effect === effect
+                        ? 'border-accent text-accent-ink shadow-ring focus-visible:border-accent'
+                        : 'hover:border-line-strong focus-visible:border-accent'
+                    }`}>
+                    <Tile
+                      effect={effect}
+                      font='bold'
+                      text='Aa'
+                      height='h-10'
+                    />
+                    {name}
+                  </button>
+                ))}
+              </span>
             </Field>
             <Field label={t`Font`}>
-              <span className='grid overflow-hidden rounded-corner border border-line'>
+              <span className='grid grid-cols-4 gap-1.5'>
                 {FONTS().map(([font, name]) => (
                   <button
                     key={font}
                     type='button'
+                    aria-label={name}
+                    title={name}
                     aria-pressed={text.font === font}
                     onClick={() => changeText({ font })}
-                    className={`border-b border-line px-3 py-1.5 text-left text-lead last:border-b-0 ${FONT_LOOK[font]} ${
-                      text.font === font ? 'bg-accent-soft text-accent-ink' : 'hover:bg-well'
+                    className={`h-9 rounded-corner border text-lead ${FONT_LOOK[font]} ${
+                      text.font === font
+                        ? 'border-accent bg-accent-soft text-accent-ink shadow-ring'
+                        : 'border-line bg-pane text-ink hover:border-line-strong focus-visible:border-accent'
                     }`}>
-                    {name}
+                    Aa
                   </button>
                 ))}
               </span>
@@ -700,7 +773,7 @@ const Inspector = ({
                     aria-pressed={text.colour.toLowerCase() === colour}
                     onClick={() => changeText({ colour })}
                     style={{ background: colour }}
-                    className={`size-5.5 rounded-corner ${
+                    className={`size-5.5 rounded-full ${
                       text.colour.toLowerCase() === colour ? 'shadow-picked' : 'shadow-hairline'
                     }`}
                   />
