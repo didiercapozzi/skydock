@@ -47,6 +47,7 @@ export {
 } from './filmEditShape'
 export type {
   EditClip,
+  EditMarker,
   EditMusic,
   EditSource,
   EditText,

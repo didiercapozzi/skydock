@@ -52,6 +52,10 @@ import {
   placed,
   removeClip,
   setFade,
+  addMarkerAt,
+  importMarkers,
+  removeMarker,
+  renameMarker,
   setClipFrame,
   setPart,
   setSpeed,
@@ -582,6 +586,67 @@ const FadeLengths = ({
   )
 }
 
+const markersOfPicked = (edit: FilmEdit, picked: Picked) =>
+  picked?.kind === 'clip'
+    ? (edit.clips.find((one) => one.id === picked.id)?.markers?.length ?? 0)
+    : picked?.kind === 'music'
+      ? (edit.music.find((one) => one.id === picked.id)?.markers?.length ?? 0)
+      : null
+
+const Markers = ({
+  edit,
+  kind,
+  id,
+  importable,
+  onChange,
+  onImport
+}: {
+  edit: FilmEdit
+  kind: 'clips' | 'music'
+  id: string
+  importable: boolean
+  onChange: (edit: FilmEdit) => void
+  onImport: () => void
+}) => {
+  const marks =
+    (edit[kind] as Array<EditClip | EditMusic>).find((one) => one.id === id)?.markers ?? []
+  return marks.length === 0 && !importable ? null : (
+    <div className='grid gap-1.5'>
+      <span className='text-micro text-ink-2'>{t`Markers`}</span>
+      {marks.map((mark, index) => {
+        const number = index + 1
+        const name = mark.label
+        return (
+          <span
+            key={mark.id}
+            className='flex items-center gap-1.5'>
+            <input
+              aria-label={t`Marker ${number}`}
+              value={mark.label}
+              maxLength={40}
+              onChange={(e) => onChange(renameMarker(edit, kind, id, mark.id, e.target.value))}
+              className='h-control-sm min-w-0 flex-1 rounded-corner border border-line-strong bg-pane px-2 text-small text-ink focus:border-accent focus:outline-none'
+            />
+            <span className='font-mono text-small text-ink-3 tabular-nums'>{clockOf(mark.at)}</span>
+            <button
+              type='button'
+              title={t`Take away the marker ${name}`}
+              aria-label={t`Take away the marker ${name}`}
+              onClick={() => onChange(removeMarker(edit, kind, id, mark.id))}
+              className='tool-button'>
+              <Icon
+                name='close'
+                size={12}
+              />
+            </button>
+          </span>
+        )
+      })}
+      {importable && <Mini onClick={onImport}>{t`Import the jump marks`}</Mini>}
+    </div>
+  )
+}
+
 const Inspector = ({
   edit,
   picked,
@@ -789,6 +854,14 @@ const Inspector = ({
                 onChange={(seconds) => onChange(setFade(edit, clip.id, seconds, ripple))}
               />
             )}
+            <Markers
+              edit={edit}
+              kind='clips'
+              id={clip.id}
+              importable={(sources.get(clip.name)?.marks.length ?? 0) > 0}
+              onChange={onChange}
+              onImport={() => onChange(importMarkers(edit, sources, clip.id, markName))}
+            />
             {under}
             {remove}
           </>
@@ -818,6 +891,14 @@ const Inspector = ({
                 onChange={changePiece}
               />
             </div>
+            <Markers
+              edit={edit}
+              kind='music'
+              id={piece.id}
+              importable={false}
+              onChange={onChange}
+              onImport={() => undefined}
+            />
             {under}
             {remove}
           </>
@@ -1526,6 +1607,16 @@ const FilmEditor = ({
     change(setFade(edit, pickedId, fading ? 0 : FADE.default, ripple))
   }
 
+  const markHere = () => {
+    if (!edit || scratch) return
+    const count =
+      markersOfPicked(edit, picked) ??
+      edit.clips.reduce((total, clip) => total + (clip.markers?.length ?? 0), 0)
+    const number = count + 1
+    const marked = addMarkerAt(edit, picked, now.current, t`Marker ${number}`)
+    if (marked) change(marked)
+  }
+
   const cutHere = () => {
     if (!cut) return
     joined.current = false
@@ -1603,6 +1694,7 @@ const FilmEditor = ({
     }
     if (shifted) return
     if (has('cut')) cutHere()
+    if (has('marker')) markHere()
     if (has('fade') && pickedId && blocked === null) fadeHere()
     if (has('ripple')) setRipple((was) => !was)
     if (has('snap')) setSnap((was) => !was)
@@ -1923,6 +2015,20 @@ const FilmEditor = ({
                   size={13}
                 />
                 {t`Delete`}
+              </Mini>
+              <Mini
+                disabled={scratch}
+                title={hint(
+                  t`Add a marker at the playhead, on the picked clip or piece of music`,
+                  'marker'
+                )}
+                keys={shortcuts('marker')}
+                onClick={markHere}>
+                <Icon
+                  name='plus'
+                  size={13}
+                />
+                {t`Marker`}
               </Mini>
               <Mini
                 pressed={fading}

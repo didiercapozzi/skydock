@@ -953,6 +953,14 @@ msgid "Add a key to {tool}"
 msgstr "Ajouter une touche à {tool}"
 
 #: app/components/film-shortcuts.tsx
+msgid "add a marker at the playhead, on the picked clip or piece of music"
+msgstr "ajouter un repère à la tête de lecture, sur le clip ou la musique choisis"
+
+#: app/components/film-editor.tsx
+msgid "Add a marker at the playhead, on the picked clip or piece of music"
+msgstr "Ajouter un repère à la tête de lecture, sur le clip ou la musique choisis"
+
+#: app/components/film-shortcuts.tsx
 msgid "add a text at the playhead"
 msgstr "ajouter un texte à la tête de lecture"
 
@@ -2848,6 +2856,10 @@ msgstr "La taille de tout le tableau — ou ⌘/ctrl avec + et −, et 0 pour la
 msgid "How files are shown"
 msgstr "Affichage des fichiers"
 
+#: app/components/film-editor.tsx
+msgid "Import the jump marks"
+msgstr "Importer les repères du saut"
+
 #: app/components/file-browser.tsx
 msgid "in no jump"
 msgstr "dans aucun saut"
@@ -3340,6 +3352,19 @@ msgstr "Création…"
 #: app/components/email-dialog.tsx
 msgid "Mark as sent"
 msgstr "Marquer comme envoyé"
+
+#: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
+msgid "Marker"
+msgstr "Repère"
+
+#: app/components/film-editor.tsx
+msgid "Marker {number}"
+msgstr "Repère {number}"
+
+#: app/components/film-editor.tsx
+msgid "Markers"
+msgstr "Repères"
 
 #: app/components/board-header.tsx
 msgid "Marks found {read}/{clips}"
@@ -5163,6 +5188,10 @@ msgstr "Retirer {0} de {1}"
 #: app/components/upload-dialog.tsx
 msgid "Take {0} out of {name}"
 msgstr "Retirer {0} de {name}"
+
+#: app/components/film-editor.tsx
+msgid "Take away the marker {name}"
+msgstr "Retirer le repère {name}"
 
 #: app/components/storage-folder.tsx
 msgid "Take the link away — the file stays where it is"

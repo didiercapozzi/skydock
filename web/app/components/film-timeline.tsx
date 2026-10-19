@@ -690,6 +690,20 @@ const FilmTimeline = ({
                         </span>
                       </span>
                     ))}
+                  {(clip.markers ?? [])
+                    .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
+                    .map((mark) => (
+                      <span
+                        key={mark.id}
+                        data-marker=''
+                        title={mark.label}
+                        style={{ left: ((mark.at - clip.start) / speedOf(clip)) * pps }}
+                        className='pointer-events-none absolute inset-y-0 w-0.5 bg-accent'>
+                        <span className='absolute bottom-1 left-1 max-w-24 truncate rounded-full bg-accent px-1.5 text-micro font-semibold text-on-accent'>
+                          {mark.label}
+                        </span>
+                      </span>
+                    ))}
                   <span
                     onPointerDown={(e) => trim(e, clip.id, 'start')}
                     aria-label={t`Trim the start`}
@@ -939,6 +953,20 @@ const FilmTimeline = ({
                   piece.name,
                   picked?.kind === 'music' && picked.id === piece.id
                 )}
+                {(piece.markers ?? [])
+                  .filter((mark) => mark.at >= piece.start && mark.at <= piece.end)
+                  .map((mark) => (
+                    <span
+                      key={mark.id}
+                      data-marker=''
+                      title={mark.label}
+                      style={{ left: (mark.at - piece.start) * pps }}
+                      className='pointer-events-none absolute inset-y-0 w-0.5 bg-accent'>
+                      <span className='absolute bottom-1 left-1 max-w-24 truncate rounded-full bg-accent px-1.5 text-micro font-semibold text-on-accent'>
+                        {mark.label}
+                      </span>
+                    </span>
+                  ))}
                 <span className='pointer-events-none absolute top-1 left-2 truncate text-micro font-semibold text-up'>
                   {piece.name} · {Math.round(piece.volume * 100)}%
                 </span>

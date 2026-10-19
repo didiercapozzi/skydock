@@ -1,5 +1,12 @@
 import { clipLength, fadeInto, filmLength, speedOf, timelineEnd } from '@skydock/scripts/client'
-import type { EditClip, EditMusic, EditSource, EditText, FilmEdit } from '@skydock/scripts/client'
+import type {
+  EditClip,
+  EditMarker,
+  EditMusic,
+  EditSource,
+  EditText,
+  FilmEdit
+} from '@skydock/scripts/client'
 import type { FrameCrop, Rotation } from '@skydock/scripts'
 
 const SHORTEST = 0.5
@@ -156,6 +163,134 @@ const lookGeometry = (
     dy: -(box.y + box.height / 2 - 0.5) * turned.height * scale
   }
 }
+
+type MarkKind = 'clips' | 'music'
+
+const withMarkers = (
+  edit: FilmEdit,
+  kind: MarkKind,
+  id: string,
+  markers: EditMarker[]
+): FilmEdit => ({
+  ...edit,
+  [kind]: (edit[kind] as Array<EditClip | EditMusic>).map((one) => {
+    if (one.id !== id) return one
+    const { markers: _, ...rest } = one
+    return markers.length > 0 ? { ...rest, markers } : rest
+  })
+})
+
+const markersOf = (edit: FilmEdit, kind: MarkKind, id: string) =>
+  (edit[kind] as Array<EditClip | EditMusic>).find((one) => one.id === id)?.markers ?? []
+
+const addMarkerAt = (
+  edit: FilmEdit,
+  picked: { kind: string; id: string } | null,
+  at: number,
+  label: string
+): FilmEdit | null => {
+  const clip =
+    picked?.kind === 'clip'
+      ? placed(edit).find((one) => one.clip.id === picked.id)
+      : picked?.kind === 'music'
+        ? undefined
+        : clipAt(edit, at)
+  const piece =
+    picked?.kind === 'music' ? edit.music.find((one) => one.id === picked.id) : undefined
+  if (piece) {
+    if (at < piece.at || at > piece.at + piece.end - piece.start) return null
+    const markers = piece.markers ?? []
+    return withMarkers(
+      edit,
+      'music',
+      piece.id,
+      [...markers, { id: nextId('mark', markers), label, at: piece.start + at - piece.at }].sort(
+        (a, b) => a.at - b.at
+      )
+    )
+  }
+  if (!clip || at < clip.from - HAIR || at > clip.to + HAIR) return null
+  const markers = clip.clip.markers ?? []
+  const local = Math.min(
+    clip.clip.end,
+    Math.max(clip.clip.start, clip.clip.start + (at - clip.from) * speedOf(clip.clip))
+  )
+  return withMarkers(
+    edit,
+    'clips',
+    clip.clip.id,
+    [...markers, { id: nextId('mark', markers), label, at: local }].sort((a, b) => a.at - b.at)
+  )
+}
+
+const renameMarker = (edit: FilmEdit, kind: MarkKind, id: string, markId: string, label: string) =>
+  withMarkers(
+    edit,
+    kind,
+    id,
+    markersOf(edit, kind, id).map((mark) => (mark.id === markId ? { ...mark, label } : mark))
+  )
+
+const removeMarker = (edit: FilmEdit, kind: MarkKind, id: string, markId: string) =>
+  withMarkers(
+    edit,
+    kind,
+    id,
+    markersOf(edit, kind, id).filter((mark) => mark.id !== markId)
+  )
+
+const IMPORTED_APART = 0.05
+
+const importMarkers = (
+  edit: FilmEdit,
+  sources: Map<string, EditSource>,
+  id: string | null,
+  name: (which: EditSource['marks'][number]['which']) => string
+) =>
+  edit.clips.reduce((all, clip) => {
+    if (id !== null && clip.id !== id) return all
+    const have = markersOf(all, 'clips', clip.id)
+    const fresh = (sources.get(clip.name)?.marks ?? [])
+      .filter(
+        (mark) =>
+          mark.at >= clip.start &&
+          mark.at <= clip.end &&
+          !have.some((one) => Math.abs(one.at - mark.at) < IMPORTED_APART)
+      )
+      .map((mark, index) => ({
+        id: nextId('mark', [
+          ...have,
+          ...Array.from({ length: index }, (_, i) => ({ id: `mark-${have.length + i + 1}` }))
+        ]),
+        label: name(mark.which),
+        at: mark.at
+      }))
+    return fresh.length === 0
+      ? all
+      : withMarkers(
+          all,
+          'clips',
+          clip.id,
+          [...have, ...fresh].sort((a, b) => a.at - b.at)
+        )
+  }, edit)
+
+const markerTimes = (edit: FilmEdit, skip?: string) => [
+  ...placed(edit)
+    .filter(({ clip }) => clip.id !== skip)
+    .flatMap(({ clip, from }) =>
+      (clip.markers ?? [])
+        .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
+        .map((mark) => from + (mark.at - clip.start) / speedOf(clip))
+    ),
+  ...edit.music
+    .filter((piece) => piece.id !== skip)
+    .flatMap((piece) =>
+      (piece.markers ?? [])
+        .filter((mark) => mark.at >= piece.start && mark.at <= piece.end)
+        .map((mark) => piece.at + mark.at - piece.start)
+    )
+]
 
 const fadeBlock = (edit: FilmEdit, id: string) => {
   const index = edit.clips.findIndex((clip) => clip.id === id)
@@ -393,7 +528,8 @@ const snapPoints = (
     .flatMap((text) => [text.at, text.at + text.seconds]),
   ...edit.music
     .filter((piece) => piece.id !== skip)
-    .flatMap((piece) => [piece.at, piece.at + piece.end - piece.start])
+    .flatMap((piece) => [piece.at, piece.at + piece.end - piece.start]),
+  ...markerTimes(edit, skip)
 ]
 
 const nextId = (prefix: string, taken: Array<{ id: string }>) => {
@@ -420,14 +556,19 @@ export {
   fadeBlock,
   fadeMost,
   fitItemFades,
+  addMarkerAt,
+  importMarkers,
   insertClip,
   lookGeometry,
+  markerTimes,
   moveClip,
   nearestBoundary,
   nextId,
   placeClip,
   placed,
   removeClip,
+  removeMarker,
+  renameMarker,
   rippleBy,
   setFade,
   setClipFrame,

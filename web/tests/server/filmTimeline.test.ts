@@ -6,12 +6,16 @@ import {
   FADE,
   fadeAt,
   fadeBlock,
+  addMarkerAt,
+  importMarkers,
   insertClip,
   lookGeometry,
   moveClip,
   placeClip,
   placed,
   removeClip,
+  removeMarker,
+  renameMarker,
   fitItemFades,
   rippleBy,
   setFade,
@@ -850,5 +854,83 @@ describe('where a clip is drawn on the stage, turned and cropped', () => {
     const scale = Math.min(1600 / 1080, 900 / 960)
     expect(got.dy).toBeCloseTo(-0.25 * 1920 * scale)
     expect(got.dx).toBeCloseTo(0)
+  })
+})
+
+describe('the markers of a clip and of a piece of music', () => {
+  it('are put at the playhead on the picked item, at the item’s own time', () => {
+    const onClip = addMarkerAt(edit, { kind: 'clip', id: 'clip-2' }, 12, 'Drop')!
+    expect(onClip.clips[1]!.markers).toEqual([{ id: 'mark-1', label: 'Drop', at: 4 }])
+
+    const onMusic = addMarkerAt(edit, { kind: 'music', id: 'music-1' }, 14, 'Beat')!
+    expect(onMusic.music[0]!.markers).toEqual([{ id: 'mark-1', label: 'Beat', at: 2 }])
+  })
+
+  it('go on the clip under the playhead when nothing is picked, and nowhere outside the picked item', () => {
+    expect(addMarkerAt(edit, null, 3, 'A')!.clips[0]!.markers![0]!.at).toBe(3)
+    expect(addMarkerAt(edit, { kind: 'music', id: 'music-1' }, 3, 'A')).toBeNull()
+    expect(addMarkerAt(edit, null, 40, 'A')).toBeNull()
+  })
+
+  it('are kept in the order of their time, and given names that no other has', () => {
+    const one = addMarkerAt(edit, null, 8, 'Late')!
+    const two = addMarkerAt(one, null, 2, 'Early')!
+
+    expect(two.clips[0]!.markers!.map((mark) => [mark.label, mark.at])).toEqual([
+      ['Early', 2],
+      ['Late', 8]
+    ])
+    expect(new Set(two.clips[0]!.markers!.map((mark) => mark.id)).size).toBe(2)
+  })
+
+  it('are renamed and taken away', () => {
+    const one = addMarkerAt(edit, null, 3, 'A')!
+    const id = one.clips[0]!.markers![0]!.id
+
+    expect(renameMarker(one, 'clips', 'clip-1', id, 'Exit').clips[0]!.markers![0]!.label).toBe(
+      'Exit'
+    )
+    expect(removeMarker(one, 'clips', 'clip-1', id).clips[0]).not.toHaveProperty('markers')
+  })
+
+  it('are imported from the jump marks of the video, once, and only those inside the part that is kept', () => {
+    const sources = new Map([
+      [
+        'a.mp4',
+        {
+          name: 'a.mp4',
+          path: '',
+          play: '',
+          seconds: 30,
+          sound: true,
+          marks: [
+            { which: 'exit' as const, at: 4 },
+            { which: 'opening' as const, at: 9 },
+            { which: 'landing' as const, at: 25 }
+          ]
+        }
+      ]
+    ])
+    const name = (which: string) => which.toUpperCase()
+
+    const once = importMarkers(edit, sources, 'clip-1', name)
+    expect(once.clips[0]!.markers!.map((mark) => [mark.label, mark.at])).toEqual([
+      ['EXIT', 4],
+      ['OPENING', 9]
+    ])
+    expect(importMarkers(once, sources, 'clip-1', name)).toBe(once)
+  })
+
+  it('are snapped to by what is dragged, apart from the markers of what is dragged', () => {
+    const marked = addMarkerAt(
+      addMarkerAt(edit, null, 5, 'A')!,
+      { kind: 'music', id: 'music-1' },
+      15,
+      'B'
+    )!
+
+    expect(snapPoints(marked, new Map(), 0)).toEqual(expect.arrayContaining([5, 15]))
+    expect(snapPoints(marked, new Map(), 0, 'clip-1')).not.toContain(5)
+    expect(snapPoints(marked, new Map(), 0, 'music-1')).not.toContain(15)
   })
 })

@@ -953,6 +953,14 @@ msgid "Add a key to {tool}"
 msgstr "Taste für {tool} hinzufügen"
 
 #: app/components/film-shortcuts.tsx
+msgid "add a marker at the playhead, on the picked clip or piece of music"
+msgstr "eine Markierung an der Abspielposition auf dem gewählten Clip oder Musikstück setzen"
+
+#: app/components/film-editor.tsx
+msgid "Add a marker at the playhead, on the picked clip or piece of music"
+msgstr "Eine Markierung an der Abspielposition auf dem gewählten Clip oder Musikstück setzen"
+
+#: app/components/film-shortcuts.tsx
 msgid "add a text at the playhead"
 msgstr "einen Text am Abspielkopf hinzufügen"
 
@@ -2848,6 +2856,10 @@ msgstr "Wie groß das ganze Board gezeichnet wird — oder ⌘/Strg mit + und �
 msgid "How files are shown"
 msgstr "Darstellung der Dateien"
 
+#: app/components/film-editor.tsx
+msgid "Import the jump marks"
+msgstr "Die Sprungmarken importieren"
+
 #: app/components/file-browser.tsx
 msgid "in no jump"
 msgstr "in keinem Sprung"
@@ -3340,6 +3352,19 @@ msgstr "Wird erstellt…"
 #: app/components/email-dialog.tsx
 msgid "Mark as sent"
 msgstr "Als gesendet markieren"
+
+#: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
+msgid "Marker"
+msgstr "Markierung"
+
+#: app/components/film-editor.tsx
+msgid "Marker {number}"
+msgstr "Markierung {number}"
+
+#: app/components/film-editor.tsx
+msgid "Markers"
+msgstr "Markierungen"
 
 #: app/components/board-header.tsx
 msgid "Marks found {read}/{clips}"
@@ -5163,6 +5188,10 @@ msgstr "{0} aus {1} nehmen"
 #: app/components/upload-dialog.tsx
 msgid "Take {0} out of {name}"
 msgstr "{0} aus {name} nehmen"
+
+#: app/components/film-editor.tsx
+msgid "Take away the marker {name}"
+msgstr "Die Markierung {name} entfernen"
 
 #: app/components/storage-folder.tsx
 msgid "Take the link away — the file stays where it is"

@@ -2455,3 +2455,85 @@ describe('the frame of a clip on the timeline', () => {
     expect(thumbs(SECOND)[0]!.style.getPropertyValue('object-view-box')).toBe('')
   })
 })
+
+describe('the markers of a clip and of a piece of music', () => {
+  const marks = () => document.querySelectorAll('[data-marker]')
+  const posts = async (edit: Record<string, unknown> = {}, marksOf: Array<{ which: string; at: number }> = []) => {
+    const sent: Array<{ edit: { clips: Array<{ markers?: Array<{ label: string; at: number }> }>; music: Array<{ markers?: Array<{ label: string; at: number }> }> } }> = []
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push(JSON.parse(String(init.body)))
+        return Response.json({ ok: true })
+      }
+      return Response.json({
+        ...answer,
+        sources: answer.sources.map((one) => (one.name === FIRST ? { ...one, marks: marksOf } : one)),
+        edit: { ...answer.edit, ...edit }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+
+  test('are added at the playhead from the toolbar and with the M key, on the clip that is there', async () => {
+    const sent = await posts()
+    await playheadAt(3)
+
+    await userEvent.click(page.getByRole('button', { name: 'Marker', exact: true }))
+    await playheadAt(2)
+    await userEvent.keyboard('m')
+
+    await expect.poll(() => marks().length).toBe(2)
+    await expect
+      .poll(() => sent.at(-1)?.edit.clips[0]?.markers?.map((mark) => mark.at))
+      .toEqual([3, 5])
+  })
+
+  test('are listed with the picked clip, renamed and taken away from there', async () => {
+    const sent = await posts({
+      clips: [
+        { ...answer.edit.clips[0]!, markers: [{ id: 'mark-1', label: 'Drop', at: 4 }] },
+        answer.edit.clips[1]!
+      ]
+    })
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+
+    const name = page.getByRole('textbox', { name: 'Marker 1' })
+    await expect.element(name).toHaveValue('Drop')
+    await userEvent.fill(name, 'Exit')
+    await expect.poll(() => sent.at(-1)?.edit.clips[0]?.markers?.[0]?.label).toBe('Exit')
+
+    await userEvent.click(page.getByRole('button', { name: 'Take away the marker Exit' }))
+    await expect.poll(() => sent.at(-1)?.edit.clips[0]?.markers).toBeUndefined()
+    expect(marks().length).toBe(0)
+  })
+
+  test('are imported from the jump marks of the video, once', async () => {
+    const sent = await posts({}, [
+      { which: 'exit', at: 3 },
+      { which: 'opening', at: 7 }
+    ])
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+
+    await userEvent.click(page.getByRole('button', { name: 'Import the jump marks' }))
+    await userEvent.click(page.getByRole('button', { name: 'Import the jump marks' }))
+
+    await expect
+      .poll(() => sent.at(-1)?.edit.clips[0]?.markers?.map((mark) => [mark.label, mark.at]))
+      .toEqual([
+        ['Exit', 3],
+        ['Opening', 7]
+      ])
+  })
+
+  test('are put on a piece of music too', async () => {
+    const sent = await posts({ ...later })
+    await userEvent.click(page.getByTitle('song.mp3'))
+    await playheadAt(14)
+
+    await userEvent.click(page.getByRole('button', { name: 'Marker', exact: true }))
+
+    await expect.poll(() => sent.at(-1)?.edit.music[0]?.markers?.map((mark) => mark.at)).toEqual([1])
+  })
+})

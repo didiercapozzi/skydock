@@ -30,7 +30,8 @@ const actionName = (action: FilmAction) =>
     ripple: t`Ripple`,
     snap: t`Snap`,
     title: t`Title`,
-    delete: t`Delete`
+    delete: t`Delete`,
+    marker: t`Marker`
   })[action]
 
 type Capture = { action: FilmAction; replacing?: string }
@@ -149,7 +150,8 @@ const FilmShortcuts = ({ scratch, onClose }: { scratch: boolean; onClose: () => 
         ['delete', t`delete the picked item`],
         ['ripple', t`turn Ripple on or off`],
         ['snap', t`turn Snap on or off`],
-        ['title', t`add a text at the playhead`]
+        ['title', t`add a text at the playhead`],
+        ['marker', t`add a marker at the playhead, on the picked clip or piece of music`]
       ]
     ],
     [

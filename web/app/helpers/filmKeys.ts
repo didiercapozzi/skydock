@@ -1,7 +1,7 @@
 import { t } from '@lingui/core/macro'
 import { z } from 'zod'
 
-const FILM_ACTIONS = ['cut', 'fade', 'ripple', 'snap', 'title', 'delete'] as const
+const FILM_ACTIONS = ['cut', 'fade', 'ripple', 'snap', 'title', 'delete', 'marker'] as const
 type FilmAction = (typeof FILM_ACTIONS)[number]
 type FilmKeys = Record<FilmAction, string[]>
 
@@ -11,7 +11,8 @@ const DEFAULT_KEYS: FilmKeys = {
   ripple: ['r'],
   snap: ['s'],
   title: ['t'],
-  delete: ['d', 'Delete', 'Backspace']
+  delete: ['d', 'Delete', 'Backspace'],
+  marker: ['m']
 }
 
 const refusedKey = (key: string) => {

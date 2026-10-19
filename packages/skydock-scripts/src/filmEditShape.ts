@@ -22,6 +22,12 @@ const seconds = z.number().min(0)
 const fraction = z.number().min(0).max(1)
 const fadeLength = seconds.finite().optional()
 
+const editMarkerSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().max(40),
+  at: seconds
+})
+
 const editClipSchema = z
   .object({
     id: z.string().min(1),
@@ -35,7 +41,8 @@ const editClipSchema = z
     frame: frameCropSchema.optional(),
     rotation: rotationSchema.optional(),
     fadeIn: fadeLength,
-    fadeOut: fadeLength
+    fadeOut: fadeLength,
+    markers: z.array(editMarkerSchema).optional()
   })
   .refine((clip) => clip.end > clip.start, 'a clip ends after it starts')
 
@@ -48,7 +55,8 @@ const editMusicSchema = z
     end: seconds,
     volume: fraction,
     fadeIn: fadeLength,
-    fadeOut: fadeLength
+    fadeOut: fadeLength,
+    markers: z.array(editMarkerSchema).optional()
   })
   .refine((music) => music.end > music.start, 'a piece of music ends after it starts')
 
@@ -125,6 +133,7 @@ type FilmEdit = z.infer<typeof filmEditSchema>
 type EditClip = FilmEdit['clips'][number]
 type EditMusic = FilmEdit['music'][number]
 type EditText = FilmEdit['texts'][number]
+type EditMarker = NonNullable<EditClip['markers']>[number]
 type EditSource = z.infer<typeof editSourceSchema>
 type MusicSource = z.infer<typeof musicSourceSchema>
 type TextEffect = (typeof TEXT_EFFECTS)[number]
@@ -281,6 +290,7 @@ export {
 }
 export type {
   EditClip,
+  EditMarker,
   EditMusic,
   EditSource,
   EditText,
