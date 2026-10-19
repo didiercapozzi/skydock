@@ -1,23 +1,27 @@
 name: Store package
 
 on:
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       identityName:
         description: Package/Identity/Name, as Partner Center shows it under Product identity
-        required: true
+        required: false
       publisher:
         description: Package/Identity/Publisher, as Partner Center shows it (CN=...)
-        required: true
+        required: false
       publisherDisplayName:
         description: Package/Properties/PublisherDisplayName, as Partner Center shows it
-        required: true
+        required: false
 
 jobs:
   store-package:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.release.tag_name || github.sha }}
 
       - uses: actions/setup-node@v7
         with:
@@ -70,12 +74,39 @@ jobs:
           -c.appx.publisher="$PUBLISHER"
           -c.appx.publisherDisplayName="$PUBLISHER_DISPLAY_NAME"
         env:
-          IDENTITY_NAME: ${{ inputs.identityName }}
-          PUBLISHER: ${{ inputs.publisher }}
-          PUBLISHER_DISPLAY_NAME: ${{ inputs.publisherDisplayName }}
+          IDENTITY_NAME: ${{ inputs.identityName || vars.STORE_IDENTITY_NAME }}
+          PUBLISHER: ${{ inputs.publisher || vars.STORE_PUBLISHER }}
+          PUBLISHER_DISPLAY_NAME: ${{ inputs.publisherDisplayName || vars.STORE_PUBLISHER_DISPLAY_NAME }}
 
       - uses: actions/upload-artifact@v5
         with:
           name: skydock-store-package
           path: build/installers/*.appx
           if-no-files-found: error
+
+      - name: The Store told where to send the package
+        if: github.event_name == 'release'
+        uses: microsoft/store-submission@v1
+        with:
+          command: configure
+          type: packaged
+          seller-id: ${{ vars.STORE_SELLER_ID }}
+          product-id: ${{ vars.STORE_PRODUCT_ID }}
+          tenant-id: ${{ secrets.STORE_TENANT_ID }}
+          client-id: ${{ secrets.STORE_CLIENT_ID }}
+          client-secret: ${{ secrets.STORE_CLIENT_SECRET }}
+
+      - name: The package sent to the Store
+        if: github.event_name == 'release'
+        uses: microsoft/store-submission@v1
+        with:
+          command: update
+          product-id: ${{ vars.STORE_PRODUCT_ID }}
+          package-path: build/installers
+
+      - name: The Store asked to publish it
+        if: github.event_name == 'release'
+        uses: microsoft/store-submission@v1
+        with:
+          command: publish
+          product-id: ${{ vars.STORE_PRODUCT_ID }}
