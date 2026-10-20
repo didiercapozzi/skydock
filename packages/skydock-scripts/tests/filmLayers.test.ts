@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { filmEditSchema, timelineEnd } from '../src/filmEditShape'
+import { filmEditSchema, imageAsStill, timelineEnd } from '../src/filmEditShape'
 import type { EditSource, FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
 import { createTmpDir } from './fixtures'
@@ -46,7 +46,18 @@ const render = (edit: FilmEdit) => {
       'error',
       ...filmArgs({
         edit,
-        sources: new Map([['a.mp4', source]]),
+        sources: new Map([
+          ['a.mp4', source],
+          [
+            'dot.png',
+            imageAsStill({
+              name: 'dot.png',
+              path: path.join(dir, 'dot.png'),
+              width: 100,
+              height: 100
+            })
+          ]
+        ]),
         images: new Map([
           ['dot.png', { name: 'dot.png', path: path.join(dir, 'dot.png'), width: 100, height: 100 }]
         ]),
@@ -155,6 +166,31 @@ describe('the layers of a film', () => {
     )
 
     expect(colourAt(file, 2.5, 160, 90).r).toBeLessThan(250)
+  })
+
+  it('can also be the whole frame on the video track, as a clip of a picture from the images folder', () => {
+    const still = imageAsStill({
+      name: 'dot.png',
+      path: '/o/images/dot.png',
+      width: 100,
+      height: 100
+    })
+    expect(still).toMatchObject({
+      name: 'dot.png',
+      path: '/o/images/dot.png',
+      sound: false,
+      still: true
+    })
+
+    const file = render({
+      ...film(undefined),
+      clips: [{ id: 'clip-1', name: 'dot.png', start: 0, end: 2, sound: false }]
+    })
+
+    const middle = colourAt(file, 1, 160, 90)
+    expect(middle.g).toBeGreaterThan(200)
+    expect(middle.r).toBeLessThan(40)
+    expect(colourAt(file, 1, 4, 4).g).toBeLessThan(40)
   })
 
   it('draw a picture where it is put, as wide as asked, over the film', () => {

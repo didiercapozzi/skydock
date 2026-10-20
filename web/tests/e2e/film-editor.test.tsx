@@ -2658,6 +2658,23 @@ describe('the layers of a film: pictures and backgrounds over the video', () => 
     await expect.element(page.getByTitle('logo.png', { exact: true }).last()).toBeVisible()
   })
 
+  test('can fill the frame on the video track instead, with Full frame, as a clip of five seconds', async () => {
+    const sent = await start()
+
+    await userEvent.click(images())
+    await userEvent.click(page.getByRole('button', { name: 'Full frame', exact: true }).first())
+
+    await expect
+      .poll(
+        () =>
+          (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as {
+            edit: { clips: Array<{ name: string; start: number; end: number }> }
+          } | undefined)?.edit.clips.at(-1)
+      )
+      .toMatchObject({ name: 'logo.png', start: 0, end: 5 })
+    expect(layersSaved(sent)).toBeUndefined()
+  })
+
   test('are made from the same tab as a white or a black background, that covers the frame', async () => {
     const sent = await start()
 

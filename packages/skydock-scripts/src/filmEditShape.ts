@@ -179,6 +179,16 @@ type TextEffect = (typeof TEXT_EFFECTS)[number]
 type TextFont = (typeof TEXT_FONTS)[number]
 type Span = { from: number; to: number }
 
+const imageAsStill = (image: ImageSource): EditSource => ({
+  name: image.name,
+  path: image.path,
+  play: image.path,
+  seconds: STILL_MAX,
+  sound: false,
+  marks: [],
+  still: true
+})
+
 const speedOf = (clip: { speed?: number }) => clip.speed ?? 1
 
 const clipLength = (clip: { start: number; end: number; speed?: number }) =>
@@ -316,6 +326,7 @@ export {
   filmEditSchema,
   filmLength,
   heardSpans,
+  imageAsStill,
   MUSIC_EXTENSIONS,
   musicFadesOf,
   musicLevelAt,

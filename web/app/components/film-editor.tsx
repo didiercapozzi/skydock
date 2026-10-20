@@ -22,6 +22,7 @@ import {
   SLOT,
   slotEdit,
   speedOf,
+  imageAsStill,
   STILL_SECONDS,
   TEXT_FADE,
   textFadesOf
@@ -557,7 +558,7 @@ const Library = ({
         {tab === 'images' && (
           <>
             <p className='text-small text-ink-3'>
-              {t`A picture or a background goes in at the playhead, over the video and under the texts. Drag it in the picture to place it.`}
+              {t`A picture or a background goes in at the playhead, over the video and under the texts: drag it in the picture to place it. Full frame puts the picture on the video track instead, as a clip of five seconds.`}
             </p>
             <span className='flex gap-2'>
               <Mini onClick={() => onAddBackground('#ffffff')}>{t`White background`}</Mini>
@@ -580,7 +581,16 @@ const Library = ({
                     {image.width}×{image.height}
                   </span>
                 }
-                trailing={<Add onClick={() => onAddImage(image.name)} />}
+                trailing={
+                  <span className='flex items-center gap-1.5'>
+                    <Mini
+                      title={t`Put the picture on the video track, filling the frame`}
+                      onClick={() => onAddClip(image.name)}>
+                      {t`Full frame`}
+                    </Mini>
+                    <Add onClick={() => onAddImage(image.name)} />
+                  </span>
+                }
               />
             ))}
             {images.length === 0 && (
@@ -1505,7 +1515,10 @@ const FilmEditor = ({
   const fade = useRef<number | undefined>(undefined)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  const sources = new Map((loaded?.sources ?? []).map((one) => [one.name, one]))
+  const sources = new Map([
+    ...(loaded?.images ?? []).map((one) => [one.name, imageAsStill(one)] as const),
+    ...(loaded?.sources ?? []).map((one) => [one.name, one] as const)
+  ])
   const music = new Map((loaded?.music ?? []).map((one) => [one.name, one]))
   const changedClips = clipsChanged(scratch ? null : edit, loaded ? sources : null)
 

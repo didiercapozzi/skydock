@@ -571,8 +571,8 @@ msgid "{processed}, and the working copies made for the editor"
 msgstr "{processed} und die für den Schnitt erstellten Arbeitskopien"
 
 #: app/components/montage-card.tsx
-msgid "{proxiesWaiting, plural, one {# clip is} other {# clips are}} still getting a proxy — the project can be made once each one has it, or has failed to"
-msgstr "{proxiesWaiting, plural, one {# Clip bekommt} other {# Clips bekommen}} noch einen Proxy — das Projekt kann erstellt werden, sobald jeder einen hat oder es bei ihm gescheitert ist"
+msgid "{proxiesWaiting, plural, one {# clip is} other {# clips are}} still getting a proxy — the kdenlive project can be made once each one has it, or has failed to"
+msgstr ""
 
 #: app/components/montage-card.tsx
 msgid "{proxiesWaiting, plural, one {waiting for # proxy} other {waiting for # proxies}}"
@@ -709,8 +709,12 @@ msgid "{who}’s montage was freed from this machine — give this one another n
 msgstr "{who}s Montage wurde von diesem Rechner freigegeben — gib dieser einen anderen Namen, etwa „{who} 2“."
 
 #: app/components/work-folder-dialog.tsx
-msgid "{working} — wait until it is done."
-msgstr "{working} — warte, bis es fertig ist."
+msgid "{working} — choosing another folder asks first"
+msgstr ""
+
+#: app/components/work-folder-dialog.tsx
+msgid "{working} — choosing another folder now stops it, so SkyDock asks first."
+msgstr ""
 
 #: app/components/transfers-panel.tsx
 msgid "{wrong} not done"
@@ -815,10 +819,6 @@ msgstr "Code der 2-Schritt-Verifizierung"
 msgid "A button you clicked does not take Enter or Space: they play. Reach it with Tab and they press it."
 msgstr "Eine angeklickte Schaltfläche reagiert nicht auf Enter oder Leertaste: Sie starten die Wiedergabe. Mit Tab erreicht, lösen sie die Schaltfläche aus."
 
-#: app/routes/board.tsx
-msgid "A camera is being copied"
-msgstr "Eine Kamera wird gerade kopiert"
-
 #: app/components/camera-dialogs.tsx
 msgid "A camera SkyDock has not seen before"
 msgstr "Eine Kamera, die SkyDock noch nicht kennt"
@@ -900,8 +900,8 @@ msgid "A new montage{copied}"
 msgstr "Eine neue Montage{copied}"
 
 #: app/components/film-editor.tsx
-msgid "A picture or a background goes in at the playhead, over the video and under the texts. Drag it in the picture to place it."
-msgstr "Ein Bild oder ein Hintergrund wird an der Abspielposition eingefügt, über dem Video und unter den Texten. Ziehen Sie es im Bild, um es zu platzieren."
+msgid "A picture or a background goes in at the playhead, over the video and under the texts: drag it in the picture to place it. Full frame puts the picture on the video track instead, as a clip of five seconds."
+msgstr "Ein Bild oder ein Hintergrund kommt an die Abspielposition, über das Video und unter die Texte: Zieh es im Bild an die richtige Stelle. Vollbild legt das Bild stattdessen als Clip von fünf Sekunden auf die Videospur."
 
 #: app/components/film-editor.tsx
 msgid "A render is running"
@@ -1043,10 +1043,6 @@ msgstr "Alt oder Strg beim Ablegen"
 #: app/components/shortcuts-dialog.tsx
 msgid "An open clip"
 msgstr "Ein geöffneter Clip"
-
-#: app/routes/board.tsx
-msgid "An upload is running"
-msgstr "Ein Upload läuft"
 
 #: app/components/templates-dialog.tsx
 msgid "and"
@@ -2426,10 +2422,6 @@ msgstr "dort ablegen"
 msgid "Files"
 msgstr "Dateien"
 
-#: app/routes/board.tsx
-msgid "Files are being copied in"
-msgstr "Dateien werden hineinkopiert"
-
 #: app/components/comparison-dialog.tsx
 msgid "Files of {jump}"
 msgstr "Dateien von {jump}"
@@ -2744,6 +2736,10 @@ msgstr "Vom Absprung bis ein paar Sekunden nach der Landung."
 msgid "From the music"
 msgstr "Aus der Musik"
 
+#: app/components/film-editor.tsx
+msgid "Full frame"
+msgstr "Vollbild"
+
 #: app/components/preview-drawer.tsx
 msgid "Full screen"
 msgstr "Vollbild"
@@ -2966,6 +2962,14 @@ msgstr "Es kann noch nicht hochgeladen werden."
 msgid "It holds {fresh, plural, one {# file} other {# files}} that {fresh, plural, one {is} other {are}} not on this machine yet. SkyDock will remember this camera, so it is in the list next time even when it is not plugged in."
 msgstr "Sie enthält {fresh, plural, one {# Datei, die} other {# Dateien, die}} noch nicht auf diesem Rechner {fresh, plural, one {ist} other {sind}}. SkyDock merkt sich diese Kamera, sodass sie beim nächsten Mal auch ohne Verbindung in der Liste steht."
 
+#: app/helpers/notes.ts
+msgid "It is being processed — wait for it to finish"
+msgstr ""
+
+#: app/helpers/notes.ts
+msgid "It is being uploaded — wait for the upload to finish"
+msgstr ""
+
 #: app/components/montage-steps.tsx
 msgid "It needs a name first — a person, an event. The name becomes its folder, its file names and its film."
 msgstr "Zuerst braucht sie einen Namen — eine Person, ein Ereignis. Der Name wird zu ihrem Ordner, ihren Dateinamen und ihrem Film."
@@ -3008,6 +3012,10 @@ msgstr "Seine Dateien sind geblieben, wo sie waren."
 #: app/components/camera-dialogs.tsx
 msgid "Its files that are already here stay where they are. The next time it is plugged in, SkyDock will treat it as a new camera and ask."
 msgstr "Ihre schon hier liegenden Dateien bleiben, wo sie sind. Beim nächsten Einstecken behandelt SkyDock sie als neue Kamera und fragt."
+
+#: app/helpers/notes.ts
+msgid "Its film is being rendered — wait for the render to finish, or cancel it"
+msgstr ""
 
 #: app/components/inspector.tsx
 msgid "Its film is edited here — a new name renames its folder, its copies, its edit and its film, with nothing to process again."
@@ -4083,6 +4091,10 @@ msgstr "Filmeditor öffnen"
 msgid "Open the film editor with the clips laid end to end"
 msgstr "Den Filmeditor mit den Clips hintereinander öffnen"
 
+#: app/components/montage-card.tsx
+msgid "Open the film editor with the clips laid end to end — {proxiesWaiting, plural, one {# clip plays} other {# clips play}} at full size until its small copy is made"
+msgstr ""
+
 #: app/components/email-dialog.tsx
 msgid "Open the message in"
 msgstr "Nachricht öffnen in"
@@ -4493,6 +4505,10 @@ msgstr "Ans Ende des Films setzen"
 msgid "Put on the storage then — its name does not say when it was shot"
 msgstr "Zu diesem Zeitpunkt auf den Speicher gelegt — sein Name verrät nicht, wann es aufgenommen wurde"
 
+#: app/components/film-editor.tsx
+msgid "Put the picture on the video track, filling the frame"
+msgstr "Das Bild bildfüllend auf die Videospur legen"
+
 #: app/components/email-dialog.tsx
 msgid "Put the template back as SkyDock first wrote it"
 msgstr "Die Vorlage so wiederherstellen, wie SkyDock sie ursprünglich geschrieben hat"
@@ -4686,6 +4702,11 @@ msgstr "Rendern"
 #: app/components/jobs-panel.tsx
 msgid "Rendering {label}’s film"
 msgstr "Der Film von {label} wird gerendert"
+
+#. placeholder {0}: Math.round(partOf(followed) * 100)
+#: app/components/film-editor.tsx
+msgid "Rendering the film · {0}%"
+msgstr ""
 
 #: app/components/film-template-modals.tsx
 msgid "Replace it"
@@ -5220,10 +5241,6 @@ msgstr "durch die Dateien blättern"
 msgid "still going over the camera — {count, plural, one {# file} other {# files}} so far"
 msgstr "Kamera wird noch durchgegangen — bisher {count, plural, one {# Datei} other {# Dateien}}"
 
-#: app/hooks/useBoardState.ts
-msgid "Still processing — the board updates itself when it is done"
-msgstr "Wird noch aufbereitet — die Übersicht aktualisiert sich von selbst, wenn es fertig ist"
-
 #: app/components/jobs-panel.tsx
 msgid "Stop"
 msgstr "Stoppen"
@@ -5237,8 +5254,12 @@ msgid "Stop it now — nothing of it is recorded, and what already went up is fo
 msgstr "Jetzt abbrechen — nichts davon wird vermerkt, und was schon oben ist, wird beim nächsten Mal dort gefunden"
 
 #: app/components/jobs-panel.tsx
-msgid "Stop the render now — the film as it was before stays as it is"
-msgstr "Das Rendern jetzt abbrechen — der bisherige Film bleibt, wie er war"
+msgid "Stop it now — the copies already finished stay, and nothing of it counts as processed"
+msgstr ""
+
+#: app/components/jobs-panel.tsx
+msgid "Stop this film’s render now — the film as it was before stays as it is"
+msgstr ""
 
 #: app/components/templates-dialog.tsx
 msgid "Stop using by default"
@@ -5387,10 +5408,6 @@ msgstr "Der Papierkorb ist leer."
 msgid "The board"
 msgstr "Die Übersicht"
 
-#: app/routes/board.tsx
-msgid "The board is busy"
-msgstr "Die Übersicht ist beschäftigt"
-
 #: app/components/work-folder-dialog.tsx
 msgid "the board opens on what that folder holds — empty, or the work already kept there"
 msgstr "die Übersicht öffnet sich mit dem, was dieser Ordner enthält — leer oder die dort schon abgelegte Arbeit"
@@ -5504,6 +5521,10 @@ msgstr "Der Film ist auf dem Speicher und der Link funktioniert. Die E-Mail ist 
 #: app/components/montage-steps.tsx
 msgid "The film is on the storage, but it has no link to send — make one from the panel."
 msgstr "Der Film liegt auf dem Speicher, hat aber keinen Link zum Senden — erstelle im Seitenpanel einen neuen."
+
+#: app/components/film-editor.tsx
+msgid "The film is rendered"
+msgstr ""
 
 #: app/components/montage-steps.tsx
 msgid "The film is rendered. Send it, the photos and the originals where you choose."
@@ -6245,6 +6266,14 @@ msgstr "Lautstärke"
 #: app/components/progress-panel.tsx
 msgid "waiting"
 msgstr "wartet"
+
+#: app/components/jobs-panel.tsx
+msgid "Waiting"
+msgstr ""
+
+#: app/components/jobs-panel.tsx
+msgid "Waiting for the processing asked for before it — it starts by itself"
+msgstr ""
 
 #: app/components/email-dialog.tsx
 msgid "Was the email sent?"

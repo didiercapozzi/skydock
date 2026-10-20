@@ -38,6 +38,7 @@ export {
   CRF_RANGE,
   editLayerSchema,
   IMAGE_EXTENSIONS,
+  imageAsStill,
   OUTPUT_CRF,
   OUTPUT_FORMATS,
   OUTPUT_FPS,

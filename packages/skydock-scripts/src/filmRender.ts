@@ -10,6 +10,7 @@ import {
   fadeOutOf,
   filmLength,
   heardSpans,
+  imageAsStill,
   musicFadesOf,
   OUTPUT_CRF,
   OUTPUT_FORMATS,
@@ -394,11 +395,13 @@ const renderFilm = async ({
       async (rendering) => {
         rendering.rows([{ key: 'film', name, size: 0 }])
         rendering.row({ key: 'film', at: 'now', part: 0 })
-        const sources = new Map(
-          (await editSources(manifest, outputDir, group)).map((one) => [one.name, one])
-        )
+        const pictures = await imageSources(outputDir)
+        const sources = new Map([
+          ...pictures.map((one) => [one.name, imageAsStill(one)] as const),
+          ...(await editSources(manifest, outputDir, group)).map((one) => [one.name, one] as const)
+        ])
         const music = new Map((await musicSources(outputDir)).map((one) => [one.name, one]))
-        const images = new Map((await imageSources(outputDir)).map((one) => [one.name, one]))
+        const images = new Map(pictures.map((one) => [one.name, one]))
         const used = [...new Set(edit.texts.map((text) => text.font))]
         const fonts = Object.fromEntries(
           await Promise.all(used.map(async (font) => [font, await fontFile(font)] as const))
