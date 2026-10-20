@@ -53,7 +53,7 @@ const lookAtMontages = async (outputDir: string) => {
     const found = await montageArtifacts(outputDir, group)
     secondsOf(found)
     const film = found.film ? `${found.film.size}:${found.film.mtime}` : 'none'
-    const signature = `${found.kdenlive ?? ''}|${found.edit}|${film}`
+    const signature = `${found.edit}|${film}`
     const before = seen.get(group.id)
     const state: Seen =
       before && before.signature === signature
@@ -67,7 +67,7 @@ const lookAtMontages = async (outputDir: string) => {
     seen.set(group.id, state)
     if (state.unchanged < SETTLED_AFTER || state.told === signature) continue
 
-    const fact = factOf(found, outputDir)
+    const fact = factOf(found)
     if (fact.film && fact.film.seconds === null && (await hasCommand('ffprobe'))) continue
     publish({
       kind: 'montage',

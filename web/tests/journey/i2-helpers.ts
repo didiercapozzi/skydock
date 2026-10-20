@@ -4,20 +4,9 @@ import { unzipSync } from 'fflate'
 import type { Locator, Page } from 'playwright'
 import type { FakeStorage } from './fake-storage'
 import type { Journey } from './harness'
+import { makeEdit } from './i1-helpers'
 import { filesUnder, WHO } from './media'
 import { dialogNamed, pickInDialog } from './steps'
-
-const TEMPLATE = path.join(
-  path.dirname(new URL(import.meta.url).pathname),
-  '..',
-  '..',
-  '..',
-  'packages',
-  'skydock-scripts',
-  'tests',
-  'fixtures',
-  'house.kdenlive'
-)
 
 const makeMontageReady = async (j: Journey) => {
   const { page } = j
@@ -32,14 +21,8 @@ const makeMontageReady = async (j: Journey) => {
   await page.keyboard.press('Enter')
   await j.see('Prepare the files')
   await page.getByRole('button', { name: 'Process', exact: true }).click()
-  await page.getByRole('button', { name: 'Make a kdenlive project' }).waitFor({ timeout: 60_000 })
-  await page.getByRole('button', { name: 'Make a kdenlive project' }).click()
-  const chooser = page.waitForEvent('filechooser')
-  await page.getByRole('button', { name: 'Choose files instead…' }).click()
-  await (await chooser).setFiles(TEMPLATE)
-  await page.getByRole('radio').first().waitFor()
-  await page.getByRole('button', { name: 'Make the montage' }).click()
-  await page.getByRole('button', { name: 'Open in kdenlive' }).first().waitFor({ timeout: 30_000 })
+  await page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
+  await makeEdit(j)
 }
 
 const uploadDialog = (page: Page) => dialogNamed(page, 'Upload')

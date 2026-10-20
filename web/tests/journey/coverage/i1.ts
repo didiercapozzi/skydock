@@ -1,12 +1,6 @@
 const SIX_STEPS = 'walks the montage through its six steps, each shown where it is'
-const MAKE_ONCE = 'makes the project from the template brought in, and opens the editor on it'
-const BRING_FOLDER =
-  'brings in the whole folder the editor left, and points the project at the music that came with it'
-const MISSING_ONE =
-  'keeps a template with a file missing, names what is missing straight away, and shows it before a project is made from it even as the only one'
-const REPLACES = 'replaces a template brought in again under a name already there, files and all'
 const BEFORE_REPROCESS =
-  'keeps the project aside before preparing it again, and pressing the same button twice leaves one version'
+  'keeps the edit aside before preparing it again, and pressing the same button twice leaves one version'
 const FILM_SHOWN =
   'shows the film above its montage with its name, how long it runs, its size and when it was rendered'
 const FILM_NOTICED =
@@ -16,7 +10,7 @@ const BACK_ASKS =
 const RESET_KEEPS_EDIT =
   'names the edit on its own in the question, and keeps it aside when the montage is reset'
 const DELETE_KEEPS_EDIT =
-  'names the edit on its own, removes the project, and keeps every version of it aside'
+  'names the edit on its own, removes it, and keeps every version of it aside'
 const SHRINK =
   'shrinks the steps to one line of names and gives way to two cards, what is here and what is on the storage'
 const MENU_DELIVERED =
@@ -78,7 +72,7 @@ const covers: Record<string, string[]> = {
   'A finished render is noticed': [
     'does not take a film that cannot be read yet for a film, however still it sits',
     FILM_NOTICED,
-    'notices a project removed by hand, which lifts the lock, and one put back by hand'
+    'notices an edit removed by hand, and one put back by hand'
   ],
   "A montage's files are listed as a destination's are": [
     'lists a montage’s files as a destination’s are, each with its picture, name, time, size and state'
@@ -88,61 +82,18 @@ const covers: Record<string, string[]> = {
     'plays the film rendered again, which replaces the one that was there',
     'lets the film that was rendered last be watched where it is shown'
   ],
-  'editing project': [MAKE_ONCE],
-  'The editing project': [
-    MAKE_ONCE,
-    'lays the clips whole in the bin in the order shot, each playing from its proxy, and leaves the template’s timeline as it was'
-  ],
-  'The project waits for the proxies': [
-    'cannot be made while a clip is still getting its proxy, and says how many it waits for',
-    'makes the project once the clip has its proxy, with the clip playing from it',
-    'does not wait for a clip whose proxy was tried and could not be made, which opens as it is'
-  ],
-  'The jump is marked on the clip, never cut into it': [
-    'marks the jump on each clip as markers of its own, and lays none along the timeline',
-    'lays the clips whole in the bin in the order shot, each playing from its proxy, and leaves the template’s timeline as it was'
-  ],
-  'Making the project opens it': [
-    MAKE_ONCE,
-    'says its step is the film now, and offers the way back into the project',
-    'says the editor cannot be reached, still makes the project, and offers its path to copy',
-    'refuses to open a project in an editor that stops at once, and says why',
-    'opens the project it was made with, in the editor it is told about, when that is one that runs'
-  ],
-  Templates: ['has none to offer until one is brought in, as SkyDock ships with none', MISSING_ONE],
-  'Choosing one': [
-    'never decides which one a project is made from while several are there: nothing is made until one is picked',
-    'ticks the one picked last time and still waits to be told, for the next montage',
-    'marks a template as the usual one, and takes the mark off the same way',
-    'is simply used when it is whole, without asking which template to make the project from',
-    MISSING_ONE
-  ],
-  'Bringing one in': [
-    BRING_FOLDER,
-    'takes a template packed as one archive, or the project and its files picked one by one, named after what it was',
-    'refuses an archive that names its way out of the folder, and leaves nothing half-arrived',
-    REPLACES
-  ],
-  'Its files are then its own': [BRING_FOLDER, MISSING_ONE, REPLACES],
-  'Open to the editor': [
-    'leaves what the archive brought readable and writable by anyone, so the editor can open every file'
-  ],
-  'Each edit is made once': [
-    'refuses to make a second project for a montage that has one, and the edit is left as it was'
-  ],
-  'An edit holds the montage': [
-    'shows its files a lock and says why, once the montage has a project',
-    'takes no other jump into a montage that has an edit, and says so',
-    'notices a project removed by hand, which lifts the lock, and one put back by hand'
+  'The edit and the montage': [
+    'notices an edit removed by hand, and one put back by hand',
+    BEFORE_REPROCESS
   ],
   'The edit is kept aside, every version of it': [
     BEFORE_REPROCESS,
-    'keeps another version once the project is not what was kept, and deletes none',
+    'keeps another version once the edit is not what was kept, and deletes none',
     RESET_KEEPS_EDIT,
     DELETE_KEEPS_EDIT
   ],
   'Preparing it again is allowed': [
-    'prepares a montage with an edit again from its originals, leaving the project, the film and every name as they were'
+    'prepares a montage with an edit again from its originals, leaving the edit, the film and every name as they were'
   ],
   'Taking a montage back': [
     BACK_ASKS,
@@ -158,10 +109,12 @@ const covers: Record<string, string[]> = {
 }
 
 const exempt: Record<string, string> = {
+  'An edit holds the montage':
+    'What an edit holds is that a new name renames the montage whole and that a freed montage refuses a name it had, which no step of the journey does: the board’s server tests walk the rename (its folder, copies, film and edit) and the refusals, and the film editor’s journey writes the edit this holds.',
   'An edit SkyDock cannot read':
     'An unreadable edit is one a newer SkyDock or a hand wrote, which no step of the journey makes; the film editor’s browser test walks the editor saying it was kept aside, and the scripts’ test that it is set aside whole and never written over.',
   'Starting the edit again':
-    'Taking the edit away is one file kept aside and removed, with nothing processed or rendered; the board’s browser test walks the question and the choice, and the server tests that the copies, the film and the name stay and the lock goes.',
+    'Taking the edit away is one file kept aside and removed, with nothing processed or rendered; the board’s browser test walks the question and the choice, and the server tests that the copies, the film and the name stay.',
   'Taking the next step from where it is said':
     'The step is taken from the trail on the Montages page when no montage is open there, which the board never leaves it at: it opens the first montage itself, so no click reaches the trail; each step’s own button is walked in the six steps and project chapters.'
 }

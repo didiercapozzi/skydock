@@ -19,7 +19,6 @@ const header = (over: Partial<Frame> = {}) => {
   const all: Frame = {
     scanning: false,
     onScan: () => {},
-    onTemplates: () => {},
     onFilmTemplates: () => {},
     onWorkFolder: () => {},
     onShortcuts: () => {},
@@ -110,7 +109,7 @@ describe('the top of the board', () => {
       await expect.element(page.getByRole('button', { name })).toBeVisible()
     await expect.element(page.getByText(/Proxies ready\s*48\s*\/\s*50/)).toBeVisible()
     await expect.element(page.getByText(/Marks found/)).not.toBeInTheDocument()
-    await expect.element(page.getByRole('button', { name: 'Templates…', exact: true })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Film templates…', exact: true })).not.toBeInTheDocument()
 
     await userEvent.click(page.getByRole('button', { name: 'Settings' }))
 
@@ -119,7 +118,6 @@ describe('the top of the board', () => {
       'Light',
       'Dark',
       'English',
-      'Templates…',
       'Film templates…',
       'Work folder…',
       'About SkyDock…'

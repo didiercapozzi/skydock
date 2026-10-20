@@ -38,13 +38,12 @@ const doingOf = (label: string) => {
     moment: t`Saving the moment…`,
     'cancel-process': t`Stopping…`
   }
-  const opening = label.startsWith('open:') ? t`Opening the project…` : null
   const freeing = label.startsWith('free:') ? t`Freeing space…` : null
   const removing = label.startsWith('remove:') ? t`Removing…` : null
   const linking = label.startsWith('link:') ? t`Making the link…` : null
   const back = label.startsWith('back:') ? t`Bringing files back…` : null
   const playing = label.startsWith('play:') ? t`Opening the player…` : null
-  return sent[label] ?? opening ?? freeing ?? removing ?? linking ?? back ?? playing ?? null
+  return sent[label] ?? freeing ?? removing ?? linking ?? back ?? playing ?? null
 }
 
 export { PendingLine, Spinner, doingOf }

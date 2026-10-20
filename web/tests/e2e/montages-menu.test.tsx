@@ -142,16 +142,13 @@ describe('starting the edit again', () => {
     groups: [{ ...montage('g7', { firstname: 'Luc', lastname: 'Favre' }), processed: true }],
     montages: {
       g7: {
-        project: true,
         edit: true,
-        kdenlive: true,
-        projectPath: '/o/luc.kdenlive',
         film: null,
         baseName: 'luc_favre_20260801'
       }
     }
   })
-  const sent: { intent: string; edit?: string }[] = []
+  const sent: { intent: string }[] = []
   const openMenu = async () => {
     sent.length = 0
     const Stub = createRoutesStub([
@@ -170,56 +167,22 @@ describe('starting the edit again', () => {
     await userEvent.click(page.getByRole('button', { name: 'Start the edit again…' }))
   }
 
-  test('asks first, naming each edit it would take away and what stays', async () => {
+  test('asks first, naming the edit it would take away and what stays', async () => {
     await openMenu()
     const dialog = page.getByRole('dialog', { name: 'Start the edit again' })
 
     await expect.element(dialog.getByText('the film editor’s edit')).toBeVisible()
-    await expect.element(dialog.getByText('the kdenlive project')).toBeVisible()
     await expect.element(dialog.getByText('the copies, and the film rendered last')).toBeVisible()
     await userEvent.click(dialog.getByRole('button', { name: 'Cancel' }))
     expect(sent).toEqual([])
   })
 
-  test('starts the one chosen again, and only that one', async () => {
+  test('starts the edit again once confirmed', async () => {
     await openMenu()
-    await userEvent.click(page.getByRole('button', { name: 'Start the kdenlive project again' }))
+    await userEvent.click(page.getByRole('button', { name: 'Start again' }))
 
     await expect
       .poll(() => sent.find((one) => one.intent === 'start-edit-again'))
-      .toMatchObject({ intent: 'start-edit-again', groupId: 'g7', edit: 'kdenlive' })
-  })
-})
-
-describe('both editors stay in reach', () => {
-  const withEdits = (facts: Record<string, unknown>) =>
-    boardOf({
-      groups: [{ ...montage('g8', { firstname: 'Luc', lastname: 'Favre' }), processed: true }],
-      montages: {
-        g8: { project: true, projectPath: '/o/luc', film: null, baseName: 'luc_favre_20260801', ...facts }
-      }
-    })
-  const openPage = async (board: unknown) => {
-    const Stub = createRoutesStub([boardRoute(() => board)])
-    await render(createElement(Stub, { initialEntries: ['/'] }))
-    await userEvent.click(page.getByRole('link', { name: /Luc Favre/ }).first())
-  }
-
-  test('still offers Make a kdenlive project in the menu once the film is edited in SkyDock', async () => {
-    await openPage(withEdits({ edit: true, kdenlive: false, latest: 'edit' }))
-
-    await expect.element(page.getByRole('button', { name: 'Edit the film' }).first()).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'More', exact: true }))
-    await expect.element(page.getByRole('button', { name: 'Make a kdenlive project' })).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Open in kdenlive' })).not.toBeInTheDocument()
-  })
-
-  test('still offers Edit the film in the menu beside a kdenlive project, and the next step opens the one changed last', async () => {
-    await openPage(withEdits({ edit: true, kdenlive: true, latest: 'kdenlive' }))
-
-    await expect.element(page.getByRole('button', { name: 'Open in kdenlive' }).first()).toBeVisible()
-    await userEvent.click(page.getByRole('button', { name: 'More', exact: true }))
-    await expect.element(page.getByRole('button', { name: 'Edit the film' })).toBeVisible()
-    await expect.element(page.getByRole('button', { name: 'Make a kdenlive project' })).not.toBeInTheDocument()
+      .toMatchObject({ intent: 'start-edit-again', groupId: 'g7' })
   })
 })

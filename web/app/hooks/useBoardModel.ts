@@ -1,10 +1,8 @@
 import { plural, t } from '@lingui/core/macro'
 import {
-  EDIT_LOCKED,
   FREED_LOCKED,
   freeablePlace,
   furthestBehind,
-  hasKdenlive,
   goneFromStorage,
   hasCompletePassenger,
   idsOf,
@@ -44,11 +42,10 @@ import {
   placeOfLoose
 } from '../helpers/places'
 import type { Place } from '../helpers/places'
-import { routingEngine, useSafeSearchParams } from '../helpers/routing'
+import { useSafeSearchParams } from '../helpers/routing'
 import { jumpLabels } from '../helpers/sections'
 import { fileFacts } from '../helpers/status'
 import { boardViewSchema } from '../helpers/view'
-import { templatesAnswerSchema } from '../../../packages/skydock-scripts/src/templateEntry'
 import { useBoardState } from './useBoardState'
 import { useDragAndDrop } from './useDragAndDrop'
 import type { Move } from './useDragAndDrop'
@@ -78,18 +75,15 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const clearSelection = () => setPicksGone((n) => n + 1)
 
   const lockOf = (group: ManifestGroup) => montageLockOf(group, board.montageFacts[group.id])
-  const frozen = new Set(
-    groups.filter((g) => lockOf(g) === 'freed' || lockOf(g) === 'kdenlive').map((g) => g.id)
-  )
+  const frozen = new Set(groups.filter((g) => lockOf(g) === 'freed').map((g) => g.id))
   const edited = new Set(groups.filter((g) => lockOf(g) === 'edit').map((g) => g.id))
-  const lockSaid = (groupId?: string) =>
-    groups.find((g) => g.id === groupId)?.freed ? FREED_LOCKED : EDIT_LOCKED
+  const lockSaid = (_groupId?: string) => FREED_LOCKED
   const frozenFiles = new Set(
     groups
       .filter((g) => frozen.has(g.id))
       .flatMap((g) => g.files.flatMap((f) => (f.id ? [f.id] : [])))
   )
-  const facts = fileFacts({ outputs: board.outputs, remote: nas.remote, frozenFiles })
+  const facts = fileFacts({ outputs: board.outputs, remote: nas.remote })
   const { statusContext } = facts
 
   const jumpOf = new Map<string, ManifestGroup>()
@@ -491,9 +485,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     const held = groups.find((g) => frozen.has(g.id) && passengerOf(g) === who)
     if (!held) return false
     setProblem(
-      held.freed
-        ? t`${who}’s montage was freed from this machine — give this one another name, such as “${who} 2”.`
-        : t`${who}’s montage has a kdenlive project — change it in kdenlive, or start the edit again.`
+      t`${who}’s montage was freed from this machine — give this one another name, such as “${who} 2”.`
     )
     return true
   }
@@ -624,33 +616,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       { intent: 'send-files', fileIds: idsOf(files), name, plan }
     )
   }
-  const makeMontage = (groupId: string, template?: string) =>
-    send(groupId, { intent: 'montage', groupId, ...(template ? { template } : {}) })
-  const askMontage = async (group: ManifestGroup) => {
-    const parsed = templatesAnswerSchema.safeParse(
-      await routingEngine.loader({ url: '/api/templates' }).catch(() => null)
-    )
-    const templates = parsed.success ? parsed.data.templates : []
-    const only =
-      templates.find((template) => template.byDefault) ??
-      (templates.length === 1 ? templates[0] : null)
-    if (only && only.missing.length === 0) makeMontage(group.id, only.name)
-    else setDialog({ kind: 'templates', groupId: group.id })
-  }
-  const openKdenlive = (group: ManifestGroup) =>
-    send(`open:${group.id}`, { intent: 'open-montage', groupId: group.id })
   const openEditor = (group: ManifestGroup) => goTo(editHref(group.id))
-  const opensKdenlive = (group: ManifestGroup) => {
-    const known = board.montageFacts[group.id]
-    return hasKdenlive(known) && known?.latest !== 'edit'
-  }
   const takeStep = (group: ManifestGroup, step: MontageStep) => {
     if (step === 'Prepared') send(group.id, { intent: 'process', groupId: group.id })
     if (step === 'Project') openEditor(group)
-    if (step === 'Film') {
-      if (opensKdenlive(group)) openKdenlive(group)
-      else openEditor(group)
-    }
+    if (step === 'Film') openEditor(group)
     if (step === 'Uploaded') {
       const gate = facts.gateFor(group.files)
       if (gate.blocked) board.setProblem(gate.message ?? t`It cannot be uploaded yet.`)
@@ -739,11 +709,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     confirmUpload,
     askSend,
     confirmSend,
-    makeMontage,
-    askMontage,
-    openKdenlive,
     openEditor,
-    opensKdenlive,
     takeStep,
     trimToJump,
     cancelProcess,

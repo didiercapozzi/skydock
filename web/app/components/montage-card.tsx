@@ -2,7 +2,6 @@ import { plural, t } from '@lingui/core/macro'
 import {
   filmNameOf,
   hasCompletePassenger,
-  hasKdenlive,
   lastSegment,
   passengerFrom,
   passengerName,
@@ -291,26 +290,6 @@ const FilmNote = ({ locked }: { locked?: string | null }) =>
     </div>
   )
 
-const ProjectPath = ({ path: projectPath }: { path: string }) => {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(projectPath)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 1500)
-    } catch {}
-  }
-  return (
-    <button
-      type='button'
-      onClick={copy}
-      title={`${projectPath}\n\n${t`Click to copy`}`}
-      className='max-w-full truncate border-0 bg-transparent p-0 font-mono text-micro text-ink-3 hover:text-accent-ink'>
-      {copied ? t`✓ copied` : `${projectPath} ⧉`}
-    </button>
-  )
-}
-
 const MontageCardActions = ({
   group,
   facts,
@@ -323,10 +302,7 @@ const MontageCardActions = ({
   onProcess,
   onCancelProcess,
   onMontage,
-  onKdenlive,
   onOpenMontage,
-  opensKdenlive = false,
-  onOpenKdenlive,
   onUpload,
   onEmail,
   onFree,
@@ -344,10 +320,7 @@ const MontageCardActions = ({
   onProcess: () => void
   onCancelProcess?: () => void
   onMontage: () => void
-  onKdenlive?: () => void
   onOpenMontage: () => void
-  opensKdenlive?: boolean
-  onOpenKdenlive?: () => void
   onUpload: () => void
   onEmail?: { name: string; open: () => void }
   onFree?: () => void
@@ -371,7 +344,7 @@ const MontageCardActions = ({
         {processing && onCancelProcess && <Mini onClick={onCancelProcess}>{t`Cancel`}</Mini>}
       </span>
     )
-  if (!facts?.project)
+  if (!facts?.edit)
     return (
       <span className='flex flex-wrap items-center gap-2'>
         {proxiesWaiting > 0 && (
@@ -391,18 +364,6 @@ const MontageCardActions = ({
           onClick={onMontage}>
           {t`Edit the film`}
         </Go>
-        {onKdenlive && (
-          <Mini
-            disabled={working || proxiesWaiting > 0 || held === 'processing'}
-            title={
-              proxiesWaiting > 0
-                ? t`${plural(proxiesWaiting, { one: '# clip is', other: '# clips are' })} still getting a proxy — the kdenlive project can be made once each one has it, or has failed to`
-                : (heldSaid ?? t`Write a kdenlive project from a template instead, and open it`)
-            }
-            onClick={onKdenlive}>
-            {busy === group.id ? t`Writing…` : t`Make a kdenlive project`}
-          </Mini>
-        )}
       </span>
     )
   if (compact) {
@@ -417,14 +378,9 @@ const MontageCardActions = ({
     if (!facts.film)
       return (
         <Go
-          disabled={opensKdenlive && working}
-          title={opensKdenlive ? t`Open this project in kdenlive` : t`Open the film editor`}
+          title={t`Open the film editor`}
           onClick={onOpenMontage}>
-          {busy === `open:${group.id}`
-            ? t`Opening…`
-            : opensKdenlive
-              ? t`Open in kdenlive`
-              : t`Edit the film`}
+          {t`Edit the film`}
         </Go>
       )
     if (!group.uploaded)
@@ -481,48 +437,20 @@ const MontageCardActions = ({
         {upload?.key === uploadKey ? t`Uploading…` : group.uploaded ? t`Upload again…` : t`Upload…`}
       </Upload>
       <Mini
-        disabled={opensKdenlive && working}
-        title={opensKdenlive ? t`Open this project in kdenlive` : t`Open the film editor`}
+        title={t`Open the film editor`}
         onClick={onOpenMontage}>
         <Icon
           name='open'
           size={14}
           className='text-ink-2'
         />
-        {busy === `open:${group.id}`
-          ? t`Opening…`
-          : opensKdenlive
-            ? t`Open in kdenlive`
-            : t`Edit the film`}
+        {t`Edit the film`}
       </Mini>
-      {opensKdenlive ? (
-        <Mini
-          title={t`Open the film editor`}
-          onClick={onMontage}>
-          {t`Edit the film`}
-        </Mini>
-      ) : hasKdenlive(facts) && onOpenKdenlive ? (
-        <Mini
-          disabled={working}
-          title={t`Open this project in kdenlive`}
-          onClick={onOpenKdenlive}>
-          {busy === `open:${group.id}` ? t`Opening…` : t`Open in kdenlive`}
-        </Mini>
-      ) : (
-        onKdenlive && (
-          <Mini
-            disabled={working || held === 'processing'}
-            title={heldSaid ?? t`Write a kdenlive project from a template instead, and open it`}
-            onClick={onKdenlive}>
-            {busy === group.id ? t`Writing…` : t`Make a kdenlive project`}
-          </Mini>
-        )
-      )}
       <Mini
         disabled={working || held !== null}
         title={
           heldSaid ??
-          t`Make the copies again from the originals — the project, the film and the archives are left alone`
+          t`Make the copies again from the originals — the edit, the film and the archives are left alone`
         }
         onClick={onProcess}>
         {processing ? t`Processing…` : t`Process again`}
@@ -541,9 +469,6 @@ const MontageCardActions = ({
       )}
       {children}
       {!facts.film && <span className='text-micro text-ink-3'>{t`edit and render it`}</span>}
-      <span className='basis-full'>
-        <ProjectPath path={facts.projectPath} />
-      </span>
     </span>
   )
 }

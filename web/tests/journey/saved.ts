@@ -7,7 +7,7 @@ import type { World } from './app'
 const here = path.dirname(url.fileURLToPath(import.meta.url))
 const STATES = path.join(here, '.states')
 
-const TEXT = /\.(json|jsonl|txt|kdenlive|mlt|xml)$/i
+const TEXT = /\.(json|jsonl|txt|xml)$/i
 const MOST = 5_000_000
 
 const rewrite = (folder: string, from: string, to: string) => {

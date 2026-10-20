@@ -19,7 +19,7 @@ windowDescribe('a whole folder dropped from outside the window', () => {
     const left = [
       path.join(rushes, 'camera-a', 'notes.txt'),
       path.join(rushes, 'camera-b', 'MISC', 'card.idx'),
-      path.join(rushes, 'edit.kdenlive')
+      path.join(rushes, 'edit.edl')
     ]
     for (const file of [...media, ...left]) fs.mkdirSync(path.dirname(file), { recursive: true })
     makeClip(media[0]!, CLIPS[0][1])
@@ -57,7 +57,7 @@ windowDescribe('a whole folder dropped from outside the window', () => {
       .readdirSync(output, { recursive: true })
       .map(String)
       .filter((f) => !f.startsWith('.'))
-    expect(everything.filter((f) => /notes\.txt|card\.idx|\.kdenlive|Rushes/.test(f))).toEqual([])
+    expect(everything.filter((f) => /notes\.txt|card\.idx|\.edl|Rushes/.test(f))).toEqual([])
     for (const file of [...media, ...left]) expect(fs.existsSync(file)).toBe(true)
     desk.silent()
   })

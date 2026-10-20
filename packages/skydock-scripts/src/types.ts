@@ -93,14 +93,6 @@ const publishSchema = z.object({
   shareUrl: z.string()
 })
 
-const montageRecordSchema = z.object({
-  projectPath: z.string(),
-  filmPath: z.string(),
-  template: z.string(),
-  clips: z.number(),
-  at: z.number()
-})
-
 const montageUploadSchema = z.object({
   at: z.number(),
   shareUrl: z.string().optional(),
@@ -131,7 +123,6 @@ const manifestGroupSchema = z.object({
   processed: z.boolean().nullable().optional(),
   passenger: passengerSchema.optional(),
   publish: publishSchema.optional(),
-  montage: montageRecordSchema.optional(),
   uploaded: montageUploadSchema.optional(),
   emailed: z.object({ at: z.number(), to: z.string().optional() }).optional(),
   freed: z.object({ at: z.number(), bytes: z.number() }).optional(),

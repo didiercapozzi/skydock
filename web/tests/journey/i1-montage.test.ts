@@ -140,7 +140,7 @@ describe('making a montage', () => {
 describe('what else can be done to a montage', () => {
   test('keeps what else can be done in the menu of its page, so the page carries one next step', async () => {
     const page = j.page.getByRole('region', { name: WHO }).last()
-    expect(await page.getByRole('button', { name: 'Make a kdenlive project' }).count()).toBe(1)
+    expect(await page.getByRole('button', { name: 'Edit the film' }).count()).toBe(1)
     expect(await page.getByRole('button', { name: /^(Upload|Process again|Reset)/ }).count()).toBe(
       0
     )

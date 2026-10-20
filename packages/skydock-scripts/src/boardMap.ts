@@ -117,7 +117,7 @@ const refusalsIn = (body: string, known: Record<string, string>) => {
     ])
       add(said, true)
   if (/\brefuseFrozen\(/.test(body))
-    for (const said of [known.EDIT_LOCKED, known.FREED_LOCKED]) if (said) add(said, true)
+    for (const said of [known.FREED_LOCKED]) if (said) add(said, true)
   return refusals
 }
 

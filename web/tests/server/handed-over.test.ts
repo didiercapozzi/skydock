@@ -58,7 +58,7 @@ describe('what was handed over of a montage this board holds', () => {
           'videos/GX01.MP4',
           'videos/GX02.MP4',
           'photos/luc_20260801_1.jpg',
-          `${STEM}.kdenlive`
+          `${STEM}.edit.json`
         ]
       }
     ]
@@ -85,11 +85,11 @@ describe('what was handed over of a montage this board holds', () => {
   it('says what is inside a zip, as it was recorded', () => {
     const zip = parcelsOfGroup(sent)[1]!.items[0]!
 
-    expect(zip.what).toBe('the originals · the photos · the project')
+    expect(zip.what).toBe('the originals · the photos · the edit')
     expect(zip.inside).toEqual([
       { kind: 'folder', name: 'videos/', count: 2, files: ['GX01.MP4', 'GX02.MP4'] },
       { kind: 'folder', name: 'photos/', count: 1, files: ['luc_20260801_1.jpg'] },
-      { kind: 'file', name: `${STEM}.kdenlive` }
+      { kind: 'file', name: `${STEM}.edit.json` }
     ])
   })
 
@@ -120,7 +120,7 @@ describe('what was handed over of a montage this board holds', () => {
         count: 2,
         files: ['luc_20260801_1.jpg', 'luc_20260801_2.jpg']
       },
-      { kind: 'file', name: `${STEM}.kdenlive` }
+      { kind: 'file', name: `${STEM}.edit.json` }
     ])
   })
 

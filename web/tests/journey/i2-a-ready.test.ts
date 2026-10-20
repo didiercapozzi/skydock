@@ -8,15 +8,14 @@ import { addDestination } from './steps'
 
 const j = harness({
   name: 'i2-ready',
-  state: 'sorted',
-  env: () => ({ SKYDOCK_EDITOR_COMMAND: 'true' })
+  state: 'sorted'
 })
 
 describe('a montage ready to be sent', () => {
-  test('is made, prepared and given its project, ready for its film to be rendered', async () => {
+  test('is made, prepared and edited, ready for its film to be rendered', async () => {
     await makeMontageReady(j)
     expect(filesUnder(montageFolder(j.world))).toEqual([
-      'luc_favre_20260906.kdenlive',
+      'luc_favre_20260906.edit.json',
       'photos/luc_favre_20260906_090130.jpg',
       'videos/luc_favre_20260906_090000.mp4',
       'videos/luc_favre_20260906_090300.mp4'

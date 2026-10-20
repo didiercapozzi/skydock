@@ -33,13 +33,13 @@ const JOURNEYS: Journey[] = [
   },
   {
     title: 'A montage',
-    said: 'One name is one folder, and the edit is the one thing that cannot be made again — which is why a montage with a project stops accepting changes.',
-    uses: ['save-groups', 'process', 'montage', 'upload-montage', 'mark-emailed', 'free-montage'],
+    said: 'One name is one folder, and the edit is the one thing that cannot be made again — which is why it is kept aside in every version, and why a new name renames the montage whole.',
+    uses: ['save-groups', 'process', 'upload-montage', 'mark-emailed', 'free-montage'],
     drawn: `flowchart LR
   jump[a jump] -->|save-groups| pax[filed under a passenger]
   pax -->|process| copies[copies in their folder]
-  copies -->|montage| project[an editing project]
-  project -->|the editor, by hand| film["the film, rendered"]
+  copies -->|the film editor| edit[an edit]
+  edit -->|render| film["the film, rendered"]
   film -->|upload-montage| storage[("their folder, and the backup")]
   storage -->|mark-emailed| told(["told, with their link"])
   storage -->|free-montage| room([room back])`

@@ -29,7 +29,6 @@ import {
   freedPlaceNote,
   fromBinNote,
   importNote,
-  montageNote,
   resetNote,
   restoredNote,
   scanNote,
@@ -132,7 +131,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
         remote: freshRemote,
         uploaded,
         skipped,
-        montage,
         scan: scanned,
         freed,
         freedPlace,
@@ -166,37 +164,35 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
       const said =
         uploaded !== undefined
           ? uploadedNote(uploaded, skipped)
-          : montage
-            ? montageNote(montage)
-            : scanned
-              ? scanNote(scanned)
-              : imported
-                ? importNote(imported)
-                : freed
-                  ? freedNote(freed)
-                  : freedPlace
-                    ? freedPlaceNote(freedPlace)
-                    : processCancelled
-                      ? t`Processing cancelled. What was finished stays; the rest is left to process again.`
-                      : uploadCancelled
-                        ? t`Upload cancelled — nothing was recorded; what already went up is found there next time.`
-                        : restored
-                          ? restoredNote(restored)
-                          : copiedFiles
-                            ? copiedNote(copiedFiles)
-                            : resetTo
-                              ? resetNote(resetTo)
-                              : cameraCopied
-                                ? cameraNote(cameraCopied)
-                                : played
-                                  ? t`${playing} is playing in this machine’s own player`
-                                  : copiedBack
-                                    ? copiedBackNote(copiedBack)
-                                    : broughtBack
-                                      ? broughtBackNote(broughtBack)
-                                      : fromBin
-                                        ? fromBinNote(fromBin)
-                                        : null
+          : scanned
+            ? scanNote(scanned)
+            : imported
+              ? importNote(imported)
+              : freed
+                ? freedNote(freed)
+                : freedPlace
+                  ? freedPlaceNote(freedPlace)
+                  : processCancelled
+                    ? t`Processing cancelled. What was finished stays; the rest is left to process again.`
+                    : uploadCancelled
+                      ? t`Upload cancelled — nothing was recorded; what already went up is found there next time.`
+                      : restored
+                        ? restoredNote(restored)
+                        : copiedFiles
+                          ? copiedNote(copiedFiles)
+                          : resetTo
+                            ? resetNote(resetTo)
+                            : cameraCopied
+                              ? cameraNote(cameraCopied)
+                              : played
+                                ? t`${playing} is playing in this machine’s own player`
+                                : copiedBack
+                                  ? copiedBackNote(copiedBack)
+                                  : broughtBack
+                                    ? broughtBackNote(broughtBack)
+                                    : fromBin
+                                      ? fromBinNote(fromBin)
+                                      : null
       if (!quiet && storageProblem) setProblem([said, storageProblem].filter(Boolean).join(' · '))
       else if (!quiet) setNote(said)
     } else {

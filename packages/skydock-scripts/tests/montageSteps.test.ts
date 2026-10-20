@@ -15,8 +15,7 @@ const montage = (over: Partial<ManifestGroup> = {}): ManifestGroup => ({
 })
 
 const facts = (over: Partial<MontageFact> = {}): MontageFact => ({
-  project: false,
-  projectPath: '/p/luc_favre.kdenlive',
+  edit: false,
   film: null,
   baseName: 'luc_favre',
   ...over
@@ -43,19 +42,19 @@ describe('where a montage has got to', () => {
     expect(at(montage())).toEqual({ step: 'Prepared', next: 'to process' })
   })
 
-  it('is to be given its project once prepared', () => {
+  it('is to be edited once prepared', () => {
     expect(at(montage({ processed: true }), facts())).toEqual({ step: 'Project', next: 'to edit' })
   })
 
-  it('is to be rendered once there is a project', () => {
-    expect(at(montage({ processed: true }), facts({ project: true }))).toEqual({
+  it('is to be rendered once there is an edit', () => {
+    expect(at(montage({ processed: true }), facts({ edit: true }))).toEqual({
       step: 'Film',
       next: 'to render'
     })
   })
 
   it('is to be uploaded once the film is there', () => {
-    expect(at(montage({ processed: true }), facts({ project: true, film: FILM }))).toEqual({
+    expect(at(montage({ processed: true }), facts({ edit: true, film: FILM }))).toEqual({
       step: 'Uploaded',
       next: 'to upload'
     })
@@ -63,7 +62,7 @@ describe('where a montage has got to', () => {
 
   it('is to be emailed once uploaded', () => {
     const group = montage({ processed: true, uploaded: UPLOADED })
-    expect(at(group, facts({ project: true, film: FILM }))).toEqual({
+    expect(at(group, facts({ edit: true, film: FILM }))).toEqual({
       step: 'Sent',
       next: 'to email'
     })
@@ -71,7 +70,7 @@ describe('where a montage has got to', () => {
 
   it('has every step done once it was sent', () => {
     const group = montage({ processed: true, uploaded: UPLOADED })
-    expect(at(group, facts({ project: true, film: FILM }), true)).toEqual({
+    expect(at(group, facts({ edit: true, film: FILM }), true)).toEqual({
       step: 'done',
       next: null
     })
@@ -87,7 +86,7 @@ describe('where a passenger has got to', () => {
   it('is where their jump furthest behind is', () => {
     const ahead = montageSteps({
       group: montage({ processed: true }),
-      facts: facts({ project: true, film: FILM }),
+      facts: facts({ edit: true, film: FILM }),
       emailed: false
     })
     const behind = montageSteps({ group: montage({ id: 'g2' }), emailed: false })

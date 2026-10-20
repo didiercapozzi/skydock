@@ -51,7 +51,7 @@ const covers: Record<string, string[]> = {
   ],
   Dialogs: [
     'closes the keyboard shortcuts with Escape and with a click outside, and focus goes back to the button that opened it',
-    'closes the editing templates and the work folder with Escape and with a click outside',
+    'closes the film templates and the work folder with Escape and with a click outside',
     'closes the question about connecting to the storage with Escape and with a click outside',
     'closes the question about putting files in the bin with Escape and with a click outside, Cancel first and what it does last',
     'closes the question about taking a destination off the board with Escape and with a click outside, the red button without an icon',

@@ -44,7 +44,7 @@ const partSaid = (part: SendPart) =>
       ? t`the photos`
       : part === 'film'
         ? t`the film`
-        : t`the project`
+        : t`the edit`
 
 const whatOf = (holds: SendPart[]) => holds.map(partSaid).join(' · ')
 
@@ -87,7 +87,7 @@ const insideOfParts = (holds: SendPart[], group: ManifestGroup): Inside[] => {
       ? [{ kind: 'folder' as const, name: 'photos/', count: photos.length, files: photos }]
       : []),
     ...(holds.includes('film') ? [{ kind: 'file' as const, name: `${stem}.mp4` }] : []),
-    ...(holds.includes('project') ? [{ kind: 'file' as const, name: `${stem}.kdenlive` }] : [])
+    ...(holds.includes('project') ? [{ kind: 'file' as const, name: `${stem}.edit.json` }] : [])
   ]
 }
 

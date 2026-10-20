@@ -1,5 +1,4 @@
 import {
-  EDIT_LOCKED,
   groupableCount,
   hasCompletePassenger,
   isMontage,
@@ -1023,13 +1022,7 @@ const Inspector = ({
       <MontagePanel
         key={jump.id}
         group={model.asOnStorage(jump)}
-        locked={
-          jump.freed
-            ? t`Freed from this machine — it is on the storage only now.`
-            : frozen.has(jump.id)
-              ? EDIT_LOCKED
-              : null
-        }
+        locked={jump.freed ? t`Freed from this machine — it is on the storage only now.` : null}
         passengers={model.passengers}
         onName={(first, last) => model.setPassenger(jump.id, first, last)}
         onShift={
@@ -1047,13 +1040,7 @@ const Inspector = ({
         group={model.asOnStorage(jump)}
         label={model.labels.get(jump.id) ?? jump.label}
         where={placeLabel(place)}
-        locked={
-          jump.freed
-            ? t`Freed from this machine — it is on the storage only now.`
-            : frozen.has(jump.id)
-              ? EDIT_LOCKED
-              : null
-        }
+        locked={jump.freed ? t`Freed from this machine — it is on the storage only now.` : null}
         statusOf={statusOf}
         passengers={model.passengers}
         edited={model.edited.has(jump.id)}
@@ -1203,7 +1190,6 @@ const Inspector = ({
               onStep={g.freed ? undefined : (step) => model.takeStep(g, step)}
               busy={board.busy !== null}
               held={model.heldOf(g)}
-              opensKdenlive={model.opensKdenlive(g)}
             />
           </Part>
         ))}

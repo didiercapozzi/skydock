@@ -2,13 +2,7 @@ import { afterNote } from '../helpers/sizes'
 import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, plural, t } from '@lingui/core/macro'
-import {
-  EDIT_LOCKED,
-  fileChanged,
-  fileStatus,
-  isWholeFrame,
-  UPLOADED_LOCKED
-} from '@skydock/scripts/client'
+import { fileChanged, fileStatus, isWholeFrame, UPLOADED_LOCKED } from '@skydock/scripts/client'
 import type { ProxyFact, StatusContext } from '@skydock/scripts'
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { pictureWidthFor, stepTileSize, useTileSize } from '../hooks/useTileSize'
@@ -77,11 +71,9 @@ const FREED_LOCKED = msg`Freed from this machine — it is on the storage only n
 const lockReason = (file: ManifestFile, context: StatusContext) =>
   file.freed
     ? i18n._(FREED_LOCKED)
-    : context.inEdit
-      ? EDIT_LOCKED
-      : fileStatus(file, context) === 'uploaded'
-        ? UPLOADED_LOCKED
-        : null
+    : fileStatus(file, context) === 'uploaded'
+      ? UPLOADED_LOCKED
+      : null
 
 const shownStatus = (file: ManifestFile, context: StatusContext): ShownStatus =>
   fileChanged(file, context) ? 'changed' : fileStatus(file, context)

@@ -60,13 +60,15 @@ const setup = async ({ projectInBackup = false } = {}) => {
   ]
   const film = path.join(folder, 'luc.mp4')
   fs.writeFileSync(film, Buffer.alloc(200, 9))
-  fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
+  fs.writeFileSync(path.join(folder, 'luc.edit.json'), '<mlt/>')
   const photosZip = (await writeArchive(path.join(folder, 'luc.photos.zip'), [
     { file: files[1]!.processed!.path, name: 'luc_2.jpg' }
   ]))!
   const rushesZip = (await writeArchive(path.join(folder, 'luc.rushes.zip'), [
     { file: files[0]!.path, name: 'GX01.MP4' },
-    ...(projectInBackup ? [{ file: path.join(folder, 'luc.kdenlive'), name: 'luc.kdenlive' }] : [])
+    ...(projectInBackup
+      ? [{ file: path.join(folder, 'luc.edit.json'), name: 'luc.edit.json' }]
+      : [])
   ]))!
 
   const sent = (local: string, remote: string) => ({
@@ -139,7 +141,7 @@ describe('freeing an uploaded montage', () => {
     const result = await free(manifest)
 
     expect(fs.existsSync(folder)).toBe(false)
-    expect(inTheBin()).toEqual(['luc.kdenlive'])
+    expect(inTheBin()).toEqual(['luc.edit.json'])
     expect(fs.readdirSync(originals)).toEqual([])
     expect(result.bytes).toBeGreaterThan(1000)
   })
@@ -224,12 +226,12 @@ describe('freeing an uploaded montage', () => {
     const { manifest, folder, onStorage } = await setup({ projectInBackup: true })
     withStorage(onStorage)
     const later = new Date(Date.now() + 60_000)
-    fs.utimesSync(path.join(folder, 'luc.kdenlive'), later, later)
+    fs.utimesSync(path.join(folder, 'luc.edit.json'), later, later)
 
     await free(manifest)
 
     expect(fs.existsSync(folder)).toBe(false)
-    expect(inTheBin()).toEqual(['luc.kdenlive'])
+    expect(inTheBin()).toEqual(['luc.edit.json'])
   })
 
   describe('a montage freed before, with its originals back', () => {

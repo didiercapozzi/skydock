@@ -327,7 +327,7 @@ describe('cropping the frame', () => {
     await processJumps({ manifestPath, outputDir })
     const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
     const beside = [
-      'luc_favre_20260808.kdenlive',
+      'luc_favre_20260808.edit.json',
       'luc_favre_20260808.mp4',
       'luc_favre_20260808.rushes.zip'
     ]

@@ -112,7 +112,6 @@ const settingsFor = (outputDir: string) => {
     SKYDOCK_OUTPUT_DIR: outputDir,
     SKYDOCK_CONFIG_DIR: configDir(),
     SKYDOCK_CLIENT_DIR: path.join(resources, 'client'),
-    SKYDOCK_TEMPLATES_DIR: path.join(resources, 'templates'),
     ELECTRON_RUN_AS_NODE: '1',
     UV_THREADPOOL_SIZE: process.env.UV_THREADPOOL_SIZE ?? '32'
   }

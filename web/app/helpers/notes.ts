@@ -1,37 +1,6 @@
-import type { Busy, ImportOutcome, MontageNote, ScanResult } from '@skydock/scripts'
+import type { Busy, ImportOutcome, ScanResult } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { formatFilmSize, localeDate } from '../components/utils'
-
-const montageNote = ({
-  clips,
-  photos = 0,
-  missingAssets,
-  opened,
-  openCommand,
-  openReason
-}: MontageNote) => {
-  const command = openCommand
-  if (clips === 0 && photos === 0 && opened)
-    return command ? t`Opening it with ${command}…` : t`Opening it…`
-  const made =
-    clips > 0
-      ? t`Montage ready — ${plural(clips, { one: '# clip', other: '# clips' })} in the bin`
-      : t`Montage ready — ${plural(photos, { one: '# photo', other: '# photos' })} in the bin`
-  const missing = missingAssets.length
-  const names = missingAssets.join(', ')
-  const holes =
-    missing === 0
-      ? ''
-      : t`, but the template is missing ${plural(missing, { one: '# file', other: '# files' })}: ${names}`
-  const editor = opened
-    ? command
-      ? ` · ${t`opening it with ${command}`}`
-      : ` · ${t`opening it`}`
-    : openReason
-      ? ` · ${openReason}`
-      : ''
-  return `${made}${holes}${editor}`
-}
 
 const importNote = ({ added, moved, there, kept, failed, where }: ImportOutcome) => {
   const file = added[0]
@@ -75,7 +44,7 @@ const uploadedNote = (uploaded: number, skipped?: number) => {
 const freedNote = ({ files, bytes }: { files: number; bytes: number }) => {
   const day = localeDate(Date.now() / 1000)
   const size = formatFilmSize(bytes)
-  return t`On the storage only. ${plural(files, { one: '# file', other: '# files' })} freed from this machine on ${day} — ${size} given back. The project is kept here; everything else is on the storage, as above.`
+  return t`On the storage only. ${plural(files, { one: '# file', other: '# files' })} freed from this machine on ${day} — ${size} given back. The edit is kept here; everything else is on the storage, as above.`
 }
 
 const freedPlaceNote = ({
@@ -217,7 +186,6 @@ export {
   freedNote,
   freedPlaceNote,
   importNote,
-  montageNote,
   restoredNote,
   scanNote,
   uploadedNote

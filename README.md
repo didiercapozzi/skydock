@@ -26,8 +26,7 @@ Nobody has signed them yet, so each system says so once and then never again:
 you pick, and it offers one in your videos. It is asked once and remembered. Pick a disk with room:
 a day of footage is tens of gigabytes before anything is uploaded.
 
-Nothing else has to be installed. SkyDock carries the tools it works with. The one exception is the
-video editor, kdenlive, which you need only to render a montage's film — see step 5.
+Nothing else has to be installed. SkyDock carries the tools it works with, the film editor included.
 
 It keeps itself current: when a new version is out it says so once and asks. On Windows and Linux it
 fetches the new one first, so saying yes is a restart rather than a wait; on a Mac it opens the
@@ -56,13 +55,12 @@ is the one decision the day actually needs, and nothing further happens to a jum
 the montage or the dropzone and the time they were shot, cropped and turned the way you asked on
 the board, and stamped so each file's date matches its name. The originals are never touched.
 
-**5. The film, for a montage.** **Make the project** builds an editing project from whichever template
-you chose, with the clips waiting in its bin, and opens it in kdenlive. You edit and render it there —
-SkyDock prepares the project and opens the editor, and never renders anything itself. A dropzone
-needs none of this.
+**5. The film, for a montage.** **Edit the film** opens SkyDock's own film editor with the clips laid
+end to end: trim and cut them, add music, texts and pictures, fade and crossfade, then render the film
+in one press, in the format, frame rate and quality you choose. A dropzone needs none of this.
 
 **6. Upload.** A destination's folder goes up whole and comes back with a share link. A montage is
-uploaded in two steps: first drag its parts — the original videos, the original photos, the project,
+uploaded in two steps: first drag its parts — the original videos, the original photos, the edit,
 the montage — onto zips of your own, the same part into several if you like, each zip showing what is
 inside; then drag the zips and the parts onto one destination or more, straight into its folder or
 into the project folder. The one holding the montage gets the share link. The zips and where things

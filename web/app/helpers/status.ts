@@ -4,12 +4,10 @@ import type { ManifestFile } from '../components/types'
 
 const fileFacts = ({
   outputs,
-  remote,
-  frozenFiles
+  remote
 }: {
   outputs: Record<string, OutputFact>
   remote: RemoteListing | null
-  frozenFiles: Set<string>
 }) => {
   const statusContext = (file: ManifestFile) => ({
     crop: {
@@ -19,8 +17,7 @@ const fileFacts = ({
       rotation: file.rotation
     },
     output: outputs[outputKeyOf(file)],
-    remote,
-    inEdit: !!file.id && frozenFiles.has(file.id)
+    remote
   })
   const statusOf = (file: ManifestFile) => fileStatus(file, statusContext(file))
   const gateFor = (files: ManifestFile[]) => uploadGate(files, statusContext)

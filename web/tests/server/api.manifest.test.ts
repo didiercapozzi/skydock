@@ -3,7 +3,6 @@ import * as path from 'node:path'
 import { setTimeout as sleep } from 'node:timers/promises'
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import {
-  EDIT_LOCKED,
   getGroupProcessedDir,
   loadManifestAsync,
   runUpload,
@@ -349,83 +348,8 @@ describe('changes made on the board', () => {
     })
   })
 
-  describe('the montage', () => {
-    it('is only for a montage', async () => {
-      await writeManifest([
-        group({
-          id: 'group_1',
-          destination: 'Yverdon',
-          processed: true,
-          files: [file({ id: 'a' })]
-        })
-      ])
-      const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
-      expect(res.success).toBe(false)
-    })
-
-    it('will not start one before the files have been processed', async () => {
-      await writeManifest([
-        group({
-          id: 'group_1',
-          montageJump: true,
-          passenger: { firstname: 'Luc', lastname: 'Favre' },
-          files: [file({ id: 'a' })]
-        })
-      ])
-      const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
-      expect(res.success).toBe(false)
-    })
-
-    it('is made once: asked again for a montage that has a project, it is refused', async () => {
-      await writeManifest([
-        group({
-          id: 'group_1',
-          montageJump: true,
-          passenger: { firstname: 'Luc', lastname: 'Favre' },
-          processed: true,
-          files: [file({ id: 'a' })]
-        })
-      ])
-      const folder = path.join(tmpDir, 'processed', 'Montages', 'Luc Favre')
-      fs.mkdirSync(folder, { recursive: true })
-      fs.writeFileSync(path.join(folder, 'the edit.kdenlive'), '<mlt/>')
-
-      const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
-
-      expect(res.globalErrors?.[0]).toContain('already has a project')
-      expect(fs.readFileSync(path.join(folder, 'the edit.kdenlive'), 'utf-8')).toBe('<mlt/>')
-    })
-
-    it('waits while a clip is still getting its proxy, and says how many', async () => {
-      const here = (id: string) => {
-        const at = path.join(tmpDir, `${id}.mp4`)
-        fs.writeFileSync(at, 'x')
-        return file({ id, path: at })
-      }
-      await writeManifest([
-        group({
-          id: 'group_1',
-          montageJump: true,
-          passenger: { firstname: 'Luc', lastname: 'Favre' },
-          processed: true,
-          files: [here('a'), here('b')]
-        })
-      ])
-      fs.mkdirSync(path.join(tmpDir, 'processed', 'Montages', 'Luc Favre', 'videos'), {
-        recursive: true
-      })
-
-      const res = refusal(await send({ intent: 'montage', groupId: 'group_1' }))
-
-      expect(res.globalErrors?.[0]).toContain('2 clips are still getting a proxy')
-      expect(fs.readdirSync(path.join(tmpDir, 'processed', 'Montages', 'Luc Favre'))).toEqual([
-        'videos'
-      ])
-    })
-  })
-
   describe('preparing a montage that has an edit', () => {
-    it('is allowed, and leaves its project where it is', async () => {
+    it('is allowed, and leaves its edit where it is', async () => {
       await writeManifest([
         group({
           id: 'group_1',
@@ -437,27 +361,12 @@ describe('changes made on the board', () => {
       ])
       const folder = path.join(tmpDir, 'processed', 'Montages', 'Luc Favre')
       fs.mkdirSync(folder, { recursive: true })
-      fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
+      fs.writeFileSync(path.join(folder, 'luc.edit.json'), '{}')
 
       const res = answer(await send({ intent: 'process', groupId: 'group_1' }))
 
       expect(res.groups).toHaveLength(1)
-      expect(fs.readFileSync(path.join(folder, 'luc.kdenlive'), 'utf-8')).toBe('<mlt/>')
-    })
-  })
-
-  describe('opening the project', () => {
-    it('has nothing to open before a montage was made', async () => {
-      await writeManifest([
-        group({
-          id: 'group_1',
-          montageJump: true,
-          passenger: { firstname: 'Luc', lastname: 'Favre' },
-          files: [file({ id: 'a' })]
-        })
-      ])
-      const res = refusal(await send({ intent: 'open-montage', groupId: 'group_1' }))
-      expect(res.globalErrors?.[0]).toContain('no project yet')
+      expect(fs.readFileSync(path.join(folder, 'luc.edit.json'), 'utf-8')).toBe('{}')
     })
   })
 
@@ -611,137 +520,6 @@ describe('changes made on the board', () => {
     })
   })
 
-  describe('a montage with an edit', () => {
-    const luc = () =>
-      group({
-        id: 'group_1',
-        montageJump: true,
-        passenger: { firstname: 'Luc', lastname: 'Favre' },
-        processed: true,
-        files: [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })]
-      })
-    const other = () => group({ id: 'group_2', files: [file({ id: 'c', mtime: 1_754_003_000 })] })
-
-    const projectPath = () => {
-      const { dir, baseName } = getGroupProcessedDir(tmpDir, luc())
-      return path.join(dir, `${baseName}.kdenlive`)
-    }
-
-    beforeEach(async () => {
-      await writeManifest([luc(), other()])
-      fs.mkdirSync(path.dirname(projectPath()), { recursive: true })
-      fs.writeFileSync(projectPath(), '<mlt/>')
-    })
-
-    const refused = async (res: unknown) => {
-      expect(refusal(res).globalErrors?.[0]).toBe(EDIT_LOCKED)
-      expect((await loadManifestAsync(path.join(tmpDir, 'manifest.json')))?.groups[0]).toEqual(
-        luc()
-      )
-    }
-
-    it('refuses a crop on one of its clips', async () => {
-      const cropped = luc()
-      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
-      await refused(await send({ intent: 'save-groups', groups: [cropped, other()] }))
-    })
-
-    it('refuses a new name, which would move the folder the edit is in', async () => {
-      await refused(
-        await send({
-          intent: 'save-groups',
-          groups: [{ ...luc(), passenger: { firstname: 'Luc', lastname: 'Favrè' } }, other()]
-        })
-      )
-    })
-
-    it('refuses another jump joining that passenger', async () => {
-      await refused(
-        await send({
-          intent: 'save-groups',
-          groups: [
-            luc(),
-            {
-              ...other(),
-              montageJump: true,
-              passenger: { firstname: 'Luc', lastname: 'Favre' }
-            }
-          ]
-        })
-      )
-    })
-
-    it('refuses files moving out of it or into it', async () => {
-      await refused(await send({ intent: 'move-files', fileIds: ['a'], destination: 'Yverdon' }))
-      await refused(await send({ intent: 'move-files', fileIds: ['c'], targetGroupId: 'group_1' }))
-    })
-
-    it('refuses re-timing and merging it', async () => {
-      await refused(
-        await send({ intent: 'shift-group-time', groupId: 'group_1', anchorEpoch: 1_754_009_000 })
-      )
-      await refused(await send({ intent: 'merge-groups', leftId: 'group_2', rightId: 'group_1' }))
-    })
-
-    it('lets it be prepared again', async () => {
-      const res = answer(await send({ intent: 'process', groupId: 'group_1' }))
-      expect(res.groups).toHaveLength(2)
-    })
-
-    it('still lets the rest of the board be saved around it', async () => {
-      const res = answer(
-        await send({
-          intent: 'save-groups',
-          groups: [luc(), { ...other(), destination: 'Yverdon' }]
-        })
-      )
-      expect(res.groups.find((g) => g.id === 'group_2')?.destination).toBe('Yverdon')
-    })
-
-    it('can still be reset, which takes the edit with it and keeps the name and crops', async () => {
-      const cropped = luc()
-      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
-      await writeManifest([cropped, other()])
-      const res = answer(await send({ intent: 'reset-montage', groupId: 'group_1' }))
-      expect(fs.existsSync(projectPath())).toBe(false)
-      const g = res.groups.find((x) => x.id === 'group_1')
-      expect(g?.processed).toBeUndefined()
-      expect(g?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
-      expect(g?.files[0]?.cropStart).toBe(1)
-    })
-
-    it('can be deleted, which sends its jump back to be sorted', async () => {
-      const res = answer(await send({ intent: 'delete-montage', groupId: 'group_1' }))
-      expect(fs.existsSync(projectPath())).toBe(false)
-      const g = res.groups.find((x) => x.id === 'group_1')
-      expect(g?.destination).toBeUndefined()
-      expect(g?.passenger).toBeUndefined()
-    })
-
-    it('is lifted by starting the edit again, which keeps the project aside and leaves the copies and the name', async () => {
-      const res = answer(
-        await send({ intent: 'start-edit-again', groupId: 'group_1', edit: 'kdenlive' })
-      )
-
-      expect(fs.existsSync(projectPath())).toBe(false)
-      expect(fs.readdirSync(path.join(tmpDir, '.projects', 'Luc Favre'))).toHaveLength(1)
-      expect(res.groups[0]?.processed).toBe(true)
-      expect(res.groups[0]?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
-      const cropped = luc()
-      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
-      const saved = answer(await send({ intent: 'save-groups', groups: [cropped, other()] }))
-      expect(saved.groups[0]?.files[0]?.cropStart).toBe(1)
-    })
-
-    it('is lifted by deleting the project', async () => {
-      fs.rmSync(projectPath())
-      const cropped = luc()
-      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
-      const res = answer(await send({ intent: 'save-groups', groups: [cropped, other()] }))
-      expect(res.groups[0]?.files[0]?.cropStart).toBe(1)
-    })
-  })
-
   describe('a montage whose film is edited in SkyDock', () => {
     const luc = () =>
       group({
@@ -792,7 +570,31 @@ describe('changes made on the board', () => {
       await writeManifest([g, other()])
     })
 
+    const editFile = () => {
+      const { dir, baseName } = where(luc())
+      return path.join(dir, `${baseName}.edit.json`)
+    }
     const current = async () => (await loadManifestAsync(path.join(tmpDir, 'manifest.json')))!
+
+    it('can still be reset, which takes the edit with it and keeps the name and crops', async () => {
+      const cropped = luc()
+      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
+      await writeManifest([cropped, other()])
+      const res = answer(await send({ intent: 'reset-montage', groupId: 'group_1' }))
+      expect(fs.existsSync(editFile())).toBe(false)
+      const g = res.groups.find((x) => x.id === 'group_1')
+      expect(g?.processed).toBeUndefined()
+      expect(g?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
+      expect(g?.files[0]?.cropStart).toBe(1)
+    })
+
+    it('can be deleted, which sends its jump back to be sorted', async () => {
+      const res = answer(await send({ intent: 'delete-montage', groupId: 'group_1' }))
+      expect(fs.existsSync(editFile())).toBe(false)
+      const g = res.groups.find((x) => x.id === 'group_1')
+      expect(g?.destination).toBeUndefined()
+      expect(g?.passenger).toBeUndefined()
+    })
 
     it('takes a crop on one of its clips, and files in and out of it', async () => {
       const cropped = (await current()).groups[0]!

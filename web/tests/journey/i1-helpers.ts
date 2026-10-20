@@ -1,50 +1,27 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { expect } from 'vitest'
 import { z } from 'zod'
 import type { Page } from 'playwright'
 import type { World } from './app'
 import type { Journey } from './harness'
-import { WHO } from './media'
+import { editFile, WHO } from './media'
 import { readJson } from './record'
-import { details, dialogNamed, place } from './steps'
+import { details, place } from './steps'
 
-const editorEnv = (world: World) => ({
-  SKYDOCK_EDITOR_COMMAND: path.join(world.root, 'bin', 'editor.sh')
-})
-
-const putEditor = (world: World) => {
-  const bin = path.join(world.root, 'bin')
-  fs.mkdirSync(bin, { recursive: true })
+const putEdit = (world: World, who = WHO) => {
+  fs.mkdirSync(path.dirname(editFile(world, who)), { recursive: true })
   fs.writeFileSync(
-    path.join(bin, 'editor.sh'),
-    `#!/bin/sh\necho "$@" >> "${path.join(world.root, 'editor.log')}"\n`,
-    { mode: 0o755 }
+    editFile(world, who),
+    JSON.stringify({ version: 1, clips: [], music: [], texts: [], underSound: 0.15 })
   )
 }
 
-const editorCalls = (world: World) => {
-  const log = path.join(world.root, 'editor.log')
-  return fs.existsSync(log) ? fs.readFileSync(log, 'utf8').split('\n').filter(Boolean) : []
-}
-
-const templateProject = (music: string) => `<?xml version='1.0' encoding='utf-8'?>
-<mlt root="/nowhere">
- <profile frame_rate_num="25" frame_rate_den="1" width="1920" height="1080"/>
- <producer id="producer0"><property name="resource">black</property></producer>
- <producer id="music"><property name="resource">/home/them/club/${music}</property></producer>
- <playlist id="playlist0"><entry producer="music" in="0" out="2499"/></playlist>
- <tractor id="tractor0"><property name="kdenlive:audio_track">1</property><track hide="video" producer="playlist0"/></tractor>
- <playlist id="main_bin"><property name="kdenlive:docproperties.kdenliveversion">24.08.1</property></playlist>
- <tractor id="tractor5"><property name="kdenlive:uuid">{25cd7034-f98e-4260-b8b3-f34fd91e8906}</property><track producer="producer0"/><track producer="tractor0"/></tractor>
-</mlt>
-`
-
-const putTemplate = (world: World, name: string, options: { music?: boolean } = {}) => {
-  const folder = path.join(world.computer, name)
-  fs.mkdirSync(path.join(folder, 'sounds'), { recursive: true })
-  fs.writeFileSync(path.join(folder, `${name}.kdenlive`), templateProject('song.mp3'))
-  if (options.music !== false) fs.writeFileSync(path.join(folder, 'sounds', 'song.mp3'), 'music')
-  return folder
+const makeEdit = async (j: Journey, who = WHO) => {
+  putEdit(j.world, who)
+  await expect
+    .poll(async () => await place(j.page, who).innerText(), { timeout: 30_000 })
+    .toContain('to render')
 }
 
 const seedMoments = (world: World) => {
@@ -104,26 +81,6 @@ const makeAndPrepare = async (j: Journey) => {
   await takeStep(j.page, 'Process', 'Edit the film')
 }
 
-const templatesDialog = (page: Page) => dialogNamed(page, 'Editing templates')
-
-const bringTemplate = async (page: Page, folder: string) => {
-  const dialog = templatesDialog(page)
-  const chooser = page.waitForEvent('filechooser')
-  await dialog.getByRole('button', { name: 'Choose the folder…' }).click()
-  await (await chooser).setFiles(folder)
-  return dialog
-}
-
-const makeProject = async (page: Page, folder: string) => {
-  await page.getByRole('button', { name: 'Make a kdenlive project' }).click()
-  const dialog = templatesDialog(page)
-  await dialog.waitFor()
-  await bringTemplate(page, folder)
-  await dialog.getByText('every file here').waitFor()
-  await dialog.getByRole('button', { name: 'Make the montage' }).click()
-  await page.getByRole('button', { name: 'Open in kdenlive' }).first().waitFor({ timeout: 30_000 })
-}
-
 const putSlowFfmpeg = (world: World) => {
   const bin = path.join(world.root, 'bin')
   fs.mkdirSync(bin, { recursive: true })
@@ -150,19 +107,14 @@ const slowFfmpegEnv = (world: World) => ({
 })
 
 export {
-  bringTemplate,
-  editorCalls,
-  editorEnv,
   makeAndPrepare,
-  makeProject,
+  makeEdit,
   nameFile,
   nameJump,
-  putEditor,
+  putEdit,
   putSlowFfmpeg,
-  putTemplate,
   seedMoments,
   seedTrim,
   slowFfmpegEnv,
-  takeStep,
-  templatesDialog
+  takeStep
 }

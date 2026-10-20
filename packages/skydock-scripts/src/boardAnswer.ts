@@ -11,12 +11,8 @@ const proxyFactSchema = z.object({
 })
 
 const montageFactSchema = z.object({
-  project: z.boolean(),
-  edit: z.boolean().optional(),
-  kdenlive: z.boolean().optional(),
-  latest: z.enum(['edit', 'kdenlive']).nullable().optional(),
+  edit: z.boolean(),
   projectFiles: z.array(z.string()).optional(),
-  projectPath: z.string(),
   film: z
     .object({
       size: z.number(),
@@ -32,15 +28,6 @@ const remoteListingSchema = z.object({
   dirs: z.array(z.string()),
   sizes: z.record(z.string(), z.number().nullable()),
   at: z.number()
-})
-
-const montageNoteSchema = z.object({
-  clips: z.number(),
-  photos: z.number().optional(),
-  missingAssets: z.array(z.string()),
-  opened: z.boolean().optional(),
-  openCommand: z.string().optional(),
-  openReason: z.string().optional()
 })
 
 const scanResultSchema = z.object({
@@ -71,7 +58,6 @@ const boardAnswerSchema = z.object({
   remote: remoteListingSchema.optional(),
   uploaded: z.number().optional(),
   skipped: z.number().optional(),
-  montage: montageNoteSchema.optional(),
   scan: scanResultSchema.optional(),
   freed: z.object({ bytes: z.number(), files: z.number(), groupId: z.string() }).optional(),
   processCancelled: z.boolean().optional(),
@@ -109,19 +95,10 @@ const boardAnswerSchema = z.object({
 
 type BoardAnswer = z.infer<typeof boardAnswerSchema>
 type ImportOutcome = z.infer<typeof importOutcomeSchema>
-type MontageNote = z.infer<typeof montageNoteSchema>
 type OutputFact = z.infer<typeof outputFactSchema>
 type ProxyFact = z.infer<typeof proxyFactSchema>
 type ScanResult = z.infer<typeof scanResultSchema>
 type MontageFact = z.infer<typeof montageFactSchema>
 
 export { boardAnswerSchema, importOutcomeSchema, proxyFactSchema, montageFactSchema }
-export type {
-  BoardAnswer,
-  ImportOutcome,
-  MontageNote,
-  OutputFact,
-  ProxyFact,
-  ScanResult,
-  MontageFact
-}
+export type { BoardAnswer, ImportOutcome, OutputFact, ProxyFact, ScanResult, MontageFact }

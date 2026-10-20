@@ -136,12 +136,10 @@ Status: **done** · **todo**. A chapter whose app behaviour is wrong is written,
 | Chapter                                                                                   | Tier | State |
 | ----------------------------------------------------------------------------------------- | ---- | ----- |
 | make a montage from a jump; copied not moved; the six steps                               | A    | done |
-| the project is made once; the editor (a stub that records its arguments) gets the right file | A | done |
 | an edit freezes the montage; prepare again; every version kept                            | A    | done |
 | a finished film dropped in is noticed                                                     | A    | done |
 | upload: zips, where it goes, refusals, what was handed over; the storage's list of montages | A  | done |
 | the link, its language, the QR code, the email dialog and "was it sent"                   | A    | done |
-| templates: import, owned by the folder's owner, chosen per montage                        | A    | done |
 | freeing and taking a montage back; reset and delete at every step                         | A    | done |
 
 ### J. Staying true (the whole run)
@@ -158,7 +156,6 @@ Status: **done** · **todo**. A chapter whose app behaviour is wrong is written,
 | Not in the journey                          | Why                                                | What covers it                         |
 | ------------------------------------------- | -------------------------------------------------- | -------------------------------------- |
 | real DSM and Synology Photos                | e.g. Photos is stopped at night and never rescans  | by hand; the fake can mimic "not indexed" |
-| kdenlive rendering                          | not in the container                               | the project file's content is asserted; render by hand on the host |
 | GPU encode, packaged installers, self-update | need the host / a release                          | host smoke by hand; release checklist  |
 | a real camera mount (gvfs, kio, MTP)        | needs a mount; Linux discovers cameras from mounts | unit tests with temp roots; try a bind mount, else exempt |
 

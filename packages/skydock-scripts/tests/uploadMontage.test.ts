@@ -87,7 +87,6 @@ type SceneOptions = {
   photos?: number
   processed?: boolean
   noPassenger?: boolean
-  edits?: ('kdenlive' | 'edit')[]
 }
 
 const scene = (options: SceneOptions = {}) => {
@@ -96,8 +95,7 @@ const scene = (options: SceneOptions = {}) => {
     videos = 2,
     photos = 2,
     processed = true,
-    noPassenger = false,
-    edits = ['kdenlive']
+    noPassenger = false
   } = options
   const passenger = noPassenger ? undefined : { firstname: 'Luc', lastname: 'Favre' }
   const outputDir = createTmpDir('skydock-upload-montage-')
@@ -147,10 +145,7 @@ const scene = (options: SceneOptions = {}) => {
     })
   }
 
-  if (edits.includes('kdenlive'))
-    fs.writeFileSync(path.join(groupDir, 'luc_favre_20260802.kdenlive'), '<mlt/>')
-  if (edits.includes('edit'))
-    fs.writeFileSync(path.join(groupDir, 'luc_favre_20260802.edit.json'), '{"version":1}')
+  fs.writeFileSync(path.join(groupDir, 'luc_favre_20260802.edit.json'), '{"version":1}')
   if (film) fs.writeFileSync(path.join(groupDir, film), Buffer.alloc(128, 7))
 
   const group: ManifestGroup = {
@@ -304,7 +299,7 @@ describe('uploading a montage — where each item goes', () => {
       to: ['/Backup/luc-favre'],
       size: expect.any(Number),
       zip: true,
-      contents: ['videos/GX018570.MP4', 'videos/GX018571.MP4', `${stem}.kdenlive`]
+      contents: ['videos/GX018570.MP4', 'videos/GX018571.MP4', `${stem}.edit.json`]
     })
   })
 })
@@ -330,30 +325,11 @@ describe('uploading a montage — where in a destination', () => {
 })
 
 describe('uploading a montage — what is zipped', () => {
-  it('puts the videos under videos/ and the project at the top of one zip', async () => {
+  it('puts the videos under videos/ and the edit at the top of one zip', async () => {
     const { groupDir, stem } = await upload()
     expect(contents(groupDir, `${stem}.videos.zip`)).toEqual([
       'videos/GX018570.MP4',
       'videos/GX018571.MP4',
-      `${stem}.kdenlive`
-    ])
-  })
-
-  it('puts the film editor’s edit in as the montage’s edit when that is the edit it has', async () => {
-    const { groupDir, stem } = await upload({ edits: ['edit'] })
-    expect(contents(groupDir, `${stem}.videos.zip`)).toEqual([
-      'videos/GX018570.MP4',
-      'videos/GX018571.MP4',
-      `${stem}.edit.json`
-    ])
-  })
-
-  it('puts both edits in, each under its own ending, when the montage has both', async () => {
-    const { groupDir, stem } = await upload({ edits: ['kdenlive', 'edit'] })
-    expect(contents(groupDir, `${stem}.videos.zip`)).toEqual([
-      'videos/GX018570.MP4',
-      'videos/GX018571.MP4',
-      `${stem}.kdenlive`,
       `${stem}.edit.json`
     ])
   })
@@ -371,7 +347,7 @@ describe('uploading a montage — what is zipped', () => {
       'videos/GX018571.MP4',
       'photos/luc_favre_20260802_113000.jpg',
       'photos/luc_favre_20260802_113001.jpg',
-      `${stem}.kdenlive`
+      `${stem}.edit.json`
     ])
     expect(into(uploads, '/Backup/luc-favre')).toEqual([`${stem}.full.zip`])
   })
@@ -502,13 +478,13 @@ describe('uploading a montage — the awkward cases', () => {
   })
 })
 
-describe('what the board knows of a montage’s project and film', () => {
-  it('sees the project and the film once they are there', async () => {
+describe('what the board knows of a montage’s edit and film', () => {
+  it('sees the edit and the film once they are there', async () => {
     const { outputDir, manifest, group } = scene()
     const found = await montageArtifacts(outputDir, group)
-    expect(found.project).toBe(true)
+    expect(found.edit).toBe(true)
     expect(found.film?.size).toBe(128)
-    expect((await statMontageArtifacts(manifest, outputDir)).g1.project).toBe(true)
+    expect((await statMontageArtifacts(manifest, outputDir)).g1.edit).toBe(true)
   })
 
   it('reports no film before the render', async () => {

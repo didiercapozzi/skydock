@@ -19,10 +19,8 @@ import { NameMontageDialog } from './name-montage-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
 import { StartAgainDialog } from './start-again-dialog'
-import type { StartAgainWhich } from './start-again-dialog'
 import { TakeBackDialog } from './take-back-dialog'
 import { FilmTemplatesDialog } from './film-templates-dialog'
-import { TemplatesDialog } from './templates-dialog'
 import type { TakeBackMode } from './take-back-dialog'
 import type { Destination, ManifestFile, ManifestGroup } from './types'
 import { UploadDialog } from './upload-dialog'
@@ -52,7 +50,6 @@ type BoardDialog =
   | { kind: 'remove-files'; files: ManifestFile[] }
   | { kind: 'email'; groupId?: string }
   | { kind: 'reset-fresh'; files: number; decided: number }
-  | { kind: 'templates'; groupId?: string }
   | { kind: 'filmTemplates' }
   | { kind: 'name-montage'; groupId?: string; fileIds?: string[]; keeps?: string }
   | { kind: 'work-folder' }
@@ -86,7 +83,6 @@ const DialogHost = ({
   onTakeBack,
   onStartAgain,
   onDeleteJump,
-  onMontage,
   passengers,
   onNameMontage,
   workFolder,
@@ -123,9 +119,8 @@ const DialogHost = ({
   onRemovePlace: (place: string) => void
   onDisconnect: () => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
-  onStartAgain: (group: ManifestGroup, which: StartAgainWhich) => void
+  onStartAgain: (group: ManifestGroup) => void
   onDeleteJump: (group: ManifestGroup) => void
-  onMontage: (groupId: string, template: string) => void
   passengers: Passenger[]
   onNameMontage: (what: { groupId?: string; fileIds?: string[] }, passenger: Passenger) => void
   workFolder: { folder: string; working: string | null }
@@ -350,13 +345,12 @@ const DialogHost = ({
         (() => {
           const group = groups.find((g) => g.id === dialog.groupId)
           const known = group && facts[group.id]
-          if (!group || !known?.project) return null
+          if (!group || !known?.edit) return null
           return (
             <StartAgainDialog
               who={passengerOf(group)}
-              facts={known}
               onClose={close}
-              onConfirm={(which) => onStartAgain(group, which)}
+              onConfirm={() => onStartAgain(group)}
             />
           )
         })()}
@@ -386,18 +380,6 @@ const DialogHost = ({
       )}
 
       {dialog?.kind === 'filmTemplates' && <FilmTemplatesDialog onClose={close} />}
-
-      {dialog?.kind === 'templates' &&
-        (() => {
-          const montage = groups.find((g) => g.id === dialog.groupId)
-          return (
-            <TemplatesDialog
-              who={montage ? passengerOf(montage) : undefined}
-              onClose={close}
-              onChoose={montage ? (template) => onMontage(montage.id, template) : undefined}
-            />
-          )
-        })()}
     </>
   )
 }

@@ -35,7 +35,7 @@ beforeEach(async () => {
   outputDir = createTmpDir('skydock-watch-')
   folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
   fs.mkdirSync(folder, { recursive: true })
-  fs.writeFileSync(path.join(folder, 'luc_favre_20260801.kdenlive'), '<mlt/>')
+  fs.writeFileSync(path.join(folder, 'luc_favre_20260801.edit.json'), '<mlt/>')
   const at = Math.floor(new Date(2026, 7, 1, 10, 0, 0).getTime() / 1000)
   const files = [{ id: 'v1', path: '/o/GX01.MP4', filename: 'GX01.MP4', size: 1, mtime: at }]
   const manifest: Manifest = {
@@ -128,6 +128,6 @@ describe('a film rendered by the editor', () => {
 
     expect(montagesTold()).toHaveLength(1)
     expect(montagesTold()[0]).toMatchObject({ rendered: false })
-    expect(montagesTold()[0]?.fact).toMatchObject({ project: true })
+    expect(montagesTold()[0]?.fact).toMatchObject({ edit: true })
   })
 })

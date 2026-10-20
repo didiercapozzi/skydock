@@ -138,7 +138,7 @@ describe('a montage as it was handed over', () => {
           at: 1_785_000_000,
           sent: [
             sent[0],
-            { name: 'ana_roth_20260728.project.zip', holds: ['project'], to: [`${DIR}/ana-roth`], size: GB, zip: true, contents: ['x.kdenlive'] }
+            { name: 'ana_roth_20260728.project.zip', holds: ['project'], to: [`${DIR}/ana-roth`], size: GB, zip: true, contents: ['x.edit.json'] }
           ]
         }
       }),

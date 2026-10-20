@@ -261,7 +261,7 @@ describe('a montage’s entry', () => {
             to: ['/Backup/luc'],
             size: 5000,
             zip: true,
-            contents: ['videos/GX01.MP4', 'luc.kdenlive']
+            contents: ['videos/GX01.MP4', 'luc.edit.json']
           }
         ]
       }

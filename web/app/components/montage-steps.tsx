@@ -21,20 +21,18 @@ const StepButton = ({
   step,
   busy,
   held,
-  opensKdenlive,
   onStep
 }: {
   step: MontageStep
   busy: boolean
   held: Busy | null
-  opensKdenlive: boolean
   onStep: (step: MontageStep) => void
 }) => {
   const action = STEP_ACTION[step]
   if (!action) return null
   const Button = step === 'Sent' ? Go : Mini
   const holds = held !== null && (step === 'Prepared' || step === 'Uploaded')
-  const navigates = step === 'Project' || (step === 'Film' && !opensKdenlive)
+  const navigates = step === 'Project' || step === 'Film'
   return (
     <Button
       disabled={(busy && !navigates) || holds}
@@ -84,8 +82,7 @@ const StepTrail = ({
   emailed,
   onStep,
   busy = false,
-  held = null,
-  opensKdenlive = false
+  held = null
 }: {
   group: ManifestGroup
   facts?: MontageFact
@@ -93,7 +90,6 @@ const StepTrail = ({
   onStep?: (step: MontageStep) => void
   busy?: boolean
   held?: Busy | null
-  opensKdenlive?: boolean
 }) => {
   const { steps, at, next } = montageSteps({ group, facts, emailed })
   const how = next?.how ?? ''
@@ -146,7 +142,6 @@ const StepTrail = ({
                       step={step.name}
                       busy={busy}
                       held={held}
-                      opensKdenlive={opensKdenlive}
                       onStep={onStep}
                     />
                   </span>

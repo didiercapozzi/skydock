@@ -18,7 +18,6 @@ const removeDestinationIntent: Intent = async ({
   data,
   manifest,
   manifestPath,
-  frozen,
   refuse,
   refuseBusy
 }) => {
@@ -28,8 +27,6 @@ const removeDestinationIntent: Intent = async ({
   const filed = manifest.groups.filter((group) => group.destination === name)
   const busy = refuseBusy({ destination: name, groupIds: filed.map((group) => group.id) })
   if (busy) return busy
-  if (filed.some((group) => frozen.has(group.id) && !group.freed))
-    return refuse('A montage there has a kdenlive project — change it in kdenlive first.')
   if (filed.some((group) => group.uploaded || group.freed))
     return refuse('Something there is on the storage — uploaded is the end of editing.')
   if (

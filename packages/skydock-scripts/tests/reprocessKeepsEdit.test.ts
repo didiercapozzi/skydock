@@ -66,7 +66,7 @@ const everything = () => {
 }
 
 const addEdit = () => {
-  fs.writeFileSync(path.join(groupDir(), 'luc_favre.kdenlive'), '<mlt/>')
+  fs.writeFileSync(path.join(groupDir(), 'luc_favre_20260808.edit.json'), '<mlt/>')
   fs.writeFileSync(path.join(groupDir(), 'luc_favre.mp4'), 'film')
   fs.writeFileSync(path.join(groupDir(), 'luc_favre.photos.zip'), 'zip')
 }
@@ -90,7 +90,11 @@ describe('processing a montage again', () => {
     await prepare([clip('GX01.MP4', AT)])
 
     expect(inside(groupDir())).toEqual(
-      expect.arrayContaining(['luc_favre.kdenlive', 'luc_favre.mp4', 'luc_favre.photos.zip'])
+      expect.arrayContaining([
+        'luc_favre_20260808.edit.json',
+        'luc_favre.mp4',
+        'luc_favre.photos.zip'
+      ])
     )
   })
 
@@ -121,7 +125,9 @@ describe('processing a montage again', () => {
     await prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
 
     const kept = everything().filter((file) => file.startsWith('.projects'))
-    expect(kept).toEqual([expect.stringMatching(/^\.projects\/Luc Favre\/luc_favre-.*\.kdenlive$/)])
+    expect(kept).toEqual([
+      expect.stringMatching(/^\.projects\/Luc Favre\/luc_favre_20260808-.*\.edit\.json$/)
+    ])
     expect(everything().filter((file) => !kept.includes(file))).toEqual(after)
     expect(fs.existsSync(path.join(outputDir, '.trash'))).toBe(false)
   })

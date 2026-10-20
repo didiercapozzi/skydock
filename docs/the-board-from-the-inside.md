@@ -44,14 +44,14 @@ flowchart LR
 
 ### A montage
 
-One name is one folder, and the edit is the one thing that cannot be made again — which is why a montage with a project stops accepting changes.
+One name is one folder, and the edit is the one thing that cannot be made again — which is why it is kept aside in every version, and why a new name renames the montage whole.
 
 ```mermaid
 flowchart LR
   jump[a jump] -->|save-groups| pax[filed under a passenger]
   pax -->|process| copies[copies in their folder]
-  copies -->|montage| project[an editing project]
-  project -->|the editor, by hand| film["the film, rendered"]
+  copies -->|the film editor| edit[an edit]
+  edit -->|render| film["the film, rendered"]
   film -->|upload-montage| storage[("their folder, and the backup")]
   storage -->|mark-emailed| told(["told, with their link"])
   storage -->|free-montage| room([room back])
@@ -72,7 +72,7 @@ flowchart LR
 
 ## Every way in, in detail
 
-The arrows above are the ones worth remembering. These are all of them — **39**,
+The arrows above are the ones worth remembering. These are all of them — **38**,
 of which **24** write the board's own record — grouped by the rule each one serves, in its own
 words. Worth reading when you are in one of them, not before.
 
@@ -107,7 +107,9 @@ The rule itself is in [RULES.md](../RULES.md), under _Freeing space_.
 
 - _whatever went wrong underneath, in its own words_
 - Connect the storage first — freeing needs it to prove it holds the files.
-- Something is being processed — wait for it to finish.
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
 
 </details>
 
@@ -115,7 +117,9 @@ The rule itself is in [RULES.md](../RULES.md), under _Freeing space_.
 
 - _whatever went wrong underneath, in its own words_
 - Connect the storage first — freeing needs it to prove it holds the files.
-- Something is being processed — wait for it to finish.
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
 
 </details>
 
@@ -142,22 +146,14 @@ The rule itself is in [RULES.md](../RULES.md), under _Jumps_.
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
 | `move-files` | Files go from wherever they are into a jump, a new jump or a place — the one move a drag on the board and a drop from the computer both make (RULES, Jumps). | writes the record, works outside the record |
-| `copy-files` | Files copied into another jump, staying where they are as well (RULES, Jumps). | writes the record, works outside the record |
 | `delete-jump` | A jump is deleted and its files go back to Unsorted, loose (RULES, Jumps). | writes the record, works outside the record |
-| `reset-fresh` | Fresh files put back as a scan would first have left them (RULES, Jumps). | writes the record, works outside the record |
 
 <details><summary><code>move-files</code> refuses</summary>
 
 - Select at least one file to move.
 - On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.
 - _whatever went wrong underneath, in its own words_
-
-</details>
-
-<details><summary><code>copy-files</code> refuses</summary>
-
-- Pick files and a jump to copy them into.
-- _whatever went wrong underneath, in its own words_
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
@@ -166,15 +162,10 @@ The rule itself is in [RULES.md](../RULES.md), under _Jumps_.
 - That jump is no longer on the board.
 - This jump is on the storage only — there is nothing here to move.
 - This jump is on the storage — uploaded is the end of editing.
-- It is being uploaded — delete it once the upload is done.
-- Something is being processed — wait for it to finish.
-
-</details>
-
-<details><summary><code>reset-fresh</code> refuses</summary>
-
-- There is nothing in Fresh files to reset.
-- Something is being processed — wait for it to finish.
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
@@ -191,6 +182,8 @@ The rule itself is in [RULES.md](../RULES.md), under _Making a montage_.
 - Pick the files the montage is made of.
 - Give the montage a name.
 - _whatever went wrong underneath, in its own words_
+- _a message naming the file or the jump_
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
@@ -207,6 +200,7 @@ The rule itself is in [RULES.md](../RULES.md), under _Network storage_.
 - Upload needs a group or a destination.
 - Upload a montage from its own card: its film and photos go to its folder and its original videos to the backup, which an upload of the whole folder cannot do.
 - It is being processed — upload it once that is done.
+- A film there is being rendered — upload it once the render is done.
 - _whatever went wrong underneath, in its own words_
 - _a message naming the file or the jump_
 - Connect the storage first.
@@ -225,9 +219,10 @@ The rule itself is in [RULES.md](../RULES.md), under _Places_.
 
 - Removing a place needs to know which one.
 - That place is no longer on the board.
-- A montage there has an edit — change it in kdenlive first.
 - Something there is on the storage — uploaded is the end of editing.
-- Something is being processed — wait for it to finish.
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
 
 </details>
 
@@ -275,7 +270,10 @@ The rule itself is in [RULES.md](../RULES.md), under _Putting files in the bin_.
 
 - Select at least one file to put in the bin.
 - _whatever went wrong underneath, in its own words_
-- Something is being processed — wait for it to finish.
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
@@ -311,16 +309,32 @@ The rule itself is in [RULES.md](../RULES.md), under _Taking a montage back_.
 | --- | --- | --- |
 | `reset-montage` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
 | `delete-montage` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
+| `start-edit-again` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
 
 <details><summary><code>reset-montage</code> refuses</summary>
 
 - _whatever went wrong underneath, in its own words_
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
 
 </details>
 
 <details><summary><code>delete-montage</code> refuses</summary>
 
 - _whatever went wrong underneath, in its own words_
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
+
+</details>
+
+<details><summary><code>start-edit-again</code> refuses</summary>
+
+- _whatever went wrong underneath, in its own words_
+- It is being processed — wait for it to finish.
+- It is being uploaded — wait for the upload to finish.
+- Its film is being rendered — wait for the render to finish, or cancel it.
 
 </details>
 
@@ -330,7 +344,7 @@ The rule itself is in [RULES.md](../RULES.md), under _The board_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `save-groups` | The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a frozen montage forbids — and answered with what was saved, so the board redraws from the server rather than trusting its own optimistic copy (RULES, The board). | writes the record |
+| `save-groups` | The board's own picture of the jumps, the places and each file's crop, saved as sent — bar what a frozen montage forbids — and answered with what was saved, so the board redraws from the server rather than trusting its own optimistic copy (RULES, The board). | writes the record, works outside the record |
 | `look-at-board` | The board looks at its record again, because the record changed under nobody's hand here — another tab, a script, a hand edit (RULES, The board). | answers, and changes nothing |
 
 <details><summary><code>save-groups</code> refuses</summary>
@@ -338,26 +352,7 @@ The rule itself is in [RULES.md](../RULES.md), under _The board_.
 - Save needs groups.
 - _whatever went wrong underneath, in its own words_
 - On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.
-
-</details>
-
-### The editing project
-
-The rule itself is in [RULES.md](../RULES.md), under _The editing project_.
-
-| asked for | what it does | what it reaches |
-| --- | --- | --- |
-| `montage` | A processed montage gets an editing project, the template as its owner made it with the clips in its bin, and the project is opened in the same press: it exists to be edited (RULES, The editing project). | writes the record, works outside the record |
-
-<details><summary><code>montage</code> refuses</summary>
-
-- Group not found.
-- Only a named montage gets a project — give it a name first.
-- Process this montage before making its project.
-- Processed folder not found. Process it again.
-- This montage already has a project — open it in kdenlive.
-- _whatever went wrong underneath, in its own words_
-- _a message naming the file or the jump_
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
@@ -384,6 +379,7 @@ The rule itself is in [RULES.md](../RULES.md), under _Times and dates_.
 - Shift needs a valid anchor time.
 - Group not found.
 - Group has no files.
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
@@ -393,6 +389,7 @@ The rule itself is in [RULES.md](../RULES.md), under _Times and dates_.
 - That is not a time.
 - This file is on the storage — uploaded is the end of editing.
 - That file is no longer on the board.
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
@@ -418,36 +415,31 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
 | `merge-groups` | Two jumps become one, and the one may be re-timed in the same move so that it starts, by its own run, at the anchor. | writes the record |
-| `open-montage` | the project is already there — this is the way back into it | works outside the record |
-| `process` | Process the jumps asked for — by id, by place, or all of them — and answer with the manifest as processing left it. | answers, and changes nothing |
-| `process-wait` | a page that came back while something was being processed waits here for it to finish | answers, and changes nothing |
-| `cancel-process` | Stops what is being processed, and answers once it has stopped, with the board as the run left it: the copies already finished stay on the disk, and nothing of the run counts as processed. | answers, and changes nothing |
+| `process` |  | answers, and changes nothing |
+| `cancel-process` |  | answers, and changes nothing |
 | `upload-wait` | a page that came back while something was being uploaded waits here for it to finish, and gets the board as the upload left it | answers, and changes nothing |
 | `cancel-upload` | Stops what is being uploaded, at any moment, and answers once it has stopped: nothing of it is recorded, and what was already sent is found again by the next upload. | answers, and changes nothing |
+| `cancel-render` |  | works outside the record |
 | `upload-montage` |  | works outside the record |
 | `reset-moments` | The marks put back where the camera measured them, whatever was moved by hand since. | writes the record, works outside the record |
 | `redo-moments` | For development only: a clip forgets where its jump is, marks moved by hand and all, and the pass that finds it runs again at once, with its progress shown as ever — for trying the finding out on real footage. | writes the record, works outside the record |
+| `copy-files` | the same files into another jump as well, staying where they are | writes the record, works outside the record |
 | `regroup-loose` | the loose files of the sorting area are clustered into jumps again, by time | writes the record |
+| `reset-fresh` | everything still in Fresh files, back as a scan would first have left it | writes the record, works outside the record |
 | `imported` | files were just added — from the computer, one request each, or off a camera as each lands: the board looks again, and hears how a drop went when there is a drop to hear about | answers, and changes nothing |
 | `mark-emailed` | The passenger was emailed — or, taken back, was not. | writes the record, needs the storage, writes the storage’s list |
 
 <details><summary><code>merge-groups</code> refuses</summary>
 
 - Merge needs two group ids.
-
-</details>
-
-<details><summary><code>open-montage</code> refuses</summary>
-
-- This montage has no project yet — make it first.
-- _whatever went wrong underneath, in its own words_
+- This montage was freed from this machine — nothing of it is here to change.
 
 </details>
 
 <details><summary><code>process</code> refuses</summary>
 
 - It is being uploaded — process it again once the upload is done.
-- _whatever went wrong underneath, in its own words_
+- Its film is being rendered from these copies — process it again once the render is done, or cancel it.
 
 </details>
 
@@ -460,6 +452,12 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 <details><summary><code>cancel-upload</code> refuses</summary>
 
 - Nothing is being uploaded.
+
+</details>
+
+<details><summary><code>cancel-render</code> refuses</summary>
+
+- Nothing is being rendered.
 
 </details>
 
@@ -479,9 +477,23 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 
 </details>
 
+<details><summary><code>copy-files</code> refuses</summary>
+
+- Pick files and a jump to copy them into.
+- _whatever went wrong underneath, in its own words_
+- This montage was freed from this machine — nothing of it is here to change.
+
+</details>
+
 <details><summary><code>regroup-loose</code> refuses</summary>
 
 - Nothing to regroup — the sorting area has no loose files.
+
+</details>
+
+<details><summary><code>reset-fresh</code> refuses</summary>
+
+- There is nothing in Fresh files to reset.
 
 </details>
 
@@ -498,8 +510,17 @@ The rule itself is in [RULES.md](../RULES.md), under _Where the jump is in a cli
 One rule enforced in one place is easy to see. These are enforced in several, which is the part that
 is hard to hold in your head: the same sentence, said by everything that has to say it.
 
-**Something is being processed — wait for it to finish.**
-`delete-jump` · `remove-destination` · `reset-fresh` · `trash-unsorted` · `free-montage` · `free-dropzone`
+**This montage was freed from this machine — nothing of it is here to change.**
+`save-groups` · `merge-groups` · `shift-group-time` · `retime-file` · `move-files` · `copy-files` · `make-montage` · `delete-jump` · `trash-unsorted`
+
+**It is being processed — wait for it to finish.**
+`delete-jump` · `remove-destination` · `trash-unsorted` · `reset-montage` · `delete-montage` · `start-edit-again` · `free-montage` · `free-dropzone`
+
+**It is being uploaded — wait for the upload to finish.**
+`delete-jump` · `remove-destination` · `trash-unsorted` · `reset-montage` · `delete-montage` · `start-edit-again` · `free-montage` · `free-dropzone`
+
+**Its film is being rendered — wait for the render to finish, or cancel it.**
+`delete-jump` · `remove-destination` · `trash-unsorted` · `reset-montage` · `delete-montage` · `start-edit-again` · `free-montage` · `free-dropzone`
 
 **That file is no longer on the board.**
 `retime-file` · `set-moment` · `reset-moments` · `redo-moments` · `play-file`
@@ -509,9 +530,6 @@ is hard to hold in your head: the same sentence, said by everything that has to 
 
 **On the NAS — cropping, re-timing and moving are closed. Take it off the NAS to change it.**
 `save-groups` · `move-files`
-
-**Group not found.**
-`montage` · `shift-group-time`
 
 **Connect the storage first — freeing needs it to prove it holds the files.**
 `free-montage` · `free-dropzone`
@@ -531,6 +549,6 @@ is hard to hold in your head: the same sentence, said by everything that has to 
 ## The other ways in
 
 These are the board's own, not everything that writes. `api/nas` has a list of its own,
-`api/share-link` another, and `api/scan`, `api/import` and `api/templates` write with no intent
+`api/share-link` another, and `api/scan` and `api/import` write with no intent
 at all — the Scan button is one of those. They are named here so this does not pretend to be
 everything.

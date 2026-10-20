@@ -79,8 +79,8 @@ const FolderOwed = ({
   const unnamed = by((g) => !hasCompletePassenger(g.passenger))
   const named = (g: ManifestGroup) => hasCompletePassenger(g.passenger)
   const toProcess = by((g) => named(g) && !g.processed && !g.uploaded)
-  const toEdit = by((g) => Boolean(g.processed) && !facts[g.id]?.project && !g.uploaded)
-  const toRender = by((g) => Boolean(facts[g.id]?.project) && !facts[g.id]?.film && !g.uploaded)
+  const toEdit = by((g) => Boolean(g.processed) && !facts[g.id]?.edit && !g.uploaded)
+  const toRender = by((g) => Boolean(facts[g.id]?.edit) && !facts[g.id]?.film && !g.uploaded)
   const toUpload = by((g) => Boolean(facts[g.id]?.film) && !g.uploaded)
   const uploaded = groups.filter((g) => g.uploaded).length
   if (unnamed + toProcess + toEdit + toRender + toUpload + uploaded === 0) return null

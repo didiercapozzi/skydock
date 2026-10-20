@@ -285,7 +285,7 @@ const freeMontage = async ({
       const stamp = new Date().toISOString().replace(/[:.]/g, '-')
       const bin = path.join(trashDir, `montage-${slugOf(label) || 'montage'}-${stamp}`)
       for (const entry of await readdir(dir).catch(() => []))
-        if (entry.endsWith('.kdenlive') || entry.endsWith('.edit.json'))
+        if (entry.endsWith('.edit.json'))
           await moveFile(path.join(dir, entry), path.join(bin, entry))
       bytes += await removeTree(path.join(outputDir, 'processed'), dir)
 

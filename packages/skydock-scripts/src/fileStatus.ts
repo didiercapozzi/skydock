@@ -19,7 +19,6 @@ type StatusContext = {
   }
   output?: OutputFact
   remote?: RemoteListing | null
-  inEdit?: boolean
 }
 
 const sourceMatches = (file: ManifestFile, context?: StatusContext) => {

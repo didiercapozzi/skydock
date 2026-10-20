@@ -2,15 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import {
-  editorEnv,
-  makeProject,
-  nameFile,
-  nameJump,
-  putEditor,
-  putTemplate,
-  seedTrim
-} from './i1-helpers'
+import { makeEdit, nameFile, nameJump, seedTrim } from './i1-helpers'
 import { filesUnder, montageFolder, originalsOf, renderFilm, WHO } from './media'
 import { groupsOf, manifestOf } from './record'
 import { details, dialogNamed, folders } from './steps'
@@ -20,10 +12,7 @@ const j = harness({
   state: 'sorted',
   prepare: (world) => {
     seedTrim(world, 'group_3')
-    putEditor(world)
-    putTemplate(world, 'club')
-  },
-  env: editorEnv
+  }
 })
 const { quiet, see } = j
 
@@ -100,13 +89,13 @@ describe('deleting a prepared montage', () => {
 })
 
 describe('deleting a montage that has an edit', () => {
-  test('names the edit on its own, removes the project, and keeps every version of it aside', async () => {
+  test('names the edit on its own, removes it, and keeps every version of it aside', async () => {
     await nameFile(j.page, 'DJI_20260906090000_0006_D.MP4', 'Marc Roux')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
-    await makeProject(j.page, path.join(j.world.computer, 'club'))
+    await makeEdit(j, 'Marc Roux')
     const folder = montageFolder(j.world, 'Marc Roux')
-    const project = filesUnder(folder).find((f) => f.endsWith('.kdenlive'))
+    const project = filesUnder(folder).find((f) => f.endsWith('.edit.json'))
     expect(project).toBeDefined()
     const mine = fs.readFileSync(path.join(folder, project!))
 
@@ -137,11 +126,7 @@ describe('deleting a montage that has its film', () => {
     await nameFile(j.page, 'DJI_20260906090300_0007_D.MP4', 'Eva Roux')
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
-    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
-    await j.page
-      .getByRole('button', { name: 'Open in kdenlive' })
-      .first()
-      .waitFor({ timeout: 30_000 })
+    await makeEdit(j, 'Eva Roux')
     const film = path.join(montageFolder(j.world, 'Eva Roux'), 'eva_roux_20260906.mp4')
     renderFilm(j.world, 'Eva Roux', 'eva_roux_20260906.mp4')
     await j.page.getByText('The film', { exact: true }).first().waitFor({ timeout: 30_000 })

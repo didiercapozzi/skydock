@@ -37,7 +37,7 @@ const changeOn = async (
 ) => {
   const outputDir = getOutputDir()
   const locks = await montageLocks(manifest, outputDir)
-  const frozen = new Set([...locks].flatMap(([id, lock]) => (lock === 'edit' ? [] : [id])))
+  const frozen = new Set([...locks].flatMap(([id, lock]) => (lock === 'freed' ? [id] : [])))
   const frozenFiles = new Map(
     manifest.groups
       .filter((g) => frozen.has(g.id))
@@ -52,7 +52,7 @@ const changeOn = async (
     frozen,
     frozenFiles,
     refuse,
-    refuseFrozen: (groupId?: string) => refuse(lockedSaid(locks.get(groupId ?? ''))),
+    refuseFrozen: (_groupId?: string) => refuse(lockedSaid()),
     refuseBusy: (scope: BusyScope) => {
       const busy = busyWith(scope)
       return busy ? refuse(busySaid(busy)) : null

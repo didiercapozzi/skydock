@@ -49,24 +49,19 @@ describe('uploading a montage: make the zips', () => {
     await j.see('Upload…')
     await connectStorage(j.page, storage)
     await openUpload(j.page)
-    for (const name of [
-      'Original videos',
-      'Original photos',
-      'The montage',
-      'The kdenlive project'
-    ])
+    for (const name of ['Original videos', 'Original photos', 'The montage', 'The edit'])
       await part(name).waitFor()
     await j.quiet()
   })
 
-  test('starts with one zip of the originals, the photos and the project, named from the montage and the day and time of its first jump, and puts it in Backup', async () => {
+  test('starts with one zip of the originals, the photos and the edit, named from the montage and the day and time of its first jump, and puts it in Backup', async () => {
     await counted(zips()).toBe(1)
     const full = region(j.page, FULL)
     await said(full).toContain('videos/')
     await said(full).toContain('2 clips')
     await said(full).toContain('photos/')
     await said(full).toContain('1 photo')
-    await said(full).toContain(`${STEM}.kdenlive`)
+    await said(full).toContain(`${STEM}.edit.json`)
     await said(region(j.page, 'Backup')).toContain(FULL)
     await counted(region(j.page, 'Club')).toBe(0)
     await j.quiet()
@@ -139,9 +134,9 @@ describe('uploading a montage: make the zips', () => {
 
 describe('uploading a montage: where it goes', () => {
   test('lists every zip with its whole name and, among the destinations something is already in, the ones to add', async () => {
-    await dragPart(j.page, 'The kdenlive project', region(j.page, FULL))
+    await dragPart(j.page, 'The edit', region(j.page, FULL))
     await dragPart(j.page, 'The montage', region(j.page, FULL))
-    await said(region(j.page, FULL)).toContain(`${STEM}.kdenlive`)
+    await said(region(j.page, FULL)).toContain(`${STEM}.edit.json`)
     await uploadDialog(j.page).getByLabel(`Send ${FULL}`).dragTo(region(j.page, 'Backup'))
     await uploadDialog(j.page).getByLabel(`Send ${PHOTOS}`).dragTo(region(j.page, 'Backup'))
     await said(region(j.page, 'Backup')).toContain(FULL)
@@ -193,8 +188,8 @@ describe('uploading a montage: where it goes', () => {
     await titled(upload()).toMatch(/Choose a folder on the storage/)
 
     await uploadDialog(j.page).getByLabel('Add a destination').selectOption('Sion')
-    await dragPart(j.page, 'The kdenlive project', region(j.page, 'Sion'))
-    await said(region(j.page, 'Sion')).toContain(`${STEM}.kdenlive`)
+    await dragPart(j.page, 'The edit', region(j.page, 'Sion'))
+    await said(region(j.page, 'Sion')).toContain(`${STEM}.edit.json`)
     await uploadDialog(j.page)
       .getByRole('button', { name: 'Leave Sion out of this upload' })
       .click()
@@ -232,7 +227,7 @@ describe('uploading a montage: what went up', () => {
 
     expect(stored(storage, 'Backup')).toEqual([`luc-favre/${FULL}`, `luc-favre/${PHOTOS}`])
     expect(zipEntries(path.join(storage.root, 'club', 'Backup', 'luc-favre', FULL))).toEqual([
-      `${STEM}.kdenlive`,
+      `${STEM}.edit.json`,
       `${STEM}.mp4`,
       'videos/DJI_20260906090000_0006_D.MP4',
       'videos/DJI_20260906090300_0007_D.MP4'
@@ -278,7 +273,7 @@ describe('uploading a montage: what was handed over, shown afterwards', () => {
     await said(j.page.locator('main')).toContain('videos/')
     await said(j.page.locator('main')).toContain('2 clips')
     await said(j.page.locator('main')).toContain('DJI_20260906090000_0006_D.MP4')
-    await said(j.page.locator('main')).toContain(`${STEM}.kdenlive`)
+    await said(j.page.locator('main')).toContain(`${STEM}.edit.json`)
     await row.click()
     await counted(j.page.getByText('DJI_20260906090000_0006_D.MP4')).toBe(0)
     await j.quiet()

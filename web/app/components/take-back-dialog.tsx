@@ -25,7 +25,7 @@ const TakeBackDialog = ({
 }) => {
   const files = groups.flatMap((g) => g.files)
   const copies = files.filter((f) => f.processed).length
-  const project = facts.some((f) => f?.project)
+  const project = facts.some((f) => f?.edit)
   const film = facts.find((f) => f?.film)?.film
   const uploaded = groups.some((g) => g.uploaded)
   const reset = mode === 'reset'

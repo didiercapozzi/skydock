@@ -95,7 +95,7 @@ describe('the file that a render makes', () => {
     })
   })
 
-  it('says in the file that its colours are those of HD video, as Kdenlive does, in every format', async () => {
+  it('says in the file that its colours are those of HD video, in every format', async () => {
     for (const format of await availableFormats()) {
       expect(probe(made(`${format}-colours.mp4`, { format }))).toMatchObject({
         color_space: 'bt709',

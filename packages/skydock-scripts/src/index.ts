@@ -2,7 +2,6 @@ import { boardAnswerSchema, importOutcomeSchema } from './boardAnswer'
 import type {
   BoardAnswer,
   ImportOutcome,
-  MontageNote,
   OutputFact,
   ProxyFact,
   ScanResult,
@@ -92,7 +91,6 @@ import { rememberOutputDir, resolveOutputDir } from './settings'
 import { stopTools } from './tools'
 import { scanMedia } from './scan'
 import {
-  EDIT_LOCKED,
   filmNameOf,
   folderLock,
   FREED_LOCKED,
@@ -255,7 +253,6 @@ export {
   dsmLogin,
   dsmLogout,
   dsmValidateSession,
-  EDIT_LOCKED,
   ensureNasSession,
   fileChanged,
   fileStatus,
@@ -370,7 +367,6 @@ export type {
   ManifestFile,
   ManifestGroup,
   Moment,
-  MontageNote,
   OutputFact,
   ProxyFact,
   RemoteListing,

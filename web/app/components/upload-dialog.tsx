@@ -25,19 +25,10 @@ const PART_NAMES = {
   videos: msg`Original videos`,
   photos: msg`Original photos`,
   film: msg`The montage`,
-  project: msg`The kdenlive project`
+  project: msg`The edit`
 } as const
 
-const EDIT_NAMES = {
-  edit: msg`The edit`,
-  both: msg`The kdenlive project and the edit`
-} as const
-
-const partName = (part: SendPart, parts: Parts) => {
-  const edits = parts.project.map((f) => f.file.endsWith('.edit.json'))
-  if (part !== 'project' || !edits.includes(true)) return i18n._(PART_NAMES[part])
-  return i18n._(edits.includes(false) ? EDIT_NAMES.both : EDIT_NAMES.edit)
-}
+const partName = (part: SendPart) => i18n._(PART_NAMES[part])
 
 const SHOWN = 3
 
@@ -356,13 +347,13 @@ const UploadDialog = ({
                   putInZip([part], null)
                 }
               }}
-              aria-label={partName(part, parts)}
+              aria-label={partName(part)}
               title={`${aboutPart(part, parts, stem)} — ${t`press to put it in a new zip`}`}
               className={`flex h-9 cursor-grab items-center gap-2 rounded-corner px-3.5 font-bold ${
                 zipsIn(part) > 0 ? 'bg-up-soft text-up' : 'bg-well text-ink hover:bg-line'
               }`}>
               <Icon name={PART_ICONS[part]} />
-              {partName(part, parts)}
+              {partName(part)}
               {zipsIn(part) === 1 && (
                 <Icon
                   name='check'
@@ -456,7 +447,7 @@ const UploadDialog = ({
                       parts={parts}
                       stem={stem}
                       remove={{
-                        label: t`Take ${partName(part, parts)} out of ${name}`,
+                        label: t`Take ${partName(part)} out of ${name}`,
                         onClick: () => takeFromZip(part, at)
                       }}
                     />
@@ -492,11 +483,6 @@ const UploadDialog = ({
               : t`Drop here to make another zip`}
           </span>
         </div>
-        {plan.zips.some((zip) => zip.parts.includes('project')) && (
-          <span className={HELP}>
-            {t`The project reopens only with its clips back where they sat.`}
-          </span>
-        )}
         {endingTrouble && <span className='text-body text-local'>{endingTrouble}</span>}
       </div>
     </>

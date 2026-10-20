@@ -2,21 +2,15 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import { filesUnder, FILM, filmFile, makeClip, montageFolder, projectFile, WHO } from './media'
-import { editorEnv, makeAndPrepare, makeProject, putEditor, putTemplate } from './i1-helpers'
-import { groupsOf } from './record'
-import { details, place, preview } from './steps'
+import { editFile, filesUnder, FILM, filmFile, makeClip, montageFolder, WHO } from './media'
+import { makeAndPrepare, makeEdit } from './i1-helpers'
+import { place } from './steps'
 
 const j = harness({
   name: 'i1-edit',
-  state: 'sorted',
-  prepare: (world) => {
-    putEditor(world)
-    putTemplate(world, 'club')
-  },
-  env: editorEnv
+  state: 'sorted'
 })
-const { see, quiet } = j
+const { quiet } = j
 
 const folder = () => montageFolder(j.world)
 const stepOf = (words: string) =>
@@ -24,61 +18,10 @@ const stepOf = (words: string) =>
     .poll(async () => await place(j.page, WHO).innerText(), { timeout: 30_000 })
     .toContain(words)
 
-describe('an edit freezes the montage', () => {
-  test('shows its files a lock and says why, once the montage has a project', async () => {
-    await makeAndPrepare(j)
-    await makeProject(j.page, path.join(j.world.computer, 'club'))
-    await j.page
-      .getByText(
-        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
-      )
-      .first()
-      .waitFor()
-    expect(await j.page.getByRole('button', { name: /^Pick luc_favre/ }).count()).toBe(0)
-    expect(await j.page.getByRole('button', { name: 'Change the name' }).count()).toBe(0)
-    await j.page.getByText('luc_favre_20260906_090000.mp4').first().click()
-    await details(j.page)
-      .getByText(
-        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
-      )
-      .waitFor()
-
-    await j.page.getByText('luc_favre_20260906_090000.mp4').first().dblclick()
-    const dialog = preview(j.page)
-    await dialog.waitFor()
-    await dialog.getByRole('button', { name: '▶ Play' }).waitFor()
-    await dialog
-      .getByText(
-        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
-      )
-      .waitFor()
-    expect(await dialog.getByRole('button', { name: 'Save', exact: true }).count()).toBe(0)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
-    await dialog.waitFor({ state: 'detached' })
-    await quiet()
-  })
-
-  test('takes no other jump into a montage that has an edit, and says so', async () => {
-    await j.page.getByRole('link', { name: /^Fresh files/ }).click()
-    await j.page.getByText('Jump 1', { exact: true }).first().click()
-    await j.page.getByRole('button', { name: /Make a montage/ }).click()
-    await j.page.getByLabel('Name', { exact: true }).fill('luc favre')
-    await j.page.getByText('Joins Luc Favre’s montage').waitFor()
-    await j.page.getByRole('button', { name: 'Join montage' }).click()
-    await j.page
-      .getByText(
-        'Luc Favre’s montage has a kdenlive project — change it in kdenlive, or start the edit again.'
-      )
-      .first()
-      .waitFor()
-    expect(groupsOf(j.world).filter((g) => g.passenger)).toHaveLength(1)
-    await see('Jump 1')
-    await quiet()
-  })
-})
-
 describe('a finished render is noticed', () => {
   test('does not take a film that cannot be read yet for a film, however still it sits', async () => {
+    await makeAndPrepare(j)
+    await makeEdit(j)
     await place(j.page, WHO).click()
     await j.page.getByRole('heading', { name: WHO, level: 1 }).waitFor()
     makeClip(path.join(j.world.root, 'whole.mp4'), '2026-09-06T09:00:00', 3)
@@ -152,51 +95,41 @@ describe('the edit is kept aside, every version of it', () => {
       .toBe(0)
   }
 
-  test('notices a project removed by hand, which lifts the lock, and one put back by hand', async () => {
-    const mine = fs.readFileSync(projectFile(j.world))
-    fs.rmSync(projectFile(j.world))
+  test('notices an edit removed by hand, and one put back by hand', async () => {
+    const mine = fs.readFileSync(editFile(j.world))
+    fs.rmSync(editFile(j.world))
     await stepOf('to edit')
-    await j.page.getByRole('button', { name: 'Change the name' }).waitFor()
-    fs.writeFileSync(projectFile(j.world), mine)
+    fs.writeFileSync(editFile(j.world), mine)
     await stepOf('to upload')
-    await j.page
-      .getByText(
-        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
-      )
-      .first()
-      .waitFor()
     await quiet()
   })
 
-  test('prepares a montage with an edit again from its originals, leaving the project, the film and every name as they were', async () => {
+  test('prepares a montage with an edit again from its originals, leaving the edit, the film and every name as they were', async () => {
     const tree = filesUnder(folder())
-    const [project, film] = [
-      fs.readFileSync(projectFile(j.world)),
-      fs.readFileSync(filmFile(j.world))
-    ]
+    const [edited, film] = [fs.readFileSync(editFile(j.world)), fs.readFileSync(filmFile(j.world))]
     await prepareAgain()
     expect(filesUnder(folder())).toEqual(tree)
-    expect(fs.readFileSync(projectFile(j.world)).equals(project)).toBe(true)
+    expect(fs.readFileSync(editFile(j.world)).equals(edited)).toBe(true)
     expect(fs.readFileSync(filmFile(j.world)).equals(film)).toBe(true)
     await quiet()
   })
 
-  test('keeps the project aside before preparing it again, and pressing the same button twice leaves one version', async () => {
+  test('keeps the edit aside before preparing it again, and pressing the same button twice leaves one version', async () => {
     expect(kept()).toHaveLength(1)
     expect(
       fs
         .readFileSync(path.join(j.world.output, '.projects', WHO, kept()[0]!))
-        .equals(fs.readFileSync(projectFile(j.world)))
+        .equals(fs.readFileSync(editFile(j.world)))
     ).toBe(true)
-    expect(kept()[0]).toMatch(/^luc_favre_20260906-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d\.kdenlive$/)
+    expect(kept()[0]).toMatch(/^luc_favre_20260906-\d{4}-\d\d-\d\dT\d\d-\d\d-\d\d\.edit\.json$/)
     await prepareAgain()
     expect(kept()).toHaveLength(1)
     await quiet()
   })
 
-  test('keeps another version once the project is not what was kept, and deletes none', async () => {
+  test('keeps another version once the edit is not what was kept, and deletes none', async () => {
     const [first] = kept()
-    fs.appendFileSync(projectFile(j.world), '\n')
+    fs.appendFileSync(editFile(j.world), '\n')
     await prepareAgain()
     expect(kept()).toHaveLength(2)
     expect(kept()).toContain(first)

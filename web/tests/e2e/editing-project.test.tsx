@@ -29,7 +29,6 @@ const actions = (
       named: true,
       onProcess: () => {},
       onMontage,
-      onKdenlive: () => {},
       onOpenMontage: () => {},
       onUpload: () => {},
       ...more
@@ -37,33 +36,26 @@ const actions = (
   )
 
 const made = {
-  project: true,
+  edit: true,
   film: { size: 1, mtime: 1, seconds: 60, path: '/w/luc.mp4' },
-  projectPath: '/w/luc.edit.json',
   baseName: 'luc'
 }
 
-describe('making the editing project', () => {
-  test('opens the film editor at once while clips are still getting their proxy, and the kdenlive project waits for them', async () => {
+describe('a processed montage with no edit yet', () => {
+  test('opens the film editor at once while clips are still getting their proxy', async () => {
     const onMontage = vi.fn()
     await actions(2, onMontage)
 
     await expect.element(page.getByText('waiting for 2 proxies')).toBeVisible()
-    await expect
-      .element(page.getByRole('button', { name: 'Make a kdenlive project' }))
-      .toBeDisabled()
     await userEvent.click(page.getByRole('button', { name: 'Edit the film' }))
     expect(onMontage).toHaveBeenCalledTimes(1)
   })
 
-  test('is offered once every clip has its proxy, or has failed to', async () => {
+  test('says nothing of proxies once every clip has its own, or has failed to', async () => {
     const onMontage = vi.fn()
     await actions(0, onMontage)
 
     await expect.element(page.getByText(/waiting for/)).not.toBeInTheDocument()
-    await expect
-      .element(page.getByRole('button', { name: 'Make a kdenlive project' }))
-      .toBeEnabled()
     await userEvent.click(page.getByRole('button', { name: 'Edit the film' }))
     expect(onMontage).toHaveBeenCalledTimes(1)
   })
@@ -83,7 +75,6 @@ describe('a montage held by work under way', () => {
     await actions(0, vi.fn(), {
       held: 'rendering',
       facts: made,
-      opensKdenlive: false,
       onOpenMontage
     })
 
@@ -110,7 +101,7 @@ describe('a montage held by work under way', () => {
   })
 
   test('is free while nothing holds it, whatever runs elsewhere', async () => {
-    await actions(0, vi.fn(), { held: null, facts: made, opensKdenlive: false })
+    await actions(0, vi.fn(), { held: null, facts: made })
 
     await expect.element(page.getByRole('button', { name: 'Process again' })).toBeEnabled()
   })

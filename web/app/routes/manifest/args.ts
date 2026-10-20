@@ -12,7 +12,6 @@ const actionArgs = z.object({
   intent: z.enum([
     'save-groups',
     'merge-groups',
-    'open-montage',
     'process',
     'cancel-process',
     /* the record changed outside this page: the board looks at it again, writing nothing */
@@ -23,7 +22,6 @@ const actionArgs = z.object({
     /* what is being uploaded, stopped */
     'cancel-upload',
     'cancel-render',
-    'montage',
     'upload-montage',
     /* picked files zipped as the plan says and sent to the destinations they were put in */
     'send-files',
@@ -86,7 +84,6 @@ const actionArgs = z.object({
   newGroup: z.boolean().optional(),
   montage: z.boolean().optional(),
   destination: z.string().optional(),
-  template: z.string().optional(),
   groups: z.array(manifestGroupSchema).optional(),
   fileUpdates: z.array(manifestFileSchema).optional(),
   destinations: z.array(destinationSchema).optional(),
@@ -109,7 +106,6 @@ const actionArgs = z.object({
     })
     .optional(),
   resetWhat: z.enum(['times', 'everything']).optional(),
-  edit: z.enum(['edit', 'kdenlive']).optional(),
   name: z.string().optional(),
   plan: sendPlanSchema.optional(),
   emailed: z

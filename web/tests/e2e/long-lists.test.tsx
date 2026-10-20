@@ -81,7 +81,6 @@ describe('the thumbnails', () => {
       createElement(BoardHeader, {
         scanning: false,
         onScan: () => {},
-        onTemplates: () => {},
     onFilmTemplates: () => {},
         onWorkFolder: () => {},
         onShortcuts: () => {},

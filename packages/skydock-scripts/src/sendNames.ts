@@ -32,13 +32,12 @@ const stemOf = (group: ManifestGroup) =>
 
 type PartFile = ArchiveEntry & { size: number }
 
-const endingOf = (part: SendPart, file: string) =>
-  part === 'film' ? '.mp4' : file.endsWith('.edit.json') ? '.edit.json' : '.kdenlive'
+const endingOf = (part: SendPart) => (part === 'film' ? '.mp4' : '.edit.json')
 
 const partEntries = (part: SendPart, files: PartFile[], stem: string): PartFile[] =>
   part === 'videos' || part === 'photos'
     ? files.map((f) => ({ ...f, name: `${part}/${f.name}` }))
-    : files.map((f) => ({ ...f, name: `${stem}${endingOf(part, f.file)}` }))
+    : files.map((f) => ({ ...f, name: `${stem}${endingOf(part)}` }))
 
 const partFileNames = (part: SendPart, files: PartFile[], stem: string) =>
   partEntries(part, files, stem).map((entry) => entry.name)

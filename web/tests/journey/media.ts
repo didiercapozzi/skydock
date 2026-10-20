@@ -142,7 +142,7 @@ const filesUnder = (folder: string): string[] =>
 
 const WHO = 'Luc Favre'
 const FILM = 'luc_favre_20260906.mp4'
-const PROJECT = 'luc_favre_20260906.kdenlive'
+const EDIT = 'luc_favre_20260906.edit.json'
 const STEM = 'luc_favre_20260906_090000'
 
 const originalsDir = (world: { output: string }) => path.join(world.output, 'original_files')
@@ -155,8 +155,8 @@ const originalsOf = (world: { output: string }) => filesUnder(originalsDir(world
 const montageFolder = (world: { output: string }, who = WHO) =>
   path.join(world.output, 'processed', 'Montages', who)
 
-const projectFile = (world: { output: string }, who = WHO) =>
-  path.join(montageFolder(world, who), PROJECT)
+const editFile = (world: { output: string }, who = WHO) =>
+  path.join(montageFolder(world, who), EDIT)
 const filmFile = (world: { output: string }, who = WHO, name = FILM) =>
   path.join(montageFolder(world, who), name)
 
@@ -181,8 +181,8 @@ export {
   originalsOf,
   PHOTOS,
   probe,
-  PROJECT,
-  projectFile,
+  EDIT,
+  editFile,
   renderFilm,
   STEM,
   tool,

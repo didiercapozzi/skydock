@@ -161,20 +161,13 @@ describe('a scan keeps the work already done', () => {
       expect((await jumpOf('C1.MP4'))?.files.map((f) => f.filename)).toEqual(['C1.MP4', 'C2.MP4'])
     })
 
-    it('keeps what a montage went through — its upload, its montage, its freeing', async () => {
+    it('keeps what a montage went through — its upload and its freeing', async () => {
       const manifest = await twoJumps()
       const montage = manifest.groups[0]!
       Object.assign(montage, {
         montageJump: true,
         passenger: { firstname: 'Luc', lastname: 'Favre' },
         uploaded: { at: 1, shareUrl: 'https://nas/sharing/luc' },
-        montage: {
-          projectPath: '/p.kdenlive',
-          filmPath: '/f.mp4',
-          template: 'epco',
-          clips: 2,
-          at: 1
-        },
         freed: { at: 2, bytes: 10 }
       })
       await saveManifest(manifestPath(), manifest)
@@ -185,7 +178,6 @@ describe('a scan keeps the work already done', () => {
 
       expect(await jumpOf('A1.MP4')).toMatchObject({
         uploaded: { shareUrl: 'https://nas/sharing/luc' },
-        montage: { template: 'epco' },
         freed: { bytes: 10 }
       })
     })

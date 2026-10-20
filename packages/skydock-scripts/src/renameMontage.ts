@@ -5,7 +5,7 @@ import { editPathOf, readOrSetAside, saveEdit } from './filmEdit'
 import { pathExists } from './lib/fs'
 import { editNameOf, filmNameOf } from './montageNames'
 import { getGroupProcessedDir } from './process'
-import { keepProject } from './projectHistory'
+import { keepEdit } from './projectHistory'
 import { getCutProxyDir } from './proxy'
 import type { ManifestFile, ManifestGroup } from './types'
 import { hasCompletePassenger, passengerOf } from './workspace'
@@ -50,7 +50,7 @@ const renameEditedMontage = async ({
 
   const editPath = editPathOf(outputDir, before)
   const { edit } = await readOrSetAside(outputDir, editPath)
-  await keepProject(outputDir, from.dir, from.baseName)
+  await keepEdit(outputDir, from.dir, from.baseName)
   if (from.dir !== to.dir) {
     const passing = `${from.dir}.renaming`
     await rename(from.dir, passing)

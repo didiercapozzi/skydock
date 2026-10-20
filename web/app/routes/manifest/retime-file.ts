@@ -3,7 +3,7 @@ import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
 /* One file's time corrected on its own (RULES, Times and dates). An uploaded file is past editing,
-   and a montage with a kdenlive project takes no change at all. */
+   and a freed montage takes no change at all. */
 const retimeFileIntent: Intent = async ({
   data,
   manifest,

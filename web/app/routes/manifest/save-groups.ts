@@ -1,5 +1,4 @@
 import {
-  folderLock,
   getGroupProcessedDir,
   passengerOf,
   sameEditedGroup,
@@ -39,7 +38,7 @@ const saveGroups: Intent = async ({
   for (const id of frozen) {
     const before = manifest.groups.find((g) => g.id === id)
     const incoming = data.groups.find((g) => g.id === id)
-    if (!before || !incoming || !sameEditedGroup(before, incoming)) return refuseFrozen(id)
+    if (!before || !incoming || !sameEditedGroup(before, incoming)) return refuseFrozen()
   }
   const renames: { before: ManifestGroup; after: ManifestGroup }[] = []
   for (const incoming of data.groups) {
@@ -51,11 +50,9 @@ const saveGroups: Intent = async ({
         renames.push({ before, after: incoming })
       continue
     }
-    if (locks.has(incoming.id) || (await folderLock(outputDir, incoming)) !== 'kdenlive') continue
-    if (!before || !sameEditedGroup(before, incoming)) return refuseFrozen()
   }
   const held = data.fileUpdates?.find((u) => u.id && frozenFiles.has(u.id))
-  if (held?.id) return refuseFrozen(frozenFiles.get(held.id))
+  if (held?.id) return refuseFrozen()
   for (const update of data.fileUpdates ?? []) {
     const current = manifest.files.find((f) =>
       update.id ? f.id === update.id : f.path === update.path
@@ -104,7 +101,7 @@ const saveGroups: Intent = async ({
   manifest.groups = data.groups.map((incoming) => {
     const before = manifest.groups.find((g) => g.id === incoming.id)
     if (!before) return incoming
-    const { uploaded: _u, freed: _f, publish: _p, montage: _m, ...decided } = incoming
+    const { uploaded: _u, freed: _f, publish: _p, ...decided } = incoming
     const changed =
       !sameEditedGroup(before, incoming) ||
       before.label !== incoming.label ||
@@ -113,8 +110,7 @@ const saveGroups: Intent = async ({
       ...decided,
       ...(before.uploaded ? { uploaded: before.uploaded } : {}),
       ...(before.freed ? { freed: before.freed } : {}),
-      ...(before.publish && !changed ? { publish: before.publish } : {}),
-      ...(before.montage ? { montage: before.montage } : {})
+      ...(before.publish && !changed ? { publish: before.publish } : {})
     }
   })
   if (data.destinations) manifest.destinations = data.destinations

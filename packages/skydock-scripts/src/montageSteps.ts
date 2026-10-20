@@ -27,7 +27,7 @@ const montageSteps = ({
   const done: Record<MontageStep, boolean> = {
     Named: hasCompletePassenger(group.passenger),
     Prepared: Boolean(group.processed || group.uploaded || group.freed),
-    Project: Boolean(facts?.project || group.freed),
+    Project: Boolean(facts?.edit || group.freed),
     Film: Boolean(facts?.film || group.uploaded || group.freed),
     Uploaded: Boolean(group.uploaded),
     Sent: emailed
@@ -39,17 +39,8 @@ const montageSteps = ({
   return { steps, at, next: step ? NEXT[step.name] : null }
 }
 
-const hasKdenlive = (facts?: MontageFact) =>
-  facts?.kdenlive ?? Boolean(facts?.project && !facts.edit)
-
 const montageLockOf = (group: ManifestGroup, facts?: MontageFact) =>
-  group.freed
-    ? ('freed' as const)
-    : hasKdenlive(facts)
-      ? ('kdenlive' as const)
-      : facts?.edit
-        ? ('edit' as const)
-        : null
+  group.freed ? ('freed' as const) : facts?.edit ? ('edit' as const) : null
 
 type MontageProgress = ReturnType<typeof montageSteps>
 
@@ -59,5 +50,5 @@ const furthestBehind = (progress: MontageProgress[]) =>
     null
   )
 
-export { furthestBehind, hasKdenlive, montageLockOf, montageSteps }
+export { furthestBehind, montageLockOf, montageSteps }
 export type { MontageProgress, MontageStep }

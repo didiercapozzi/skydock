@@ -11,7 +11,6 @@ const jobTypeSchema = z.enum([
   'copy-back',
   'bin',
   'trash',
-  'template',
   'bring',
   'camera-delete',
   'import',

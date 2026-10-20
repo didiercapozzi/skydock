@@ -59,12 +59,6 @@ const twoMontages = () =>
     ]
   })
 
-const withAnEdit = () => {
-  const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
-  fs.mkdirSync(folder, { recursive: true })
-  fs.writeFileSync(path.join(folder, 'luc.kdenlive'), '<mlt/>')
-}
-
 const add = (filename: string, bytes: string, target: ImportTarget) =>
   importFile({
     outputDir,
@@ -214,17 +208,6 @@ describe('adding a file from the computer', () => {
     ])
   })
 
-  it('takes it into another jump even while the jump it is in has an edit', async () => {
-    await twoMontages()
-    await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
-    withAnEdit()
-
-    const again = await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g2' })
-
-    expect(again).toMatchObject({ outcome: 'copied', stays: 'Luc Favre' })
-    expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
-  })
-
   it('says so, and changes nothing, when the jump already holds that footage', async () => {
     await setup()
     await add('briefing.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
@@ -232,17 +215,6 @@ describe('adding a file from the computer', () => {
     const again = await add('briefing again.mp4', 'the theory', { kind: 'group', groupId: 'g1' })
 
     expect(again.outcome).toBe('there')
-    expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
-  })
-
-  it('leaves it in a montage that has a kdenlive project, and says why', async () => {
-    await setup()
-    await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
-    withAnEdit()
-
-    const again = await add('clip.mp4', 'same', { kind: 'sort' })
-    expect(again).toMatchObject({ outcome: 'kept' })
-    expect((again as { reason: string }).reason).toContain('drop it on a jump')
     expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
   })
 
@@ -260,15 +232,6 @@ describe('adding a file from the computer', () => {
     await expect(add('clip.mp4', 'x', { kind: 'destination', name: '  ' })).rejects.toThrow(
       /dropzone, a montage or the sorting area/
     )
-  })
-
-  it('refuses a montage that has a kdenlive project, before writing anything', async () => {
-    await setup()
-    withAnEdit()
-    await expect(add('clip.mp4', 'x', { kind: 'group', groupId: 'g1' })).rejects.toThrow(
-      /kdenlive project/
-    )
-    expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
   })
 
   it('takes it into a montage whose film is edited in SkyDock', async () => {

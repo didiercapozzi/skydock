@@ -3,7 +3,7 @@ const covers: Record<string, string[]> = {
     'is sent when Upload is pressed: each zip holds what it was made of, laid out as shown, and the film and photos landed as they are'
   ],
   '1. Make the zips': [
-    'starts with one zip of the originals, the photos and the project, named from the montage and the day and time of its first jump, and puts it in Backup',
+    'starts with one zip of the originals, the photos and the edit, named from the montage and the day and time of its first jump, and puts it in Backup',
     'drags a part onto a zip to put it in, and onto the empty space to make a new zip ending with that part',
     'says how many zips each part is in, since the same part can go into several',
     'takes a part out of a zip, drops a zip left empty, and removes a zip',

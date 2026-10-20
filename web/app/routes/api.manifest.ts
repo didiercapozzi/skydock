@@ -23,10 +23,8 @@ import { copyFilesIntent } from './manifest/copy-files'
 import { makeMontageIntent } from './manifest/make-montage'
 import { resetFreshIntent } from './manifest/reset-fresh'
 import { mergeGroupsIntent } from './manifest/merge-groups'
-import { montage } from './manifest/montage'
 import { deleteJumpIntent } from './manifest/delete-jump'
 import { moveFilesIntent } from './manifest/move-files'
-import { openMontage } from './manifest/open-montage'
 import { copyBackIntent } from './manifest/copy-back'
 import { fromBinIntent } from './manifest/from-bin'
 import { bringBackIntent } from './manifest/from-storage'
@@ -49,7 +47,6 @@ import { uploadMontageIntent } from './manifest/upload-montage'
 const intents: Record<ActionData['intent'], Intent> = {
   'save-groups': saveGroups,
   'merge-groups': mergeGroupsIntent,
-  'open-montage': openMontage,
   'play-file': playFile,
   'copy-back': copyBackIntent,
   'bring-back': bringBackIntent,
@@ -60,7 +57,6 @@ const intents: Record<ActionData['intent'], Intent> = {
   'upload-wait': uploadWait,
   'cancel-upload': cancelUpload,
   'cancel-render': cancelRender,
-  montage,
   'upload-montage': uploadMontageIntent,
   'send-files': sendFilesIntent,
   'shift-group-time': shiftGroupTime,

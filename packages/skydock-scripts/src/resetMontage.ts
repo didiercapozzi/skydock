@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { shotTimes } from './scan'
-import { keepProject } from './projectHistory'
+import { keepEdit } from './projectHistory'
 import { isNamedMontage, montageArtifacts } from './montageArtifacts'
 import type { Manifest, ManifestGroup } from './types'
 import { idsOf } from './lib/words'
@@ -41,7 +41,7 @@ const takeBack = async (
     ? await shotTimes(manifest.files.filter((f) => f.id && ids.has(f.id)).map((f) => f.path))
     : new Map<string, number>()
 
-  await keepProject(outputDir, dir, baseName)
+  await keepEdit(outputDir, dir, baseName)
   await rm(dir, { recursive: true, force: true })
   await Promise.all(
     jumps.map((jump) => rm(getCutProxyDir(outputDir, jump.id), { recursive: true, force: true }))
@@ -70,38 +70,22 @@ const takeBack = async (
   } else {
     manifest.groups = manifest.groups.map((g) => {
       if (!taken.has(g.id)) return g
-      const {
-        processed: _processed,
-        publish: _publish,
-        uploaded: _delivered,
-        montage: _montage,
-        ...rest
-      } = g
+      const { processed: _processed, publish: _publish, uploaded: _delivered, ...rest } = g
       return rest
     })
   }
   return { groupIds: [...taken] }
 }
 
-const startEditAgain = async (
-  manifest: Manifest,
-  outputDir: string,
-  groupId: string,
-  which?: 'edit' | 'kdenlive'
-) => {
+const startEditAgain = async (manifest: Manifest, outputDir: string, groupId: string) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group || !isNamedMontage(group)) throw new Error('Montage not found.')
   if (group.freed)
     throw new Error('This montage lives only on the storage now — there is no edit here.')
   const found = await montageArtifacts(outputDir, group)
-  const going = found.projectFiles.filter(
-    (file) => which === undefined || (which === 'edit') === file.endsWith('.edit.json')
-  )
-  if (going.length === 0) throw new Error('This montage has no such edit to start again.')
-  await keepProject(outputDir, found.dir, found.baseName)
-  for (const file of going) await rm(file, { force: true })
-  if (going.some((file) => file.endsWith('.kdenlive')))
-    for (const jump of sharingFolder(manifest, outputDir, group)) delete jump.montage
+  if (found.projectFiles.length === 0) throw new Error('This montage has no edit to start again.')
+  await keepEdit(outputDir, found.dir, found.baseName)
+  for (const file of found.projectFiles) await rm(file, { force: true })
   return { groupIds: [group.id] }
 }
 

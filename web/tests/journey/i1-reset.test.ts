@@ -2,15 +2,8 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import {
-  editorEnv,
-  makeAndPrepare,
-  makeProject,
-  putEditor,
-  putTemplate,
-  seedTrim
-} from './i1-helpers'
-import { filesUnder, montageFolder, originalsOf, PROJECT, renderFilm, WHO } from './media'
+import { makeAndPrepare, makeEdit, seedTrim } from './i1-helpers'
+import { EDIT, filesUnder, montageFolder, originalsOf, renderFilm, WHO } from './media'
 import { groupsOf } from './record'
 import { details, dialogNamed, place } from './steps'
 
@@ -19,10 +12,7 @@ const j = harness({
   state: 'sorted',
   prepare: (world) => {
     seedTrim(world, 'group_3')
-    putEditor(world)
-    putTemplate(world, 'club')
-  },
-  env: editorEnv
+  }
 })
 const { quiet } = j
 
@@ -66,12 +56,12 @@ describe('resetting a montage', () => {
   test('names the edit on its own in the question, and keeps it aside when the montage is reset', async () => {
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
-    await makeProject(j.page, path.join(j.world.computer, 'club'))
+    await makeEdit(j)
     renderFilm(j.world)
     await expect
       .poll(async () => await place(j.page, WHO).innerText(), { timeout: 30_000 })
       .toContain('to upload')
-    const project = fs.readFileSync(path.join(folder(), PROJECT))
+    const project = fs.readFileSync(path.join(folder(), EDIT))
 
     await details(j.page).getByRole('button', { name: 'Reset…' }).click()
     const ask = dialogNamed(j.page, /Reset montage/)

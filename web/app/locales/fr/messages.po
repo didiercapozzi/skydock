@@ -47,17 +47,9 @@ msgstr "— force"
 msgid "— height"
 msgstr "— hauteur"
 
-#: app/components/templates-dialog.tsx
-msgid "— Project › Archive project, which writes the project with its"
-msgstr "— Projet › Archiver le projet, qui écrit le projet avec ses dossiers"
-
 #: app/components/jump-graph.tsx
 msgid "— speed"
 msgstr "— vitesse"
-
-#: app/helpers/notes.ts
-msgid ", but the template is missing {missing, plural, one {# file} other {# files}}: {names}"
-msgstr ", mais il manque au modèle {missing, plural, one {# fichier} other {# fichiers}} : {names}"
 
 #: app/components/camera-files.tsx
 msgid ", kept as they sat on the card, and stay there until it is emptied by hand."
@@ -106,11 +98,6 @@ msgstr "{0, plural, one {# clip} other {# clips}} · {1}"
 msgid "{0, plural, one {# destination} other {# destinations}}"
 msgstr "{0, plural, one {# destination} other {# destinations}}"
 
-#. placeholder {0}: template.missing.length
-#: app/components/templates-dialog.tsx
-msgid "{0, plural, one {# file it uses is not here: {missing}. The edit can start without it, with a hole where each belongs.} other {# files it uses are not here: {missing}. The edit can start without them, with a hole where each belongs.}}"
-msgstr "{0, plural, one {# fichier qu’il utilise n’est pas ici : {missing}. Le montage peut commencer sans lui, avec un trou à sa place.} other {# fichiers qu’il utilise ne sont pas ici : {missing}. Le montage peut commencer sans eux, avec un trou à la place de chacun.}}"
-
 #. placeholder {0}: files.length
 #: app/components/file-browser.tsx
 msgid "{0, plural, one {# file, on the storage} other {# files, on the storage}}"
@@ -125,7 +112,6 @@ msgstr "{0, plural, one {# fichier, sur le stockage} other {# fichiers, sur le s
 #: app/components/file-browser.tsx
 #: app/components/file-list.tsx
 #: app/components/inspector.tsx
-#: app/components/templates-dialog.tsx
 #: app/helpers/parcels.ts
 #: app/routes/place.tsx
 msgid "{0, plural, one {# file} other {# files}}"
@@ -575,10 +561,6 @@ msgid "{processed}, and the working copies made for the editor"
 msgstr "{processed}, et les copies de travail faites pour le logiciel de montage"
 
 #: app/components/montage-card.tsx
-msgid "{proxiesWaiting, plural, one {# clip is} other {# clips are}} still getting a proxy — the kdenlive project can be made once each one has it, or has failed to"
-msgstr ""
-
-#: app/components/montage-card.tsx
 msgid "{proxiesWaiting, plural, one {waiting for # proxy} other {waiting for # proxies}}"
 msgstr "{proxiesWaiting, plural, one {# proxy en attente} other {# proxys en attente}}"
 
@@ -709,10 +691,6 @@ msgid "{who}’s film is rendered — ready to upload"
 msgstr "Le film de {who} est rendu — prêt à être envoyé"
 
 #: app/hooks/useBoardModel.ts
-msgid "{who}’s montage has a kdenlive project — change it in kdenlive, or start the edit again."
-msgstr "Le montage de {who} a un projet kdenlive — modifiez-le dans kdenlive, ou recommencez le montage du film."
-
-#: app/hooks/useBoardModel.ts
 msgid "{who}’s montage was freed from this machine — give this one another name, such as “{who} 2”."
 msgstr "Le montage de {who} a été libéré de cette machine — donnez un autre nom à celui-ci, par exemple « {who} 2 »."
 
@@ -786,7 +764,6 @@ msgid "⛶ Full screen"
 msgstr "⛶ Plein écran"
 
 #: app/components/email-dialog.tsx
-#: app/components/montage-card.tsx
 msgid "✓ copied"
 msgstr "✓ copié"
 
@@ -919,10 +896,6 @@ msgstr "Un rendu est en cours"
 msgid "A scan is running"
 msgstr "Une analyse est en cours"
 
-#: app/components/templates-dialog.tsx
-msgid "A template for {who}’s montage"
-msgstr "Un modèle pour le montage de {who}"
-
 #: app/components/film-editor.tsx
 msgid "A text goes in at the playhead. Drag it in the picture to place it."
 msgstr "Le texte arrive à la tête de lecture. Faites-le glisser dans l’image pour le placer."
@@ -998,10 +971,6 @@ msgstr "Ajouter le lien"
 msgid "Adding {label}"
 msgstr "Ajout dans {label}"
 
-#: app/components/jobs-panel.tsx
-msgid "Adding the template {label}"
-msgstr "Ajout du modèle {label}"
-
 #: app/components/free-dialog.tsx
 msgid "After this the montage lives on the storage only: it cannot be processed, edited or uploaded again from here, and a rescan leaves it as it is. If any check fails, nothing at all is deleted, and it says which."
 msgstr "Après cela, le montage n’existe plus que sur le stockage : il ne peut plus être préparé, monté ni envoyé à nouveau d’ici, et une nouvelle analyse le laisse tel quel. Si une seule vérification échoue, rien du tout n’est supprimé, et il est indiqué laquelle."
@@ -1056,10 +1025,6 @@ msgstr "Alt ou Ctrl en déposant"
 #: app/components/shortcuts-dialog.tsx
 msgid "An open clip"
 msgstr "Un clip ouvert"
-
-#: app/components/templates-dialog.tsx
-msgid "and"
-msgstr "et"
 
 #: app/components/preview-drawer.tsx
 msgid "Applied the next time this file is processed."
@@ -1153,10 +1118,6 @@ msgstr "Revenir aux repères mesurés"
 msgid "Background"
 msgstr "Fond"
 
-#: app/components/templates-dialog.tsx
-msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
-msgstr "à côté — choisi en entier. Ou l’archive unique, si elle a été compressée en .zip ou .tar.gz. Ou le projet et ses fichiers choisis un par un. Chaque fichier que le projet cite est relié à la copie importée avec lui, ainsi un modèle fait sur une autre machine retrouve ici ses propres fichiers. En importer un sous un nom déjà présent le remplace, fichiers compris."
-
 #: app/components/film-editor.tsx
 msgid "Best quality"
 msgstr "Meilleure qualité"
@@ -1196,10 +1157,6 @@ msgstr "Gras"
 msgid "Bring {picks, plural, one {# file} other {# files}} back to Fresh files"
 msgstr "Remettre {picks, plural, one {# fichier} other {# fichiers}} dans Nouveaux fichiers"
 
-#: app/components/templates-dialog.tsx
-msgid "Bring a template in"
-msgstr "Importer un modèle"
-
 #: app/components/storage-folder.tsx
 msgid "Bring back"
 msgstr "Récupérer"
@@ -1235,10 +1192,6 @@ msgstr "Récupération de fichiers depuis la corbeille"
 #: app/components/pending.tsx
 msgid "Bringing files back…"
 msgstr "Récupération des fichiers…"
-
-#: app/components/templates-dialog.tsx
-msgid "Bringing in {bringing}…"
-msgstr "Importation de {bringing}…"
 
 #: app/components/film-editor.tsx
 msgid "Bringing the music in…"
@@ -1418,25 +1371,13 @@ msgstr "Choisir un dossier…"
 msgid "Choose a storage folder"
 msgstr "Choisir un dossier du stockage"
 
-#: app/components/templates-dialog.tsx
-msgid "Choose a template first"
-msgstr "Choisissez d’abord un modèle"
-
 #: app/components/work-folder-dialog.tsx
 msgid "Choose another folder…"
 msgstr "Choisir un autre dossier…"
 
-#: app/components/templates-dialog.tsx
-msgid "Choose files instead…"
-msgstr "Choisir plutôt des fichiers…"
-
 #: app/components/upload-dialog.tsx
 msgid "choose its folder on the storage"
 msgstr "choisir son dossier sur le stockage"
-
-#: app/components/templates-dialog.tsx
-msgid "Choose the folder…"
-msgstr "Choisir le dossier…"
 
 #: app/components/film-editor.tsx
 msgid "Choose the format of the film, then render it"
@@ -1484,10 +1425,6 @@ msgstr "Désélectionner (esc)"
 msgid "Click to choose, double-click to open. Nothing is guessed: a dropzone with no folder is asked for one rather than filed somewhere sensible-looking."
 msgstr "Cliquez pour choisir, double-cliquez pour ouvrir. Rien n’est deviné : pour une dropzone sans dossier, on vous en demande un plutôt que de la ranger dans un endroit qui semble raisonnable."
 
-#: app/components/montage-card.tsx
-msgid "Click to copy"
-msgstr "Cliquer pour copier"
-
 #: app/components/jump-time.tsx
 msgid "click to correct"
 msgstr "cliquez pour corriger"
@@ -1517,7 +1454,6 @@ msgstr "fermer"
 #: app/components/reset-fresh-dialog.tsx
 #: app/components/shortcuts-dialog.tsx
 #: app/components/storage-folder.tsx
-#: app/components/templates-dialog.tsx
 #: app/components/transfers-panel.tsx
 #: app/components/window-bar.tsx
 #: app/components/work-folder-dialog.tsx
@@ -1720,10 +1656,6 @@ msgstr "Copier l’objet"
 msgid "Copy the link"
 msgstr "Copier le lien"
 
-#: app/components/montage-view.tsx
-msgid "Copy the project’s path"
-msgstr "Copier le chemin du projet"
-
 #: app/components/camera-files.tsx
 msgid "Copy these back onto this machine — the one way back from having given them back"
 msgstr "Recopier ces fichiers sur cette machine — la seule façon de revenir en arrière après les avoir rendus"
@@ -1787,10 +1719,6 @@ msgstr "Copie de la caméra {label}"
 #: app/components/jobs-panel.tsx
 msgid "Copying the files back off the card"
 msgstr "Recopie des fichiers depuis la carte"
-
-#: app/components/jobs-panel.tsx
-msgid "Copying the template’s files"
-msgstr "Copie des fichiers du modèle"
 
 #: app/components/pending.tsx
 msgid "Correcting the time…"
@@ -2187,10 +2115,6 @@ msgstr "Monté sur les proxies, rendu depuis les copies traitées"
 msgid "Editing"
 msgstr "Édition"
 
-#: app/components/templates-dialog.tsx
-msgid "Editing templates"
-msgstr "Modèles de montage"
-
 #: app/components/film-editor.tsx
 msgid "Effect"
 msgstr "Effet"
@@ -2283,10 +2207,6 @@ msgstr "Échap ferme l’éditeur et ses fenêtres"
 #: app/components/film-editor.tsx
 msgid "Estimating the size…"
 msgstr "Estimation de la taille…"
-
-#: app/components/templates-dialog.tsx
-msgid "every file here"
-msgstr "tous les fichiers ici"
 
 #: app/components/jump-time.tsx
 msgid "every file in the jump moves with it"
@@ -3112,10 +3032,6 @@ msgstr "Sauts trouvés"
 msgid "Just remember it"
 msgstr "Seulement la mémoriser"
 
-#: app/components/templates-dialog.tsx
-msgid "kdenlive version not said"
-msgstr "version de kdenlive non indiquée"
-
 #: app/components/preview-drawer.tsx
 msgid "Keep editing"
 msgstr "Continuer à modifier"
@@ -3127,7 +3043,6 @@ msgstr "La garder"
 
 #: app/components/film-template-modals.tsx
 #: app/components/jump-name.tsx
-#: app/components/templates-dialog.tsx
 msgid "Keep it under 60 characters"
 msgstr "Moins de 60 caractères"
 
@@ -3233,10 +3148,6 @@ msgstr "Quitter le plein écran (Esc)"
 #: app/components/jump-name.tsx
 msgid "Leave it empty to call it by its place among the jumps"
 msgstr "Laissez vide pour le nommer d’après sa position parmi les sauts"
-
-#: app/components/templates-dialog.tsx
-msgid "Leave it empty to name it after the project"
-msgstr "Laissez vide pour le nommer d’après le projet"
 
 #: app/components/camera-dialogs.tsx
 msgid "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
@@ -3372,11 +3283,6 @@ msgid "Make a jump of these…"
 msgstr "Faire un saut de ceux-ci…"
 
 #: app/components/montage-card.tsx
-#: app/components/montage-view.tsx
-msgid "Make a kdenlive project"
-msgstr "Faire un projet kdenlive"
-
-#: app/components/montage-card.tsx
 #: app/components/montage-panel.tsx
 #: app/routes/place.tsx
 msgid "Make a link to its folder, to send"
@@ -3400,8 +3306,8 @@ msgstr "Créer le montage"
 
 #: app/components/montage-card.tsx
 #: app/components/montage-view.tsx
-msgid "Make the copies again from the originals — the project, the film and the archives are left alone"
-msgstr "Refaire les copies à partir des originaux — le projet, le film et les archives ne sont pas touchés"
+msgid "Make the copies again from the originals — the edit, the film and the archives are left alone"
+msgstr "Refaire les copies à partir des originaux — le montage du film, le film et les archives ne sont pas touchés"
 
 #: app/routes/place.tsx
 msgid "Make the copies that get handed over, for everything in {name} that has none — {toProcess, plural, one {# file} other {# files}}, whatever the search or the filter is showing."
@@ -3410,10 +3316,6 @@ msgstr "Créer les copies à livrer pour tout ce qui n’en a pas dans {name} �
 #: app/components/inspector.tsx
 msgid "Make the jump"
 msgstr "Créer le saut"
-
-#: app/components/templates-dialog.tsx
-msgid "Make the montage"
-msgstr "Créer le montage"
 
 #: app/components/film-timeline.tsx
 msgid "Make the music longer or shorter"
@@ -3514,14 +3416,6 @@ msgstr "Réduire"
 #: app/hooks/useBoardModel.ts
 msgid "Montage"
 msgstr "Montage"
-
-#: app/helpers/notes.ts
-msgid "Montage ready — {clips, plural, one {# clip} other {# clips}} in the bin"
-msgstr "Montage prêt — {clips, plural, one {# clip} other {# clips}} dans la corbeille"
-
-#: app/helpers/notes.ts
-msgid "Montage ready — {photos, plural, one {# photo} other {# photos}} in the bin"
-msgstr "Montage prêt — {photos, plural, one {# photo} other {# photos}} dans la corbeille"
 
 #: app/components/film-editor.tsx
 #: app/components/places-tree.tsx
@@ -3641,7 +3535,6 @@ msgstr "Couper le son de la caméra"
 #: app/components/jump-name.tsx
 #: app/components/montage-card.tsx
 #: app/components/montage-panel.tsx
-#: app/components/templates-dialog.tsx
 msgid "Name"
 msgstr "Nom"
 
@@ -3789,10 +3682,6 @@ msgstr "Pas encore de proxy — il est créé après l’analyse. En attendant, 
 #: app/components/film-editor.tsx
 msgid "No sound"
 msgstr "Pas de son"
-
-#: app/components/templates-dialog.tsx
-msgid "No template yet — bring one in below."
-msgstr "Pas encore de modèle — importez-en un ci-dessous."
 
 #: app/components/preview-drawer.tsx
 msgid "None"
@@ -4047,8 +3936,8 @@ msgid "On the storage already, so it cannot move — hold alt while dropping to 
 msgstr "Déjà sur le stockage, il ne peut donc pas être déplacé — maintenez Alt en le déposant pour le copier à la place."
 
 #: app/helpers/notes.ts
-msgid "On the storage only. {files, plural, one {# file} other {# files}} freed from this machine on {day} — {size} given back. The project is kept here; everything else is on the storage, as above."
-msgstr "Sur le stockage seulement. {files, plural, one {# fichier libéré} other {# fichiers libérés}} de cette machine le {day} — {size} récupérés. Le projet est gardé ici ; tout le reste est sur le stockage, comme ci-dessus."
+msgid "On the storage only. {files, plural, one {# file} other {# files}} freed from this machine on {day} — {size} given back. The edit is kept here; everything else is on the storage, as above."
+msgstr "Sur le stockage seulement. {files, plural, one {# fichier libéré} other {# fichiers libérés}} de cette machine le {day} — {size} récupérés. Le montage du film est gardé ici ; tout le reste est sur le stockage, comme ci-dessus."
 
 #: app/components/remove-files-dialog.tsx
 msgid "on their camera's time, to be filed again. Their trims are kept."
@@ -4099,11 +3988,6 @@ msgstr "Ouvrir"
 msgid "Open in DSM"
 msgstr "Ouvrir dans DSM"
 
-#: app/components/montage-card.tsx
-#: app/components/montage-view.tsx
-msgid "Open in kdenlive"
-msgstr "Ouvrir dans kdenlive"
-
 #: app/components/inspector.tsx
 msgid "Open it — trim, frame and turn"
 msgstr "L’ouvrir — couper, cadrer et tourner"
@@ -4144,10 +4028,6 @@ msgstr "Ouvrir le message dans"
 msgid "Open the photo in this machine's own player — the file as it was shot, whatever the browser can decode"
 msgstr "Ouvrir la photo dans le lecteur de cette machine — le fichier tel qu’il a été pris, quoi que le navigateur sache décoder"
 
-#: app/components/montage-card.tsx
-msgid "Open this project in kdenlive"
-msgstr "Ouvrir ce projet dans kdenlive"
-
 #: app/components/film-timeline.tsx
 #: app/components/inspector.tsx
 msgid "Opening"
@@ -4157,22 +4037,6 @@ msgstr "Ouverture"
 msgid "Opening {chosen}…"
 msgstr "Ouverture de {chosen}…"
 
-#: app/helpers/notes.ts
-msgid "opening it"
-msgstr "ouverture"
-
-#: app/helpers/notes.ts
-msgid "opening it with {command}"
-msgstr "ouverture avec {command}"
-
-#: app/helpers/notes.ts
-msgid "Opening it with {command}…"
-msgstr "Ouverture avec {command}…"
-
-#: app/helpers/notes.ts
-msgid "Opening it…"
-msgstr "Ouverture…"
-
 #: app/components/film-editor.tsx
 msgid "Opening the film…"
 msgstr "Ouverture du film…"
@@ -4180,14 +4044,6 @@ msgstr "Ouverture du film…"
 #: app/components/pending.tsx
 msgid "Opening the player…"
 msgstr "Ouverture du lecteur…"
-
-#: app/components/pending.tsx
-msgid "Opening the project…"
-msgstr "Ouverture du projet…"
-
-#: app/components/montage-card.tsx
-msgid "Opening…"
-msgstr "Ouverture…"
 
 #: app/components/montage-steps.tsx
 msgid "Opens the film editor with the clips laid end to end. Trim them, add music and text, then render."
@@ -4610,10 +4466,6 @@ msgstr "Lecture de la caméra…"
 #: app/components/film-templates-dialog.tsx
 msgid "Reading the film templates…"
 msgstr "Lecture des modèles de film…"
-
-#: app/components/templates-dialog.tsx
-msgid "Reading the templates…"
-msgstr "Lecture des modèles…"
 
 #: app/components/jump-graph.tsx
 msgid "Reading what the camera measured…"
@@ -5237,17 +5089,9 @@ msgstr "Recommencer le montage du film…"
 msgid "Start the film"
 msgstr "Commencer le film"
 
-#: app/components/start-again-dialog.tsx
-msgid "Start the film editor’s edit again"
-msgstr "Recommencer le montage de l’éditeur de film"
-
 #: app/components/film-template-modals.tsx
 msgid "Start the film from a film template?"
 msgstr "Commencer le film à partir d’un modèle de film ?"
-
-#: app/components/start-again-dialog.tsx
-msgid "Start the kdenlive project again"
-msgstr "Recommencer le projet kdenlive"
 
 #: app/components/jump-name.tsx
 msgid "Started"
@@ -5305,10 +5149,6 @@ msgstr ""
 #: app/components/jobs-panel.tsx
 msgid "Stop this film’s render now — the film as it was before stays as it is"
 msgstr ""
-
-#: app/components/templates-dialog.tsx
-msgid "Stop using by default"
-msgstr "Ne plus utiliser par défaut"
 
 #: app/components/jobs-panel.tsx
 #: app/components/pending.tsx
@@ -5369,7 +5209,7 @@ msgstr "Tab passe d’une commande à l’autre"
 msgid "Take {0} out of {1}"
 msgstr "Retirer {0} de {1}"
 
-#. placeholder {0}: partName(part, parts)
+#. placeholder {0}: partName(part)
 #: app/components/upload-dialog.tsx
 msgid "Take {0} out of {name}"
 msgstr "Retirer {0} de {name}"
@@ -5407,18 +5247,6 @@ msgstr "Retiré du montage {montage}"
 #: app/components/pending.tsx
 msgid "Taking files back…"
 msgstr "Reprise des fichiers…"
-
-#: app/components/jobs-panel.tsx
-msgid "Template added"
-msgstr "Modèle ajouté"
-
-#: app/components/templates-dialog.tsx
-msgid "Templates"
-msgstr "Modèles"
-
-#: app/components/board-header.tsx
-msgid "Templates…"
-msgstr "Modèles…"
 
 #: app/components/film-editor.tsx
 #: app/components/film-timeline.tsx
@@ -5493,13 +5321,13 @@ msgstr "Les copies déjà faites pour {place} ont été écrites dans un dossier
 msgid "the copies, and the film rendered last"
 msgstr "les copies, et le dernier film rendu"
 
-#: app/components/templates-dialog.tsx
-msgid "The copy was cut off — try again."
-msgstr "La copie a été interrompue — réessayez."
-
 #: app/components/reset-fresh-dialog.tsx
 msgid "the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn{alreadySet}. The gap rule makes the jumps again"
 msgstr "les heures corrigées, les sauts créés et nommés à la main, toutes les copies, et chaque coupe, cadrage et rotation{alreadySet}. La règle des écarts recrée les sauts"
+
+#: app/helpers/parcels.ts
+msgid "the edit"
+msgstr "le montage du film"
 
 #: app/components/upload-dialog.tsx
 msgid "The edit"
@@ -5512,10 +5340,6 @@ msgstr "le montage lui-même — une copie en est gardée dans .projects"
 #: app/components/free-dialog.tsx
 msgid "the edit, and the record of what went where"
 msgstr "le montage, et la trace de ce qui est allé où"
-
-#: app/components/board-header.tsx
-msgid "The editing templates a montage is made from — look them over, or bring one in"
-msgstr "Les modèles de montage dont un montage est fait — les parcourir, ou en importer un"
 
 #: app/components/film-editor.tsx
 msgid "The fade from the previous clip already fades this clip in."
@@ -5597,10 +5421,6 @@ msgstr "Le dossier n’a pas pu être changé."
 msgid "The folder is changed from SkyDock’s own window. Here it is the one the server was started with."
 msgstr "Le dossier se change depuis la fenêtre de SkyDock elle-même. Ici, c’est celui avec lequel le serveur a été démarré."
 
-#: app/components/templates-dialog.tsx
-msgid "The folder kdenlive left"
-msgstr "Le dossier laissé par kdenlive"
-
 #: app/components/board-header.tsx
 msgid "The folder SkyDock keeps its work in — the originals, what is handed over, the board — and another one to work in"
 msgstr "Le dossier où SkyDock garde son travail — les originaux, ce qui est livré, le tableau — et un autre où travailler"
@@ -5621,18 +5441,6 @@ msgstr "Le saut disparaît ; ses fichiers sont gardés, en vrac dans Nouveaux fi
 #: app/components/reset-fresh-dialog.tsx
 msgid "the jumps and their names, and every trim, frame and turn"
 msgstr "les sauts et leurs noms, et chaque coupe, cadrage et rotation"
-
-#: app/components/start-again-dialog.tsx
-msgid "the kdenlive project"
-msgstr "le projet kdenlive"
-
-#: app/components/upload-dialog.tsx
-msgid "The kdenlive project"
-msgstr "Le projet kdenlive"
-
-#: app/components/upload-dialog.tsx
-msgid "The kdenlive project and the edit"
-msgstr "Le projet kdenlive et le montage du film"
 
 #: app/components/jump-graph.tsx
 msgid "The least and the most the camera felt in this clip, in gravities"
@@ -5667,8 +5475,8 @@ msgid "The montage"
 msgstr "Le montage"
 
 #: app/components/start-again-dialog.tsx
-msgid "The montage is no longer held by that edit. The film editor starts again from the clips laid end to end, and a kdenlive project can be made anew."
-msgstr "Le montage n’est plus retenu par ce montage du film. L’éditeur de film repart des clips mis bout à bout, et un projet kdenlive peut être refait."
+msgid "The montage is no longer held by that edit. The film editor starts again from the clips laid end to end."
+msgstr "Le montage n’est plus retenu par ce montage du film. L’éditeur de film repart des clips mis bout à bout."
 
 #: app/components/film-editor.tsx
 msgid "The music could not be brought in."
@@ -5743,14 +5551,6 @@ msgstr "les copies préparées et les copies de travail faites pour le logiciel 
 msgid "the processed folder"
 msgstr "le dossier préparé"
 
-#: app/helpers/parcels.ts
-msgid "the project"
-msgstr "le projet"
-
-#: app/components/upload-dialog.tsx
-msgid "The project reopens only with its clips back where they sat."
-msgstr "Le projet ne se rouvre qu’avec ses clips remis là où ils étaient."
-
 #: app/components/file-list.tsx
 msgid "The proxy could not be made: {reason}. It is tried again on the next pass; meanwhile the clip plays as it is."
 msgstr "Le proxy n’a pas pu être créé : {reason}. Il sera retenté au prochain passage ; en attendant, le clip est lu tel quel."
@@ -5793,17 +5593,9 @@ msgstr "Le stockage a refusé."
 msgid "The storage’s answer could not be read."
 msgstr "La réponse du stockage n’a pas pu être lue."
 
-#: app/components/templates-dialog.tsx
-msgid "The template and its files"
-msgstr "Le modèle et ses fichiers"
-
 #: app/components/email-dialog.tsx
 msgid "The template for every email."
 msgstr "Le modèle pour chaque e-mail."
-
-#: app/components/templates-dialog.tsx
-msgid "The templates could not be read."
-msgstr "Les modèles n’ont pas pu être lus."
 
 #: app/components/inspector.tsx
 msgid "The tick or ⌘/ctrl-click picks one · shift-click takes a range · ⌘A takes them all · drag them onto a jump to move them, holding alt to copy them there instead"
@@ -5820,10 +5612,6 @@ msgstr "Les titres et la musique dont un film part — en créer un, ou les rang
 #: app/components/preview-drawer.tsx
 msgid "The trim, frame or turn you set has not been saved yet."
 msgstr "La coupe, le cadrage ou la rotation que vous avez définis ne sont pas encore enregistrés."
-
-#: app/components/templates-dialog.tsx
-msgid "the usual one"
-msgstr "celui par défaut"
 
 #: app/components/film-template-modals.tsx
 msgid "The videos end to end, and the name as the title"
@@ -6266,10 +6054,6 @@ msgstr "Vertical, pour un téléphone"
 msgid "Upside down"
 msgstr "À l’envers"
 
-#: app/components/templates-dialog.tsx
-msgid "Use by default"
-msgstr "Utiliser par défaut"
-
 #: app/components/nas-folder-browser.tsx
 msgid "Use this folder"
 msgstr "Utiliser ce dossier"
@@ -6484,15 +6268,6 @@ msgstr "En cours"
 #: app/components/film-editor.tsx
 msgid "Write {NAME_TOKEN} and {DAY_TOKEN} where the name and the day go."
 msgstr "Écrivez {NAME_TOKEN} et {DAY_TOKEN} là où vont le nom et le jour."
-
-#: app/components/montage-card.tsx
-#: app/components/montage-view.tsx
-msgid "Write a kdenlive project from a template instead, and open it"
-msgstr "Écrire plutôt un projet kdenlive à partir d’un modèle, et l’ouvrir"
-
-#: app/components/montage-card.tsx
-msgid "Writing…"
-msgstr "Écriture…"
 
 #: app/components/jump-time.tsx
 msgid "Wrong camera clock? Set when this jump really started — every file in it moves with it"

@@ -305,7 +305,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         <BoardHeader
           scanning={board.scanning}
           onScan={board.scan}
-          onTemplates={() => setDialog({ kind: 'templates' })}
           onFilmTemplates={() => setDialog({ kind: 'filmTemplates' })}
           onWorkFolder={() => setDialog({ kind: 'work-folder' })}
           onShortcuts={() => setDialog({ kind: 'shortcuts' })}
@@ -385,10 +384,8 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             if (mode === 'delete') model.pickPlace({ kind: 'sort' })
           })
         }
-        onStartAgain={(group, which) =>
-          closeThen(() =>
-            send('start-again', { intent: 'start-edit-again', groupId: group.id, edit: which })
-          )
+        onStartAgain={(group) =>
+          closeThen(() => send('start-again', { intent: 'start-edit-again', groupId: group.id }))
         }
         onDeleteJump={(group) => closeThen(() => model.deleteJump(group, true))}
         onResetFresh={(what) =>
@@ -403,7 +400,6 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             .action({ url: '/api/camera', actionArgs: { forget: key } })
             .catch(() => undefined)
         }}
-        onMontage={(groupId, template) => closeThen(() => model.makeMontage(groupId, template))}
         passengers={model.passengers}
         onNameMontage={(what, passenger) => closeThen(() => model.nameDropped(what, passenger))}
         onRemoveFiles={(to, files) => closeThen(() => model.removeTo(to, files))}

@@ -15,10 +15,9 @@ npm install
 npm run dev            # the board, on http://localhost:5180
 ```
 
-Everything happens on the board: scanning, sorting, processing and uploading. `dev` also points
-SkyDock at the editor and the video player on the machine around the container — see _Opening a
-montage from the container_ below — so a montage opens from a browser tab the way it would from the
-app.
+Everything happens on the board: scanning, sorting, processing, editing and uploading. `dev` also
+points SkyDock at the video player on the machine around the container — see _Opening a clip from the
+container_ below — so a clip opens from a browser tab the way it would from the app.
 
 ### The window
 
@@ -98,8 +97,8 @@ already do, and this makes it ordinary rather than possible.
 
 **The application is asked for by their session manager**, not started in that container of a
 moment. Started there it would carry that container's cgroup about with it, and a confined
-application — a snap, a flatpak — looks at that and refuses before it draws anything; kdenlive is a
-snap on this machine, and said so in a line about a cgroup directory it could not open. Handed to
+application — a snap, a flatpak — looks at that and refuses before it draws anything; a player installed as a
+snap says so in a line about a cgroup directory it could not open. Handed to
 `systemd-run --user`, it is the machine's own application from the first instant, in their slice,
 and it outlives the container without one having to be left running. What it says goes to their
 journal. Interrupting this side stops it over there, as it always did.
@@ -298,11 +297,8 @@ still warns about a newly signed app until enough copies of it have been install
 | `SKYDOCK_OUTPUT_DIR`                                                   | Where originals, the registry and delivery folders live                                                                                                                  | `/workspace/output`                                                        |
 | `SKYDOCK_CONFIG_DIR`                                                   | The app's own settings, kept apart from the work — the storage connection                                                                                                | `/workspace/config`                                                        |
 | `SKYDOCK_TRASH_DIR`                                                    | The bin: files put aside, and a camera's files once deleted from it. Never emptied by the app                                                                            | `.trash` inside the output folder                                          |
-| `SKYDOCK_MONTAGE_TEMPLATE`                                             | The kdenlive project a montage is built from                                                                                                                             | none ships; the ones under `output/templates`                              |
 | `SKYDOCK_CAMERA_ROOTS`                                                 | Where cameras get mounted, separated the way this system separates paths. A drive there with a `DCIM` folder is copied off by itself; empty turns it off                 | Linux `/mnt/osmo:/media:/run/media`, macOS `/Volumes`, Windows every drive |
-| `SKYDOCK_EDITOR_COMMAND`                                               | What opens a montage — read as a shell command line, with the project appended as its last argument. Quotes group, so `sh -c "… \"$0\" …"` works and `$0` is the project | kdenlive, as each system keeps it                                          |
 | `SKYDOCK_FFMPEG_PATH`, `SKYDOCK_FFPROBE_PATH`, `SKYDOCK_EXIFTOOL_PATH` | Where each tool is. The installed app says; otherwise they are looked for on the PATH                                                                                    | found on the PATH                                                          |
-| `SKYDOCK_TEMPLATES_DIR`                                                | Where templates that ship with the app would be. None do — a `templates/` folder here is carried into an installer but is never committed                              | `templates/` beside the code                                               |
 | `SKYDOCK_CLIENT_DIR`                                                   | The built page the packaged server serves                                                                                                                                | beside the server                                                          |
 | `PORT`                                                                 | The port the packaged server listens on, on `127.0.0.1` only. `0`, or unset, takes a free one and prints it                                                              | a free one                                                                 |
 
@@ -325,32 +321,28 @@ Run from this repository instead, each is looked for on the PATH.
   on Linux it runs on the one the system ships with, at `/usr/bin/perl`, which is where both keep it
   — and it is asked for there rather than on the PATH, because an app opened from the desktop has
   hardly any PATH and would otherwise find nothing and say nothing.
-- `kdenlive` is **not** required to produce a montage project, only to open and render one.
-- `tar` — only to bring in an editing template packed as `.tar.gz`; a `.zip` needs nothing.
 
-### Opening a montage from the container
+### Opening a clip from the container
 
-Installed as a desktop app, SkyDock runs on the machine kdenlive is on and starts it directly —
-nothing to set up. The development container is the awkward case: it has no kdenlive and no way to
-reach the one outside it, so pressing **Montage** there would report that it cannot open anything.
+Installed as a desktop app, SkyDock runs on the machine the video player is on and starts it directly —
+nothing to set up. The development container is the awkward case: it has no player and no way to
+reach the one outside it, so playing a clip with the machine's own player there would report that it
+cannot open anything.
 
 `npm run dev` bridges it, with nothing extra to run and nothing left running on the host. It is
 
 ```sh
-umask 000 && SKYDOCK_EDITOR_COMMAND=/workspace/scripts/editor-on-host.sh \
-  SKYDOCK_PLAYER_COMMAND=/workspace/scripts/play-on-host.sh npm run dev --workspace=@workspace/web
+umask 000 && SKYDOCK_PLAYER_COMMAND=/workspace/scripts/play-on-host.sh npm run dev --workspace=@workspace/web
 ```
 
-— the variables point SkyDock at [scripts/editor-on-host.sh](../scripts/editor-on-host.sh) and
-[scripts/play-on-host.sh](../scripts/play-on-host.sh), which hand the project or the clip to
-[scripts/host.sh](../scripts/host.sh) to open over there, as described above, in the machine's own
-terms: a path this container knows as `/workspace` is translated on the way. `SKYDOCK_HOST_EDITOR`
-and `SKYDOCK_HOST_PLAYER` pick a different one of each. The umask is explained below. Run where
-there is no machine around the container — no docker socket — both simply start the program where
-they are, so `npm run dev` is right on a plain machine too.
+— the variable points SkyDock at [scripts/play-on-host.sh](../scripts/play-on-host.sh), which hands the
+clip to [scripts/host.sh](../scripts/host.sh) to open over there, as described above, in the machine's
+own terms: a path this container knows as `/workspace` is translated on the way. `SKYDOCK_HOST_PLAYER`
+picks a different player. Run where there is no machine around the container — no docker socket — it
+simply starts the program where it is, so `npm run dev` is right on a plain machine too.
 
-The board is told what came of it. The bridge waits a moment for the editor to fail before calling
-it an opening, so an editor that cannot start says why — the line it printed on its way out — rather
+The board is told what came of it. The bridge waits a moment for the player to fail before calling
+it an opening, so a player that cannot start says why — the line it printed on its way out — rather
 than leaving "opening it…" over a window that never came. What it printed afterwards is in the
 machine's own journal:
 
@@ -359,35 +351,14 @@ scripts/host.sh journalctl --user -u 'skydock-*' -n 50
 ```
 
 **The two sides are not the same user.** The container runs as root; on the host you are yourself.
-Everything SkyDock writes into `output/` is therefore owned by root, and the editor running on the
-host would get it read-only. Opening a project works, and so does playing its clips — but saving the
-edit and rendering the film both write, and both would be refused, the second one only at the end of
-a render. Two things answer that, and they answer different halves of it.
-
-`dev` sets `umask 000`, so what SkyDock writes from then on is writable by everybody. That is
-a development-machine trade — permissive modes under `output/` — and it covers the folders the
-editor only reads, the proxies above all.
-
-The jump being opened gets more than that: the bridge hands its folder over, `chown`ing it to
-whoever owns the repo, which on a bind mount is the host user. Being allowed to write a file and
-owning it are not the same thing — an editor may decline a project belonging to somebody else
-whatever the mode says, and anything written before the umask was set is still the old `0644`. The
-container runs as root, so it can settle this rather than leave it to be discovered at a save.
-
-A confined editor makes ownership the only thing that counts. kdenlive installed as a snap may read
-what is in your home **only where you own it**, whatever the mode says — a root-owned file at `0755`
-is refused, and the editor opens the project and reports the music and the logos as missing. So the
-bridge hands over what the project points at as well as the folder it sits in: its music, its logos,
-the proxies it plays from. Anything opened before that was handed over shows it missing until the
-project is opened again.
-
-Nothing else under `output/` is handed over, so old files stay as they are. To take the lot once:
+Everything SkyDock writes into `output/` is therefore owned by root. `dev` sets `umask 000`, so what
+SkyDock writes from then on is readable by everybody, which is all a player needs. That is a
+development-machine trade — permissive modes under `output/` — and the packaged desktop build has none
+of this, since there is only one user in it. To take what is already there once:
 
 ```sh
 sudo chown -R "$USER" output/
 ```
-
-The packaged desktop build has none of this, since there is only one user in it.
 
 ## Checks
 

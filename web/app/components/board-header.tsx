@@ -57,7 +57,6 @@ const shortHost = (host: string) => host.replace(/^https?:\/\//, '').replace(/[:
 const BoardHeader = ({
   scanning,
   onScan,
-  onTemplates,
   onFilmTemplates,
   onWorkFolder,
   onShortcuts,
@@ -66,7 +65,6 @@ const BoardHeader = ({
 }: {
   scanning: boolean
   onScan: () => void
-  onTemplates: () => void
   onFilmTemplates: () => void
   onWorkFolder: () => void
   onShortcuts: () => void
@@ -168,14 +166,6 @@ const BoardHeader = ({
               />
             </SettingsRow>
             <div className='flex flex-col border-t border-line-2 pt-2'>
-              <MenuItem
-                title={t`The editing templates a montage is made from — look them over, or bring one in`}
-                onClick={() => {
-                  close()
-                  onTemplates()
-                }}>
-                {t`Templates…`}
-              </MenuItem>
               <MenuItem
                 title={t`The titles and music a film is started from — make one, or tidy them`}
                 onClick={() => {

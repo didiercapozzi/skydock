@@ -201,8 +201,8 @@ describe('dialogs', () => {
     await quiet()
   })
 
-  test('closes the editing templates and the work folder with Escape and with a click outside', async () => {
-    await closesWithEscapeAndOutsideClick('Editing templates', () => fromSettings('Templates…'))
+  test('closes the film templates and the work folder with Escape and with a click outside', async () => {
+    await closesWithEscapeAndOutsideClick('Film templates', () => fromSettings('Film templates…'))
     await closesWithEscapeAndOutsideClick('Work folder', () => fromSettings('Work folder…'))
     await quiet()
   })

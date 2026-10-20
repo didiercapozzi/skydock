@@ -89,7 +89,7 @@ ${shared
 ## The other ways in
 
 These are the board's own, not everything that writes. \`api/nas\` has a list of its own,
-\`api/share-link\` another, and \`api/scan\`, \`api/import\` and \`api/templates\` write with no intent
+\`api/share-link\` another, and \`api/scan\` and \`api/import\` write with no intent
 at all — the Scan button is one of those. They are named here so this does not pretend to be
 everything.
 `

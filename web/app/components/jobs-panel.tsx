@@ -71,14 +71,6 @@ const looksOf = ({ type, label, stage, done, total, rows, phase }: Job): Looks =
         summary: t`Moving the files into the bin`,
         bar: t`Put in the bin`
       }
-    case 'template':
-      return {
-        icon: 'montage',
-        title: t`Adding the template ${label}`,
-        doing: t`Copying`,
-        summary: t`Copying the template’s files`,
-        bar: t`Template added`
-      }
     case 'bring':
       return {
         icon: 'back',

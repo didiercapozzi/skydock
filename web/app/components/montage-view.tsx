@@ -2,7 +2,6 @@ import { plural, t } from '@lingui/core/macro'
 import {
   goneSent,
   hasCompletePassenger,
-  hasKdenlive,
   isMontage,
   isVideoFile,
   passengerOf,
@@ -56,10 +55,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       onProcess={() => model.takeStep(group, 'Prepared')}
       onCancelProcess={() => model.cancelProcess({ groupIds: [group.id] })}
       onMontage={() => model.takeStep(group, 'Project')}
-      onKdenlive={() => void model.askMontage(group)}
       onOpenMontage={() => model.takeStep(group, 'Film')}
-      opensKdenlive={model.opensKdenlive(group)}
-      onOpenKdenlive={() => model.openKdenlive(group)}
       onUpload={() => model.takeStep(group, 'Uploaded')}
       onEmail={
         group.uploaded && linked && progress.steps[progress.at]?.name === 'Sent'
@@ -410,27 +406,6 @@ const MontageMenu = ({
           {t`Edit the film`}
         </MenuItem>
       )}
-      {hasKdenlive(facts) && !group.freed && (
-        <MenuItem
-          icon='open'
-          disabled={busy}
-          onClick={act(() => model.openKdenlive(group))}>
-          {t`Open in kdenlive`}
-        </MenuItem>
-      )}
-      {group.processed && !hasKdenlive(facts) && !group.freed && (
-        <MenuItem
-          icon='project'
-          disabled={busy || held === 'processing'}
-          title={
-            held === 'processing'
-              ? heldSaid
-              : t`Write a kdenlive project from a template instead, and open it`
-          }
-          onClick={act(() => void model.askMontage(group))}>
-          {t`Make a kdenlive project`}
-        </MenuItem>
-      )}
 
       {group.processed && !group.freed && (
         <MenuItem
@@ -438,7 +413,7 @@ const MontageMenu = ({
           disabled={busy || held !== null}
           title={
             heldSaid ??
-            t`Make the copies again from the originals — the project, the film and the archives are left alone`
+            t`Make the copies again from the originals — the edit, the film and the archives are left alone`
           }
           onClick={act(() => model.takeStep(group, 'Prepared'))}>
           {t`Process again`}
@@ -469,7 +444,7 @@ const MontageMenu = ({
           {t`Trim every clip to the jump`}
         </MenuItem>
       )}
-      {facts?.project && !group.freed && (
+      {facts?.edit && !group.freed && (
         <MenuItem
           icon='back'
           disabled={busy || held !== null}
@@ -505,15 +480,6 @@ const MontageMenu = ({
             model.setDialog({ kind: 'take-back', mode: 'delete', who: passengerOf(group) })
           )}>
           {t`Delete montage…`}
-        </MenuItem>
-      )}
-      {facts?.project && (
-        <MenuItem
-          icon='project'
-          onClick={act(
-            () => void navigator.clipboard?.writeText(facts.projectPath).catch(() => undefined)
-          )}>
-          {t`Copy the project’s path`}
         </MenuItem>
       )}
     </div>

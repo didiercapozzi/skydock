@@ -3,32 +3,21 @@ import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
 import { dropFiles } from './page'
-import {
-  editorEnv,
-  makeProject,
-  nameFile,
-  nameJump,
-  putEditor,
-  putSlowFfmpeg,
-  putTemplate,
-  slowFfmpegEnv
-} from './i1-helpers'
-import { makeBigClip, montageFolder, WHO } from './media'
+import { nameFile, nameJump, putSlowFfmpeg, slowFfmpegEnv } from './i1-helpers'
+import { makeBigClip, WHO } from './media'
 import { groupsOf } from './record'
-import { details, dialogNamed } from './steps'
+import { details } from './steps'
 
 const j = harness({
   name: 'i1-proxies',
   state: 'sorted',
   prepare: (world) => {
-    putEditor(world)
     putSlowFfmpeg(world)
-    putTemplate(world, 'club')
     makeBigClip(path.join(world.computer, 'GX010002.MP4'), '2026-09-06T17:00:00')
     makeBigClip(path.join(world.computer, 'GX010003.MP4'), '2026-09-06T18:00:00')
     fs.writeFileSync(path.join(world.root, 'hold-proxies'), '')
   },
-  env: (world) => ({ ...editorEnv(world), ...slowFfmpegEnv(world) })
+  env: slowFfmpegEnv
 })
 const { quiet, see } = j
 
@@ -37,10 +26,9 @@ const foldCorner = async () => {
   const fold = j.page.getByRole('button', { name: 'Hide the list' })
   if (await fold.count()) await fold.first().click()
 }
-const makeIt = () => j.page.getByRole('button', { name: 'Make a kdenlive project' })
 
-describe('the project waits for the proxies', () => {
-  test('cannot be made while a clip is still getting its proxy, and says how many it waits for', async () => {
+describe('the small copies of a montage’s clips', () => {
+  test('are counted while a clip is still getting its own, and the film editor opens at once', async () => {
     await j.open()
     await see('Jump 2')
     await dropFiles(j.page, [path.join(j.world.computer, 'GX010002.MP4')])
@@ -51,26 +39,21 @@ describe('the project waits for the proxies', () => {
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
 
     await j.page.getByText('waiting for 1 proxy').waitFor()
-    expect(await makeIt().isDisabled()).toBe(true)
-    expect(
-      fs.readdirSync(montageFolder(j.world, 'Noé Roux')).some((f) => f.endsWith('.kdenlive'))
-    ).toBe(false)
+    expect(await j.page.getByRole('button', { name: 'Edit the film' }).first().isEnabled()).toBe(
+      true
+    )
     await quiet()
   })
 
-  test('makes the project once the clip has its proxy, with the clip playing from it', async () => {
+  test('are no longer waited for once the clip has its own', async () => {
     fs.rmSync(mark('hold-proxies'))
-    await expect.poll(async () => await makeIt().isDisabled(), { timeout: 60_000 }).toBe(false)
-    expect(await j.page.getByText('waiting for 1 proxy').count()).toBe(0)
-    await makeProject(j.page, path.join(j.world.computer, 'club'))
-    const folder = montageFolder(j.world, 'Noé Roux')
-    const project = fs.readdirSync(folder).find((f) => f.endsWith('.kdenlive'))!
-    const xml = fs.readFileSync(path.join(folder, project), 'utf8')
-    expect(xml).toMatch(/<property name="kdenlive:proxy">[^<]*\/proxies\/[^<]*<\/property>/)
+    await expect
+      .poll(async () => await j.page.getByText('waiting for 1 proxy').count(), { timeout: 60_000 })
+      .toBe(0)
     await quiet()
   })
 
-  test('does not wait for a clip whose proxy was tried and could not be made, which opens as it is', async () => {
+  test('are not waited for when the small copy was tried and could not be made', async () => {
     fs.writeFileSync(mark('hold-proxies'), '')
     fs.writeFileSync(mark('fail-proxies'), '')
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
@@ -83,23 +66,9 @@ describe('the project waits for the proxies', () => {
     await j.page.getByText('waiting for 1 proxy').waitFor()
 
     fs.rmSync(mark('hold-proxies'))
-    await expect.poll(async () => await makeIt().isDisabled(), { timeout: 60_000 }).toBe(false)
-    expect(await j.page.getByText('waiting for 1 proxy').count()).toBe(0)
-    await makeIt().click()
-    await j.page
-      .getByRole('button', { name: 'Open in kdenlive' })
-      .first()
-      .waitFor({ timeout: 30_000 })
-    const folder = montageFolder(j.world, 'Zoé Roux')
-    const xml = fs.readFileSync(
-      path.join(
-        folder,
-        fs.readdirSync(folder).find((f) => f.endsWith('.kdenlive'))!
-      ),
-      'utf8'
-    )
-    expect(xml).toContain('<property name="kdenlive:proxy">-</property>')
-    expect(xml).not.toContain('kdenlive:originalurl')
+    await expect
+      .poll(async () => await j.page.getByText('waiting for 1 proxy').count(), { timeout: 60_000 })
+      .toBe(0)
     await quiet()
   })
 })
@@ -120,20 +89,6 @@ describe('while a montage is being processed', () => {
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     expect(await details(j.page).getByRole('button', { name: 'Reset…' }).isDisabled()).toBe(false)
     expect(groupsOf(j.world).find((g) => g.passenger?.lastname === 'Favre')?.processed).toBe(true)
-    await quiet()
-  })
-})
-
-describe('the one template there is', () => {
-  test('is simply used when it is whole, without asking which template to make the project from', async () => {
-    await makeIt().click()
-    await j.page
-      .getByRole('button', { name: 'Open in kdenlive' })
-      .first()
-      .waitFor({ timeout: 30_000 })
-    expect(await dialogNamed(j.page, 'Editing templates').count()).toBe(0)
-    const folder = montageFolder(j.world, WHO)
-    expect(fs.readdirSync(folder).some((f) => f.endsWith('.kdenlive'))).toBe(true)
     await quiet()
   })
 })

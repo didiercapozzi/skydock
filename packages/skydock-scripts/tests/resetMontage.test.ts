@@ -78,7 +78,7 @@ const setup = () => {
   for (const who of ['Luc Favre', 'Ana Roth']) {
     fs.mkdirSync(path.join(folder(who), 'videos'), { recursive: true })
     fs.writeFileSync(path.join(folder(who), 'videos', 'copy.mp4'), 'copy')
-    fs.writeFileSync(path.join(folder(who), 'edit.kdenlive'), '<mlt/>')
+    fs.writeFileSync(path.join(folder(who), 'edit.edit.json'), '<mlt/>')
     fs.writeFileSync(path.join(folder(who), 'film.mp4'), 'film')
   }
   for (const id of ['g1', 'g2', 'g3']) {
@@ -130,7 +130,7 @@ describe('resetting a montage', () => {
   it('leaves another passenger, and the originals, exactly as they were', async () => {
     const { manifest, folder } = setup()
     await resetMontage(manifest, outputDir, 'g1')
-    expect(fs.existsSync(path.join(folder('Ana Roth'), 'edit.kdenlive'))).toBe(true)
+    expect(fs.existsSync(path.join(folder('Ana Roth'), 'edit.edit.json'))).toBe(true)
     expect(fs.existsSync(path.join(outputDir, 'proxies', 'cut', 'g3'))).toBe(true)
     expect(manifest.groups.find((g) => g.id === 'g3')?.processed).toBe(true)
     expect(fs.existsSync(manifest.files[0]!.path)).toBe(true)
@@ -165,7 +165,7 @@ describe('deleting a montage', () => {
   it('deletes a montage that was edited, rendered and uploaded, leaving the storage alone', async () => {
     const { manifest, folder } = setup()
     fs.mkdirSync(folder('Luc Favre'), { recursive: true })
-    fs.writeFileSync(path.join(folder('Luc Favre'), 'luc_favre_20260801.kdenlive'), '<mlt/>')
+    fs.writeFileSync(path.join(folder('Luc Favre'), 'luc_favre_20260801.edit.json'), '<mlt/>')
     fs.writeFileSync(path.join(folder('Luc Favre'), 'luc_favre_20260801.mp4'), 'film')
     manifest.groups.find((g) => g.id === 'g1')!.uploaded = { at: 1, shareUrl: 'https://nas/x' }
 

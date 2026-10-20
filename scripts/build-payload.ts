@@ -136,9 +136,6 @@ const buildApp = () => {
     path.join(root, 'web', 'build', 'skydock-server.mjs'),
     path.join(resources, 'skydock-server.mjs')
   )
-  const templates = path.join(root, 'templates')
-  if (fs.existsSync(templates))
-    fs.cpSync(templates, path.join(resources, 'templates'), { recursive: true })
 }
 
 const system = systemBuiltFor()

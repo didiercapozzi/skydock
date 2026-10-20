@@ -12,7 +12,6 @@ import {
   saveFilmTemplate,
   updateFilmTemplate
 } from '../src/filmTemplateFiles'
-import { listTemplates } from '../src/templates'
 import { createTmpDir } from './fixtures'
 
 let outputDir: string
@@ -238,10 +237,5 @@ describe('film template files', () => {
     await saveFilmTemplate({ outputDir, name: 'Trip', template, replace: false })
     await expect(createFilmTemplate(outputDir, 'Trip')).rejects.toThrow('already')
     expect(fs.readdirSync(folder())).toEqual(['Trip.film-template.json'])
-  })
-
-  it('leaves the editing templates alone', async () => {
-    await saveFilmTemplate({ outputDir, name: 'Club', template, replace: false })
-    expect((await listTemplates(outputDir)).templates).toEqual([])
   })
 })

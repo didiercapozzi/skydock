@@ -35,8 +35,6 @@ const takeBack =
 
 const resetMontageIntent = takeBack(resetMontage)
 const deleteMontageIntent = takeBack(deleteMontage)
-const startEditAgainIntent = takeBack((manifest, outputDir, groupId, data) =>
-  startEditAgain(manifest, outputDir, groupId, data.edit)
-)
+const startEditAgainIntent = takeBack(startEditAgain)
 
 export { deleteMontageIntent, resetMontageIntent, startEditAgainIntent }

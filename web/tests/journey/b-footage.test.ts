@@ -57,7 +57,7 @@ describe('footage dropped on the board', () => {
       made(path.join(rushes, 'cam1', 'deep', 'er', 'GX010011.MP4'), '2026-09-08T08:01:00')
       makeOwnPhoto(path.join(rushes, 'cam2', 'IMG_0010.JPG'), '2026-09-08T08:02:00', 2)
       fs.writeFileSync(path.join(rushes, 'notes.txt'), 'the rushes of the day')
-      fs.writeFileSync(path.join(rushes, 'cam1', 'cut.kdenlive'), '<mlt/>')
+      fs.writeFileSync(path.join(rushes, 'cam1', 'cut.edl'), '<mlt/>')
       fs.writeFileSync(path.join(rushes, 'cam1', '.DS_Store'), 'bookkeeping')
       fs.writeFileSync(path.join(rushes, 'cam2', '._IMG_0010.JPG'), 'what a Mac leaves')
       made(path.join(world.computer, 'GX010004.MP4'), '2026-09-09T08:00:00')
@@ -111,9 +111,7 @@ describe('footage dropped on the board', () => {
       'GX010011.MP4',
       'IMG_0010.JPG'
     ])
-    expect(landedOriginals(j.world).filter((f) => /notes|kdenlive|DS_Store|\._/.test(f))).toEqual(
-      []
-    )
+    expect(landedOriginals(j.world).filter((f) => /notes|edl|DS_Store|\._/.test(f))).toEqual([])
     expect(snapshot(rushes), 'the folder itself is not touched').toEqual(before)
     await j.quiet()
   })

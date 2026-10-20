@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest'
 import { render } from 'vitest-browser-react'
 import { page, userEvent } from 'vitest/browser'
 
-import { FileList } from '../../app/components/file-list'
 import type { ManifestFile } from '../../app/components/types'
 import { useSelection } from '../../app/hooks/useSelection'
 
@@ -18,42 +17,6 @@ const clip = (id: string): ManifestFile => ({
 
 const FREE = clip('free')
 const EDITED = clip('edited')
-
-const renderList = (shape: 'rows' | 'grid') =>
-  render(
-    createElement(FileList, {
-      files: [FREE, EDITED],
-      kind: 'all',
-      shape,
-      picked: [],
-      statusContext: (file: ManifestFile) => ({ inEdit: file.id === EDITED.id }),
-      proxies: {},
-      onFile: () => {},
-      onPick: () => {},
-      onOpen: () => {},
-      previewed: null,
-      offGap: new Set<string>(),
-      onDragFile: () => {},
-      sortKey: (file: ManifestFile) => file.filename,
-      deliveredName: () => null
-    })
-  )
-
-describe('a file in a montage with an edit', () => {
-  test('has no tick to pick it by, on a row', async () => {
-    await renderList('rows')
-
-    await expect.element(page.getByRole('button', { name: 'Pick' })).toBeInTheDocument()
-    expect(page.getByRole('button', { name: 'Pick' }).elements()).toHaveLength(1)
-  })
-
-  test('has no tick to pick it by, on a thumbnail', async () => {
-    await renderList('grid')
-
-    await expect.element(page.getByRole('button', { name: 'Pick' })).toBeInTheDocument()
-    expect(page.getByRole('button', { name: 'Pick' }).elements()).toHaveLength(1)
-  })
-})
 
 const Picks = ({ locked }: { locked: string[] }) => {
   const selection = useSelection({

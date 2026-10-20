@@ -2,37 +2,26 @@ import { copyFile, mkdir, readdir, rm } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
 import { stampOf } from './lib/clock'
 import { pathExists, sameBytes } from './lib/fs'
+import { editNameOf } from './montageNames'
 
 const HISTORY = '.projects'
 
-const EDITS = ['.kdenlive', '.edit.json'] as const
-
 const keptProjectsDir = (outputDir: string) => join(outputDir, HISTORY)
 
-const keepOne = async (folder: string, dir: string, stem: string, ending: string, at: Date) => {
-  const project = join(dir, `${stem}${ending}`)
-  if (!(await pathExists(project))) return null
+const keepEdit = async (outputDir: string, dir: string, baseName: string, at = new Date()) => {
+  const edit = join(dir, editNameOf(baseName))
+  if (!(await pathExists(edit))) return null
+  const folder = join(keptProjectsDir(outputDir), basename(dir))
   await mkdir(folder, { recursive: true })
+  const ending = '.edit.json'
   const newest = (await readdir(folder))
-    .filter((entry) => entry.startsWith(`${stem}-`) && entry.endsWith(ending))
+    .filter((entry) => entry.startsWith(`${baseName}-`) && entry.endsWith(ending))
     .sort()
     .at(-1)
-  if (newest && (await sameBytes(project, join(folder, newest)))) return null
-  const target = join(folder, `${stem}-${stampOf(at)}${ending}`)
-  await copyFile(project, target)
+  if (newest && (await sameBytes(edit, join(folder, newest)))) return null
+  const target = join(folder, `${baseName}-${stampOf(at)}${ending}`)
+  await copyFile(edit, target)
   return target
-}
-
-const keepProject = async (outputDir: string, dir: string, baseName: string, at = new Date()) => {
-  const folder = join(keptProjectsDir(outputDir), basename(dir))
-  const others = (await readdir(dir).catch(() => [] as string[])).filter(
-    (entry) => entry.endsWith('.kdenlive') && entry !== `${baseName}.kdenlive`
-  )
-  const kept = []
-  for (const ending of EDITS) kept.push(await keepOne(folder, dir, baseName, ending, at))
-  for (const other of others)
-    kept.push(await keepOne(folder, dir, other.slice(0, -'.kdenlive'.length), '.kdenlive', at))
-  return kept.find((target) => target !== null) ?? null
 }
 
 const setEditAside = async (outputDir: string, editPath: string, at = new Date()) => {
@@ -44,4 +33,4 @@ const setEditAside = async (outputDir: string, editPath: string, at = new Date()
   return join(HISTORY, basename(folder), name)
 }
 
-export { keepProject, keptProjectsDir, setEditAside }
+export { keepEdit, keptProjectsDir, setEditAside }

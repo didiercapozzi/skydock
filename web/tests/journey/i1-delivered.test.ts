@@ -6,14 +6,7 @@ import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
 import { dragPart, openUpload, region, sendAsUsual, uploadDialog } from './i2-helpers'
 import { filesUnder, montageFolder, renderFilm, WHO } from './media'
-import {
-  editorEnv,
-  makeAndPrepare,
-  makeProject,
-  nameJump,
-  putEditor,
-  putTemplate
-} from './i1-helpers'
+import { makeAndPrepare, makeEdit, nameJump } from './i1-helpers'
 import { groupsOf } from './record'
 import { addDestination, connectStorage, details, dialogNamed, folders, PASSWORD } from './steps'
 
@@ -21,12 +14,9 @@ let storage: FakeStorage
 const j = harness({
   name: 'i1-delivered',
   state: 'sorted',
-  prepare: async (world) => {
-    putEditor(world)
-    putTemplate(world, 'club')
+  prepare: async () => {
     storage = await startFakeStorage({ password: PASSWORD })
-  },
-  env: editorEnv
+  }
 })
 afterAll(async () => storage?.stop())
 const { quiet } = j
@@ -34,14 +24,14 @@ const { quiet } = j
 const main = () => j.page.getByRole('region', { name: WHO }).last()
 
 describe('a montage that is delivered', () => {
-  test('is made, prepared, given its project and its film, and sent to the storage', async () => {
+  test('is made, prepared, edited and given its film, and sent to the storage', async () => {
     await makeAndPrepare(j)
     await addDestination(j.page, 'Backup')
     await addDestination(j.page, 'Club')
     await folders(j.page)
       .getByRole('link', { name: /Luc Favre/ })
       .click()
-    await makeProject(j.page, path.join(j.world.computer, 'club'))
+    await makeEdit(j)
     renderFilm(j.world)
     await j.page.getByRole('button', { name: 'Upload…' }).first().waitFor({ timeout: 30_000 })
     await connectStorage(j.page, storage)
@@ -90,13 +80,11 @@ describe('a montage that is delivered', () => {
     const items = (await j.page.getByRole('group', { name: 'More' }).innerText()).split('\n')
     expect(items).toEqual([
       'Email Luc…',
-      'Open in kdenlive',
       'Process again',
       'Upload again…',
       'Free up space…',
       'Reset…',
-      'Delete montage…',
-      'Copy the project’s path'
+      'Delete montage…'
     ])
     await j.page.keyboard.press('Escape')
     await quiet()
@@ -141,7 +129,7 @@ describe('a montage that is delivered', () => {
     expect(text).toContain('Only on the storage now')
     expect(text).toContain('/club/Films')
     expect(text).toContain('/club/Backup/luc-favre')
-    expect(filesUnder(montageFolder(j.world)).filter((f) => !f.endsWith('.kdenlive'))).toEqual([])
+    expect(filesUnder(montageFolder(j.world)).filter((f) => !f.endsWith('.edit.json'))).toEqual([])
     expect(
       await details(j.page)
         .getByRole('button', { name: /^(Reset|Delete montage)/ })
@@ -162,14 +150,8 @@ describe('deleting a montage that was uploaded', () => {
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await nameJump(j.page, 'Jump 1', ANNA)
     await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page
-      .getByRole('button', { name: 'Make a kdenlive project' })
-      .waitFor({ timeout: 60_000 })
-    await j.page.getByRole('button', { name: 'Make a kdenlive project' }).click()
-    await j.page
-      .getByRole('button', { name: 'Open in kdenlive' })
-      .first()
-      .waitFor({ timeout: 30_000 })
+    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
+    await makeEdit(j, ANNA)
     renderFilm(j.world, ANNA, FILM_OF_ANNA)
     await j.page.getByRole('button', { name: 'Upload…' }).first().waitFor({ timeout: 30_000 })
     await openUpload(j.page)

@@ -11,7 +11,7 @@ import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
 import { following, job } from './live'
-import { keepProject } from './projectHistory'
+import { keepEdit } from './projectHistory'
 import { lastComplaint, run, runWatched, stoppable } from './tools'
 import type { ManifestFile, ManifestGroup } from './types'
 import {
@@ -336,7 +336,7 @@ const writeGroup = async (
   only?: Set<string>
 ) => {
   const { dir, baseName, dayEpoch, flat } = getGroupProcessedDir(outputDir, group)
-  await keepProject(outputDir, dir, baseName)
+  await keepEdit(outputDir, dir, baseName)
   const written: string[] = []
   for (const file of group.files) {
     stopIfCancelled()
