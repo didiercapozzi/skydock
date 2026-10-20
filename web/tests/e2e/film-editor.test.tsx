@@ -1112,17 +1112,24 @@ describe('the film editor and the film templates', () => {
     await expect.element(page.getByText('0:00.0 / 0:16.0', { exact: true })).toBeVisible()
   })
 
-  test('starts the film as usual when there is no film template, or the list cannot be read', async () => {
+  test('starts the film as usual when there is no film template, and writes nothing until the first change', async () => {
     await start({ saved: false, templates: [] })
-    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
     await expect.element(picker()).not.toBeInTheDocument()
+    await new Promise((done) => setTimeout(done, 1200))
+    expect(edits()).toEqual([])
+
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+
+    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
   })
 
   test('starts the film as usual when the list of film templates cannot be read', async () => {
     await start({ saved: false, listed: false })
-    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
     await expect.element(picker()).not.toBeInTheDocument()
     await expect.element(page.getByText('The film templates could not be read.')).toBeVisible()
+    await new Promise((done) => setTimeout(done, 1200))
+    expect(edits()).toEqual([])
   })
 
   test('names the music of the chosen film template that is left out', async () => {
@@ -1171,15 +1178,15 @@ describe('the film editor and the film templates', () => {
     setFilmTemplateChoice('')
   })
 
-  test('starts with none when the choice is dismissed with Escape', async () => {
+  test('starts with none when the choice is dismissed with Escape, and writes nothing for it', async () => {
     await start({ saved: false })
     await expect.element(picker().getByRole('radio', { name: /No film template/ })).toBeChecked()
 
     await userEvent.keyboard('{Escape}')
 
     await expect.element(picker()).not.toBeInTheDocument()
-    await expect.poll(() => edits().length, { timeout: 3000 }).toBe(1)
-    expect(edits()[0]!.body.edit.texts).toEqual([])
+    await new Promise((done) => setTimeout(done, 1200))
+    expect(edits()).toEqual([])
   })
 
   test('applies a film template in one Undo step and says what it replaces and what is left out', async () => {

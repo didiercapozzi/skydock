@@ -1335,9 +1335,11 @@ top and the two panes sit side by side below it, and on a phone they stack, the 
 scrolling so the timeline is always reachable. The first time, every video of the montage is laid
 end to end in the order shot, whole, with no gap, with its camera sound off, and a title with the
 person's name opens the film. The edit is saved beside the montage's copies as `<name>_<date>.edit.json`, by
-itself, a moment after each change; that file is the montage's edit, so the project step is done and
-the montage is frozen as an edit freezes it (below), and it is kept aside in every version the way a
-kdenlive project is.
+itself, a moment after each change — the first change, or the film template the film is started from.
+Opening the editor only to look writes nothing: that first film is the same each time it is laid out, so
+nothing is lost, and a montage that was only looked at is not edited. Once written, that file is the
+montage's edit, so the project step is done and the montage is frozen as an edit freezes it (below), and it
+is kept aside in every version the way a kdenlive project is.
 
 Photos are clips too. The montage's photos (JPEG and PNG) are listed on the left with the videos, each marked _Photo_, and go in the same way — dropped on the video track or put at the end with _Add_ — as a clip that holds the picture for five seconds, with no sound, and that is not laid on the timeline the first time. It is shortened or lengthened by its edges or its _Length_ box, up to a minute, like a video; it can be cut at the playhead, given a gap, faded into and out of, and moved like one. There is no _Source in_ and _Source out_ for it and no part to choose, and the picture is shown in the editor and rendered fitted into the film's frame, with black around it, as a video is.
 

@@ -1546,17 +1546,14 @@ const FilmEditor = ({
       await routingEngine.loader({ url: '/api/film-templates' }).catch(() => null)
     )
     if (offered.success && offered.data.templates.length > 0) setStarting(offered.data.templates)
-    else {
-      if (!offered.success) setProblem(t`The film templates could not be read.`)
-      void save('save')
-    }
+    else if (!offered.success) setProblem(t`The film templates could not be read.`)
   }
 
   const startFrom = (name: string | null) => {
     const chosen = starting?.find((one) => one.name === name)?.template
     const first = latest.current
     setStarting(null)
-    if (!chosen || !first) return void save('save')
+    if (!chosen || !first) return
     const {
       edit: next,
       left,

@@ -30,7 +30,7 @@ const LINK_IN_PANEL =
 const BUSY = 'cannot be reset or deleted until the processing is over'
 
 const FILM_OPENS =
-  'opens on a prepared montage with its clips laid end to end, and saves the edit beside them'
+  'opens on a prepared montage with its clips laid end to end, and writes the edit beside them only at the first change'
 
 const covers: Record<string, string[]> = {
   'The film editor': [FILM_OPENS],

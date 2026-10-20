@@ -69,15 +69,22 @@ const pull = async (selector: string, by: number) => {
 }
 
 describe('the film editor', () => {
-  test('opens on a prepared montage with its clips laid end to end, and saves the edit beside them', async () => {
+  test('opens on a prepared montage with its clips laid end to end, and writes the edit beside them only at the first change', async () => {
     await makeAndPrepare(j)
     await j.page.getByRole('button', { name: 'Edit the film' }).first().click()
     await editor().waitFor()
     expect(j.page.url()).toContain('/edit/')
     await editor().getByText(FIRST).first().waitFor()
+    await j.page.waitForTimeout(1_500)
+    expect(filesUnder(montageFolder(j.world))).not.toContain(EDIT)
+
+    const before = secondsOf(path.join(montageFolder(j.world), 'videos', FIRST))
+    await pull('[aria-label="Trim the end"]', -80)
     await expect.poll(() => filesUnder(montageFolder(j.world)), { timeout: 10_000 }).toContain(EDIT)
-    expect(savedEdit().clips.map((clip) => clip.name)).toEqual([FIRST, SECOND])
     expect(savedEdit().texts.map((text) => text.text)).toEqual(['Luc Favre'])
+    await expect
+      .poll(() => lengthOf(savedEdit().clips[0]!), { timeout: 10_000 })
+      .toBeLessThan(before - 0.5)
   })
 
   test('trims a clip by its edge, and the clips after it close the gap', async () => {
