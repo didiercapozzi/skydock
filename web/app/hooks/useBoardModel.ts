@@ -1,6 +1,7 @@
 import { plural, t } from '@lingui/core/macro'
 import {
   EDIT_LOCKED,
+  FREED_LOCKED,
   freeablePlace,
   furthestBehind,
   goneFromStorage,
@@ -13,6 +14,7 @@ import {
   passengerName,
   passengerOf,
   startOfFiles,
+  montageLockOf,
   montageSteps,
   montageUploadKey
 } from '@skydock/scripts/client'
@@ -74,9 +76,13 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const [picksGone, setPicksGone] = useState(0)
   const clearSelection = () => setPicksGone((n) => n + 1)
 
+  const lockOf = (group: ManifestGroup) => montageLockOf(group, board.montageFacts[group.id])
   const frozen = new Set(
-    groups.filter((g) => g.freed || board.montageFacts[g.id]?.project).map((g) => g.id)
+    groups.filter((g) => lockOf(g) === 'freed' || lockOf(g) === 'kdenlive').map((g) => g.id)
   )
+  const edited = new Set(groups.filter((g) => lockOf(g) === 'edit').map((g) => g.id))
+  const lockSaid = (groupId?: string) =>
+    groups.find((g) => g.id === groupId)?.freed ? FREED_LOCKED : EDIT_LOCKED
   const frozenFiles = new Set(
     groups
       .filter((g) => frozen.has(g.id))
@@ -225,7 +231,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
 
   const trimToJump = (group: ManifestGroup) => {
     if (frozen.has(group.id)) {
-      setProblem(EDIT_LOCKED)
+      setProblem(lockSaid(group.id))
       return
     }
     const montage = isMontage(group)
@@ -274,7 +280,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     if (where.copy && where.targetGroupId) {
       const here = ids.filter((id) => !fileById(id)?.freed)
       if (here.length === 0) setProblem(t`Freed from this machine — there is no file here to copy.`)
-      else if (frozen.has(where.targetGroupId)) setProblem(EDIT_LOCKED)
+      else if (frozen.has(where.targetGroupId)) setProblem(lockSaid(where.targetGroupId))
       else send('copy', { intent: 'copy-files', fileIds: here, targetGroupId: where.targetGroupId })
       return
     }
@@ -289,11 +295,15 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       return
     }
     const free = ids.filter((id) => !frozenFiles.has(id) && !locked.includes(id))
+    const heldIn = ids.find((id) => frozenFiles.has(id))
+    const said = lockSaid(
+      free.length === 0 && heldIn ? jumpOf.get(heldIn)?.id : where.targetGroupId
+    )
     if (free.length === 0 || (where.targetGroupId && frozen.has(where.targetGroupId))) {
       setProblem(
         free.length === 0 && where.targetGroupId
-          ? `${EDIT_LOCKED} ${t`Hold alt while dropping to copy it into the other jump instead.`}`
-          : EDIT_LOCKED
+          ? `${said} ${t`Hold alt while dropping to copy it into the other jump instead.`}`
+          : said
       )
       return
     }
@@ -306,8 +316,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       ...(where.name ? { name: where.name } : {}),
       ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
-    if (free.length < ids.length)
-      setProblem(`${EDIT_LOCKED} ${t`Its files stayed where they were.`}`)
+    if (free.length < ids.length) setProblem(`${said} ${t`Its files stayed where they were.`}`)
     if (!where.destination && !where.targetGroupId) leaveEmptied(free)
   }
 
@@ -478,8 +487,13 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   })
 
   const editedMontage = (who: string) => {
-    if (!groups.some((g) => frozen.has(g.id) && passengerOf(g) === who)) return false
-    setProblem(t`${who}’s montage has an edit — change it in its editor.`)
+    const held = groups.find((g) => frozen.has(g.id) && passengerOf(g) === who)
+    if (!held) return false
+    setProblem(
+      held.freed
+        ? t`${who}’s montage was freed from this machine — give this one another name, such as “${who} 2”.`
+        : t`${who}’s montage has a kdenlive project — change it in kdenlive.`
+    )
     return true
   }
   const madeNote = (who: string, joining: boolean, copied: boolean, follow = true) => {
@@ -533,7 +547,10 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   })
 
   const setPassenger = (groupId: string, firstname: string, lastname: string) => {
-    if (frozen.has(groupId)) return
+    if (frozen.has(groupId)) {
+      setProblem(lockSaid(groupId))
+      return
+    }
     updateGroups(
       groups.map((g) =>
         g.id === groupId
@@ -655,6 +672,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     picksGone,
     clearSelection,
     frozen,
+    edited,
+    lockSaid,
     ...facts,
     groupOfFile,
     fileById,

@@ -22,7 +22,8 @@ const trashUnsortedIntent: Intent = async ({
 }) => {
   const ids = new Set(data.fileIds ?? [])
   if (ids.size === 0) return refuse('Select at least one file to put in the bin.')
-  if ([...ids].some((id) => frozenFiles.has(id))) return refuseFrozen()
+  const held = [...ids].find((id) => frozenFiles.has(id))
+  if (held) return refuseFrozen(frozenFiles.get(held))
   const busy = refuseBusy()
   if (busy) return busy
   try {

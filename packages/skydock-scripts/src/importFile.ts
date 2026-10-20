@@ -71,7 +71,7 @@ const placeExisting = async (
     return {
       filename: file.filename,
       outcome: 'kept',
-      reason: `${placeOf(manifest, id)}’s montage has an edit, so nothing leaves it — drop it on a jump to put it in that jump as well`
+      reason: `${placeOf(manifest, id)}’s montage has a kdenlive project, so nothing leaves it — drop it on a jump to put it in that jump as well`
     }
   const from = placeOf(manifest, id)
   const to =
@@ -136,7 +136,7 @@ const importFile = async ({
       if (!group) throw new Error('That jump is no longer there.')
       if ((await frozenMontages(manifest, outputDir)).has(group.id))
         throw new Error(
-          'This montage has an edit, or lives on the storage only — nothing can join it.'
+          'This montage has a kdenlive project, or lives on the storage only — nothing can join it.'
         )
     }
     return manifest

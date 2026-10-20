@@ -15,7 +15,8 @@ const constantIn = (file: string, name: string) => {
 const known = Object.fromEntries(
   (
     [
-      ['EDIT_LOCKED', constantIn('packages/skydock-scripts/src/montage.ts', 'EDIT_LOCKED')],
+      ['EDIT_LOCKED', constantIn('packages/skydock-scripts/src/montageNames.ts', 'EDIT_LOCKED')],
+      ['FREED_LOCKED', constantIn('packages/skydock-scripts/src/montageNames.ts', 'FREED_LOCKED')],
       [
         'UPLOADED_LOCKED',
         constantIn('packages/skydock-scripts/src/fileStatus.ts', 'UPLOADED_LOCKED')

@@ -25,10 +25,12 @@ const FIELD =
 const PassengerName = ({
   group,
   passengers,
+  note,
   onSave
 }: {
   group: ManifestGroup
   passengers: Passenger[]
+  note?: string
   onSave: (firstname: string, lastname: string) => void
 }) => {
   const was = passengerName(group.passenger)
@@ -65,6 +67,7 @@ const PassengerName = ({
       {joins && (
         <span className='text-micro font-medium text-accent-ink'>{t`Joins ${joined}’s montage`}</span>
       )}
+      {changed && note && <span className='text-micro text-ink-3'>{note}</span>}
     </span>
   )
 }

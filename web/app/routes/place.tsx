@@ -1008,7 +1008,6 @@ const Inspector = ({
     )
   }
   if (jump && isMontage(jump)) {
-    const editLocked = EDIT_LOCKED
     return (
       <MontagePanel
         key={jump.id}
@@ -1017,7 +1016,7 @@ const Inspector = ({
           jump.freed
             ? t`Freed from this machine — it is on the storage only now.`
             : frozen.has(jump.id)
-              ? t`${editLocked} Open it in its editor, or reset the montage.`
+              ? EDIT_LOCKED
               : null
         }
         passengers={model.passengers}
@@ -1031,7 +1030,6 @@ const Inspector = ({
     )
   }
   if (jump) {
-    const editLocked = EDIT_LOCKED
     return (
       <JumpPanel
         key={jump.id}
@@ -1042,11 +1040,12 @@ const Inspector = ({
           jump.freed
             ? t`Freed from this machine — it is on the storage only now.`
             : frozen.has(jump.id)
-              ? t`${editLocked} Open it in its editor, or reset the montage.`
+              ? EDIT_LOCKED
               : null
         }
         statusOf={statusOf}
         passengers={model.passengers}
+        edited={model.edited.has(jump.id)}
         keeps={jump.destination}
         onNameMontage={(passenger) =>
           jump.destination

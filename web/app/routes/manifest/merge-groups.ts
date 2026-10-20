@@ -11,7 +11,8 @@ const mergeGroupsIntent: Intent = async ({
   refuse,
   refuseFrozen
 }) => {
-  if (frozen.has(data.leftId ?? '') || frozen.has(data.rightId ?? '')) return refuseFrozen()
+  const held = [data.leftId, data.rightId].find((id) => frozen.has(id ?? ''))
+  if (held) return refuseFrozen(held)
   if (!data.leftId || !data.rightId) return refuse('Merge needs two group ids.')
   manifest.groups = mergeGroups(manifest.groups, data.leftId, data.rightId)
   const merged = manifest.groups.find((g) => g.id === data.leftId)

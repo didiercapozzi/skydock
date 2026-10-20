@@ -330,7 +330,7 @@ already filed never grows by itself. Every jump already there keeps its files, h
   touching the other; on its own time, so re-timing one jump leaves the other alone; and processed and
   uploaded for that jump, under that montage's name. The file says on its row that it is a copy. A jump
   holds a clip once, so one it already has is passed over. A file that can no longer move — uploaded, or
-  in a montage with an edit — can still be copied, since nothing about it changes; only one freed from
+  in a montage with a kdenlive project — can still be copied, since nothing about it changes; only one freed from
   this machine cannot, having no file here.
 - A copy exists for the jump that holds it. Taken out of its jump it simply ends, the original being
   wherever it already is, and it goes with its montage when the montage is deleted. A scan leaves it in
@@ -408,7 +408,9 @@ Filing a jump answers one question: where does it go?
   already another folder.
 - **A name can be changed afterwards**, because a name read off a form can be read wrong. Changing one
   says what it costs: what was processed belongs to the old folder and must be processed again, and what
-  was already uploaded stays on the storage under the old name and no longer counts as uploaded here.
+  was already uploaded stays on the storage under the old name and no longer counts as uploaded here. A
+  montage whose film is edited in SkyDock is renamed whole instead, its copies, edit and film with it,
+  and nothing is processed again (An edit holds the montage); one with a kdenlive project keeps its name.
 - **A loose file can be filed to a dropzone** without belonging to any jump; it is handled exactly like
   a dropzone jump's files.
 - **A dropzone can be taken off the board**, for one made by mistake or one nobody shoots at any more.
@@ -663,9 +665,9 @@ file on screen that can move. Up and down move the preview, and with shift add t
 clears. A tick is always there, on a row and on a thumbnail alike,
 so what can be picked is seen at once. Picked thumbnails get a
 green ring with a tick; picked rows a green tick and background. Picking is choosing what to move, so a
-file that cannot move — on the storage, freed, or in a montage with an edit — has no tick and is never
+file that cannot move — on the storage, freed, or in a montage with a kdenlive project — has no tick and is never
 picked, whichever way picking is asked for; one that stops being movable while picked, as when its
-montage's editing project is made, simply stops being one of the picks. The picks — or, with none, the file
+montage's kdenlive project is made, simply stops being one of the picks. The picks — or, with none, the file
 being looked at — are removed by button or Delete, and removing asks the same question every time,
 wherever they are: **loose in Fresh files**, out of any jump and any place, or **into the bin**. Files
 already loose in Fresh files have nowhere further back to go, so only the bin is offered. Nothing
@@ -706,7 +708,7 @@ Yverdon keeps its own"). A copy is a copy as in _Jumps_: it starts with the file
 trim, frame and turn — as they are, and from then on each side changes without the other, so
 trimming the dropzone's file again leaves the montage's copy as it was. It is named after the montage
 and costs no room on the disk. A file freed from this machine has nothing here to copy, and a montage
-with an edit takes nothing in.
+with a kdenlive project takes nothing in; one edited in SkyDock simply has one more clip to choose from.
 
 **Adding files from the computer.** A video or a photo from anywhere on the computer can be dropped
 onto the board: onto a montage to join it, onto a dropzone to be filed there loose, onto
@@ -737,8 +739,8 @@ the day — and each jump holds it as its own, with its own trim, off the one or
 edit on the jump it is already in is no obstacle, since nothing about that jump changes. Dropped
 anywhere else it is a file on its own, so it moves there as a drag would have moved it, and one the
 jump it is in will not let go of stays where it is with the reason said. Footage a jump already holds
-is left alone. What is not a video or a photo is refused, and so is a drop on a montage that has an edit
-or lives on the storage only. The board says what came of the drop, and a file nothing happened to is
+is left alone. What is not a video or a photo is refused, and so is a drop on a montage that has a
+kdenlive project or lives on the storage only. The board says what came of the drop, and a file nothing happened to is
 not called a failure.
 
 A file let go where nothing takes it — the header, the panel, the space around the work — is left
@@ -1338,7 +1340,7 @@ person's name opens the film. The edit is saved beside the montage's copies as `
 itself, a moment after each change — the first change, or the film template the film is started from.
 Opening the editor only to look writes nothing: that first film is the same each time it is laid out, so
 nothing is lost, and a montage that was only looked at is not edited. Once written, that file is the
-montage's edit, so the project step is done and the montage is frozen as an edit freezes it (below), and it
+montage's edit, so the project step is done and the montage is held as that edit holds it (below), and it
 is kept aside in every version the way a kdenlive project is.
 
 Photos are clips too. The montage's photos (JPEG and PNG) are listed on the left with the videos, each marked _Photo_, and go in the same way — dropped on the video track or put at the end with _Add_ — as a clip that holds the picture for five seconds, with no sound, and that is not laid on the timeline the first time. It is shortened or lengthened by its edges or its _Length_ box, up to a minute, like a video; it can be cut at the playhead, given a gap, faded into and out of, and moved like one. There is no _Source in_ and _Source out_ for it and no part to choose, and the picture is shown in the editor and rendered fitted into the film's frame, with black around it, as a video is.
@@ -1571,12 +1573,30 @@ every file of the template.
 
 **The project is made once.** Asking again for a montage that has a project is refused.
 
-**An edit freezes the montage.** The project points at the montage's copies by name and at moments inside
-them, and lives in the folder the montage's name makes; a change to any of that would break it
-silently. So once a montage has a project, what decides those names and which files there are is fixed:
-no trim, frame or turn, no file in or out, no re-timing, no new name, no other jump joining the
-montage. Its files show a lock and say why. Previewing, opening the project and uploading go on.
-Changes are made in the editor. Resetting the montage, or deleting the project, lifts the lock.
+**An edit holds the montage**, each kind of edit as far as it needs and no further.
+
+- **A kdenlive project freezes it.** The project points at the montage's copies by name and at moments
+  inside them, lives in the folder the montage's name makes, and SkyDock cannot rewrite it; a change to
+  any of that would break it silently. So once a montage has a kdenlive project, what decides those
+  names and which files there are is fixed: no trim, frame or turn, no file in or out, no re-timing, no
+  new name, no other jump joining the montage. Its files show a lock and say why, in the same words
+  wherever the lock is met. Previewing, opening the
+  project and uploading go on.
+- **The film editor's edit lets the montage go on changing under it.** The editor reads the copies again
+  each time it opens, so files and jumps come in and go out, and clips are trimmed, framed, turned and
+  re-timed as on any montage: a new copy is one more clip to choose from, and a clip whose copy is gone,
+  or is now shorter than the part the edit takes of it, is named at the top of the editor — take it out,
+  or process the montage again — instead of breaking the film. A **new name renames the montage whole**:
+  every name in it is SkyDock's own, so its folder, its copies and their working copies, its film and its
+  edit take the new name, the edit calls its clips by their new names and a title that said the old name
+  says the new one, and nothing has to be processed again. The edit is kept aside first; a name another
+  montage's folder already has, or a montage being processed or rendered, is refused before anything
+  moves.
+- **A freed montage** has nothing of it left on this machine to change, and says that — not that it has
+  an edit. A name a freed montage had is not joined: the refusal says to give the new montage another
+  name, such as "Luc Favre 2".
+
+Resetting the montage, or deleting its edit, lifts the lock.
 
 **The edit is kept aside, every version of it.** Before SkyDock does anything to a montage that could
 stand between the person and those hours — preparing it again, resetting it, deleting it — the project

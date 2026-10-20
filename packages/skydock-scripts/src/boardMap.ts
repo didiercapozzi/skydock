@@ -111,7 +111,8 @@ const refusalsIn = (body: string, known: Record<string, string>) => {
     add(`Connect the storage first${found[1] ? ` — ${found[1]}` : ''}.`, true)
   if (/\brefuseBusy\(\)/.test(body))
     add('Something is being processed — wait for it to finish.', true)
-  if (/\brefuseFrozen\(\)/.test(body) && known.EDIT_LOCKED) add(known.EDIT_LOCKED, true)
+  if (/\brefuseFrozen\(/.test(body))
+    for (const said of [known.EDIT_LOCKED, known.FREED_LOCKED]) if (said) add(said, true)
   return refusals
 }
 

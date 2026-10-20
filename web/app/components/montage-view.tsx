@@ -1,6 +1,5 @@
 import { plural, t } from '@lingui/core/macro'
 import {
-  EDIT_LOCKED,
   goneSent,
   hasCompletePassenger,
   isMontage,
@@ -138,7 +137,6 @@ const MontageAbove = ({
   const model = useBoard()
   if (!isMontage(group)) return null
   const facts = model.board.montageFacts[group.id]
-  const editLocked = EDIT_LOCKED
   return (
     <div className='mb-2 flex flex-col gap-3'>
       {!tabbed && <HandedOver group={group} />}
@@ -148,7 +146,9 @@ const MontageAbove = ({
           picture={filmPicture(group)}
         />
       )}
-      {!group.uploaded && <FilmNote locked={model.frozen.has(group.id) ? editLocked : null} />}
+      {!group.uploaded && (
+        <FilmNote locked={model.frozen.has(group.id) ? model.lockSaid(group.id) : null} />
+      )}
     </div>
   )
 }

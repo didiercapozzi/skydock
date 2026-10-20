@@ -190,7 +190,7 @@ describe('adding a file from the computer', () => {
     expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
   })
 
-  it('leaves it in a montage that has an edit, and says why', async () => {
+  it('leaves it in a montage that has a kdenlive project, and says why', async () => {
     await setup()
     await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
     withAnEdit()
@@ -217,10 +217,23 @@ describe('adding a file from the computer', () => {
     )
   })
 
-  it('refuses a montage that has an edit, before writing anything', async () => {
+  it('refuses a montage that has a kdenlive project, before writing anything', async () => {
     await setup()
     withAnEdit()
-    await expect(add('clip.mp4', 'x', { kind: 'group', groupId: 'g1' })).rejects.toThrow(/edit/)
+    await expect(add('clip.mp4', 'x', { kind: 'group', groupId: 'g1' })).rejects.toThrow(
+      /kdenlive project/
+    )
     expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
+  })
+
+  it('takes it into a montage whose film is edited in SkyDock', async () => {
+    await setup()
+    const folder = path.join(outputDir, 'processed', 'Montages', 'Luc Favre')
+    fs.mkdirSync(folder, { recursive: true })
+    fs.writeFileSync(path.join(folder, 'luc_favre_20260801.edit.json'), '{"version":1}')
+
+    await add('clip.mp4', 'x', { kind: 'group', groupId: 'g1' })
+
+    expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
   })
 })

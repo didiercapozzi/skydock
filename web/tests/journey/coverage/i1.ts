@@ -130,7 +130,7 @@ const covers: Record<string, string[]> = {
   'The project is made once': [
     'refuses to make a second project for a montage that has one, and the edit is left as it was'
   ],
-  'An edit freezes the montage': [
+  'An edit holds the montage': [
     'shows its files a lock and says why, once the montage has a project',
     'takes no other jump into a montage that has an edit, and says so',
     'notices a project removed by hand, which lifts the lock, and one put back by hand'
@@ -158,6 +158,8 @@ const covers: Record<string, string[]> = {
 }
 
 const exempt: Record<string, string> = {
+  'An edit SkyDock cannot read':
+    'An unreadable edit is one a newer SkyDock or a hand wrote, which no step of the journey makes; the film editor’s browser test walks the editor saying it was kept aside, and the scripts’ test that it is set aside whole and never written over.',
   'Taking the next step from where it is said':
     'The step is taken from the trail on the Montages page when no montage is open there, which the board never leaves it at: it opens the first montage itself, so no click reaches the trail; each step’s own button is walked in the six steps and project chapters.'
 }

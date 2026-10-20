@@ -659,6 +659,156 @@ describe('changes made on the board', () => {
     })
   })
 
+  describe('a montage whose film is edited in SkyDock', () => {
+    const luc = () =>
+      group({
+        id: 'group_1',
+        montageJump: true,
+        passenger: { firstname: 'Luc', lastname: 'Favre' },
+        processed: true,
+        files: [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })]
+      })
+    const other = () => group({ id: 'group_2', files: [file({ id: 'c', mtime: 1_754_003_000 })] })
+    const where = (g: ManifestGroup) => getGroupProcessedDir(tmpDir, g)
+
+    beforeEach(async () => {
+      const { dir, baseName } = where(luc())
+      fs.mkdirSync(path.join(dir, 'videos'), { recursive: true })
+      const copy = (id: string, time: string) => {
+        const at = path.join(dir, 'videos', `${baseName}_${time}.mp4`)
+        fs.writeFileSync(at, id)
+        return { path: at, size: 1, at: 1, source: { id, size: 10, mtime: 1_754_000_000 } }
+      }
+      const g = luc()
+      g.files[0]!.processed = copy('a', 'one')
+      g.files[1]!.processed = copy('b', 'two')
+      fs.writeFileSync(path.join(dir, `${baseName}.mp4`), 'the film')
+      fs.writeFileSync(
+        path.join(dir, `${baseName}.edit.json`),
+        JSON.stringify({
+          version: 1,
+          clips: [{ id: 'clip-1', name: `${baseName}_one.mp4`, start: 0, end: 4, sound: false }],
+          music: [],
+          texts: [
+            {
+              id: 'text-1',
+              text: 'Luc Favre',
+              at: 0,
+              seconds: 4,
+              effect: 'fade',
+              font: 'bold',
+              x: 0.5,
+              y: 0.5,
+              size: 0.09,
+              colour: '#ffffff'
+            }
+          ],
+          underSound: 0.15
+        })
+      )
+      await writeManifest([g, other()])
+    })
+
+    const current = async () => (await loadManifestAsync(path.join(tmpDir, 'manifest.json')))!
+
+    it('takes a crop on one of its clips, and files in and out of it', async () => {
+      const cropped = (await current()).groups[0]!
+      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
+      const saved = answer(await send({ intent: 'save-groups', groups: [cropped, other()] }))
+      expect(saved.groups[0]?.files[0]?.cropStart).toBe(1)
+
+      const moved = answer(
+        await send({ intent: 'move-files', fileIds: ['c'], targetGroupId: 'group_1' })
+      )
+      expect(idsByGroup(moved).group_1).toEqual(['a', 'b', 'c'])
+      const out = answer(
+        await send({ intent: 'move-files', fileIds: ['b'], destination: 'Yverdon' })
+      )
+      expect(idsByGroup(out).group_1).toEqual(['a', 'c'])
+    })
+
+    it('takes a re-timing, and another jump joining it', async () => {
+      const shifted = answer(
+        await send({ intent: 'shift-group-time', groupId: 'group_1', anchorEpoch: 1_754_000_100 })
+      )
+      expect(shifted.groups.find((g) => g.id === 'group_1')?.files[0]?.mtime).toBe(1_754_000_100)
+      const joined = answer(
+        await send({
+          intent: 'save-groups',
+          groups: [
+            (await current()).groups[0]!,
+            { ...other(), montageJump: true, passenger: { firstname: 'Luc', lastname: 'Favre' } }
+          ]
+        })
+      )
+      expect(joined.groups.find((g) => g.id === 'group_2')?.passenger?.lastname).toBe('Favre')
+    })
+
+    it('is renamed whole by a new name: its folder, its copies, its film and its edit, with nothing to process again', async () => {
+      const before = (await current()).groups[0]!
+      const renamed = { ...before, passenger: { firstname: 'Luc', lastname: 'Fabre' } }
+
+      const res = answer(await send({ intent: 'save-groups', groups: [renamed, other()] }))
+
+      const { dir, baseName } = where(renamed)
+      expect(fs.existsSync(where(luc()).dir)).toBe(false)
+      expect(fs.readdirSync(path.join(dir, 'videos')).sort()).toEqual([
+        `${baseName}_one.mp4`,
+        `${baseName}_two.mp4`
+      ])
+      expect(fs.readFileSync(path.join(dir, `${baseName}.mp4`), 'utf-8')).toBe('the film')
+      const edit = JSON.parse(fs.readFileSync(path.join(dir, `${baseName}.edit.json`), 'utf-8'))
+      expect(edit.clips[0].name).toBe(`${baseName}_one.mp4`)
+      expect(edit.texts[0].text).toBe('Luc Fabre')
+      expect(fs.readdirSync(dir).filter((name) => name.endsWith('.edit.json'))).toEqual([
+        `${baseName}.edit.json`
+      ])
+      const kept = res.groups.find((g) => g.id === 'group_1')?.files[0]?.processed?.path
+      expect(kept).toBe(path.join(dir, 'videos', `${baseName}_one.mp4`))
+      expect((await current()).files.find((f) => f.id === 'a')?.processed?.path).toBe(kept)
+    })
+
+    it('refuses a new name another montage’s folder already has, and moves nothing', async () => {
+      const taken = where({ ...luc(), passenger: { firstname: 'Ana', lastname: 'Roth' } })
+      fs.mkdirSync(taken.dir, { recursive: true })
+      const before = (await current()).groups[0]!
+
+      const res = refusal(
+        await send({
+          intent: 'save-groups',
+          groups: [{ ...before, passenger: { firstname: 'Ana', lastname: 'Roth' } }, other()]
+        })
+      )
+
+      expect(res.globalErrors?.[0]).toContain('There is already a montage folder called Ana Roth')
+      expect(fs.existsSync(where(luc()).dir)).toBe(true)
+      expect((await current()).groups[0]?.passenger?.lastname).toBe('Favre')
+    })
+  })
+
+  describe('a name a freed montage had', () => {
+    it('is not joined, and the refusal says to give the new montage another name', async () => {
+      await writeManifest(
+        [
+          group({
+            id: 'group_1',
+            montageJump: true,
+            passenger: { firstname: 'Luc', lastname: 'Favre' },
+            freed: { at: 1, bytes: 1 },
+            files: []
+          })
+        ],
+        [file({ id: 'a' })]
+      )
+
+      const res = refusal(await send({ intent: 'make-montage', fileIds: ['a'], name: 'Luc Favre' }))
+
+      expect(res.globalErrors?.[0]).toBe(
+        'Luc Favre’s montage was freed from this machine — give this one another name, such as “Luc Favre 2”.'
+      )
+    })
+  })
+
   it('makes a jump in Fresh files from loose files picked by hand', async () => {
     await writeManifest([], [file({ id: 'a' }), file({ id: 'b', mtime: 1_754_000_060 })])
 

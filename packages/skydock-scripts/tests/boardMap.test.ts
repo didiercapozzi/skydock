@@ -6,7 +6,7 @@ import { mapOfTheBoard } from '../src/boardMap'
 import { journeysAdrift } from '../src/boardMapJourneys'
 
 const KNOWN = {
-  EDIT_LOCKED: 'This montage has an edit — change it in its editor.',
+  EDIT_LOCKED: 'This montage has a kdenlive project — change it in kdenlive.',
   UPLOADED_LOCKED: 'On the NAS — cropping, re-timing and moving are closed.'
 }
 

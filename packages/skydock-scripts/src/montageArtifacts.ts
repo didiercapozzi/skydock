@@ -6,7 +6,7 @@ import { getGroupProcessedDir } from './process'
 import type { Manifest, ManifestGroup } from './types'
 import { mtimeSeconds, statOrNull } from './lib/fs'
 import { mediaSeconds } from './lib/media'
-import { EDIT_LOCKED, editNameOf, filmNameOf } from './montageNames'
+import { EDIT_LOCKED, editNameOf, filmNameOf, FREED_LOCKED } from './montageNames'
 import { mapWithLimit } from './utils'
 import { hasCompletePassenger, isMontage } from './workspace'
 
@@ -73,19 +73,37 @@ const secondsOf = (found: Awaited<ReturnType<typeof montageArtifacts>>) =>
       )
     : null
 
-const hasEdit = async (outputDir: string, group: ManifestGroup) =>
-  isNamedMontage(group) && (await montageArtifacts(outputDir, group)).project
+type MontageLock = 'freed' | 'kdenlive' | 'edit'
+
+const folderLock = async (outputDir: string, group: ManifestGroup) => {
+  if (!isNamedMontage(group)) return null
+  const found = await montageArtifacts(outputDir, group)
+  return found.kdenlive ? 'kdenlive' : found.edit ? 'edit' : null
+}
 
 const FROZEN_PARALLEL = 16
 
-const frozenMontages = async (manifest: Manifest, outputDir: string) => {
-  const frozen = await mapWithLimit(
-    manifest.groups,
-    FROZEN_PARALLEL,
-    async (g) => g.freed || (await hasEdit(outputDir, g))
+const montageLocks = async (manifest: Manifest, outputDir: string) => {
+  const locks = await mapWithLimit(manifest.groups, FROZEN_PARALLEL, async (g) =>
+    g.freed ? ('freed' as const) : await folderLock(outputDir, g)
   )
-  return new Set(manifest.groups.filter((_, i) => frozen[i]).map((g) => g.id))
+  return new Map(
+    manifest.groups.flatMap((g, i) => {
+      const lock = locks[i]
+      return lock ? [[g.id, lock] as const] : []
+    })
+  )
 }
+
+const frozenMontages = async (manifest: Manifest, outputDir: string) =>
+  new Set(
+    [...(await montageLocks(manifest, outputDir))].flatMap(([id, lock]) =>
+      lock === 'edit' ? [] : [id]
+    )
+  )
+
+const lockedSaid = (lock: MontageLock | null | undefined) =>
+  lock === 'freed' ? FREED_LOCKED : EDIT_LOCKED
 
 const editedShape = (group: ManifestGroup) =>
   JSON.stringify({
@@ -136,11 +154,15 @@ export {
   EDIT_LOCKED,
   factOf,
   filmNameOf,
+  folderLock,
+  FREED_LOCKED,
   frozenMontages,
-  hasEdit,
   isNamedMontage,
+  lockedSaid,
+  montageLocks,
   sameEditedGroup,
   statMontageArtifacts,
   montageArtifacts,
   secondsOf
 }
+export type { MontageLock }

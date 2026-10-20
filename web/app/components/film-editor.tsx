@@ -111,6 +111,7 @@ const PICTURE_WIDTH = 0.3
 const SAVE_AFTER = 700
 const DRIFT = 0.3
 const SEEK_EPS = 0.001
+const SEEK_TOLERANCE = 0.05
 const CUE_WITHIN = 5
 const MUSIC_VOLUME = 0.8
 const SHORTEST_MUSIC = 5
@@ -1417,6 +1418,19 @@ const asEdit = (raw: unknown, name: string) => {
     : { ok: false, reason: t`This film template is gone.` }
 }
 
+const clipsChanged = (edit: FilmEdit | null, sources: Map<string, EditSource> | null) => {
+  const clips = edit && sources ? edit.clips : []
+  const names = (pick: (clip: EditClip, source?: EditSource) => boolean) => [
+    ...new Set(clips.filter((clip) => pick(clip, sources?.get(clip.name))).map((clip) => clip.name))
+  ]
+  return {
+    gone: names((_, source) => !source),
+    shorter: names((clip, source) =>
+      Boolean(source && !source.still && clip.end > source.seconds + SEEK_TOLERANCE)
+    )
+  }
+}
+
 const FilmEditor = ({
   groupId = '',
   day,
@@ -1477,6 +1491,7 @@ const FilmEditor = ({
 
   const sources = new Map((loaded?.sources ?? []).map((one) => [one.name, one]))
   const music = new Map((loaded?.music ?? []).map((one) => [one.name, one]))
+  const changedClips = clipsChanged(scratch ? null : edit, loaded ? sources : null)
 
   const save = async (intent: 'save' | 'render') => {
     if (timer.current) clearTimeout(timer.current)
@@ -2190,6 +2205,16 @@ const FilmEditor = ({
         <div className='flex items-center gap-3 bg-local-soft px-4 py-2 text-body text-local'>
           <span className='flex-1'>{problem}</span>
           <Mini onClick={() => setProblem(null)}>{t`Dismiss`}</Mini>
+        </div>
+      )}
+      {changedClips.gone.length + changedClips.shorter.length > 0 && (
+        <div className='flex flex-col gap-1 bg-local-soft px-4 py-2 text-body text-local'>
+          {changedClips.gone.length > 0 && (
+            <span>{t`Not in the montage any more: ${changedClips.gone.join(', ')} — take it out of the film, or process the montage again.`}</span>
+          )}
+          {changedClips.shorter.length > 0 && (
+            <span>{t`Shorter than when it was put in the film: ${changedClips.shorter.join(', ')} — look at its part again.`}</span>
+          )}
         </div>
       )}
 

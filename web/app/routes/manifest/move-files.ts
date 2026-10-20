@@ -16,8 +16,9 @@ const moveFilesIntent: Intent = async ({
 }) => {
   const ids = new Set(data.fileIds ?? [])
   if (ids.size === 0) return refuse('Select at least one file to move.')
-  if ([...ids].some((id) => frozenFiles.has(id)) || frozen.has(data.targetGroupId ?? ''))
-    return refuseFrozen()
+  const leaving = [...ids].find((id) => frozenFiles.has(id))
+  if (leaving) return refuseFrozen(frozenFiles.get(leaving))
+  if (frozen.has(data.targetGroupId ?? '')) return refuseFrozen(data.targetGroupId)
   if (manifest.files.some((f) => f.id && ids.has(f.id) && (f.uploaded || f.freed)))
     return refuse(UPLOADED_LOCKED)
   try {

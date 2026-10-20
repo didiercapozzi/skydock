@@ -39,6 +39,15 @@ const montageSteps = ({
   return { steps, at, next: step ? NEXT[step.name] : null }
 }
 
+const montageLockOf = (group: ManifestGroup, facts?: MontageFact) =>
+  group.freed
+    ? ('freed' as const)
+    : facts?.kdenlive || (facts?.project && !facts.edit)
+      ? ('kdenlive' as const)
+      : facts?.edit
+        ? ('edit' as const)
+        : null
+
 type MontageProgress = ReturnType<typeof montageSteps>
 
 const furthestBehind = (progress: MontageProgress[]) =>
@@ -47,5 +56,5 @@ const furthestBehind = (progress: MontageProgress[]) =>
     null
   )
 
-export { furthestBehind, montageSteps }
+export { furthestBehind, montageLockOf, montageSteps }
 export type { MontageProgress, MontageStep }

@@ -362,12 +362,14 @@ const JumpPanel = ({
   move,
   onTrimToJump,
   fileTo,
-  end
+  end,
+  edited = false
 }: {
   group: ManifestGroup
   label: string
   where?: string
   locked: string | null
+  edited?: boolean
   statusOf: (file: ManifestFile) => FileStatus
   passengers: Passenger[]
   keeps?: string
@@ -577,9 +579,11 @@ const JumpPanel = ({
               </Hint>
               {named && (group.processed || group.uploaded) && (
                 <p className='m-0 text-micro text-changed'>
-                  {group.uploaded
-                    ? t`Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.`
-                    : t`Already processed — a new name means processing it again, into the new folder.`}
+                  {edited
+                    ? t`Its film is edited here — a new name renames its folder, its copies, its edit and its film, with nothing to process again.`
+                    : group.uploaded
+                      ? t`Already uploaded — a new name means processing and uploading again, and the old folder stays on the storage under the old name.`
+                      : t`Already processed — a new name means processing it again, into the new folder.`}
                 </p>
               )}
             </>

@@ -3,9 +3,6 @@ import { copyFiles } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
-/* Files copied into another jump, staying where they are as well (RULES, Jumps). A montage with an
-   edit takes nothing in, a copy included: its project names its clips, and a new one is not among
-   them. What is copied *from* may be frozen — copying changes nothing about it. */
 const copyFilesIntent: Intent = async ({
   data,
   manifest,
@@ -17,7 +14,7 @@ const copyFilesIntent: Intent = async ({
   const ids = new Set(data.fileIds ?? [])
   if (ids.size === 0 || !data.targetGroupId)
     return refuse('Pick files and a jump to copy them into.')
-  if (frozen.has(data.targetGroupId)) return refuseFrozen()
+  if (frozen.has(data.targetGroupId)) return refuseFrozen(data.targetGroupId)
   try {
     const { copied, passedOver, freed } = copyFiles(manifest, ids, data.targetGroupId)
     if (copied === 0)

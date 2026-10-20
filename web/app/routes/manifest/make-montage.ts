@@ -31,7 +31,12 @@ const makeMontageIntent: Intent = async ({
   const joining = manifest.groups.filter(
     (g) => isMontage(g) && passengerOf(g) === passengerName(passenger)
   )
-  if (joining.some((g) => frozen.has(g.id))) return refuseFrozen()
+  const held = joining.find((g) => frozen.has(g.id))
+  if (held?.freed)
+    return refuse(
+      `${passengerName(passenger)}’s montage was freed from this machine — give this one another name, such as “${passengerName(passenger)} 2”.`
+    )
+  if (held) return refuseFrozen(held.id)
 
   const fresh = freshIds(manifest)
   try {

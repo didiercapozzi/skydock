@@ -99,12 +99,16 @@ import { scanMedia } from './scan'
 import {
   EDIT_LOCKED,
   filmNameOf,
+  folderLock,
+  FREED_LOCKED,
   frozenMontages,
-  hasEdit,
   isNamedMontage,
+  lockedSaid,
+  montageLocks,
   sameEditedGroup,
   statMontageArtifacts
 } from './montageArtifacts'
+import type { MontageLock } from './montageArtifacts'
 import {
   DEFAULT_PLAN,
   itemsFrom,
@@ -268,7 +272,10 @@ export {
   goneSent,
   groupsInScope,
   hasCompletePassenger,
-  hasEdit,
+  folderLock,
+  FREED_LOCKED,
+  lockedSaid,
+  montageLocks,
   importOutcomeSchema,
   isoDay,
   isQuarterTurn,
@@ -371,5 +378,6 @@ export type {
   MontageEntry,
   MontageLost,
   MontageFact,
+  MontageLock,
   UploadItem
 }

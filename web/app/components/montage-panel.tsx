@@ -241,6 +241,11 @@ const MontagePanel = ({
                 key={group.id}
                 group={group}
                 passengers={passengers}
+                note={
+                  named && model.edited.has(group.id)
+                    ? t`Its folder, its copies, its edit and its film take the new name — nothing is processed again.`
+                    : undefined
+                }
                 onSave={(first, last) => {
                   setRenaming(false)
                   onName(first, last)
