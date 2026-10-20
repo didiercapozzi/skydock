@@ -2855,6 +2855,10 @@ msgstr "Entendre ce clip"
 msgid "Hear this clip: the music dips under it"
 msgstr "Entendre ce clip : la musique baisse en dessous"
 
+#: app/components/film-editor.tsx
+msgid "Height of the timeline"
+msgstr "Hauteur de la ligne de temps"
+
 #: app/helpers/parcels.ts
 msgid "here too"
 msgstr "aussi ici"

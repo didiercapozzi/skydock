@@ -202,7 +202,7 @@ const FilmPreview = ({
   const deck = (front: boolean) =>
     `absolute inset-0 h-full w-full object-contain ${front ? (blank ? 'invisible' : 'z-10') : fading ? '' : 'invisible'}`
   return (
-    <div className='film-room relative grid min-h-0 max-h-100 flex-1 place-items-center p-3'>
+    <div className='film-room relative grid min-h-0 flex-1 place-items-center p-3'>
       <div
         style={{
           aspectRatio: upright ? '9 / 16' : '16 / 9',

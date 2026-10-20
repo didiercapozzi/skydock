@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createRoutesStub, Link, Outlet } from 'react-router'
 import { cleanup, render } from 'vitest-browser-react'
+import { setTimelineHeight } from '../../app/hooks/useTimelineHeight'
 import { page, userEvent } from 'vitest/browser'
 import { POP, TEXT_FADE } from '@skydock/scripts/client'
 import { clockOf, TILE_LOOP } from '../../app/helpers/filmTimeline'
@@ -2830,5 +2831,53 @@ describe('several clips picked with Shift, changed together', () => {
     await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
 
     await expect.poll(() => clips(sent)).toEqual([])
+  })
+})
+
+describe('the room between the preview and the timeline', () => {
+  beforeEach(() => setTimelineHeight(320))
+  const start = async () => {
+    vi.stubGlobal('fetch', async () => Response.json(answer))
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+  }
+  const handle = () => page.getByRole('separator', { name: 'Height of the timeline' })
+
+  test('is shared by a bar that makes the timeline taller or shorter, and the preview the opposite', async () => {
+    await start()
+    const before = Number(handle().element().getAttribute('aria-valuenow'))
+    const room = document.querySelector<HTMLElement>('.film-room')!
+    const roomBefore = room.getBoundingClientRect().height
+
+    handle().element().focus()
+    await userEvent.keyboard('{ArrowUp}{ArrowUp}')
+
+    await expect.poll(() => Number(handle().element().getAttribute('aria-valuenow'))).toBeGreaterThan(before)
+    expect(room.getBoundingClientRect().height).toBeLessThan(roomBefore)
+
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}')
+    await expect.poll(() => Number(handle().element().getAttribute('aria-valuenow'))).toBeLessThan(before)
+  })
+
+  test('is remembered: the height comes back as it was left, and one that makes no sense is ignored', async () => {
+    localStorage.setItem('skydock.timelineHeight', 'tall')
+    await start()
+    expect(handle().element().getAttribute('aria-valuenow')).toBe('320')
+    await cleanup()
+
+    localStorage.setItem('skydock.timelineHeight', '400')
+    await start()
+    expect(handle().element().getAttribute('aria-valuenow')).toBe('400')
+
+    handle().element().focus()
+    await userEvent.keyboard('{ArrowUp}')
+    await expect.poll(() => localStorage.getItem('skydock.timelineHeight')).toBe('420')
+    localStorage.removeItem('skydock.timelineHeight')
+  })
+
+  test('gives the preview all of its room, with no height of its own to stop at', async () => {
+    await start()
+
+    expect(getComputedStyle(document.querySelector('.film-room')!).maxHeight).toBe('none')
   })
 })

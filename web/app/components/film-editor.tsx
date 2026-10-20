@@ -90,6 +90,12 @@ import { FilmShortcuts } from './film-shortcuts'
 import { partOf, StopButton, stopOf } from './jobs-panel'
 import { FILM_ACTIONS, keyLabel, keyNames, type FilmAction } from '../helpers/filmKeys'
 import { useFilmKeys } from '../hooks/useFilmKeys'
+import {
+  resizedTimeline,
+  setTimelineHeight,
+  TIMELINE_HEIGHT,
+  useTimelineHeight
+} from '../hooks/useTimelineHeight'
 import { CLIP_DRAG, FilmTimeline, markName, ZOOM } from './film-timeline'
 import type { Picked } from './film-timeline'
 import { Icon } from './icons'
@@ -1453,6 +1459,7 @@ const FilmEditor = ({
   const [saving, setSaving] = useState<'saved' | 'waiting' | 'saving' | 'failed'>('saved')
   const [picked, setPicked] = useState<Picked>(null)
   const [also, setAlso] = useState<Selected[]>([])
+  const timelineHeight = useTimelineHeight()
   const [tab, setTab] = useState<Library>('clips')
   const [at, setAt] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -2355,7 +2362,47 @@ const FilmEditor = ({
               onBack={() => setRenderOpen(false)}
             />
           </div>
-          <div className='flex h-80 flex-none flex-col border-t border-line'>
+          <div
+            role='separator'
+            aria-orientation='horizontal'
+            aria-label={t`Height of the timeline`}
+            aria-valuenow={timelineHeight}
+            aria-valuemin={TIMELINE_HEIGHT.least}
+            aria-valuemax={TIMELINE_HEIGHT.most}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              const by =
+                e.key === 'ArrowUp'
+                  ? TIMELINE_HEIGHT.step
+                  : e.key === 'ArrowDown'
+                    ? -TIMELINE_HEIGHT.step
+                    : 0
+              if (by) {
+                e.preventDefault()
+                setTimelineHeight(resizedTimeline(timelineHeight + by))
+              }
+            }}
+            onPointerDown={(e) => {
+              e.preventDefault()
+              const bar = e.currentTarget
+              bar.setPointerCapture(e.pointerId)
+              const [y0, h0] = [e.clientY, timelineHeight]
+              const move = (event: PointerEvent) =>
+                setTimelineHeight(resizedTimeline(h0 + y0 - event.clientY))
+              const stop = () => {
+                bar.removeEventListener('pointermove', move)
+                bar.removeEventListener('pointerup', stop)
+                bar.removeEventListener('pointercancel', stop)
+              }
+              bar.addEventListener('pointermove', move)
+              bar.addEventListener('pointerup', stop)
+              bar.addEventListener('pointercancel', stop)
+            }}
+            className='h-1.5 flex-none cursor-row-resize touch-none bg-well hover:bg-line focus-visible:bg-accent-soft'
+          />
+          <div
+            style={{ height: timelineHeight }}
+            className='flex flex-none flex-col border-t border-line'>
             <div className='flex min-h-12 flex-none flex-wrap items-center gap-1.5 border-b border-line bg-pane px-2.5 py-1.5'>
               <Mini
                 pressed
