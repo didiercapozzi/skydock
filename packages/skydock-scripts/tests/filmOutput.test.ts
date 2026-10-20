@@ -58,7 +58,7 @@ const probe = (file: string) =>
       '-select_streams',
       'v',
       '-show_entries',
-      'stream=codec_name,codec_tag_string,r_frame_rate',
+      'stream=codec_name,codec_tag_string,r_frame_rate,color_space,color_primaries,color_transfer',
       '-of',
       'json',
       file
@@ -93,6 +93,16 @@ describe('the file that a render makes', () => {
       codec_name: 'h264',
       r_frame_rate: '30/1'
     })
+  })
+
+  it('says in the file that its colours are those of HD video, as Kdenlive does, in every format', async () => {
+    for (const format of await availableFormats()) {
+      expect(probe(made(`${format}-colours.mp4`, { format }))).toMatchObject({
+        color_space: 'bt709',
+        color_primaries: 'bt709',
+        color_transfer: 'bt709'
+      })
+    }
   })
 
   it('has the frame rate that is chosen', () => {

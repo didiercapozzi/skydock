@@ -245,21 +245,21 @@ describe('the output of the film', () => {
     return made[made.indexOf(flag) + 1]
   }
 
-  it('is H.264 at 30 frames a second and the best constant quality, 12, when nothing is chosen', () => {
+  it('is H.264 at 30 frames a second and a constant quality of 23 when nothing is chosen', () => {
     expect(after(edit(), '-c:v')).toBe('libx264')
-    expect(after(edit(), '-crf')).toBe('12')
+    expect(after(edit(), '-crf')).toBe('23')
     expect(after(edit(), '-r')).toBe('30')
     expect(graph(args(edit()))).toContain('fps=30')
     expect(after(edit({ output: {} }), '-c:v')).toBe('libx264')
   })
 
-  it('is H.265 or AV1 when chosen, each at the best quality, and tagged to play on Apple devices', () => {
+  it('is H.265 or AV1 when chosen, each with its own usual quality, and tagged to play on Apple devices', () => {
     const h265 = args(edit({ output: { format: 'h265' } }))
     expect(h265[h265.indexOf('-c:v') + 1]).toBe('libx265')
-    expect(h265[h265.indexOf('-crf') + 1]).toBe('12')
+    expect(h265[h265.indexOf('-crf') + 1]).toBe('28')
     expect(h265[h265.indexOf('-tag:v') + 1]).toBe('hvc1')
     expect(after(edit({ output: { format: 'av1' } }), '-c:v')).toBe('libsvtav1')
-    expect(after(edit({ output: { format: 'av1' } }), '-crf')).toBe('12')
+    expect(after(edit({ output: { format: 'av1' } }), '-crf')).toBe('32')
   })
 
   it('has the quality that is asked for, whatever the format', () => {

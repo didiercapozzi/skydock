@@ -53,6 +53,8 @@ const FONT_PATTERNS: Record<TextFont, string> = {
 
 const SEEK_MARGIN = 0.1
 
+const HD_COLOURS = 'setparams=colorspace=bt709:color_primaries=bt709:color_trc=bt709'
+
 const n = (value: number) => String(Math.round(value * 1000) / 1000)
 
 const quoted = (value: string) => `'${value.replaceAll('\\', '/').replaceAll("'", '')}'`
@@ -257,12 +259,12 @@ const filmArgs = ({
   })
   graph.push(
     edit.texts.length === 0
-      ? `[${beneath}]null[film]`
+      ? `[${beneath}]${HD_COLOURS}[film]`
       : `[${beneath}]${edit.texts
           .map((text) =>
             textFilter(text, textFileOf(text.id), fonts[text.font] ?? null, Math.min(width, height))
           )
-          .join(',')}[film]`
+          .join(',')},${HD_COLOURS}[film]`
   )
   const duck = duckOf(
     heardSpans(edit, (clip) => sources.get(clip.name)?.sound === true),

@@ -2399,16 +2399,16 @@ describe('the output of the film', () => {
 
     await expect.element(format.getByRole('button', { name: 'H.264' })).toHaveAttribute('aria-pressed', 'true')
     await expect.element(rate.getByRole('button', { name: '30' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('40')
-    await expect.element(page.getByText('100%', { exact: true })).toBeVisible()
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('29')
+    await expect.element(page.getByText('61%', { exact: true })).toBeVisible()
 
     await userEvent.click(format.getByRole('button', { name: 'H.265' }))
-    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('40')
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('24')
     await userEvent.click(rate.getByRole('button', { name: '24' }))
     page.getByRole('slider', { name: 'Quality' }).element().focus()
     await userEvent.keyboard('{ArrowLeft}{ArrowLeft}')
 
-    await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ format: 'h265', fps: 24, crf: 14 })
+    await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ format: 'h265', fps: 24, crf: 30 })
   })
 
   test('has the best quality at the right end of the slider and the smallest file at the left end', async () => {

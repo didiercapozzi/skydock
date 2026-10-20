@@ -74,7 +74,7 @@ const render = (edit: FilmEdit) => {
   return out
 }
 
-const red = (got: { r: number; g: number; b: number }) => got.r > 240 && got.g < 10 && got.b < 10
+const red = (got: { r: number; g: number; b: number }) => got.r > 200 && got.g < 60 && got.b < 60
 
 const colourAt = (file: string, at: number, x: number, y: number) => {
   const [r = 0, g = 0, b = 0] = execFileSync('ffmpeg', [
