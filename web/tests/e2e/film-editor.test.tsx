@@ -2395,15 +2395,15 @@ describe('the output of the film', () => {
 
     await expect.element(format.getByRole('button', { name: 'H.264' })).toHaveAttribute('aria-pressed', 'true')
     await expect.element(rate.getByRole('button', { name: '30' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('18')
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('12')
 
     await userEvent.click(format.getByRole('button', { name: 'H.265' }))
-    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('22')
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('12')
     await userEvent.click(rate.getByRole('button', { name: '24' }))
     page.getByRole('slider', { name: 'Quality' }).element().focus()
     await userEvent.keyboard('{ArrowRight}{ArrowRight}')
 
-    await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ format: 'h265', fps: 24, crf: 24 })
+    await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ format: 'h265', fps: 24, crf: 14 })
   })
 
   test('renders only from the button of the panel, which saves the edit and leaves the editor', async () => {
