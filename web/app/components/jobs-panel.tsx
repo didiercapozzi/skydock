@@ -1,3 +1,4 @@
+import { leftWords, useTimeLeft } from '../hooks/useTimeLeft'
 import { plural, t } from '@lingui/core/macro'
 import { useState } from 'react'
 import { dsmFolderUrl } from '../helpers/dsm'
@@ -328,6 +329,7 @@ const JobPanel = ({ job, dsmHost }: { job: Job; dsmHost?: string | null }) => {
   const failed = job.stage === 'failed'
   const stop = stopOf(job)
   const finished = rows.filter((r) => r.at === 'done').length
+  const left = useTimeLeft(job.id, partOf(job), job.stage === 'working')
   return (
     <ProgressPanel
       label={looks.aria ?? looks.title}
@@ -342,7 +344,15 @@ const JobPanel = ({ job, dsmHost }: { job: Job; dsmHost?: string | null }) => {
         at: rows.length > 0 ? finished : job.done,
         of: rows.length > 0 ? rows.length : job.total
       }}
-      summary={failed ? <span className='text-local'>{job.reason}</span> : looks.summary}
+      summary={
+        failed ? (
+          <span className='text-local'>{job.reason}</span>
+        ) : left === null ? (
+          looks.summary
+        ) : (
+          `${looks.summary} · ${leftWords(left)}`
+        )
+      }
       action={
         failed ? (
           <Mini onClick={() => liveJobs.update(({ [job.id]: _put, ...rest }) => rest)}>

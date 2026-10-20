@@ -51,6 +51,8 @@ const FONT_PATTERNS: Record<TextFont, string> = {
   hand: 'cursive'
 }
 
+const SEEK_MARGIN = 0.1
+
 const n = (value: number) => String(Math.round(value * 1000) / 1000)
 
 const quoted = (value: string) => `'${value.replaceAll('\\', '/').replaceAll("'", '')}'`
@@ -173,11 +175,17 @@ const filmArgs = ({
     const length = clipLength(clip)
     const speed = speedOf(clip)
     const tempo = speed < 0.5 ? `atempo=0.5,atempo=${n(speed / 0.5)}` : `atempo=${n(speed)}`
+    const seeks = !source.still
+    const held = clip.end - clip.start
     inputs.push(
-      ...(source.still ? ['-loop', '1', '-framerate', String(fps), '-t', n(clip.end)] : []),
+      ...(source.still
+        ? ['-loop', '1', '-framerate', String(fps), '-t', n(clip.end)]
+        : [...(clip.start > 0 ? ['-ss', n(clip.start)] : []), '-t', n(held + SEEK_MARGIN)]),
       '-i',
       source.path
     )
+    const from = seeks ? 0 : clip.start
+    const to = seeks ? held : clip.end
     if (clip.gap) black(`g${index}`, clip.gap)
     parts.push({ label: `[v${index}][a${index}]`, length, fade: fadeInto(edit.clips, index) })
     const fadeIn = fadeInOf(edit.clips, index)
@@ -187,11 +195,11 @@ const filmArgs = ({
       ...(fadeOut > 0 ? [`${filter}=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])
     ]
     graph.push(
-      `[${index}:v]trim=start=${n(clip.start)}:end=${n(clip.end)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${fps},${[...framed(clip), ''].join(',')}scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
+      `[${index}:v]trim=start=${n(from)}:end=${n(to)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${fps},${[...framed(clip), ''].join(',')}scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
     )
     graph.push(
       clip.sound && source.sound
-        ? `[${index}:a]atrim=start=${n(clip.start)}:end=${n(clip.end)},asetpts=PTS-STARTPTS,${speed === 1 ? '' : `${tempo},`}${stereo},apad=whole_dur=${n(length)},atrim=end=${n(length)}${['', ...dim('afade')].join(',')}[a${index}]`
+        ? `[${index}:a]atrim=start=${n(from)}:end=${n(to)},asetpts=PTS-STARTPTS,${speed === 1 ? '' : `${tempo},`}${stereo},apad=whole_dur=${n(length)},atrim=end=${n(length)}${['', ...dim('afade')].join(',')}[a${index}]`
         : `anullsrc=r=48000:cl=stereo,atrim=end=${n(length)},${stereo}[a${index}]`
     )
   })

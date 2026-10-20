@@ -272,3 +272,42 @@ describe('cancelling one task among several', () => {
       .toBeVisible()
   })
 })
+
+describe('a render going', () => {
+  const going = (part: number) =>
+    put({
+      type: 'render',
+      label: 'Luc Favre',
+      groupIds: ['g1'],
+      rows: [{ key: 'film', name: 'film', size: 0, at: 'now', part }]
+    })
+
+  test('says how long is left, once it has been seen going for a while', async () => {
+    let now = 1_000_000
+    vi.spyOn(Date, 'now').mockImplementation(() => now)
+    going(0.1)
+    await render(createElement(JobsPanel))
+    await expect.element(page.getByText('Rendering Luc Favre’s film')).toBeVisible()
+    expect(document.body.textContent).not.toMatch(/min left|s left/)
+
+    now += 20_000
+    going(0.3)
+
+    await expect.element(page.getByText(/2 min left/)).toBeVisible()
+    vi.restoreAllMocks()
+  })
+
+  test('says it for any job that has a percentage, the files being prepared as well', async () => {
+    let now = 2_000_000
+    vi.spyOn(Date, 'now').mockImplementation(() => now)
+    put({ type: 'process', label: 'Luc Favre', done: 1, total: 10 })
+    await render(createElement(JobsPanel))
+    await expect.element(page.getByText('Preparing the files')).toBeVisible()
+
+    now += 20_000
+    put({ type: 'process', label: 'Luc Favre', done: 3, total: 10 })
+
+    await expect.element(page.getByText(/2 min left/)).toBeVisible()
+    vi.restoreAllMocks()
+  })
+})

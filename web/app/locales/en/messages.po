@@ -480,6 +480,10 @@ msgstr "{loose, plural, one {# loose file} other {# loose files}}"
 msgid "{looseCount, plural, one {# loose file} other {# loose files}}"
 msgstr "{looseCount, plural, one {# loose file} other {# loose files}}"
 
+#: app/hooks/useTimeLeft.ts
+msgid "{minutes} min left"
+msgstr "{minutes} min left"
+
 #: app/components/transfers-panel.tsx
 msgid "{more, plural, one {… and # more, not listed here.} other {… and # more, not listed here.}}"
 msgstr "{more, plural, one {… and # more, not listed here.} other {… and # more, not listed here.}}"
@@ -589,6 +593,10 @@ msgstr "{ready} of {total} clips have their small copy. They are built in the ba
 #: app/components/free-place-dialog.tsx
 msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
 msgstr "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
+
+#: app/hooks/useTimeLeft.ts
+msgid "{seconds} s left"
+msgstr "{seconds} s left"
 
 #: app/components/jobs-panel.tsx
 msgid "{skipped, plural, one {# already here} other {# already here}}"

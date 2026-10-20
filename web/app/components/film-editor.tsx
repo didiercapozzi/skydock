@@ -96,6 +96,7 @@ import { FilmShortcuts } from './film-shortcuts'
 import { partOf, StopButton, stopOf } from './jobs-panel'
 import { FILM_ACTIONS, keyLabel, keyNames, type FilmAction } from '../helpers/filmKeys'
 import { useFilmKeys } from '../hooks/useFilmKeys'
+import { leftWords, useTimeLeft } from '../hooks/useTimeLeft'
 import {
   resizedTimeline,
   setTimelineHeight,
@@ -1547,6 +1548,11 @@ const FilmEditor = ({
   const [renderSeen, setRenderSeen] = useState<string | null>(null)
   if (followed && followed.id !== renderSeen) setRenderSeen(followed.id)
   const rendering = followed ? followed.stage !== 'failed' : renderSeen ? false : renderAsked
+  const renderLeft = useTimeLeft(
+    followed?.id ?? '',
+    followed ? partOf(followed) : 0,
+    Boolean(followed) && rendering
+  )
   const stopRender = followed && followed.stage !== 'failed' ? stopOf(followed) : null
   const [renderOpen, setRenderOpen] = useState(false)
   useEffect(() => {
@@ -2276,7 +2282,9 @@ const FilmEditor = ({
           <span className='flex items-center gap-1.5 text-small text-ink-3'>
             <span>
               {followed
-                ? t`Rendering the film · ${Math.round(partOf(followed) * 100)}%`
+                ? `${t`Rendering the film · ${Math.round(partOf(followed) * 100)}%`}${
+                    renderLeft === null ? '' : ` · ${leftWords(renderLeft)}`
+                  }`
                 : t`A render is running`}
             </span>
             {stopRender && <StopButton stop={stopRender} />}

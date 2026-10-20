@@ -480,6 +480,10 @@ msgstr "{loose, plural, one {# fichier en vrac} other {# fichiers en vrac}}"
 msgid "{looseCount, plural, one {# loose file} other {# loose files}}"
 msgstr "{looseCount, plural, one {# fichier en vrac} other {# fichiers en vrac}}"
 
+#: app/hooks/useTimeLeft.ts
+msgid "{minutes} min left"
+msgstr "encore {minutes} min"
+
 #: app/components/transfers-panel.tsx
 msgid "{more, plural, one {… and # more, not listed here.} other {… and # more, not listed here.}}"
 msgstr "{more, plural, one {… et # de plus, non listé ici.} other {… et # de plus, non listés ici.}}"
@@ -589,6 +593,10 @@ msgstr "{ready} clips sur {total} ont leur petite copie. Elles se font en arriè
 #: app/components/free-place-dialog.tsx
 msgid "{reshaped, plural, one {# file} other {# files}} went up trimmed, framed or turned. Only the part that went up is kept, on the storage: what was cut off is deleted with the original, for good."
 msgstr "{reshaped, plural, one {# fichier est parti} other {# fichiers sont partis}} coupés, recadrés ou pivotés. Seule la partie envoyée est gardée, sur le stockage : ce qui a été retiré est supprimé avec l’original, définitivement."
+
+#: app/hooks/useTimeLeft.ts
+msgid "{seconds} s left"
+msgstr "encore {seconds} s"
 
 #: app/components/jobs-panel.tsx
 msgid "{skipped, plural, one {# already here} other {# already here}}"

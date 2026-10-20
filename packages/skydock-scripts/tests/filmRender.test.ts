@@ -57,9 +57,25 @@ describe('rendering the film', () => {
       '/out/videos/a.mp4',
       '/out/videos/b.mp4'
     ])
-    expect(graph(made)).toContain('[0:v]trim=start=2:end=6')
+    expect(graph(made)).toContain('[0:v]trim=start=0:end=4')
     expect(graph(made)).toContain('concat=n=2:v=1:a=1')
-    expect(made.slice(made.indexOf('-t'), made.indexOf('-t') + 2)).toEqual(['-t', '7'])
+    expect(made.slice(made.lastIndexOf('-t'), made.lastIndexOf('-t') + 2)).toEqual(['-t', '7'])
+  })
+
+  it('jumps to the start of each clip in the file instead of reading the file up to it', () => {
+    const made = args(edit())
+    const before = (name: string, count: number) =>
+      made.slice(made.indexOf(name) - count + 1, made.indexOf(name) + 1)
+
+    expect(before('/out/videos/a.mp4', 6)).toEqual([
+      '-ss',
+      '2',
+      '-t',
+      '4.1',
+      '-i',
+      '/out/videos/a.mp4'
+    ])
+    expect(before('/out/videos/b.mp4', 4)).toEqual(['-t', '3.1', '-i', '/out/videos/b.mp4'])
   })
 
   it('is MP4 with H.264 video and AAC sound, written aside under another name', () => {
@@ -192,7 +208,7 @@ describe('the gap before a clip', () => {
     const joined = graph(made)
     expect(joined).toContain('color=c=black:s=1920x1080:r=30:d=2')
     expect(joined).toContain('[v0][a0][vg1][ag1][v1][a1][vt][at]concat=n=4:v=1:a=1')
-    expect(made.slice(made.indexOf('-t'), made.indexOf('-t') + 2)).toEqual(['-t', '11'])
+    expect(made.slice(made.lastIndexOf('-t'), made.lastIndexOf('-t') + 2)).toEqual(['-t', '11'])
   })
 })
 
