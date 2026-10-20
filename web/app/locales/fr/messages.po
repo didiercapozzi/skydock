@@ -362,10 +362,6 @@ msgstr "{done} sur {total} rapatriés"
 msgid "{done} of {total} copied into the originals"
 msgstr "{done} sur {total} copiés dans les originaux"
 
-#: app/routes/place.tsx
-msgid "{editLocked} Open it in its editor, or reset the montage."
-msgstr "{editLocked} Ouvrez-le dans son éditeur, ou réinitialisez le montage."
-
 #: app/helpers/notes.ts
 msgid "{file} has been added to {where}"
 msgstr "{file} a été ajouté à {where}"
@@ -705,8 +701,12 @@ msgid "{who}’s film is rendered — ready to upload"
 msgstr "Le film de {who} est rendu — prêt à être envoyé"
 
 #: app/hooks/useBoardModel.ts
-msgid "{who}’s montage has an edit — change it in its editor."
-msgstr "Le montage de {who} a un montage en cours — modifiez-le dans son éditeur."
+msgid "{who}’s montage has a kdenlive project — change it in kdenlive, or start the edit again."
+msgstr "Le montage de {who} a un projet kdenlive — modifiez-le dans kdenlive, ou recommencez le montage du film."
+
+#: app/hooks/useBoardModel.ts
+msgid "{who}’s montage was freed from this machine — give this one another name, such as “{who} 2”."
+msgstr "Le montage de {who} a été libéré de cette machine — donnez un autre nom à celui-ci, par exemple « {who} 2 »."
 
 #: app/components/work-folder-dialog.tsx
 msgid "{working} — wait until it is done."
@@ -1302,6 +1302,7 @@ msgstr "annuler"
 #: app/components/preview-drawer.tsx
 #: app/components/remove-files-dialog.tsx
 #: app/components/remove-place-dialog.tsx
+#: app/components/start-again-dialog.tsx
 #: app/components/take-back-dialog.tsx
 #: app/components/upload-dialog.tsx
 #: app/routes/place.tsx
@@ -3004,9 +3005,17 @@ msgstr "Ses fichiers sont restés où ils étaient."
 msgid "Its files that are already here stay where they are. The next time it is plugged in, SkyDock will treat it as a new camera and ask."
 msgstr "Ses fichiers déjà ici restent où ils sont. La prochaine fois qu’elle est branchée, SkyDock la traitera comme une nouvelle caméra et demandera."
 
+#: app/components/inspector.tsx
+msgid "Its film is edited here — a new name renames its folder, its copies, its edit and its film, with nothing to process again."
+msgstr "Son film est monté ici — un nouveau nom renomme son dossier, ses copies, son montage et son film, sans rien à préparer à nouveau."
+
 #: app/routes/place.tsx
 msgid "its folder"
 msgstr "son dossier"
+
+#: app/components/montage-panel.tsx
+msgid "Its folder, its copies, its edit and its film take the new name — nothing is processed again."
+msgstr "Son dossier, ses copies, son montage et son film prennent le nouveau nom — rien n’est préparé à nouveau."
 
 #: app/components/file-list.tsx
 msgid "Its jump was found — the exit is at {exit}"
@@ -3081,6 +3090,10 @@ msgstr "La garder"
 msgid "Keep it under 60 characters"
 msgstr "Moins de 60 caractères"
 
+#: app/components/montage-view.tsx
+msgid "Keep the edit aside and take it away — the copies and the film stay"
+msgstr "Mettre le montage de côté et le retirer — les copies et le film restent"
+
 #: app/components/preview-drawer.tsx
 msgid "Keep the shape this clip already has"
 msgstr "Garder la forme que ce clip a déjà"
@@ -3108,6 +3121,10 @@ msgstr "Conservé"
 #: app/components/email-dialog.tsx
 msgid "Kept as it is written, for every email."
 msgstr "Conservé tel qu’écrit, pour chaque e-mail."
+
+#: app/components/start-again-dialog.tsx
+msgid "Kept aside in .projects, then taken away"
+msgstr "Mis de côté dans .projects, puis retiré"
 
 #: app/components/storage-folder.tsx
 msgid "Kept on the storage"
@@ -3183,6 +3200,10 @@ msgstr "Laissez vide pour le nommer d’après le projet"
 #: app/components/camera-dialogs.tsx
 msgid "Leave this unticked for a camera that is not yours — you will pick the files to copy each time."
 msgstr "Laissez décoché pour une caméra qui n’est pas la vôtre — vous choisirez les fichiers à copier à chaque fois."
+
+#: app/components/start-again-dialog.tsx
+msgid "Left as they are"
+msgstr "Laissés tels quels"
 
 #: app/components/film-editor.tsx
 msgid "Length"
@@ -3310,6 +3331,7 @@ msgid "Make a jump of these…"
 msgstr "Faire un saut de ceux-ci…"
 
 #: app/components/montage-card.tsx
+#: app/components/montage-view.tsx
 msgid "Make a kdenlive project"
 msgstr "Faire un projet kdenlive"
 
@@ -3773,6 +3795,11 @@ msgstr "pas supprimé"
 #: app/routes/place.tsx
 msgid "Not in the list"
 msgstr "Pas dans la liste"
+
+#. placeholder {0}: changedClips.gone.join(', ')
+#: app/components/film-editor.tsx
+msgid "Not in the montage any more: {0} — take it out of the film, or process the montage again."
+msgstr "N’est plus dans le montage : {0} — retirez-le du film, ou préparez le montage à nouveau."
 
 #: app/components/film-editor.tsx
 #: app/components/film-template-modals.tsx
@@ -4935,6 +4962,11 @@ msgstr "Raccourcis"
 msgid "Shortcuts (?)"
 msgstr "Raccourcis (?)"
 
+#. placeholder {0}: changedClips.shorter.join(', ')
+#: app/components/film-editor.tsx
+msgid "Shorter than when it was put in the film: {0} — look at its part again."
+msgstr "Plus court que lorsqu’il a été mis dans le film : {0} — revoyez la partie choisie."
+
 #: app/components/inspector.tsx
 #: app/components/preview-drawer.tsx
 msgid "Shot"
@@ -5102,6 +5134,14 @@ msgstr "Carré"
 msgid "Start"
 msgstr "Début"
 
+#: app/components/start-again-dialog.tsx
+msgid "Start {who}’s edit again"
+msgstr "Recommencer le montage du film de {who}"
+
+#: app/components/start-again-dialog.tsx
+msgid "Start again"
+msgstr "Recommencer"
+
 #: app/components/film-template-modals.tsx
 msgid "Start from a film template"
 msgstr "Partir d’un modèle de film"
@@ -5115,13 +5155,29 @@ msgstr "Commencer ici"
 msgid "Start the clip at the playhead"
 msgstr "Commencer le clip à la tête de lecture"
 
+#: app/components/start-again-dialog.tsx
+msgid "Start the edit again"
+msgstr "Recommencer le montage du film"
+
+#: app/components/montage-view.tsx
+msgid "Start the edit again…"
+msgstr "Recommencer le montage du film…"
+
 #: app/components/film-template-modals.tsx
 msgid "Start the film"
 msgstr "Commencer le film"
 
+#: app/components/start-again-dialog.tsx
+msgid "Start the film editor’s edit again"
+msgstr "Recommencer le montage de l’éditeur de film"
+
 #: app/components/film-template-modals.tsx
 msgid "Start the film from a film template?"
 msgstr "Commencer le film à partir d’un modèle de film ?"
+
+#: app/components/start-again-dialog.tsx
+msgid "Start the kdenlive project again"
+msgstr "Recommencer le projet kdenlive"
 
 #: app/components/jump-name.tsx
 msgid "Started"
@@ -5243,7 +5299,7 @@ msgstr "Tab passe d’une commande à l’autre"
 msgid "Take {0} out of {1}"
 msgstr "Retirer {0} de {1}"
 
-#. placeholder {0}: partName(part)
+#. placeholder {0}: partName(part, parts)
 #: app/components/upload-dialog.tsx
 msgid "Take {0} out of {name}"
 msgstr "Retirer {0} de {name}"
@@ -5367,6 +5423,10 @@ msgstr "Le code comporte 6 chiffres"
 msgid "The copies already made for {place} were written into a folder named after it, so they are forgotten and made again wherever those jumps are filed next. Making the place again by the same name does not bring the filing back."
 msgstr "Les copies déjà faites pour {place} ont été écrites dans un dossier à son nom : elles sont donc oubliées et refaites là où ces sauts seront classés ensuite. Recréer le lieu sous le même nom ne rétablit pas le classement."
 
+#: app/components/start-again-dialog.tsx
+msgid "the copies, and the film rendered last"
+msgstr "les copies, et le dernier film rendu"
+
 #: app/components/templates-dialog.tsx
 msgid "The copy was cut off — try again."
 msgstr "La copie a été interrompue — réessayez."
@@ -5375,9 +5435,13 @@ msgstr "La copie a été interrompue — réessayez."
 msgid "the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn{alreadySet}. The gap rule makes the jumps again"
 msgstr "les heures corrigées, les sauts créés et nommés à la main, toutes les copies, et chaque coupe, cadrage et rotation{alreadySet}. La règle des écarts recrée les sauts"
 
+#: app/components/upload-dialog.tsx
+msgid "The edit"
+msgstr "Le montage du film"
+
 #: app/components/take-back-dialog.tsx
-msgid "the edit itself, which cannot be undone"
-msgstr "le montage lui-même, ce qui est irréversible"
+msgid "the edit itself — a copy of it is kept aside in .projects"
+msgstr "le montage lui-même — une copie en est gardée dans .projects"
 
 #: app/components/free-dialog.tsx
 msgid "the edit, and the record of what went where"
@@ -5424,6 +5488,10 @@ msgstr "Le film n’a pas pu être lu."
 #: app/components/film-editor.tsx
 msgid "The film could not be saved."
 msgstr "Le film n’a pas pu être enregistré."
+
+#: app/components/start-again-dialog.tsx
+msgid "the film editor’s edit"
+msgstr "le montage de l’éditeur de film"
 
 #: app/components/montage-steps.tsx
 msgid "The film is on the storage and the link works. The email is written already."
@@ -5480,9 +5548,17 @@ msgstr "Le saut disparaît ; ses fichiers sont gardés, en vrac dans Nouveaux fi
 msgid "the jumps and their names, and every trim, frame and turn"
 msgstr "les sauts et leurs noms, et chaque coupe, cadrage et rotation"
 
+#: app/components/start-again-dialog.tsx
+msgid "the kdenlive project"
+msgstr "le projet kdenlive"
+
 #: app/components/upload-dialog.tsx
 msgid "The kdenlive project"
 msgstr "Le projet kdenlive"
+
+#: app/components/upload-dialog.tsx
+msgid "The kdenlive project and the edit"
+msgstr "Le projet kdenlive et le montage du film"
 
 #: app/components/jump-graph.tsx
 msgid "The least and the most the camera felt in this clip, in gravities"
@@ -5520,6 +5596,10 @@ msgstr "Les repères n’ont pas encore été trouvés."
 msgid "The montage"
 msgstr "Le montage"
 
+#: app/components/start-again-dialog.tsx
+msgid "The montage is no longer held by that edit. The film editor starts again from the clips laid end to end, and a kdenlive project can be made anew."
+msgstr "Le montage n’est plus retenu par ce montage du film. L’éditeur de film repart des clips mis bout à bout, et un projet kdenlive peut être refait."
+
 #: app/components/film-editor.tsx
 msgid "The music could not be brought in."
 msgstr "La musique n’a pas pu être ajoutée."
@@ -5543,6 +5623,10 @@ msgstr "le nom qu’il avait sur la caméra"
 #: app/components/take-back-dialog.tsx
 msgid "the name, {who}"
 msgstr "le nom, {who}"
+
+#: app/components/start-again-dialog.tsx
+msgid "the name, every trim and frame, and every corrected time"
+msgstr "le nom, chaque coupe et cadrage, et chaque heure corrigée"
 
 #: app/components/take-back-dialog.tsx
 msgid "the name, every trim and frame, and every corrected time — each file goes back to the time its camera gave it"
@@ -5604,6 +5688,12 @@ msgstr "le film rendu ({filmSize})"
 #: app/components/upload-dialog.tsx
 msgid "The same one can go into several zips."
 msgstr "Le même peut aller dans plusieurs zips."
+
+#. placeholder {0}: aside.reason
+#. placeholder {1}: aside.as
+#: app/components/film-editor.tsx
+msgid "The saved edit could not be read ({0}), so it was kept aside as {1} and the film starts again from its first edit."
+msgstr "Le montage enregistré n’a pas pu être lu ({0}) : il a été mis de côté sous {1}, et le film repart de son premier montage."
 
 #: app/components/preview-drawer.tsx
 msgid "The small copy, which plays at once"
@@ -6310,6 +6400,7 @@ msgid "Write {NAME_TOKEN} and {DAY_TOKEN} where the name and the day go."
 msgstr "Écrivez {NAME_TOKEN} et {DAY_TOKEN} là où vont le nom et le jour."
 
 #: app/components/montage-card.tsx
+#: app/components/montage-view.tsx
 msgid "Write a kdenlive project from a template instead, and open it"
 msgstr "Écrire plutôt un projet kdenlive à partir d’un modèle, et l’ouvrir"
 
