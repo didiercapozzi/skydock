@@ -803,6 +803,7 @@ const Inspector = ({
     />
   )
   const many = picked !== null && also.length > 0
+  const crf = edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264']
   const solo = many ? null : picked
   const clip = solo?.kind === 'clip' ? edit.clips.find((one) => one.id === solo.id) : undefined
   const clipIndex = clip ? edit.clips.indexOf(clip) : -1
@@ -1436,15 +1437,21 @@ const Inspector = ({
             </div>
             <Slider
               label={t`Quality`}
-              value={edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264']}
+              value={CRF_RANGE.least + CRF_RANGE.most - crf}
               min={CRF_RANGE.least}
               max={CRF_RANGE.most}
               step={1}
-              shown={String(edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264'])}
-              onChange={(crf) => onChange({ ...edit, output: { ...edit.output, crf } })}
+              shown={`${Math.round(((CRF_RANGE.most - crf) / (CRF_RANGE.most - CRF_RANGE.least)) * 100)}%`}
+              onChange={(value) =>
+                onChange({
+                  ...edit,
+                  output: { ...edit.output, crf: CRF_RANGE.least + CRF_RANGE.most - value }
+                })
+              }
             />
-            <p className='m-0 text-small text-ink-3'>
-              {t`The lower the number, the better the picture and the bigger the file.`}
+            <p className='m-0 flex justify-between text-small text-ink-3'>
+              <span>{t`Smallest file`}</span>
+              <span>{t`Best quality`}</span>
             </p>
             <Go
               disabled={edit.clips.length === 0 || rendering}

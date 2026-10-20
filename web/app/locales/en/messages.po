@@ -1152,6 +1152,10 @@ msgstr "Background"
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 
+#: app/components/film-editor.tsx
+msgid "Best quality"
+msgstr "Best quality"
+
 #. placeholder {0}: LENGTH.min
 #. placeholder {1}: LENGTH.max
 #: app/components/film-editor.tsx
@@ -5146,6 +5150,10 @@ msgid "Smaller"
 msgstr "Smaller"
 
 #: app/components/film-editor.tsx
+msgid "Smallest file"
+msgstr "Smallest file"
+
+#: app/components/film-editor.tsx
 #: app/components/film-shortcuts.tsx
 msgid "Snap"
 msgstr "Snap"
@@ -5628,10 +5636,6 @@ msgstr "The link as a QR code, for a phone to take it now"
 #: app/components/email-dialog.tsx
 msgid "The link can be taken with a phone, before the email has even gone."
 msgstr "The link can be taken with a phone, before the email has even gone."
-
-#: app/components/film-editor.tsx
-msgid "The lower the number, the better the picture and the bigger the file."
-msgstr "The lower the number, the better the picture and the bigger the file."
 
 #: app/components/email-dialog.tsx
 msgid "The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does."

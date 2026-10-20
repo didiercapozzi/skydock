@@ -2358,14 +2358,18 @@ describe('a render under way, seen from the editor', () => {
 })
 
 describe('the output of the film', () => {
-  const start = async (formats: string[], onClose: () => void = () => {}) => {
+  const start = async (
+    formats: string[],
+    onClose: () => void = () => {},
+    edit: Record<string, unknown> = {}
+  ) => {
     const posts: Array<{ intent?: string; edit: { output?: Record<string, unknown> } }> = []
     vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
       if (init?.method === 'POST') {
         posts.push(JSON.parse(String(init.body)))
         return Response.json({ ok: true })
       }
-      return Response.json({ ...answer, formats })
+      return Response.json({ ...answer, formats, edit: { ...answer.edit, ...edit } })
     })
     await render(createElement(FilmEditor, { groupId: 'g1', onClose }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
@@ -2395,15 +2399,26 @@ describe('the output of the film', () => {
 
     await expect.element(format.getByRole('button', { name: 'H.264' })).toHaveAttribute('aria-pressed', 'true')
     await expect.element(rate.getByRole('button', { name: '30' })).toHaveAttribute('aria-pressed', 'true')
-    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('12')
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('40')
+    await expect.element(page.getByText('100%', { exact: true })).toBeVisible()
 
     await userEvent.click(format.getByRole('button', { name: 'H.265' }))
-    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('12')
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('40')
     await userEvent.click(rate.getByRole('button', { name: '24' }))
     page.getByRole('slider', { name: 'Quality' }).element().focus()
-    await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+    await userEvent.keyboard('{ArrowLeft}{ArrowLeft}')
 
     await expect.poll(() => posts.at(-1)?.edit.output).toEqual({ format: 'h265', fps: 24, crf: 14 })
+  })
+
+  test('has the best quality at the right end of the slider and the smallest file at the left end', async () => {
+    await start(['h264'], undefined, { output: { crf: 40 } })
+    await open()
+
+    await expect.element(page.getByRole('slider', { name: 'Quality' })).toHaveValue('12')
+    await expect.element(page.getByText('0%', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('Smallest file')).toBeVisible()
+    await expect.element(page.getByText('Best quality')).toBeVisible()
   })
 
   test('renders only from the button of the panel, which saves the edit and leaves the editor', async () => {

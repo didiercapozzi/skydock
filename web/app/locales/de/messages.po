@@ -1152,6 +1152,10 @@ msgstr "Hintergrund"
 msgid "beside it — chosen whole. Or the one archive, if it was packed as .zip or .tar.gz. Or the project and its files picked one by one. Each file the project names is pointed at the copy brought in with it, so a template made on another machine finds its own files here. Bringing one in under a name already there replaces it, files and all."
 msgstr "daneben schreibt — als Ganzes gewählt. Oder das eine Archiv, wenn es als .zip oder .tar.gz gepackt wurde. Oder das Projekt und seine Dateien einzeln ausgewählt. Jede Datei, die das Projekt nennt, wird auf die mitgebrachte Kopie verwiesen, sodass eine auf einem anderen Rechner erstellte Vorlage hier ihre eigenen Dateien findet. Eine unter einem schon vorhandenen Namen hinzuzufügen, ersetzt diese samt Dateien."
 
+#: app/components/film-editor.tsx
+msgid "Best quality"
+msgstr "Beste Qualität"
+
 #. placeholder {0}: LENGTH.min
 #. placeholder {1}: LENGTH.max
 #: app/components/film-editor.tsx
@@ -5146,6 +5150,10 @@ msgid "Smaller"
 msgstr "Kleiner"
 
 #: app/components/film-editor.tsx
+msgid "Smallest file"
+msgstr "Kleinste Datei"
+
+#: app/components/film-editor.tsx
 #: app/components/film-shortcuts.tsx
 msgid "Snap"
 msgstr "Einrasten"
@@ -5628,10 +5636,6 @@ msgstr "Der Link als QR-Code, damit ein Handy ihn gleich übernehmen kann"
 #: app/components/email-dialog.tsx
 msgid "The link can be taken with a phone, before the email has even gone."
 msgstr "Den Link kann man mit einem Handy mitnehmen, noch bevor die E-Mail abgeschickt ist."
-
-#: app/components/film-editor.tsx
-msgid "The lower the number, the better the picture and the bigger the file."
-msgstr "Je kleiner die Zahl, desto besser das Bild und desto größer die Datei."
 
 #: app/components/email-dialog.tsx
 msgid "The mail was opened from here. Say whether it went: the storage’s list records it, and the montage stays to email until it does."
