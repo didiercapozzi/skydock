@@ -88,7 +88,9 @@ const liveEventSchema = z.discriminatedUnion('kind', [
     phase: z.string().optional(),
     rows: z.array(jobRowSchema).optional(),
     row: jobRowPatchSchema.optional(),
-    outcome: jobOutcomeSchema.optional()
+    outcome: jobOutcomeSchema.optional(),
+    groupIds: z.array(z.string()).optional(),
+    destinations: z.array(z.string()).optional()
   }),
   z.object({
     kind: z.literal('cameras'),

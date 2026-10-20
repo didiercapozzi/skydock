@@ -9,7 +9,6 @@ import {
   listRemoteFiles,
   loadManifestAsync,
   readRecordAsync,
-  processingNow,
   uploadingNow,
   saveManifest,
   settleListsDir,
@@ -34,7 +33,7 @@ import type { NasLink } from '../components/board-header'
 import { FirstScan } from '../components/first-scan'
 import { NewCameraDialog } from '../components/camera-dialogs'
 import { DialogHost } from '../components/dialog-host'
-import { JobsPanel } from '../components/jobs-panel'
+import { JobsPanel, headlineOf } from '../components/jobs-panel'
 import { PendingLine, doingOf } from '../components/pending'
 import { TransfersPanel } from '../components/transfers-panel'
 import { PlacesTree } from '../components/places-tree'
@@ -157,7 +156,6 @@ const loader = async (_args: Route.LoaderArgs) => {
     storageLook: lookAtStorageSoon(outputDir),
     hasManifest: manifest !== null || unreadable,
     unreadable,
-    processing: processingNow(),
     uploading: uploadingNow()
   }
 }
@@ -237,6 +235,7 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
 
   const copying = useCameraCopying()
   const jobs = useJobs()
+  const stoppedByLeaving = jobs.filter((job) => job.type !== 'proxy' && job.type !== 'moments')
 
   if (!board.hasManifest) {
     return (
@@ -410,17 +409,12 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
         onRemoveFiles={(to, files) => closeThen(() => model.removeTo(to, files))}
         workFolder={{
           folder: loaderData.outputDir,
-          working: board.uploading
-            ? t`An upload is running`
-            : copying
-              ? t`A camera is being copied`
-              : jobs.some((job) => job.type === 'import')
-                ? t`Files are being copied in`
-                : board.scanning
-                  ? t`A scan is running`
-                  : board.busy
-                    ? t`The board is busy`
-                    : null
+          working:
+            stoppedByLeaving.length > 0
+              ? stoppedByLeaving.map((job) => headlineOf(job).what).join(' · ')
+              : board.scanning
+                ? t`A scan is running`
+                : null
         }}
       />
 

@@ -196,8 +196,11 @@ const looksOf = ({ type, label, stage, done, total, rows, phase }: Job): Looks =
       return {
         icon: 'copying',
         title: t`Preparing the files`,
-        doing: t`Copying`,
-        summary: t`${done} of ${plural(total, { one: '# file', other: '# files' })} prepared`,
+        doing: phase === 'waiting' ? t`Waiting` : t`Copying`,
+        summary:
+          phase === 'waiting'
+            ? t`Waiting for the processing asked for before it — it starts by itself`
+            : t`${done} of ${plural(total, { one: '# file', other: '# files' })} prepared`,
         bar: t`Files prepared`
       }
     case 'render':
@@ -270,7 +273,7 @@ const StopButton = ({ stop }: { stop: Stop }) => {
   )
 }
 
-const stopOf = (type: Job['type']): Stop | null =>
+const stopOf = ({ type, id, groupIds }: Job): Stop | null =>
   type === 'camera-copy'
     ? {
         run: () =>
@@ -295,19 +298,35 @@ const stopOf = (type: Job['type']): Stop | null =>
         ? {
             run: () =>
               void routingEngine
-                .action({ url: '/api/manifest', actionArgs: { intent: 'cancel-render' } })
+                .action({
+                  url: '/api/manifest',
+                  actionArgs: { intent: 'cancel-render', groupId: groupIds?.[0] }
+                })
                 .catch(() => null),
             word: t`Cancel`,
             busy: t`Cancelling…`,
-            title: t`Stop the render now — the film as it was before stays as it is`
+            title: t`Stop this film’s render now — the film as it was before stays as it is`
           }
-        : null
+        : type === 'process'
+          ? {
+              run: () =>
+                void routingEngine
+                  .action({
+                    url: '/api/manifest',
+                    actionArgs: { intent: 'cancel-process', jobId: id }
+                  })
+                  .catch(() => null),
+              word: t`Cancel`,
+              busy: t`Cancelling…`,
+              title: t`Stop it now — the copies already finished stay, and nothing of it counts as processed`
+            }
+          : null
 
 const JobPanel = ({ job, dsmHost }: { job: Job; dsmHost?: string | null }) => {
   const looks = looksOf(job)
   const rows = rowsOf(job, looks, dsmHost)
   const failed = job.stage === 'failed'
-  const stop = stopOf(job.type)
+  const stop = stopOf(job)
   const finished = rows.filter((r) => r.at === 'done').length
   return (
     <ProgressPanel
@@ -374,4 +393,4 @@ const headlineOf = (job: Job) => ({
         : partOf(job)
 })
 
-export { bytesPartOf, headlineOf, JobsPanel, looksOf, partOf }
+export { bytesPartOf, headlineOf, JobsPanel, looksOf, partOf, StopButton, stopOf }

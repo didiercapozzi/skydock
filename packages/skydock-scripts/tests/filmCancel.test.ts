@@ -95,6 +95,22 @@ describe('cancelling a render', () => {
     expect(cancelRendering()).toBe(false)
   })
 
+  it('stops only the montage named, and the other films go on rendering', () => {
+    const luc = new AbortController()
+    const marie = new AbortController()
+    globalThis.skydockRendering = new Map([
+      ['luc', luc],
+      ['marie', marie]
+    ])
+
+    expect(cancelRendering('marie')).toBe(true)
+
+    expect(marie.signal.aborted).toBe(true)
+    expect(luc.signal.aborted).toBe(false)
+    expect(cancelRendering('someone else')).toBe(false)
+    globalThis.skydockRendering = undefined
+  })
+
   it('says nothing is rendering when nothing is', () => {
     expect(cancelRendering()).toBe(false)
   })

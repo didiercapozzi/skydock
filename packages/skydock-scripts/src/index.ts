@@ -20,7 +20,8 @@ import {
 import { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED } from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { forgetLostFiles } from './forgetLost'
-import { busyWith } from './busy'
+import { busySaid, busyWith, jumpsOfMontage, scopeOfFiles } from './busy'
+import type { Busy, BusyScope } from './busyScope'
 import { learnStorage, settleListsDir } from './originIndex'
 import { freeablePlace } from './freeable'
 import { jsonText } from './lib/json'
@@ -77,16 +78,10 @@ import {
   renderPassengerEmail
 } from './passengerEmail'
 import type { EmailFacts, EmailLanguage, EmailTemplate } from './passengerEmail'
-import { inJob, job, liveEventSchema, mergeRow, publish, subscribe } from './live'
+import { inJob, job, liveEventSchema, mergeRow, publish, subscribe, workUnderWay } from './live'
 import type { JobRow, LiveEvent } from './live'
 import { lastSegment, parentOf } from './paths'
-import {
-  cancelProcessing,
-  getGroupProcessedDir,
-  processingNow,
-  processJumps,
-  whenProcessed
-} from './process'
+import { cancelProcessing, getGroupProcessedDir, processingNow, processJumps } from './process'
 import { cutFrom, jumpTrim } from './jumpMoments'
 import { MOMENTS, nameOfMoment } from './moments'
 import type { Moment } from './moments'
@@ -194,7 +189,11 @@ export {
   readTransfers,
   recordTransfer,
   transfersFileSchema,
+  busySaid,
   busyWith,
+  jumpsOfMontage,
+  scopeOfFiles,
+  workUnderWay,
   DEFAULT_TEMPLATE,
   DEFAULT_TEMPLATES,
   EMAIL_VARIABLES,
@@ -342,10 +341,11 @@ export {
   uploadGate,
   UPLOADED_LOCKED,
   uploadScope,
-  whenProcessed,
   withRatio
 }
 export type {
+  Busy,
+  BusyScope,
   Transfer,
   TransferItem,
   EmailFacts,

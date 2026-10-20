@@ -31,8 +31,24 @@ const rowOf = (item: UploadItem) => ({
   ...(item.state === 'taken' ? { note: 'taken' } : {})
 })
 
-const uploadReporter = ({ label, outputDir }: { label: string; outputDir: string }) => {
-  const sending = job({ type: 'upload', label, total: 0, record: { kind: 'upload', outputDir } })
+const uploadReporter = ({
+  label,
+  outputDir,
+  groupIds = [],
+  destinations = []
+}: {
+  label: string
+  outputDir: string
+  groupIds?: string[]
+  destinations?: string[]
+}) => {
+  const sending = job({
+    type: 'upload',
+    label,
+    total: 0,
+    record: { kind: 'upload', outputDir },
+    scope: { groupIds, destinations }
+  })
   sending.phase('checking')
   const items = new Map<string, UploadItem>()
   const put = (item: UploadItem) => {
@@ -131,7 +147,7 @@ const reportedUpload = async <T>(
 ) => {
   try {
     return await runUpload({ key, label, groupIds }, async () => {
-      const report = uploadReporter({ label, outputDir })
+      const report = uploadReporter({ label, outputDir, groupIds })
       try {
         return await send(report)
       } catch (err) {

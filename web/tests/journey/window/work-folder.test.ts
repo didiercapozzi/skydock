@@ -2,15 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import type { Page } from 'playwright'
 import { expect, test } from 'vitest'
-import {
-  disabled,
-  lengthenFootage,
-  sees,
-  sleep,
-  useDesk,
-  waitFor,
-  windowDescribe
-} from './window-helpers'
+import { lengthenFootage, sees, sleep, useDesk, waitFor, windowDescribe } from './window-helpers'
 import { dialogNamed, place } from '../steps'
 
 const PICKER = 'Where should SkyDock work from now on?'
@@ -82,7 +74,7 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
     desk.silent()
   })
 
-  test('is not offered another folder while processing writes into this one, and asks before the close button cuts it off', async () => {
+  test('asks before another folder, or the close button, cuts off processing writing into this one', async () => {
     await desk.quit()
     await desk.launch({ state: 'sorted', prepare: (world) => lengthenFootage(world) })
     const page = await desk.board()
@@ -96,10 +88,11 @@ windowDescribe('another work folder, and nothing cut off unasked', () => {
     await waitFor('processing to be under way', busy)
 
     await openWorkFolder(page)
-    const choose = page.getByRole('button', { name: 'Choose another folder…' })
-    await disabled(choose)
-    await sees(dialogNamed(page, 'Work folder'), /wait until it is done/)
-    desk.shot('folder-refused-while-processing')
+    await sees(dialogNamed(page, 'Work folder'), /choosing another folder now stops it/)
+    await desk.click(page, page.getByRole('button', { name: 'Choose another folder…' }))
+    await desk.answer(QUESTION, 'first')
+    expect(await busy()).toBeTruthy()
+    desk.shot('folder-asked-while-processing')
     await closeWork(page)
 
     await desk.click(page, windowButton(page, 'Close'))

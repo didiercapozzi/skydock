@@ -1,10 +1,12 @@
 import * as path from 'node:path'
 import {
+  busyWith,
   flushBoardChanges,
   getGroupProcessedDir,
   getManifestPath,
   getOutputDir,
   isNamedMontage,
+  jumpsOfMontage,
   messageOf,
   passengerOf,
   readRecordAsync
@@ -95,6 +97,14 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       await saveEdit(editPathOf(outputDir, group), data.edit)
       if (data.intent === 'save') return { saved: true, rendering: isRendering(group.id) }
       if (isRendering(group.id)) return refuse('This film is already being rendered.')
+      const busy = busyWith({ groupIds: jumpsOfMontage(manifest, outputDir, group.id) }, [
+        'process',
+        'upload'
+      ])
+      if (busy === 'processing')
+        return refuse('Its copies are being processed — render it once that is done.')
+      if (busy === 'uploading')
+        return refuse('It is being uploaded — render it again once the upload is done.')
       if (data.edit.clips.length === 0) return refuse('Put at least one clip in the film.')
       const unmakable = await formatRefusal(data.edit)
       if (unmakable) return refuse(unmakable)

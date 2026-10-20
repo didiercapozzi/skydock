@@ -77,6 +77,8 @@ import {
   trimClip
 } from '../helpers/filmTimeline'
 import { refusalSchema } from '../hooks/useBoardState'
+import { useJobs } from '../hooks/liveStore'
+import { useLiveJobs } from '../hooks/useLiveProgress'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
 import { Go, Mini, Seg } from './buttons'
@@ -85,6 +87,7 @@ import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-
 import type { Listed } from './film-template-modals'
 import { FONT_LOOK, FilmPreview } from './film-preview'
 import { FilmShortcuts } from './film-shortcuts'
+import { partOf, StopButton, stopOf } from './jobs-panel'
 import { FILM_ACTIONS, keyLabel, keyNames, type FilmAction } from '../helpers/filmKeys'
 import { useFilmKeys } from '../hooks/useFilmKeys'
 import { CLIP_DRAG, FilmTimeline, markName, ZOOM } from './film-timeline'
@@ -1456,7 +1459,13 @@ const FilmEditor = ({
   const [pps, setPps] = useState(12)
   const [upright, setUpright] = useState(false)
   const [part, setPartOf] = useState<string | null>(null)
-  const [rendering, setRendering] = useState(false)
+  const [renderAsked, setRenderAsked] = useState(false)
+  useLiveJobs(!scratch)
+  const followed = useJobs().find((job) => job.type === 'render' && job.groupIds?.includes(groupId))
+  const [renderSeen, setRenderSeen] = useState<string | null>(null)
+  if (followed && followed.id !== renderSeen) setRenderSeen(followed.id)
+  const rendering = followed ? followed.stage !== 'failed' : renderSeen ? false : renderAsked
+  const stopRender = followed && followed.stage !== 'failed' ? stopOf(followed) : null
   const [renderOpen, setRenderOpen] = useState(false)
   useEffect(() => {
     if (picked) setRenderOpen(false)
@@ -1600,7 +1609,7 @@ const FilmEditor = ({
         if (!parsed.success) return setProblem(t`The film could not be read.`)
         if (!parsed.data.ok) return setProblem(parsed.data.reason)
         setLoaded(parsed.data)
-        setRendering(parsed.data.rendering)
+        setRenderAsked(parsed.data.rendering)
         const aside = parsed.data.setAside
         if (aside)
           setProblem(
@@ -1868,7 +1877,7 @@ const FilmEditor = ({
   const render = async () => {
     setPlaying(false)
     if (await save('render')) {
-      setRendering(true)
+      setRenderAsked(true)
       onClose()
     }
   }
@@ -2160,7 +2169,20 @@ const FilmEditor = ({
           {saving === 'saved' ? t`Saved` : saving === 'failed' ? t`Not saved` : t`Saving…`}
         </span>
         <span className='flex-1' />
-        {rendering && <span className='text-small text-ink-3'>{t`A render is running`}</span>}
+        {rendering ? (
+          <span className='flex items-center gap-1.5 text-small text-ink-3'>
+            <span>
+              {followed
+                ? t`Rendering the film · ${Math.round(partOf(followed) * 100)}%`
+                : t`A render is running`}
+            </span>
+            {stopRender && <StopButton stop={stopRender} />}
+          </span>
+        ) : followed ? (
+          <span className='text-small text-local'>{followed.reason}</span>
+        ) : renderSeen ? (
+          <span className='text-small text-up'>{t`The film is rendered`}</span>
+        ) : null}
         <Mini
           disabled={history.length === 0}
           title={t`Undo (Ctrl+Z)`}
@@ -2178,7 +2200,7 @@ const FilmEditor = ({
         )}
         {!scratch && (
           <Go
-            disabled={!edit || edit.clips.length === 0 || rendering}
+            disabled={!edit || edit.clips.length === 0}
             title={t`Choose the format of the film, then render it`}
             onClick={() => {
               setPicked(null)

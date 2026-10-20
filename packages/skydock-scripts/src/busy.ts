@@ -1,31 +1,64 @@
-import { processingNow } from './process'
+import { busyAmong } from './busyScope'
+import type { Busy, BusyScope, Work } from './busyScope'
+import { renderingNow } from './filmRender'
+import { getGroupProcessedDir, isFlatGroup, processingAll } from './process'
+import type { Manifest } from './types'
 import { uploadingNow } from './uploading'
 
-const busyWith = ({
-  groupIds = [],
-  destination
-}: {
-  groupIds?: string[]
-  destination?: string
-}) => {
-  const processing = processingNow()
-  if (
-    processing &&
-    ((processing.groupIds.length === 0 && processing.destinations.length === 0) ||
-      groupIds.some((id) => processing.groupIds.includes(id)) ||
-      (destination !== undefined && processing.destinations.includes(destination)))
-  )
-    return 'processing' as const
-  const everything = groupIds.length === 0 && destination === undefined
+const workNow = (): Work[] => {
   const upload = uploadingNow()
-  if (
-    upload &&
-    (everything ||
-      groupIds.some((id) => upload.groupIds.includes(id)) ||
-      (destination !== undefined && upload.key === `dest:${destination}`))
-  )
-    return 'uploading' as const
-  return null
+  return [
+    ...processingAll().map((run) => ({ type: 'process' as const, ...run })),
+    ...(upload
+      ? [
+          {
+            type: 'upload' as const,
+            groupIds: upload.groupIds,
+            destinations: upload.key.startsWith('dest:') ? [upload.key.slice('dest:'.length)] : []
+          }
+        ]
+      : []),
+    ...[...renderingNow().keys()].map((id) => ({
+      type: 'render' as const,
+      groupIds: [id],
+      destinations: []
+    }))
+  ]
 }
 
-export { busyWith }
+const busyWith = (scope: BusyScope, among?: Work['type'][]) => busyAmong(workNow(), scope, among)
+
+const busySaid = (busy: Busy) =>
+  busy === 'processing'
+    ? 'It is being processed — wait for it to finish.'
+    : busy === 'uploading'
+      ? 'It is being uploaded — wait for the upload to finish.'
+      : 'Its film is being rendered — wait for the render to finish, or cancel it.'
+
+const jumpsOfMontage = (manifest: Manifest, outputDir: string, groupId: string) => {
+  const group = manifest.groups.find((g) => g.id === groupId)
+  if (!group || isFlatGroup(group)) return [groupId]
+  const { dir } = getGroupProcessedDir(outputDir, group)
+  return [
+    groupId,
+    ...manifest.groups
+      .filter(
+        (g) => g.id !== groupId && !isFlatGroup(g) && getGroupProcessedDir(outputDir, g).dir === dir
+      )
+      .map((g) => g.id)
+  ]
+}
+
+const scopeOfFiles = (manifest: Manifest, ids: Set<string>) => {
+  const going = manifest.files.filter((f) => f.id && ids.has(f.id))
+  const copies = new Set(
+    manifest.files.flatMap((f) => (f.copyOf && ids.has(f.copyOf) && f.id ? [f.id] : []))
+  )
+  const touched = (id: string | undefined) => !!id && (ids.has(id) || copies.has(id))
+  return {
+    groupIds: manifest.groups.filter((g) => g.files.some((f) => touched(f.id))).map((g) => g.id),
+    destinations: [...new Set(going.flatMap((f) => (f.destination ? [f.destination] : [])))]
+  }
+}
+
+export { busySaid, busyWith, jumpsOfMontage, scopeOfFiles }

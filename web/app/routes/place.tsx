@@ -65,6 +65,7 @@ import {
   placeLabel,
   stillHere
 } from '../helpers/places'
+import { heldNote } from '../helpers/notes'
 import type { Place } from '../helpers/places'
 import { routingEngine, useSafeSearchParams } from '../helpers/routing'
 import { refusalSchema } from '../hooks/useBoardState'
@@ -418,7 +419,7 @@ const Place = () => {
                           <MenuItem
                             icon='bin'
                             danger
-                            disabled={busy !== null}
+                            disabled={busy !== null || model.placeHeld(place.name) !== null}
                             title={t`Take this destination off the board — what is filed here goes back to Fresh files, and nothing is deleted`}
                             onClick={() => {
                               setDialog({ kind: 'remove-place', place: place.name })
@@ -845,14 +846,24 @@ const DropzoneStep = ({ name }: { name: string }) => {
   const files = filesIn({ kind: 'dz', name }, board.groups, board.loose)
   if (files.length === 0) return null
   const label = `dz:${name}`
+  const here = {
+    destination: name,
+    groupIds: board.groups.filter((g) => g.destination === name).map((g) => g.id)
+  }
+  const held = model.placeHeld(name)
+  const processing = busy === label || board.busyWith(here, ['process']) !== null
   const waiting = (state: FileStatus) => files.filter((f) => statusOf(f) === state).length
   const toProcess = waiting('local')
   const toUpload = waiting('processed')
   const free =
     model.freeableOf(name).files.length > 0 ? (
       <Mini
-        disabled={busy !== null}
-        title={t`Delete from this machine what ${name} has on the storage, once the storage is proved to hold it. Asks first.`}
+        disabled={busy !== null || held !== null}
+        title={
+          held
+            ? heldNote(held)
+            : t`Delete from this machine what ${name} has on the storage, once the storage is proved to hold it. Asks first.`
+        }
         onClick={() =>
           model.nas.connected
             ? model.setDialog({ kind: 'free-place', place: name })
@@ -866,7 +877,7 @@ const DropzoneStep = ({ name }: { name: string }) => {
     return (
       <>
         <Go
-          disabled={busy !== null}
+          disabled={busy !== null || held !== null}
           title={t`Make the copies that get handed over, for everything in ${name} that has none — ${plural(toProcess, { one: '# file', other: '# files' })}, whatever the search or the filter is showing.`}
           onClick={() =>
             send(label, {
@@ -875,11 +886,11 @@ const DropzoneStep = ({ name }: { name: string }) => {
               fileIds: files.filter(needs).map((f) => f.id ?? f.path)
             })
           }>
-          {busy === label
+          {processing
             ? t`Processing…`
             : t`Process ${plural(toProcess, { one: '# file', other: '# files' })}`}
         </Go>
-        {busy === label && <Mini onClick={model.cancelProcess}>{t`Cancel`}</Mini>}
+        {processing && <Mini onClick={() => model.cancelProcess(here)}>{t`Cancel`}</Mini>}
         {free}
       </>
     )
@@ -890,7 +901,7 @@ const DropzoneStep = ({ name }: { name: string }) => {
     <>
       {free}
       <Go
-        disabled={busy !== null || model.board.uploading !== null}
+        disabled={busy !== null || model.board.uploading !== null || held === 'processing'}
         title={
           model.board.uploading && model.board.uploading !== `dest:${name}`
             ? t`Uploading ${uploadLabel} — wait for it, or cancel it`
@@ -1173,7 +1184,7 @@ const Inspector = ({
         <div className='mt-auto px-6 pt-4 pb-6'>
           <button
             type='button'
-            disabled={board.busy !== null}
+            disabled={board.busy !== null || model.placeHeld(place.name) !== null}
             onClick={() => model.setDialog({ kind: 'remove-place', place: place.name })}
             className='cursor-pointer border-0 bg-transparent p-0 text-body font-bold text-bin disabled:opacity-40'>
             {t`Remove destination…`}
@@ -1191,6 +1202,8 @@ const Inspector = ({
               emailed={Boolean(model.emailedOn(g))}
               onStep={g.freed ? undefined : (step) => model.takeStep(g, step)}
               busy={board.busy !== null}
+              held={model.heldOf(g)}
+              opensKdenlive={model.opensKdenlive(g)}
             />
           </Part>
         ))}

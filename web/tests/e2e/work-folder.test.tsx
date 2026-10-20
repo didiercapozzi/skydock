@@ -39,13 +39,17 @@ describe('the work folder', () => {
     await expect.element(page.getByText('Opening /media/season-2027/SkyDock…')).toBeVisible()
   })
 
-  test('is not left while something is being written into it', async () => {
-    const choose = inTheWindow({ chosen: '/media/season-2027/SkyDock' })
+  test('says what is being written into it, and asks first rather than refusing', async () => {
+    const choose = inTheWindow({ chosen: null })
     await shown('An upload is running')
 
-    await expect.element(page.getByRole('button', { name: 'Choose another folder…' })).toBeDisabled()
-    await expect.element(page.getByText('An upload is running — wait until it is done.')).toBeVisible()
-    expect(choose).not.toHaveBeenCalled()
+    await expect
+      .element(
+        page.getByText('An upload is running — choosing another folder now stops it, so SkyDock asks first.')
+      )
+      .toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Choose another folder…' }))
+    expect(choose).toHaveBeenCalled()
   })
 
   test('says why, when the window will not change it', async () => {

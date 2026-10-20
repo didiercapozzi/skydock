@@ -4,10 +4,11 @@ import {
   montageLocks,
   getOutputDir,
   loadManifestAsync,
-  processingNow,
+  busySaid,
+  busyWith,
   idsOf
 } from '@skydock/scripts'
-import type { BoardAnswer, Manifest, MontageLock } from '@skydock/scripts'
+import type { BoardAnswer, BusyScope, Manifest, MontageLock } from '@skydock/scripts'
 import type { FormResult } from '../../../../packages/ui/forms/types'
 import type { ActionData, actionArgs } from './args'
 
@@ -23,7 +24,7 @@ type Change = {
   frozenFiles: Map<string, string>
   refuse: (message: string) => Refusal
   refuseFrozen: (groupId?: string) => Refusal
-  refuseBusy: () => Refusal | null
+  refuseBusy: (scope: BusyScope) => Refusal | null
   latest: () => Promise<Manifest>
 }
 
@@ -52,8 +53,10 @@ const changeOn = async (
     frozenFiles,
     refuse,
     refuseFrozen: (groupId?: string) => refuse(lockedSaid(locks.get(groupId ?? ''))),
-    refuseBusy: () =>
-      processingNow() ? refuse('Something is being processed — wait for it to finish.') : null,
+    refuseBusy: (scope: BusyScope) => {
+      const busy = busyWith(scope)
+      return busy ? refuse(busySaid(busy)) : null
+    },
     latest: async () => (await loadManifestAsync(getManifestPath(outputDir))) ?? manifest
   }
 }

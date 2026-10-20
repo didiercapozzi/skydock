@@ -1,5 +1,6 @@
 import { t } from '@lingui/core/macro'
 import type {
+  BusyScope,
   JumpMoments,
   MontageEntry,
   MontageFact,
@@ -7,7 +8,14 @@ import type {
   OutputFact,
   ProxyFact
 } from '@skydock/scripts'
-import { boardAnswerSchema, isVideoFile, lostOf, ORIGINAL_MISSING } from '@skydock/scripts/client'
+import {
+  boardAnswerSchema,
+  busyAmong,
+  isVideoFile,
+  lostOf,
+  ORIGINAL_MISSING
+} from '@skydock/scripts/client'
+import type { Work } from '@skydock/scripts/client'
 import { useEffect, useRef, useState } from 'react'
 import { z } from 'zod'
 import type { Destination, ManifestFile, ManifestGroup } from '../components/types'
@@ -30,7 +38,7 @@ import {
 import { useSafeFetcher } from '../helpers/routing'
 import { sameJson } from '../helpers/sameJson'
 import type { actionArgs as manifestArgs } from '../routes/api.manifest'
-import { useCameraLanded } from './liveStore'
+import { useCameraLanded, useJobs } from './liveStore'
 import { useGroups } from './useJumps'
 import { useLiveProgress } from './useLiveProgress'
 
@@ -62,7 +70,6 @@ type Loaded = {
   storage: Storage
   hasManifest: boolean
   unreadable: boolean
-  processing: { groupIds: string[] } | null
   uploading: { key: string; label: string } | null
 }
 
@@ -74,23 +81,14 @@ const LOOK_EVERY_MS = 2000
 
 const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   const { groups, setGroups, updateGroups, edits, saving } = useGroups(loaded.groups)
-  const running = loaded.processing
-  const [busy, setBusy] = useState<string | null>(
-    running
-      ? running.groupIds.length === 1
-        ? (running.groupIds[0] ?? 'process')
-        : 'process'
-      : null
-  )
+  const [busy, setBusy] = useState<string | null>(null)
   const [spoken, setSpoken] = useState<{ text: string; problem: boolean } | null>(
-    running
-      ? { text: t`Still processing — the board updates itself when it is done`, problem: false }
-      : loaded.unreadable
-        ? {
-            text: t`The board’s record could not be read, so nothing is shown from it. Nothing has been changed — mend or put back manifest.json in the work folder.`,
-            problem: true
-          }
-        : null
+    loaded.unreadable
+      ? {
+          text: t`The board’s record could not be read, so nothing is shown from it. Nothing has been changed — mend or put back manifest.json in the work folder.`,
+          problem: true
+        }
+      : null
   )
   const setNote = (text: string | null) => setSpoken(text ? { text, problem: false } : null)
   const setProblem = (text: string) => setSpoken({ text, problem: true })
@@ -307,13 +305,6 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     })
   }, [live.ended, ends])
 
-  const askedToWait = useRef(false)
-  useEffect(() => {
-    if (!running || askedToWait.current) return
-    askedToWait.current = true
-    fetcher.submit({ url: '/api/manifest', actionArgs: { intent: 'process-wait' } })
-  }, [running, fetcher])
-
   const askedToWaitUpload = useRef(false)
   useEffect(() => {
     if (!loaded.uploading || askedToWaitUpload.current) return
@@ -344,6 +335,23 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     setBusy('scan')
     fetcher.submit({ url: '/api/scan', actionArgs: { cameras: false } })
   }
+
+  const going = useJobs().filter((job) => job.stage !== 'failed')
+  const works: Work[] = going.flatMap((job) =>
+    job.type === 'process' || job.type === 'upload' || job.type === 'render'
+      ? [{ type: job.type, groupIds: job.groupIds ?? [], destinations: job.destinations ?? [] }]
+      : []
+  )
+  const busyWith = (scope: BusyScope, among?: Work['type'][]) => busyAmong(works, scope, among)
+  const processingOf = (scope: BusyScope) =>
+    going.find(
+      (job) =>
+        job.type === 'process' &&
+        busyAmong(
+          [{ type: 'process', groupIds: job.groupIds ?? [], destinations: job.destinations ?? [] }],
+          scope
+        ) !== null
+    )?.id ?? null
 
   const proxyFacts = Object.values(proxies)
   const clips = [...groups.flatMap((g) => g.files), ...loose].filter(
@@ -383,6 +391,8 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
     hasManifest,
     busy,
     setBusy,
+    busyWith,
+    processingOf,
     note: spoken?.text ?? null,
     noteIsProblem: spoken?.problem ?? false,
     setNote,

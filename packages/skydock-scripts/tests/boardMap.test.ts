@@ -42,7 +42,7 @@ describe('the map against the code it is drawn from', () => {
     expect(deleting?.rule).toBe('Jumps')
     expect(deleting?.about).toContain('A jump is deleted')
     expect(deleting?.refusals.map((r) => r.said)).toContain(
-      'Something is being processed — wait for it to finish.'
+      'Its film is being rendered — wait for the render to finish, or cancel it.'
     )
     expect(deleting?.reaches).toContain('writes the record')
   })

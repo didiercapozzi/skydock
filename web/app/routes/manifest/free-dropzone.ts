@@ -8,7 +8,8 @@ import { connectFirst } from './change'
 import type { Intent } from './change'
 
 /* Delete what of a dropzone is on the storage from this machine, once the storage is proved to hold
-   it (RULES, Freeing space). The proof is the storage's own checksum, so it has to be reachable. */
+   it (RULES, Freeing space). The proof is the storage's own checksum, so it has to be reachable. Not
+   while that place, or a jump filed there, is being processed or uploaded. */
 const freeDropzoneIntent: Intent = async ({
   data,
   manifest,
@@ -19,10 +20,13 @@ const freeDropzoneIntent: Intent = async ({
   latest
 }) => {
   const destination = data.destination ?? ''
+  const busy = refuseBusy({
+    destination,
+    groupIds: manifest.groups.filter((g) => g.destination === destination).map((g) => g.id)
+  })
+  if (busy) return busy
   const session = await ensureNasSession()
   if (!session) return refuse(connectFirst('freeing needs it to prove it holds the files'))
-  const busy = refuseBusy()
-  if (busy) return busy
   try {
     const result = await freeDropzone({ manifest, outputDir, destination, session })
     const saved = await latest()

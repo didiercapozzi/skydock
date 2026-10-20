@@ -12,6 +12,7 @@ import Edit from '../../app/routes/edit'
 import { setFilmTemplateChoice } from '../../app/hooks/useFilmTemplateChoice'
 import { setFilmKeys } from '../../app/hooks/useFilmKeys'
 import { DEFAULT_KEYS } from '../../app/helpers/filmKeys'
+import { liveJobs } from '../../app/hooks/liveStore'
 
 const ready = vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get')
 const failure = vi.spyOn(HTMLMediaElement.prototype, 'error', 'get')
@@ -2299,6 +2300,59 @@ describe('the fade handles on the timeline', () => {
     await userEvent.fill(page.getByRole('textbox', { name: 'Length' }), '0:10.0')
     await userEvent.keyboard('{Enter}')
     await expect.element(handle('in', FIRST)).toHaveAttribute('aria-valuenow', '1')
+  })
+})
+
+describe('a render under way, seen from the editor', () => {
+  const going = (over: Record<string, unknown> = {}) =>
+    liveJobs.update(() => ({
+      r1: {
+        id: 'r1',
+        type: 'render' as const,
+        label: 'Luc Favre',
+        stage: 'working' as const,
+        done: 0,
+        total: 1,
+        groupIds: ['g1'],
+        destinations: [],
+        rows: [{ key: 'film', name: 'luc_favre.mp4', size: 0, at: 'now' as const, part: 0.4 }],
+        ...over
+      }
+    }))
+
+  afterEach(() => liveJobs.update(() => ({})))
+
+  test('says how far the render has got, with a Cancel that stops this film’s render alone', async () => {
+    const posts: Record<string, unknown>[] = []
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        posts.push(JSON.parse(String(init.body)))
+        return Response.json({ ok: true })
+      }
+      return Response.json({ ...answer, rendering: true })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    going()
+
+    await expect.element(page.getByText('Rendering the film · 40%')).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Render…' })).toBeEnabled()
+    await userEvent.click(page.getByRole('button', { name: 'Cancel', exact: true }))
+    await expect.poll(() => posts).toContainEqual({ intent: 'cancel-render', groupId: 'g1' })
+  })
+
+  test('says the film is rendered once its render ends, and offers to render again', async () => {
+    vi.stubGlobal('fetch', async () => Response.json({ ...answer, rendering: true }))
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    going()
+    await expect.element(page.getByText('Rendering the film · 40%')).toBeVisible()
+
+    liveJobs.update(() => ({}))
+
+    await expect.element(page.getByText('The film is rendered')).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Render…' }))
+    await expect.element(page.getByRole('button', { name: /^Render (the film|again)$/ })).toBeEnabled()
   })
 })
 

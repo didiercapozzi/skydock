@@ -1,10 +1,10 @@
 const covers: Record<string, string[]> = {
   'Nothing running is cut off unasked': [
-    'is not offered another folder while processing writes into this one, and asks before the close button cuts it off'
+    'asks before another folder, or the close button, cuts off processing writing into this one'
   ],
   'Another work folder': [
     'works from another folder chosen under Settings, leaves the folder behind as it was, and can go back to it',
-    'is not offered another folder while processing writes into this one, and asks before the close button cuts it off'
+    'asks before another folder, or the close button, cuts off processing writing into this one'
   ],
   'A whole folder can be dropped': [
     'takes in every video and photo inside a folder let go over the board, however deep, and leaves the notes and bookkeeping where they are'

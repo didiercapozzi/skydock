@@ -6,7 +6,13 @@ import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifestAsync, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
-import { cancelProcessing, processingNow, processJumps, writeCutProxy } from '../src/process'
+import {
+  cancelProcessing,
+  processingAll,
+  processingNow,
+  processJumps,
+  writeCutProxy
+} from '../src/process'
 import { getCutProxyDir, setProxyEncoder } from '../src/proxy'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
 import { createTmpDir, execSyncMock, fakeTools, tellTools, writeTempFile } from './fixtures'
@@ -443,7 +449,7 @@ describe('while a processing is running', () => {
     expect((await loadManifestAsync(manifestPath))!.groups[0]?.processed).not.toBe(true)
   })
 
-  it('says what it is working on, and refuses to start a second one on top of it', async () => {
+  it('says what it is working on, and a second one asked for waits for it, then runs', async () => {
     const { manifestPath } = await write({
       montageJump: true,
       passenger: { firstname: 'Luc', lastname: 'Favre' },
@@ -452,10 +458,51 @@ describe('while a processing is running', () => {
 
     const first = processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
     expect(processingNow()).toEqual({ groupIds: ['g1'], destinations: [] })
-    await expect(processJumps({ manifestPath, outputDir })).rejects.toThrow(/Already processing/)
+    const second = processJumps({ manifestPath, outputDir })
+    expect(processingAll()).toHaveLength(2)
+    expect(processingNow()).toEqual({ groupIds: ['g1'], destinations: [] })
     await first
+    await expect(second).resolves.toMatchObject({ processedGroups: 1 })
 
     expect(processingNow()).toBeNull()
+  })
+
+  it('takes the same run asked for again while it waits as the one already waiting', async () => {
+    const { manifestPath } = await write({
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+
+    const first = processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
+    const second = processJumps({ manifestPath, outputDir })
+    const again = processJumps({ manifestPath, outputDir })
+    expect(processingAll()).toHaveLength(2)
+    await Promise.all([first, second, again])
+  })
+
+  it('is followed in the corner from the moment it is asked for, saying it waits for the one before it', async () => {
+    const { manifestPath } = await write({
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+    const seen: LiveEvent[] = []
+    const stop = subscribe((event) => seen.push(event))
+
+    const first = processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
+    const second = processJumps({ manifestPath, outputDir, destination: 'Yverdon' })
+    const last = new Map(
+      seen.flatMap((event) =>
+        event.kind === 'job' && event.type === 'process' ? [[event.id, event] as const] : []
+      )
+    )
+    const [going, next] = [...last.values()]
+    expect(last.size).toBe(2)
+    expect(going).toMatchObject({ groupIds: ['g1'], destinations: [] })
+    expect(next).toMatchObject({ destinations: ['Yverdon'], phase: 'waiting' })
+    await Promise.all([first, second])
+    stop()
   })
 })
 
@@ -758,6 +805,31 @@ describe('cancelling what is being processed', () => {
     expect(delivered()).toEqual([])
     expect((await loadManifestAsync(manifestPath))?.groups[0]?.processed).toBeFalsy()
     expect(processingNow()).toBeNull()
+  })
+
+  it('stops one run by the id of its task, and leaves the others going', async () => {
+    const { manifestPath } = await write({
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+    const seen: LiveEvent[] = []
+    const stop = subscribe((event) => seen.push(event))
+
+    const first = processJumps({ manifestPath, outputDir, groupIds: ['g1'] })
+    const waiting = processJumps({ manifestPath, outputDir, destination: 'Yverdon' })
+    const ids = [
+      ...new Set(
+        seen.flatMap((event) =>
+          event.kind === 'job' && event.type === 'process' ? [event.id] : []
+        )
+      )
+    ]
+    expect(cancelProcessing(ids[1])).toBe(true)
+
+    await expect(waiting).rejects.toThrow(/cancelled/)
+    await expect(first).resolves.toMatchObject({ processedGroups: 1 })
+    stop()
   })
 
   it('says there is nothing to stop when nothing is being processed', () => {

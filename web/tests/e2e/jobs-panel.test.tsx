@@ -227,3 +227,48 @@ describe('a film being rendered', () => {
     await expect.element(page.getByRole('button', { name: 'Cancelling…' })).toBeDisabled()
   })
 })
+
+const sentTo = (bodies: Record<string, unknown>[]) =>
+  vi.stubGlobal('fetch', async (url: string | URL | Request, init?: RequestInit) => {
+    if (!String(url instanceof Request ? url.url : url).includes('/api/manifest'))
+      return realFetch(url, init)
+    bodies.push(JSON.parse(String(init?.body)) as Record<string, unknown>)
+    return Response.json({ ok: true })
+  })
+
+describe('cancelling one task among several', () => {
+  test('a film’s Cancel stops that montage’s render, named by its jump', async () => {
+    const bodies: Record<string, unknown>[] = []
+    put({ type: 'render', label: 'Marie Rochat', groupIds: ['g2'], destinations: [] })
+    sentTo(bodies)
+    await render(createElement(JobsPanel))
+
+    await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
+
+    await expect
+      .poll(() => bodies)
+      .toContainEqual({ intent: 'cancel-render', groupId: 'g2' })
+  })
+
+  test('processing has a Cancel of its own, which stops that run alone', async () => {
+    const bodies: Record<string, unknown>[] = []
+    put({ type: 'process', id: 'run-2', groupIds: ['g1'], destinations: [] })
+    sentTo(bodies)
+    await render(createElement(JobsPanel))
+
+    await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
+
+    await expect
+      .poll(() => bodies)
+      .toContainEqual({ intent: 'cancel-process', jobId: 'run-2' })
+  })
+
+  test('a run of processing waiting its turn says so', async () => {
+    put({ type: 'process', phase: 'waiting', groupIds: ['g1'], destinations: [] })
+    await render(createElement(JobsPanel))
+
+    await expect
+      .element(page.getByText('Waiting for the processing asked for before it — it starts by itself'))
+      .toBeVisible()
+  })
+})

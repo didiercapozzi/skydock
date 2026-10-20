@@ -2,8 +2,8 @@ import { cancelRendering } from '../../../../packages/skydock-scripts/src/filmRe
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
-const cancelRender: Intent = async ({ refuse, latest }) => {
-  if (!cancelRendering()) return refuse('Nothing is being rendered.')
+const cancelRender: Intent = async ({ data, refuse, latest }) => {
+  if (!cancelRendering(data.groupId)) return refuse('Nothing is being rendered.')
   return { ...(await boardAnswer(await latest())), renderCancelled: true }
 }
 

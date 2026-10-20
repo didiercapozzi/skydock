@@ -145,7 +145,7 @@ describe('preparing a destination whose clips are large', () => {
     await sion().click()
     await see('Processing…')
     await j.page.reload()
-    await see('Still processing — the board updates itself when it is done')
+    await see('Processing…')
     expect(await processButton().isDisabled(), 'no second processing is offered on top').toBe(true)
     await see('3 files are ready to upload', 60_000)
     expect(fs.readdirSync(copies()).sort()).toEqual([

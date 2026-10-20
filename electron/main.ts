@@ -488,8 +488,7 @@ ipcMain.handle('work-folder:choose', async (event) => {
   if (toldWhere())
     return { refused: 'This window shows a development server, which keeps its own folder.' }
   const window = BrowserWindow.fromWebContents(event.sender) ?? undefined
-  const running = window ? await runningNow(window) : null
-  if (running) return { refused: `${running} — wait until it is done.` }
+  if (window && !(await goAheadDespite(window, 'Choosing another folder'))) return { chosen: null }
   const current = settings().outputDir
   const options = {
     title: 'Where should SkyDock work from now on?',
@@ -537,5 +536,17 @@ else {
   })
 
   app.on('window-all-closed', () => app.quit())
-  app.on('before-quit', stopServer)
+  app.on('before-quit', (event) => {
+    const [window] = BrowserWindow.getAllWindows()
+    if (leaving || !window) {
+      stopServer()
+      return
+    }
+    event.preventDefault()
+    void goAheadDespite(window, 'Quitting').then((quit) => {
+      if (!quit) return
+      leaving = true
+      app.quit()
+    })
+  })
 }

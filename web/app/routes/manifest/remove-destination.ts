@@ -12,8 +12,8 @@ import type { Intent } from './change'
 
    Not a place holding anything already on the storage — uploaded is the end of editing, and unfiling
    an uploaded jump would leave the board saying it belongs nowhere while the storage says otherwise.
-   Not while something is being processed, because what is being written is being written into that
-   place's folder. */
+   Not while that place, or a jump filed there, is being processed, uploaded or rendered, because what
+   is being written is being written into that place's folder. */
 const removeDestinationIntent: Intent = async ({
   data,
   manifest,
@@ -25,10 +25,9 @@ const removeDestinationIntent: Intent = async ({
   const name = data.destination?.trim()
   if (!name) return refuse('Removing a place needs to know which one.')
   if (!hasDestination(manifest, name)) return refuse('That place is no longer on the board.')
-  const busy = refuseBusy()
-  if (busy) return busy
-
   const filed = manifest.groups.filter((group) => group.destination === name)
+  const busy = refuseBusy({ destination: name, groupIds: filed.map((group) => group.id) })
+  if (busy) return busy
   if (filed.some((group) => frozen.has(group.id) && !group.freed))
     return refuse('A montage there has a kdenlive project — change it in kdenlive first.')
   if (filed.some((group) => group.uploaded || group.freed))

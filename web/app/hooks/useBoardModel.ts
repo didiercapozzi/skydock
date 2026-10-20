@@ -19,7 +19,7 @@ import {
   montageSteps,
   montageUploadKey
 } from '@skydock/scripts/client'
-import type { FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
+import type { BusyScope, FrameCrop, MontageStep, Rotation, SendPlan } from '@skydock/scripts'
 import { useEffect, useRef, useState } from 'react'
 import { useFetchers, useNavigate, useOutletContext, useParams } from 'react-router'
 import { openFile } from '../helpers/previewWindow'
@@ -658,7 +658,23 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     }
     if (step === 'Sent') setDialog({ kind: 'email', groupId: group.id })
   }
-  const cancelProcess = () => send('cancel-process', { intent: 'cancel-process' })
+  const cancelProcess = (scope?: BusyScope) => {
+    const jobId = scope ? board.processingOf(scope) : null
+    send('cancel-process', { intent: 'cancel-process', ...(jobId ? { jobId } : {}) })
+  }
+  const placeHeld = (name: string) =>
+    board.busyWith({
+      destination: name,
+      groupIds: groups.filter((g) => g.destination === name).map((g) => g.id)
+    })
+  const heldOf = (group: ManifestGroup) =>
+    board.busyWith({
+      groupIds: isMontage(group)
+        ? groups
+            .filter((g) => isMontage(g) && passengerOf(g) === passengerOf(group))
+            .map((g) => g.id)
+        : [group.id]
+    })
   const freeableOf = (name: string) =>
     freeablePlace(
       groupsIn({ kind: 'dz', name }, groups),
@@ -731,6 +747,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     takeStep,
     trimToJump,
     cancelProcess,
+    heldOf,
+    placeHeld,
     freeableOf
   }
 }

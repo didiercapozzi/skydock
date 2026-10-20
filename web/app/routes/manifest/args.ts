@@ -14,9 +14,6 @@ const actionArgs = z.object({
     'merge-groups',
     'open-montage',
     'process',
-    /* a page that came back while something was being processed waits here for it to finish */
-    'process-wait',
-    /* what is being processed, stopped */
     'cancel-process',
     /* the record changed outside this page: the board looks at it again, writing nothing */
     'look-at-board',
@@ -81,6 +78,7 @@ const actionArgs = z.object({
     'from-bin'
   ]),
   groupId: z.string().optional(),
+  jobId: z.string().optional(),
   paths: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),
   fileIds: z.array(z.string()).optional(),

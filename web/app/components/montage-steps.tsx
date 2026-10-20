@@ -2,8 +2,9 @@ import { i18n } from '@lingui/core'
 import type { MessageDescriptor } from '@lingui/core'
 import { msg, t } from '@lingui/core/macro'
 import { montageSteps } from '@skydock/scripts/client'
-import type { MontageFact, MontageProgress, MontageStep } from '@skydock/scripts'
+import type { Busy, MontageFact, MontageProgress, MontageStep } from '@skydock/scripts'
 import { useState } from 'react'
+import { heldNote } from '../helpers/notes'
 import { Go, Mini } from './buttons'
 import { Icon } from './icons'
 import type { ManifestGroup } from './types'
@@ -19,18 +20,25 @@ const STEP_ACTION: Partial<Record<MontageStep, MessageDescriptor>> = {
 const StepButton = ({
   step,
   busy,
+  held,
+  opensKdenlive,
   onStep
 }: {
   step: MontageStep
   busy: boolean
+  held: Busy | null
+  opensKdenlive: boolean
   onStep: (step: MontageStep) => void
 }) => {
   const action = STEP_ACTION[step]
   if (!action) return null
   const Button = step === 'Sent' ? Go : Mini
+  const holds = held !== null && (step === 'Prepared' || step === 'Uploaded')
+  const navigates = step === 'Project' || (step === 'Film' && !opensKdenlive)
   return (
     <Button
-      disabled={busy}
+      disabled={(busy && !navigates) || holds}
+      title={holds && held ? heldNote(held) : undefined}
       onClick={() => onStep(step)}>
       {i18n._(action)}
     </Button>
@@ -75,13 +83,17 @@ const StepTrail = ({
   facts,
   emailed,
   onStep,
-  busy = false
+  busy = false,
+  held = null,
+  opensKdenlive = false
 }: {
   group: ManifestGroup
   facts?: MontageFact
   emailed: boolean
   onStep?: (step: MontageStep) => void
   busy?: boolean
+  held?: Busy | null
+  opensKdenlive?: boolean
 }) => {
   const { steps, at, next } = montageSteps({ group, facts, emailed })
   const how = next?.how ?? ''
@@ -133,6 +145,8 @@ const StepTrail = ({
                     <StepButton
                       step={step.name}
                       busy={busy}
+                      held={held}
+                      opensKdenlive={opensKdenlive}
                       onStep={onStep}
                     />
                   </span>

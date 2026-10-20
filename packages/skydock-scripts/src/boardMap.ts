@@ -109,8 +109,13 @@ const refusalsIn = (body: string, known: Record<string, string>) => {
   if (/refuse\(\s*`[^`]*\$\{/.test(body)) add('a message naming the file or the jump', false)
   for (const found of body.matchAll(/connectFirst\(\s*(?:'([^']*)')?\s*\)/g))
     add(`Connect the storage first${found[1] ? ` — ${found[1]}` : ''}.`, true)
-  if (/\brefuseBusy\(\)/.test(body))
-    add('Something is being processed — wait for it to finish.', true)
+  if (/\brefuseBusy\(/.test(body))
+    for (const said of [
+      'It is being processed — wait for it to finish.',
+      'It is being uploaded — wait for the upload to finish.',
+      'Its film is being rendered — wait for the render to finish, or cancel it.'
+    ])
+      add(said, true)
   if (/\brefuseFrozen\(/.test(body))
     for (const said of [known.EDIT_LOCKED, known.FREED_LOCKED]) if (said) add(said, true)
   return refusals

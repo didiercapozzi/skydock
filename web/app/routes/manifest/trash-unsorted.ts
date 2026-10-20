@@ -1,4 +1,4 @@
-import { saveManifest, messageOf } from '@skydock/scripts'
+import { saveManifest, messageOf, scopeOfFiles } from '@skydock/scripts'
 import {
   dropFromBoard,
   trashUnsorted
@@ -7,8 +7,8 @@ import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
 /* Files nobody wants go to the bin, from Fresh files or out of a montage (RULES, Putting files in the
-   bin). Not while something is being processed: a file taken away underneath would leave its copy
-   half written. Not out of a montage with an edit, whose project names its clips. */
+   bin). Not while a jump or a place holding one of them, or a copy of one, is being processed,
+   uploaded or rendered: a file taken away underneath would leave what is made of it half made. Not out of a montage with an edit, whose project names its clips. */
 const trashUnsortedIntent: Intent = async ({
   data,
   manifest,
@@ -24,7 +24,7 @@ const trashUnsortedIntent: Intent = async ({
   if (ids.size === 0) return refuse('Select at least one file to put in the bin.')
   const held = [...ids].find((id) => frozenFiles.has(id))
   if (held) return refuseFrozen(frozenFiles.get(held))
-  const busy = refuseBusy()
+  const busy = refuseBusy(scopeOfFiles(manifest, ids))
   if (busy) return busy
   try {
     await trashUnsorted(manifest, ids, outputDir)

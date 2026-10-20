@@ -11,7 +11,8 @@ import {
   montagesRemoteDir,
   montageUploadKey,
   uploadGate,
-  busyWith
+  busyWith,
+  jumpsOfMontage
 } from '@skydock/scripts'
 import { entryOfMontage, upsert } from '../../../../packages/skydock-scripts/src/montageIndex'
 import { uploadMontage } from '../../../../packages/skydock-scripts/src/uploadMontage'
@@ -30,8 +31,16 @@ const sendMontage = async (
 ) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) return refuse('Group not found.')
-  if (busyWith({ groupIds: [group.id] }) === 'processing')
+  const busy = busyWith({ groupIds: jumpsOfMontage(manifest, outputDir, group.id) }, [
+    'process',
+    'render'
+  ])
+  if (busy === 'processing')
     return refuse('This montage is being processed — upload it once that is done.')
+  if (busy === 'rendering')
+    return refuse(
+      'Its film is being rendered — upload it once the render is done, or cancel the render to send the film as it was.'
+    )
   const session = await ensureNasSession()
   if (!session) return refuse(connectFirst())
   const outputs = await statProcessedOutputs(manifest)

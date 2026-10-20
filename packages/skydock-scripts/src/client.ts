@@ -1,4 +1,6 @@
 export { boardAnswerSchema } from './boardAnswer'
+export { busyAmong } from './busyScope'
+export type { Busy, BusyScope, Work } from './busyScope'
 export { groupableCount, offGap, startOfFiles } from './clustering'
 export { MOMENTS, nameOfMoment } from './moments'
 export { UPLOADED_LOCKED, fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'

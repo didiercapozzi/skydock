@@ -3,6 +3,7 @@ import {
   UPLOADED_LOCKED,
   hasCompletePassenger,
   passengerName,
+  passengerOf,
   slugOf,
   startOfFiles
 } from '@skydock/scripts/client'
@@ -201,7 +202,7 @@ const MontagePanel = ({
               </p>
             ) : (
               <Mini
-                disabled={busy}
+                disabled={busy || model.heldOf(group) !== null}
                 title={t`Zip the photos and the rushes, then send the film and the photos to the montage’s folder`}
                 onClick={() => model.takeStep(group, 'Uploaded')}>
                 {t`Upload again…`}
@@ -274,7 +275,10 @@ const MontagePanel = ({
 
 const WaysBack = ({ who }: { who: string }) => {
   const { board, setDialog } = useBoard()
-  const busy = board.busy !== null
+  const held = board.busyWith({
+    groupIds: board.groups.filter((g) => passengerOf(g) === who).map((g) => g.id)
+  })
+  const busy = board.busy !== null || held !== null
   return (
     <div className='mt-auto flex flex-col gap-2 px-6 pt-4 pb-6'>
       <Heading>{t`Ways back`}</Heading>

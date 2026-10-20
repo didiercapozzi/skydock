@@ -32,8 +32,13 @@ const uploadGroup: Intent = async ({ data, manifest, manifestPath, outputDir, re
     return refuse(
       'Upload a montage from its own card: its film and photos go to its folder and its original videos to the backup, which an upload of the whole folder cannot do.'
     )
-  if (busyWith({ groupIds: idsOf(asked), destination: scope.destination }) === 'processing')
-    return refuse('It is being processed — upload it once that is done.')
+  const busy = busyWith({ groupIds: idsOf(asked), destination: scope.destination }, [
+    'process',
+    'render'
+  ])
+  if (busy === 'processing') return refuse('It is being processed — upload it once that is done.')
+  if (busy === 'rendering')
+    return refuse('A film there is being rendered — upload it once the render is done.')
   const session = await ensureNasSession()
   if (!session) return refuse(connectFirst())
   const outputs = await statProcessedOutputs(manifest)
@@ -72,7 +77,12 @@ const send = async ({
   session: NonNullable<Awaited<ReturnType<typeof ensureNasSession>>>
   latest: Change['latest']
 }) => {
-  const report = uploadReporter({ label, outputDir })
+  const report = uploadReporter({
+    label,
+    outputDir,
+    groupIds: idsOf(groupsInScope(manifest, scope)),
+    destinations: scope.destination ? [scope.destination] : []
+  })
   try {
     const result = await uploadScope({
       outputDir,

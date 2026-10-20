@@ -49,6 +49,15 @@ const subscribe = (listener: (event: LiveEvent) => void) => {
   }
 }
 
+const TAKES_UP_AGAIN = new Set<string>(['proxy', 'moments'])
+
+const workUnderWay = () =>
+  [...bus().underWay.values()].flatMap((event) =>
+    event.kind === 'job' && !TAKES_UP_AGAIN.has(event.type)
+      ? [{ type: event.type, label: event.label }]
+      : []
+  )
+
 const STEP = 2
 
 const following = (work: z.infer<typeof workSchema>, fileId: string | undefined) => {
@@ -77,11 +86,13 @@ const job = ({
   type,
   label,
   total,
-  record
+  record,
+  scope
 }: {
   type: z.infer<typeof jobTypeSchema>
   label: string
   total: number
+  scope?: { groupIds: string[]; destinations: string[] }
   record?: {
     kind: Transfer['kind']
     outputDir?: string
@@ -97,6 +108,7 @@ const job = ({
   let known: JobRow[] = []
   let stage: 'checking' | 'working' = 'working'
   let phase: string | undefined
+  let about = scope
   const told = new Map<string, number>()
   const keep = (state: 'done' | 'failed' | 'cancelled', reason?: string) => {
     if (!record) return
@@ -161,11 +173,20 @@ const job = ({
       ...(phase ? { phase } : {}),
       ...(more.rows ? { rows: more.rows } : {}),
       ...(more.row ? { row: more.row } : {}),
-      ...(more.outcome ? { outcome: more.outcome } : {})
+      ...(more.outcome ? { outcome: more.outcome } : {}),
+      ...(about ? { groupIds: about.groupIds, destinations: about.destinations } : {})
     })
   }
   say('working')
   return {
+    id,
+    widen: (more: { groupIds: string[]; destinations: string[] }) => {
+      about = {
+        groupIds: [...new Set([...(about?.groupIds ?? []), ...more.groupIds])],
+        destinations: [...new Set([...(about?.destinations ?? []), ...more.destinations])]
+      }
+      say(stage)
+    },
     checking: (name?: string) => say('checking', { name }),
     phase: (phase: string, name?: string) => say(stage, { phase, name }),
     working: (name?: string) => say('working', { name }),
@@ -216,5 +237,5 @@ const inJob = async <T>(
   }
 }
 
-export { following, inJob, job, liveEventSchema, mergeRow, publish, subscribe }
+export { following, inJob, job, liveEventSchema, mergeRow, publish, subscribe, workUnderWay }
 export type { JobRow, LiveEvent }

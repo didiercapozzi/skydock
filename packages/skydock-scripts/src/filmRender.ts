@@ -352,8 +352,10 @@ const renderingNow = () => {
 
 const isRendering = (groupId: string) => renderingNow().has(groupId)
 
-const cancelRendering = () => {
-  const going = [...renderingNow().values()]
+const cancelRendering = (groupId?: string) => {
+  const going = [...renderingNow()].flatMap(([id, stop]) =>
+    groupId === undefined || id === groupId ? [stop] : []
+  )
   for (const stop of going) stop.abort()
   return going.length > 0
 }
@@ -383,7 +385,12 @@ const renderFilm = async ({
   const scratch = await mkdtemp(path.join(os.tmpdir(), 'skydock-render-'))
   try {
     return await inJob(
-      { type: 'render', label: passengerOf(group).trim() || group.label, total: 1 },
+      {
+        type: 'render',
+        label: passengerOf(group).trim() || group.label,
+        total: 1,
+        scope: { groupIds: [group.id], destinations: [] }
+      },
       async (rendering) => {
         rendering.rows([{ key: 'film', name, size: 0 }])
         rendering.row({ key: 'film', at: 'now', part: 0 })
@@ -441,5 +448,6 @@ export {
   filmShape,
   isRendering,
   musicLevel,
-  renderFilm
+  renderFilm,
+  renderingNow
 }

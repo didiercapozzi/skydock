@@ -1,4 +1,4 @@
-import { busyWith, saveManifest, messageOf } from '@skydock/scripts'
+import { jumpsOfMontage, saveManifest, messageOf } from '@skydock/scripts'
 import {
   deleteMontage,
   resetMontage,
@@ -10,7 +10,8 @@ import type { Intent } from './change'
 import { boardAnswer } from '../../helpers/manifest'
 
 /* Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage
-   back). Not while its folder is being written: taking it away underneath would leave half of it. */
+   back). Not while any jump of its folder is being processed, uploaded or rendered: taking it away
+   underneath would leave half of it. */
 const takeBack =
   (
     take: (
@@ -20,14 +21,9 @@ const takeBack =
       data: ActionData
     ) => Promise<unknown>
   ): Intent =>
-  async ({ data, manifest, manifestPath, outputDir, refuse }) => {
-    const busy = busyWith({ groupIds: [data.groupId ?? ''] })
-    if (busy)
-      return refuse(
-        busy === 'processing'
-          ? 'This montage is being processed — wait for it to finish.'
-          : 'This montage is being uploaded — wait for it to finish.'
-      )
+  async ({ data, manifest, manifestPath, outputDir, refuse, refuseBusy }) => {
+    const busy = refuseBusy({ groupIds: jumpsOfMontage(manifest, outputDir, data.groupId ?? '') })
+    if (busy) return busy
     try {
       await take(manifest, outputDir, data.groupId ?? '', data)
     } catch (e) {

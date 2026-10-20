@@ -42,8 +42,7 @@ const WorkFolderDialog = ({
           <Mini onClick={onClose}>{t`Close`}</Mini>
           {choose && (
             <Go
-              disabled={working !== null}
-              title={working ?? undefined}
+              title={working ? t`${working} — choosing another folder asks first` : undefined}
               onClick={() => void ask()}>
               {t`Choose another folder…`}
             </Go>
@@ -69,7 +68,9 @@ const WorkFolderDialog = ({
         </Note>
       )}
       {working && choose && (
-        <p className='m-0 text-small text-local'>{t`${working} — wait until it is done.`}</p>
+        <p className='m-0 text-small text-local'>
+          {t`${working} — choosing another folder now stops it, so SkyDock asks first.`}
+        </p>
       )}
       {said && <p className='m-0 text-body text-ink'>{said}</p>}
     </Modal>

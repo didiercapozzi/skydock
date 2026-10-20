@@ -272,6 +272,74 @@ describe('changes made on the board', () => {
       globalThis.skydockRendering = undefined
     })
 
+    it('stops only the montage named, and another film goes on rendering', async () => {
+      await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
+      const luc = new AbortController()
+      const marie = new AbortController()
+      globalThis.skydockRendering = new Map([
+        ['group_1', luc],
+        ['group_2', marie]
+      ])
+
+      await send({ intent: 'cancel-render', groupId: 'group_2' })
+
+      expect(marie.signal.aborted).toBe(true)
+      expect(luc.signal.aborted).toBe(false)
+      globalThis.skydockRendering = undefined
+    })
+
+    describe('holds its own montage, and nothing else', () => {
+      const luc = () =>
+        group({
+          id: 'group_1',
+          montageJump: true,
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          processed: true,
+          files: [file({ id: 'a' })]
+        })
+      const other = () => group({ id: 'group_2', files: [file({ id: 'b' })] })
+      const rendering = 'Its film is being rendered — wait for the render to finish, or cancel it.'
+
+      beforeEach(async () => {
+        await writeManifest([luc(), other()])
+        globalThis.skydockRendering = new Map([['group_1', new AbortController()]])
+      })
+
+      afterEach(() => {
+        globalThis.skydockRendering = undefined
+      })
+
+      it('refuses resetting, deleting or putting its files in the bin while it renders', async () => {
+        for (const intent of ['reset-montage', 'delete-montage'] as const)
+          expect(refusal(await send({ intent, groupId: 'group_1' })).globalErrors?.[0]).toBe(
+            rendering
+          )
+        expect(
+          refusal(await send({ intent: 'trash-unsorted', fileIds: ['a'] })).globalErrors?.[0]
+        ).toBe(rendering)
+      })
+
+      it('refuses processing it again while it renders', async () => {
+        const res = refusal(await send({ intent: 'process', groupId: 'group_1' }))
+        expect(res.globalErrors?.[0]).toContain('being rendered')
+      })
+
+      it('refuses uploading it while it renders, saying the film as it was can still go', async () => {
+        const res = refusal(await send({ intent: 'upload-montage', groupId: 'group_1' }))
+        expect(res.globalErrors?.[0]).toContain('cancel the render to send the film as it was')
+      })
+
+      it('lets another jump be deleted while it renders', async () => {
+        const res = answer(await send({ intent: 'delete-jump', groupId: 'group_2' }))
+        expect(res.groups.map((g) => g.id)).toEqual(['group_1'])
+      })
+
+      it('lets Fresh files be reset while it renders', async () => {
+        const res = await send({ intent: 'reset-fresh', resetWhat: 'times' })
+        expect(refusal(res).globalErrors?.[0] ?? '').not.toBe(rendering)
+      })
+    })
+
     it('has nothing to cancel when nothing is rendering', async () => {
       await writeManifest([group({ id: 'group_1', files: [file({ id: 'a' })] })])
 

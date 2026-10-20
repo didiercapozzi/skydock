@@ -397,19 +397,21 @@ const writeLooseFiles = async (
 }
 
 type Running = {
+  asked: string
   groupIds: string[]
   destinations: string[]
-  done: Promise<unknown>
+  done: Promise<Awaited<ReturnType<typeof runProcess>>>
   stop: AbortController
+  live: ReturnType<typeof job>
 }
-let running: Running | null = null
 
-const processingNow = () =>
-  running ? { groupIds: running.groupIds, destinations: running.destinations } : null
+let queue: Running[] = []
 
-const whenProcessed = async () => {
-  await running?.done.catch(() => undefined)
-}
+const scopeOf = ({ groupIds, destinations }: Running) => ({ groupIds, destinations })
+
+const processingNow = () => (queue[0] ? scopeOf(queue[0]) : null)
+
+const processingAll = () => queue.map(scopeOf)
 
 const copiedAs = (group: ManifestGroup) =>
   JSON.stringify(
@@ -423,37 +425,62 @@ const copiedAs = (group: ManifestGroup) =>
     ])
   )
 
+const cancelled = () =>
+  new ProcessingCancelled(
+    'Processing was cancelled. What was not finished is left to process again.'
+  )
+
 const processJumps = async (options?: ProcessOptions) => {
-  if (running) throw new Error('Already processing — wait for it to finish, then try again.')
-  const job: Running = {
-    groupIds: options?.groupIds ?? [],
-    destinations: options?.destination ? [options.destination] : [],
-    done: Promise.resolve(),
-    stop: new AbortController()
+  const asked = JSON.stringify([
+    options?.manifestPath,
+    options?.groupIds,
+    options?.destination,
+    options?.fileIds
+  ])
+  const waiting = queue.slice(1).find((one) => one.asked === asked)
+  if (waiting) return waiting.done
+  const groupIds = options?.groupIds ?? []
+  const destinations = options?.destination ? [options.destination] : []
+  const before = queue.at(-1)?.done.catch(() => undefined)
+  const entry: Running = {
+    asked,
+    groupIds,
+    destinations,
+    done: Promise.resolve({ copied: 0, processedGroups: 0 }),
+    stop: new AbortController(),
+    live: job({ type: 'process', label: '', total: 0, scope: { groupIds, destinations } })
   }
-  const done = stoppable().run(job.stop.signal, () => runProcess(options))
-  job.done = done
-  running = job
+  if (before) entry.live.phase('waiting')
+  const done = (async () => {
+    await before
+    if (entry.stop.signal.aborted) throw cancelled()
+    if (before) entry.live.phase('processing')
+    return stoppable().run(entry.stop.signal, () => runProcess(entry, options))
+  })()
+  entry.done = done
+  queue = [...queue, entry]
   try {
-    return await done
+    const result = await done
+    entry.live.finish()
+    return result
   } catch (e) {
-    if (job.stop.signal.aborted && !(e instanceof ProcessingCancelled))
-      throw new ProcessingCancelled(
-        'Processing was cancelled. What was not finished is left to process again.'
-      )
+    const stopped = entry.stop.signal.aborted
+    if (stopped) entry.live.finish({ outcome: { state: 'stopped', copied: 0, skipped: 0 } })
+    else entry.live.fail(messageOf(e))
+    if (stopped && !(e instanceof ProcessingCancelled)) throw cancelled()
     throw e
   } finally {
-    if (running === job) running = null
+    queue = queue.filter((one) => one !== entry)
   }
 }
 
-const cancelProcessing = () => {
-  if (!running) return false
-  running.stop.abort()
-  return true
+const cancelProcessing = (id?: string) => {
+  const going = queue.filter((one) => id === undefined || one.live.id === id)
+  for (const one of going) one.stop.abort()
+  return going.length > 0
 }
 
-const runProcess = async (options?: ProcessOptions) => {
+const runProcess = async (entry: Running, options?: ProcessOptions) => {
   const outputDir = options?.outputDir || getOutputDir()
   const manifestPath = options?.manifestPath || getManifestPath(outputDir)
 
@@ -536,7 +563,13 @@ const runProcess = async (options?: ProcessOptions) => {
     ...groups.flatMap((g) => g.files.filter((f) => !takenOf(g) || takenOf(g)?.has(outputKeyOf(f)))),
     ...destinations.flatMap((d) => looseByDestination.get(d) ?? [])
   ])
-  const preparing = job({ type: 'process', label: '', total: toWrite.length })
+  if (groupIds.length > 0 || options?.destination) {
+    entry.groupIds = [...new Set([...entry.groupIds, ...groups.map((g) => g.id)])]
+    entry.destinations = [...new Set([...entry.destinations, ...destinations])]
+    entry.live.widen({ groupIds: entry.groupIds, destinations: entry.destinations })
+  }
+  const preparing = entry.live
+  preparing.expect(toWrite.length)
   preparing.rows(toWrite.map((f) => ({ key: outputKeyOf(f), name: f.filename, size: f.size })))
   writing = preparing
   try {
@@ -590,12 +623,7 @@ const runProcess = async (options?: ProcessOptions) => {
 
     console.log(`[Process] Done. Copied ${copied} file(s).`)
 
-    preparing.finish()
     return { copied, processedGroups: groups.length }
-  } catch (e) {
-    if (e instanceof ProcessingCancelled) preparing.finish()
-    else preparing.fail(e instanceof Error ? e.message : String(e))
-    throw e
   } finally {
     writing = null
   }
@@ -606,8 +634,8 @@ export {
   getDestinationDir,
   getGroupProcessedDir,
   isFlatGroup,
+  processingAll,
   processingNow,
   processJumps,
-  whenProcessed,
   writeCutProxy
 }

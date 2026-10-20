@@ -1,11 +1,11 @@
-import { busyWith, saveManifest } from '@skydock/scripts'
+import { saveManifest } from '@skydock/scripts'
 import { deleteJump } from '../../../../packages/skydock-scripts/src/moveFiles'
 import { boardAnswer } from '../../helpers/manifest'
 import type { Intent } from './change'
 
 /* A jump is deleted and its files go back to Unsorted, loose (RULES, Jumps). Not a montage with an
    edit, not one freed to the storage, not files already uploaded — uploaded is the end of editing —
-   and not while something is being processed underneath it. */
+   and not while it is itself being processed, uploaded or rendered. */
 const deleteJumpIntent: Intent = async ({
   data,
   manifest,
@@ -22,10 +22,8 @@ const deleteJumpIntent: Intent = async ({
     return refuse('This jump is on the storage only — there is nothing here to move.')
   if (group.uploaded || group.files.some((f) => f.uploaded))
     return refuse('This jump is on the storage — uploaded is the end of editing.')
-  const busy = refuseBusy()
+  const busy = refuseBusy({ groupIds: [group.id] })
   if (busy) return busy
-  if (busyWith({ groupIds: [data.groupId ?? ''] }) === 'uploading')
-    return refuse('It is being uploaded — delete it once the upload is done.')
   await deleteJump(manifest, group.id)
   await saveManifest(manifestPath, manifest)
   return boardAnswer(manifest)

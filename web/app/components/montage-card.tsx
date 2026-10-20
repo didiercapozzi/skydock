@@ -8,12 +8,13 @@ import {
   passengerName,
   montageUploadKey
 } from '@skydock/scripts/client'
-import type { MontageFact } from '@skydock/scripts'
+import type { Busy, MontageFact } from '@skydock/scripts'
 import { useState } from 'react'
 import { Go, Mini } from './buttons'
 import { kindOf } from './file-list'
 import { Icon } from './icons'
 import { dsmFolderUrl } from '../helpers/dsm'
+import { heldNote } from '../helpers/notes'
 import { parcelsOfGroup } from '../helpers/parcels'
 import type { Places } from '../helpers/parcels'
 import type { Inside, Parcel } from '../helpers/parcels'
@@ -314,6 +315,7 @@ const MontageCardActions = ({
   group,
   facts,
   busy,
+  held = null,
   upload = null,
   blocked,
   proxiesWaiting = 0,
@@ -334,6 +336,7 @@ const MontageCardActions = ({
   group: ManifestGroup
   facts?: MontageFact
   busy: string | null
+  held?: Busy | null
   upload?: { key: string; label: string } | null
   blocked: { blocked: boolean; message: string | null }
   proxiesWaiting?: number
@@ -352,17 +355,20 @@ const MontageCardActions = ({
   children?: React.ReactNode
 }) => {
   const working = busy !== null
+  const processing = busy === group.id || held === 'processing'
+  const heldSaid = held ? heldNote(held) : undefined
   const uploadKey = montageUploadKey(group.id)
   const uploading = upload?.label ?? ''
   if (!group.processed)
     return (
       <span className='flex flex-wrap items-center gap-2'>
         <Go
-          disabled={working || !named}
+          disabled={working || !named || held !== null}
+          title={heldSaid}
           onClick={onProcess}>
-          {busy === group.id ? t`Processing…` : t`Process`}
+          {processing ? t`Processing…` : t`Process`}
         </Go>
-        {busy === group.id && onCancelProcess && <Mini onClick={onCancelProcess}>{t`Cancel`}</Mini>}
+        {processing && onCancelProcess && <Mini onClick={onCancelProcess}>{t`Cancel`}</Mini>}
       </span>
     )
   if (!facts?.project)
@@ -377,10 +383,9 @@ const MontageCardActions = ({
           </span>
         )}
         <Go
-          disabled={working || proxiesWaiting > 0}
           title={
             proxiesWaiting > 0
-              ? t`${plural(proxiesWaiting, { one: '# clip is', other: '# clips are' })} still getting a proxy — the project can be made once each one has it, or has failed to`
+              ? t`Open the film editor with the clips laid end to end — ${plural(proxiesWaiting, { one: '# clip plays', other: '# clips play' })} at full size until its small copy is made`
               : t`Open the film editor with the clips laid end to end`
           }
           onClick={onMontage}>
@@ -388,8 +393,12 @@ const MontageCardActions = ({
         </Go>
         {onKdenlive && (
           <Mini
-            disabled={working || proxiesWaiting > 0}
-            title={t`Write a kdenlive project from a template instead, and open it`}
+            disabled={working || proxiesWaiting > 0 || held === 'processing'}
+            title={
+              proxiesWaiting > 0
+                ? t`${plural(proxiesWaiting, { one: '# clip is', other: '# clips are' })} still getting a proxy — the kdenlive project can be made once each one has it, or has failed to`
+                : (heldSaid ?? t`Write a kdenlive project from a template instead, and open it`)
+            }
             onClick={onKdenlive}>
             {busy === group.id ? t`Writing…` : t`Make a kdenlive project`}
           </Mini>
@@ -400,7 +409,6 @@ const MontageCardActions = ({
     if (onEmail)
       return (
         <Go
-          disabled={working}
           title={t`Everything is on the storage — send the link to whoever the film is for`}
           onClick={onEmail.open}>
           {t`Email ${onEmail.name}…`}
@@ -409,7 +417,7 @@ const MontageCardActions = ({
     if (!facts.film)
       return (
         <Go
-          disabled={working}
+          disabled={opensKdenlive && working}
           title={opensKdenlive ? t`Open this project in kdenlive` : t`Open the film editor`}
           onClick={onOpenMontage}>
           {busy === `open:${group.id}`
@@ -422,16 +430,19 @@ const MontageCardActions = ({
     if (!group.uploaded)
       return (
         <Go
-          disabled={working || blocked.blocked || upload !== null}
-          title={blocked.message ?? undefined}
+          disabled={working || blocked.blocked || upload !== null || held !== null}
+          title={blocked.message ?? heldSaid}
           onClick={onUpload}>
           {upload?.key === uploadKey ? t`Uploading…` : t`Upload…`}
         </Go>
       )
     return onFree ? (
       <Go
-        disabled={working}
-        title={t`Delete it from this machine — only once the storage is proved to hold every file`}
+        disabled={working || held !== null}
+        title={
+          heldSaid ??
+          t`Delete it from this machine — only once the storage is proved to hold every file`
+        }
         onClick={onFree}>
         {busy === `free:${group.id}` ? t`Checking the storage…` : t`Free up space…`}
       </Go>
@@ -442,7 +453,6 @@ const MontageCardActions = ({
     <span className='flex flex-wrap items-center gap-2'>
       {onEmail && (
         <Go
-          disabled={working}
           title={t`Everything is on the storage — send the link to whoever the film is for`}
           onClick={onEmail.open}>
           <Icon
@@ -454,11 +464,12 @@ const MontageCardActions = ({
         </Go>
       )}
       <Upload
-        disabled={working || blocked.blocked || upload !== null}
+        disabled={working || blocked.blocked || upload !== null || held !== null}
         title={
           upload && upload.key !== uploadKey
             ? t`Uploading ${uploading} — wait for it, or cancel it`
             : (blocked.message ??
+              heldSaid ??
               t`Zip the photos and the rushes, then send the film and the photos to the montage’s folder`)
         }
         onClick={onUpload}>
@@ -470,7 +481,7 @@ const MontageCardActions = ({
         {upload?.key === uploadKey ? t`Uploading…` : group.uploaded ? t`Upload again…` : t`Upload…`}
       </Upload>
       <Mini
-        disabled={working}
+        disabled={opensKdenlive && working}
         title={opensKdenlive ? t`Open this project in kdenlive` : t`Open the film editor`}
         onClick={onOpenMontage}>
         <Icon
@@ -486,7 +497,6 @@ const MontageCardActions = ({
       </Mini>
       {opensKdenlive ? (
         <Mini
-          disabled={working}
           title={t`Open the film editor`}
           onClick={onMontage}>
           {t`Edit the film`}
@@ -501,23 +511,30 @@ const MontageCardActions = ({
       ) : (
         onKdenlive && (
           <Mini
-            disabled={working}
-            title={t`Write a kdenlive project from a template instead, and open it`}
+            disabled={working || held === 'processing'}
+            title={heldSaid ?? t`Write a kdenlive project from a template instead, and open it`}
             onClick={onKdenlive}>
             {busy === group.id ? t`Writing…` : t`Make a kdenlive project`}
           </Mini>
         )
       )}
       <Mini
-        disabled={working}
-        title={t`Make the copies again from the originals — the project, the film and the archives are left alone`}
+        disabled={working || held !== null}
+        title={
+          heldSaid ??
+          t`Make the copies again from the originals — the project, the film and the archives are left alone`
+        }
         onClick={onProcess}>
-        {busy === group.id ? t`Processing…` : t`Process again`}
+        {processing ? t`Processing…` : t`Process again`}
       </Mini>
+      {processing && onCancelProcess && <Mini onClick={onCancelProcess}>{t`Cancel`}</Mini>}
       {group.uploaded && onFree && (
         <Mini
-          disabled={working}
-          title={t`Delete it from this machine — only once the storage is proved to hold every file`}
+          disabled={working || held !== null}
+          title={
+            heldSaid ??
+            t`Delete it from this machine — only once the storage is proved to hold every file`
+          }
           onClick={onFree}>
           {busy === `free:${group.id}` ? t`Checking the storage…` : t`Free up space…`}
         </Mini>

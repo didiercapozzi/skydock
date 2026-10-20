@@ -8,6 +8,7 @@ import {
   passengerOf,
   waitingForProxy
 } from '@skydock/scripts/client'
+import { heldNote } from '../helpers/notes'
 import { useBoard } from '../hooks/useBoardModel'
 import { StorageCards } from './storage-folder'
 import { parcelsOfGroup } from '../helpers/parcels'
@@ -47,12 +48,13 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       group={group}
       facts={facts}
       busy={board.busy}
+      held={model.heldOf(group)}
       upload={board.uploading ? { key: board.uploading, label: board.uploadLabel ?? '' } : null}
       blocked={model.gateFor(group.files)}
       proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
       named={hasCompletePassenger(group.passenger)}
       onProcess={() => model.takeStep(group, 'Prepared')}
-      onCancelProcess={model.cancelProcess}
+      onCancelProcess={() => model.cancelProcess({ groupIds: [group.id] })}
       onMontage={() => model.takeStep(group, 'Project')}
       onKdenlive={() => void model.askMontage(group)}
       onOpenMontage={() => model.takeStep(group, 'Film')}
@@ -158,22 +160,31 @@ const MontageAbove = ({
 
 const MontageEnd = ({ who }: { who: string }) => {
   const { board, setDialog } = useBoard()
-  const busy = board.busy !== null
   const theirs = board.groups.filter((g) => passengerOf(g) === who)
+  const held = board.busyWith({ groupIds: theirs.map((g) => g.id) })
+  const busy = board.busy !== null || held !== null
   if (theirs.length === 0 || theirs.some((g) => g.freed)) return null
   return (
     <Part>
       <span className='flex flex-wrap items-center gap-2'>
         <Mini
           disabled={busy}
-          title={t`Back to before processing — keeps the name, the trims, the frames and the times`}
+          title={
+            held
+              ? heldNote(held)
+              : t`Back to before processing — keeps the name, the trims, the frames and the times`
+          }
           onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who })}>
           {t`Reset…`}
         </Mini>
         <Danger
           size='mini'
           disabled={busy}
-          title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`}
+          title={
+            held
+              ? heldNote(held)
+              : t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`
+          }
           onClick={() => setDialog({ kind: 'take-back', mode: 'delete', who })}>
           {t`Delete montage…`}
         </Danger>
@@ -340,7 +351,7 @@ const MontageBody = ({
           )}
           <div className='mt-auto'>
             <Mini
-              disabled={board.busy !== null}
+              disabled={board.busy !== null || model.heldOf(group) !== null}
               title={t`Delete it from this machine — only once the storage is proved to hold every file`}
               onClick={() => model.setDialog({ kind: 'free', groupId: group.id })}>
               {t`Free up space…`}
@@ -374,6 +385,8 @@ const MontageMenu = ({
   const { board } = model
   const facts = board.montageFacts[group.id]
   const busy = board.busy !== null
+  const held = model.heldOf(group)
+  const heldSaid = held ? heldNote(held) : undefined
   const firstname = group.passenger?.firstname ?? ''
   const emailed = model.emailedOn(group)
   const linked = Boolean(group.uploaded?.shareUrl ?? group.publish?.shareUrl)
@@ -408,8 +421,12 @@ const MontageMenu = ({
       {group.processed && !hasKdenlive(facts) && !group.freed && (
         <MenuItem
           icon='project'
-          disabled={busy}
-          title={t`Write a kdenlive project from a template instead, and open it`}
+          disabled={busy || held === 'processing'}
+          title={
+            held === 'processing'
+              ? heldSaid
+              : t`Write a kdenlive project from a template instead, and open it`
+          }
           onClick={act(() => void model.askMontage(group))}>
           {t`Make a kdenlive project`}
         </MenuItem>
@@ -418,8 +435,11 @@ const MontageMenu = ({
       {group.processed && !group.freed && (
         <MenuItem
           icon='scan'
-          disabled={busy}
-          title={t`Make the copies again from the originals — the project, the film and the archives are left alone`}
+          disabled={busy || held !== null}
+          title={
+            heldSaid ??
+            t`Make the copies again from the originals — the project, the film and the archives are left alone`
+          }
           onClick={act(() => model.takeStep(group, 'Prepared'))}>
           {t`Process again`}
         </MenuItem>
@@ -427,7 +447,8 @@ const MontageMenu = ({
       {facts?.film && !group.freed && (
         <MenuItem
           icon='upload'
-          disabled={busy}
+          disabled={busy || held !== null}
+          title={heldSaid}
           onClick={act(() => model.takeStep(group, 'Uploaded'))}>
           {model.asOnStorage(group).uploaded ? t`Upload again…` : t`Upload…`}
         </MenuItem>
@@ -435,7 +456,8 @@ const MontageMenu = ({
       {group.uploaded && !group.freed && (
         <MenuItem
           icon='eject'
-          disabled={busy}
+          disabled={busy || held !== null}
+          title={heldSaid}
           onClick={act(() => model.setDialog({ kind: 'free', groupId: group.id }))}>
           {t`Free up space…`}
         </MenuItem>
@@ -450,8 +472,8 @@ const MontageMenu = ({
       {facts?.project && !group.freed && (
         <MenuItem
           icon='back'
-          disabled={busy}
-          title={t`Keep the edit aside and take it away — the copies and the film stay`}
+          disabled={busy || held !== null}
+          title={heldSaid ?? t`Keep the edit aside and take it away — the copies and the film stay`}
           onClick={act(() => model.setDialog({ kind: 'start-again', groupId: group.id }))}>
           {t`Start the edit again…`}
         </MenuItem>
@@ -459,8 +481,11 @@ const MontageMenu = ({
       {!group.freed && (
         <MenuItem
           icon='back'
-          disabled={busy}
-          title={t`Back to before processing — keeps the name, the trims, the frames and the times`}
+          disabled={busy || held !== null}
+          title={
+            heldSaid ??
+            t`Back to before processing — keeps the name, the trims, the frames and the times`
+          }
           onClick={act(() =>
             model.setDialog({ kind: 'take-back', mode: 'reset', who: passengerOf(group) })
           )}>
@@ -471,8 +496,11 @@ const MontageMenu = ({
         <MenuItem
           icon='bin'
           danger
-          disabled={busy}
-          title={t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`}
+          disabled={busy || held !== null}
+          title={
+            heldSaid ??
+            t`Undo the montage, at any step — its files go back to Fresh files, loose, without their name or trims`
+          }
           onClick={act(() =>
             model.setDialog({ kind: 'take-back', mode: 'delete', who: passengerOf(group) })
           )}>

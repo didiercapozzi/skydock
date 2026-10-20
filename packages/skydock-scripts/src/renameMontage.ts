@@ -1,10 +1,10 @@
 import { mkdir, readdir, rename, rm } from 'node:fs/promises'
 import * as path from 'node:path'
+import { busyWith } from './busy'
 import { editPathOf, readOrSetAside, saveEdit } from './filmEdit'
-import { isRendering } from './filmRender'
 import { pathExists } from './lib/fs'
 import { editNameOf, filmNameOf } from './montageNames'
-import { getGroupProcessedDir, processingNow } from './process'
+import { getGroupProcessedDir } from './process'
 import { keepProject } from './projectHistory'
 import { getCutProxyDir } from './proxy'
 import type { ManifestFile, ManifestGroup } from './types'
@@ -40,10 +40,10 @@ const renameEditedMontage = async ({
   const to = getGroupProcessedDir(outputDir, after)
   if (from.dir === to.dir && from.baseName === to.baseName) return null
   const ids = sharing.map((g) => g.id)
-  if (ids.some(isRendering))
-    return 'Its film is being rendered — rename it once the render is done.'
-  if (processingNow()?.groupIds.some((id) => ids.includes(id)))
-    return 'It is being processed — rename it once that is done.'
+  const busy = busyWith({ groupIds: ids })
+  if (busy === 'rendering') return 'Its film is being rendered — rename it once the render is done.'
+  if (busy === 'uploading') return 'It is being uploaded — rename it once the upload is done.'
+  if (busy) return 'It is being processed — rename it once that is done.'
   const sameFolder = from.dir.toLowerCase() === to.dir.toLowerCase()
   if (!sameFolder && (await pathExists(to.dir)))
     return `There is already a montage folder called ${path.basename(to.dir)} — choose another name.`

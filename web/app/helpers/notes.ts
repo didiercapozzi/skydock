@@ -1,4 +1,4 @@
-import type { ImportOutcome, MontageNote, ScanResult } from '@skydock/scripts'
+import type { Busy, ImportOutcome, MontageNote, ScanResult } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { formatFilmSize, localeDate } from '../components/utils'
 
@@ -199,7 +199,15 @@ const fromBinNote = ({ back, kept }: { back: number; kept: string[] }) => {
     .join(' ')
 }
 
+const heldNote = (busy: Busy) =>
+  busy === 'processing'
+    ? t`It is being processed — wait for it to finish`
+    : busy === 'uploading'
+      ? t`It is being uploaded — wait for the upload to finish`
+      : t`Its film is being rendered — wait for the render to finish, or cancel it`
+
 export {
+  heldNote,
   broughtBackNote,
   fromBinNote,
   cameraNote,

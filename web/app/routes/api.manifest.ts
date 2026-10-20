@@ -31,7 +31,7 @@ import { copyBackIntent } from './manifest/copy-back'
 import { fromBinIntent } from './manifest/from-bin'
 import { bringBackIntent } from './manifest/from-storage'
 import { playFile } from './manifest/play-file'
-import { cancelProcess, processIntent, processWait } from './manifest/process'
+import { cancelProcess, processIntent } from './manifest/process'
 import { regroupLoose } from './manifest/regroup-loose'
 import { removeDestinationIntent } from './manifest/remove-destination'
 import { saveGroups } from './manifest/save-groups'
@@ -55,7 +55,6 @@ const intents: Record<ActionData['intent'], Intent> = {
   'bring-back': bringBackIntent,
   'from-bin': fromBinIntent,
   process: processIntent,
-  'process-wait': processWait,
   'cancel-process': cancelProcess,
   'upload-group': uploadGroup,
   'upload-wait': uploadWait,

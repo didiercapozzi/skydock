@@ -19,6 +19,34 @@ type KnownCamera = Extract<LiveEvent, { kind: 'cameras' }>['known'][number]
 
 type Job = Omit<Extract<LiveEvent, { kind: 'job' }>, 'kind' | 'row' | 'rows'> & { rows: JobRow[] }
 
+const takeJob = (event: Extract<LiveEvent, { kind: 'job' }>) => {
+  const { kind: _, row, rows, outcome: _outcome, ...fields } = event
+  liveJobs.update((jobs) => {
+    if (event.stage === 'done') {
+      const { [event.id]: _ended, ...rest } = jobs
+      return rest
+    }
+    const known = jobs[event.id]?.rows ?? []
+    return {
+      ...jobs,
+      [event.id]: { ...fields, rows: rows ?? (row ? mergeRow(known, row) : known) }
+    }
+  })
+}
+
+const useLiveJobs = (on: boolean) => {
+  useEffect(() => {
+    if (!on) return
+    forgetLive()
+    const source = new EventSource(routingEngine.href({ url: '/api/events' }))
+    source.onmessage = (message) => {
+      const parsed = jsonText.pipe(liveEventSchema).safeParse(String(message.data))
+      if (parsed.success && parsed.data.kind === 'job') takeJob(parsed.data)
+    }
+    return () => source.close()
+  }, [on])
+}
+
 const useLiveProgress = (
   onProxies: Dispatch<SetStateAction<Record<string, ProxyFact>>>,
   onMontages: Dispatch<SetStateAction<Record<string, MontageFact>>>,
@@ -49,7 +77,7 @@ const useLiveProgress = (
         return
       }
       if (event.kind === 'job') {
-        const { kind: _, row, rows, outcome, ...fields } = event
+        const outcome = event.outcome
         if (outcome && event.type === 'camera-copy')
           setEnded((before) => ({
             ...outcome,
@@ -57,17 +85,7 @@ const useLiveProgress = (
             ...(event.reason ? { reason: event.reason } : {}),
             seq: (before?.seq ?? 0) + 1
           }))
-        liveJobs.update((jobs) => {
-          if (event.stage === 'done') {
-            const { [event.id]: _ended, ...rest } = jobs
-            return rest
-          }
-          const known = jobs[event.id]?.rows ?? []
-          return {
-            ...jobs,
-            [event.id]: { ...fields, rows: rows ?? (row ? mergeRow(known, row) : known) }
-          }
-        })
+        takeJob(event)
         return
       }
       if (event.kind === 'board') {
@@ -110,5 +128,5 @@ const useLiveProgress = (
   return { ended, cameras, known, prompts, disk, changed, unreadable }
 }
 
-export { useLiveProgress }
+export { useLiveJobs, useLiveProgress }
 export type { Disk, Job, KnownCamera, LiveFile, Mounted }

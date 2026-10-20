@@ -35,10 +35,12 @@ installed without being asked — a machine in the middle of somebody's day is n
 that changed by itself. A machine with no way out to the internet, or one that finds nothing, opens
 its board exactly as it always does.
 
-**Nothing running is cut off unasked.** Closing the window or installing an update while an upload,
-processing or a camera copy is running asks first, saying which; keeping on working is the choice
-offered first. Another work folder is not offered at all while something is being written into
-this one (below).
+**Nothing running is cut off unasked.** Whatever stops SkyDock — closing the window, quitting it from
+the menu or the keyboard, installing an update, choosing another work folder — asks first while
+something is under way, saying what: an upload, processing, a film being rendered, a camera being
+copied, files coming in, a scan, freeing space, a file brought back. Keeping on working is the choice
+offered first. Only the small copies and the finding of jumps go without asking, because they take up
+again by themselves.
 
 The first time it is opened it shows a welcome page of its own, before anything else: what SkyDock
 does in three steps, what the work folder will hold — the originals, the copies and films, and the
@@ -57,9 +59,8 @@ connection among them, are kept apart from the work.
 where the work is now. Nothing is copied or moved: SkyDock starts again in the folder chosen and the
 board opens on what it holds — empty, or the work already kept there — and that folder is remembered
 from then on. The folder left behind stays exactly as it is and can be chosen again; to take the work
-along, the folder is moved by hand first. It is chosen in SkyDock's own window only, and not while
-something is being written into the folder: an upload, a camera being copied, files coming in, a
-scan, or processing.
+along, the folder is moved by hand first. It is chosen in SkyDock's own window only, and while
+something is under way it asks first, as closing does (above), saying what would be stopped.
 
 A camera is anything with a `DCIM` folder at its top, wherever this machine puts such things: a
 drive letter of its own on Windows, a volume on a Mac, a mount under the usual places on Linux — and,
@@ -100,14 +101,17 @@ Everything below follows from these.
   it last proved rather than assuming the worst.
 - **Nothing in the background holds the board, and all of it is seen.** Whatever SkyDock does that takes
   longer than a blink — scanning, copying in, processing, making small copies, finding a jump, uploading,
-  freeing, bringing back, deleting off a camera, checking the storage — runs beside the board, never
+  rendering a film, freeing, bringing back, deleting off a camera, checking the storage — runs beside the board, never
   in front of it: the window answers a click, a drag or a change of page at once, whatever is under way,
   and a task that is working on the disk gives way to a copy the person is watching. Every one of them
   is shown live in the small window at the bottom right, whatever page is open: each file with its own
   bar when the task is about files, and otherwise one bar saying what it is doing and how far it has
   got. Each can be folded down, none has to be waited for, and the ones that end leave a line in the
-  transfers' history. A task that fails says why there until it is put away. This is the rule every new
-  background task answers to before it is built.
+  transfers' history. A task that fails says why there until it is put away. A task holds only what it
+  works on: while a montage is processed, uploaded or rendered, what would change that montage — or that
+  place — is greyed, saying which task to wait for, and everything else on the board stays as usable as
+  ever; opening the film editor is never held. This is the rule every new background task answers to
+  before it is built.
 - **A wait that lasts is said.** Whatever the person asks for — moving files, making or deleting a jump,
   taking files back, opening a project, freeing space, a page on its way — the board answers at once, and
   if the answer has still not come after 300 milliseconds it says so: a thin line moves under the header and
@@ -350,7 +354,8 @@ already filed never grows by itself. Every jump already there keeps its files, h
   It is set apart from _Group loose files into jumps_, beside the count of loose files, which only
   gathers those files by the gap rule, forgets nothing, and asks nothing. _Times only_ is for when a correction was the
   mistake; _Everything, as just scanned_ is for when the sorting has gone wrong and starting over beats
-  undoing it. Either way nothing filed to a dropzone or a montage is touched, and no original is.
+  undoing it. Either way nothing filed to a dropzone or a montage is touched, and no original is — so
+  it is never held by processing, an upload or a render elsewhere on the board.
 
   | Reset                         | Corrected times | Jumps and their names                    | Trims, frames, turns |
   | ----------------------------- | --------------- | ---------------------------------------- | -------------------- |
@@ -363,7 +368,8 @@ already filed never grows by itself. Every jump already there keeps its files, h
   and its files stay: back in Fresh files, loose, each on the day it was shot and at the time its camera
   gave it, keeping the trim, frame and turn set on it in the jump. What was made from them no longer matches and is deleted, so when there
   are processed copies it asks first, saying how many. A dropzone's jump already uploaded cannot be
-  deleted, nor one on the storage only. A named montage is deleted as a montage instead — at any step,
+  deleted, nor one on the storage only, nor one while it is itself being processed, uploaded or
+  rendered — another jump's work does not hold it. A named montage is deleted as a montage instead — at any step,
   and forgetting what was decided about it (Taking a montage back). Regrouping puts loose files back
   into jumps.
 - A scan keeps the work already done: which jump a file is in, where it is filed, its crop and turn,
@@ -420,8 +426,9 @@ Filing a jump answers one question: where does it go?
   so it must be processed again wherever those jumps go next, exactly as when a name is changed. The
   folder on the storage is left as it is, with everything in it and any link handed out of it: what is
   up there is not this machine's to throw away. A dropzone holding anything already uploaded cannot be
-  removed — uploaded is the end of editing. The montages are not a place, and are never taken off as
-  one.
+  removed — uploaded is the end of editing — nor one while it, or a jump filed there, is being processed
+  or uploaded; another place's work does not hold it. The montages are not a place, and are never taken
+  off as one.
 
 ## What lands on disk
 
@@ -767,8 +774,9 @@ the day folder each came from. A file put in the bin this way is
 one nobody wants, so while its camera is plugged in it can also be deleted from the camera's card
 (Seeing what is on a camera). SkyDock never empties the bin, so
 nothing is lost for good and no space comes back until someone empties it by hand. The bin is a folder
-of its own beside the work, apart from the originals and the delivered copies. Nothing is put in the
-bin while something is being processed. Files dragged from the board onto the Bin in the menu ask the same question before anything moves; whole jumps are not taken there, and neither are files from the computer.
+of its own beside the work, apart from the originals and the delivered copies. A file is not put in the
+bin while the jump or the place it is in, or a jump holding a copy of it, is being processed, uploaded
+or rendered; files anywhere else go at once. Files dragged from the board onto the Bin in the menu ask the same question before anything moves; whole jumps are not taken there, and neither are files from the computer.
 
 **Looking into the bin.** _Bin_, in the menu, shows everything in it — each time something was put
 aside, the latest first, saying whether it came from Fresh files, out of a montage or a dropzone, or off a camera, and
@@ -1037,12 +1045,15 @@ once and left alone: changing the folder on the storage and taking the destinati
 the head, one card says where the files stand — what needs processing, what is ready to upload, what is on the storage — and which folder on the storage they go
 into, with the step that moves them on, and freeing space, beside it. Its shared link is made and taken away by hand in its right panel, and only there. Like a montage's, its page has two tabs under that head, _Local_ and _On the storage_, one at a time: _Local_ lists the files kept on this machine, and _On the storage_ shows its folder up there as the same card a montage's handed-over folder is — its path and every file it holds with what kind it is and whether it is here too or only up there — with, on each row, a play button for a film and a ⋯ menu holding the file's own link and, on a file that is only up there, **Bring back**, which fetches it onto this machine again; a row whose file has a link out says so with a small link icon, which copies the link when it is pressed, and the words of every row stand in the same columns whether or not it has one. Bringing back is offered here and nowhere else, and only for a file this machine sent.
 
-**Processing** runs on the machine, not in the page: closing or refreshing the page does not stop it,
-and the board stays usable meanwhile. A page opened while processing runs says so and updates itself
-when it is done. One processing runs at a time; asking for another is refused. What is being processed
-can be cancelled from where it was started: the file under way is dropped rather than left half written,
-nothing more is started, the copies already finished stay on the disk, and nothing of the run counts as
-processed, so processing again takes it up. Edits made meanwhile are
+**Processing** runs on the machine, not in the page, as a background task: pressing _Process_ answers at
+once, the run is shown in the panel in the corner with each file's bar, closing or refreshing the page
+does not stop it, and the board stays usable meanwhile — only what is being processed is greyed. A
+page opened while processing runs shows it there and updates itself when it is done. One processing
+runs at a time, so one asked for meanwhile waits in the corner, saying so, and starts by itself when
+the one before it ends; asking again for what is already waiting adds nothing. Each can be cancelled,
+from its panel or from where it was started, and cancelling one leaves the others going: the file
+under way is dropped rather than left half written, nothing more is started, the copies already
+finished stay on the disk, and nothing of the run counts as processed, so processing again takes it up. Edits made meanwhile are
 kept, and a jump changed while its copies were being written is not marked processed.
 
 **Nothing is uploaded until everything in it is processed**, and what is waiting is said plainly.
@@ -1162,9 +1173,10 @@ stops it nor offers it again — the board shows it still going and updates itse
 panel in the corner can be folded down to its title and how far it has got, and opened again — or
 opened out to a large panel that shows every item whole, where it is going and what became of it (done,
 under way, waiting, already there, or failed), and made small again. What is
-being uploaded is not processed again, reset or deleted until the upload is done, and what is being
-processed is not uploaded until that is done — one would rewrite what the other is reading; the
-board says which to wait for.
+being uploaded is not processed again, reset, deleted, freed or rendered until the upload is done,
+and what is being processed — or waits to be — or has its film being rendered is not uploaded until
+that is done: one would rewrite what the other is reading. The board greys what is held and says
+which to wait for; the rest of the board is not held.
 
 **Cancelling an upload.** It can be cancelled at any moment from that panel, with nothing to confirm,
 since nothing is lost: the file being sent is cut off, nothing more is sent, and nothing of the upload
@@ -1487,9 +1499,15 @@ each clip fitted inside the frame, each gap a black picture with silence, and ru
 timeline: after the last video the picture is black, and silent unless there is music, until the end of
 the last text or piece of music. It is written aside and put in place whole, so the board never
 takes half a film for the film, and its progress is in the panel in the corner, with a _Cancel_ that stops
-the render at once: the half-made file is taken away, the film that was already there is as it was, and
-the panel says the render was cancelled. One montage renders
-one film at a time; _Render again_ replaces the film with the edit as it now is.
+that film's render at once — another montage's render goes on: the half-made file is taken away, the
+film that was already there is as it was, and the panel says the render was cancelled. One montage
+renders one film at a time, several montages can render side by side; _Render again_ replaces the film
+with the edit as it now is. While its film renders, a montage is not processed again, uploaded, reset,
+deleted, freed or renamed — each says to wait for the render or cancel it — and a render does not start
+while the montage is being processed or uploaded. The film editor opened again during the render shows
+it in its header, with how far it has got and the same _Cancel_, and says when the film is rendered or
+why it was not; _Render…_ still opens the render panel, whose _Render the film_ waits for the render
+under way to end.
 
 ## The editing project
 
@@ -1510,7 +1528,9 @@ and pressing render — and the format is the editor's ordinary MP4, H.264 video
 plays wherever the film is sent and needs no particular graphics card. A name, or a file name, with an
 ampersand or another markup character in it comes out of the project exactly as it was typed.
 
-**The project waits for the proxies.** The editor opens on them, and a project made before they exist
+**The project waits for the proxies.** This is the kdenlive project's wait, and only its: _Edit the
+film_ opens the film editor at once, which plays a clip at its full size until its proxy is made. Kdenlive
+opens on the proxies, and a project made before they exist
 opens on the full clips — the slowest way there is to edit. So it cannot be made while any clip in the
 montage is still getting its proxy: the button says how many it is waiting for, and the machine refuses
 it too. A clip whose proxy was tried and could not be made does not hold it up — it is settled, and
@@ -1595,8 +1615,8 @@ and the film is whichever was rendered last.
   every name in it is SkyDock's own, so its folder, its copies and their working copies, its film and its
   edit take the new name, the edit calls its clips by their new names and a title that said the old name
   says the new one, and nothing has to be processed again. The edit is kept aside first; a name another
-  montage's folder already has, or a montage being processed or rendered, is refused before anything
-  moves.
+  montage's folder already has, or a montage being processed, uploaded or rendered, is refused before
+  anything moves.
 - **A freed montage** has nothing of it left on this machine to change, and says that — not that it has
   an edit. A name a freed montage had is not joined: the refusal says to give the new montage another
   name, such as "Luc Favre 2".
@@ -1651,7 +1671,9 @@ processed, edited, rendered, uploaded or emailed — and is offered on the monta
 on its page; regrouping puts its files back into jumps. Only a freed montage cannot be
 deleted: nothing of it is left on this machine to put back.
 
-Neither touches the originals or the storage, and neither can run while the montage is being processed.
+Neither touches the originals or the storage, and neither can run while any jump of the montage is
+being processed, uploaded or rendered: the buttons are greyed with the reason, before anything is
+asked.
 
 ## Uploading a montage
 
@@ -1797,7 +1819,9 @@ this is proved:
 - nothing about the montage changed since it was uploaded.
 
 If any check fails, nothing is deleted and each failing file is named. The storage must be reachable.
-Only a montage of a single jump can be freed.
+Only a montage of a single jump can be freed. A montage, or a dropzone, is not freed while it is being
+processed, uploaded or rendered — _Free up space…_ is greyed with the reason — and the rest of the
+board is free meanwhile.
 
 While it goes, the small window at the bottom right shows it live: first the storage being proved to hold
 each file that went up, then what is here being deleted, file by file, with the file it is on and how far
