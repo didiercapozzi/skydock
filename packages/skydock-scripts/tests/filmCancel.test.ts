@@ -4,7 +4,13 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { FilmEdit } from '../src/filmEditShape'
-import { cancelRendering, formatRefusal, isRendering, renderFilm } from '../src/filmRender'
+import {
+  cancelRendering,
+  drawtextRefusal,
+  formatRefusal,
+  isRendering,
+  renderFilm
+} from '../src/filmRender'
 import { filmNameOf } from '../src/montageNames'
 import { getGroupProcessedDir } from '../src/process'
 import type { Manifest, ManifestGroup } from '../src/types'
@@ -127,5 +133,29 @@ describe('a format that this computer cannot make', () => {
     expect(await formatRefusal({ ...edit, output: { format: 'h265' } })).toMatch(/H\.?265.*H\.264/)
     expect(await formatRefusal({ ...edit, output: { format: 'h264' } })).toBeNull()
     expect(await formatRefusal(edit)).toBeNull()
+  })
+
+  it('refuses a film with texts when the ffmpeg of the computer cannot draw them, and says so', () => {
+    const texted = {
+      ...edit,
+      texts: [
+        {
+          id: 'text-1',
+          text: 'Hi',
+          at: 0,
+          seconds: 2,
+          effect: 'fade' as const,
+          font: 'clean' as const,
+          x: 0.5,
+          y: 0.5,
+          size: 0.1,
+          colour: '#ffffff'
+        }
+      ]
+    }
+
+    expect(drawtextRefusal(' T.. scale  V->V\n T.. fade V->V', texted)).toMatch(/drawtext/)
+    expect(drawtextRefusal(' T.. drawtext V->V\n T.. fade V->V', texted)).toBeNull()
+    expect(drawtextRefusal(' T.. scale V->V', edit)).toBeNull()
   })
 })

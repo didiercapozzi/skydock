@@ -339,6 +339,7 @@ const filmShape = async (first: EditSource | undefined) => {
 
 declare global {
   var skydockFormats: Promise<Array<(typeof OUTPUT_FORMATS)[number]>> | undefined
+  var skydockFilters: Promise<string> | undefined
   var skydockRendering: Map<string, AbortController> | undefined
 }
 
@@ -350,10 +351,21 @@ const availableFormats = () =>
     )
   })())
 
+const availableFilters = () =>
+  (globalThis.skydockFilters ??= (async () => {
+    const ran = await run(await ffmpegPath(), ['-hide_banner', '-filters'])
+    return ran.ok ? ran.stdout : ''
+  })())
+
+const drawtextRefusal = (filters: string, edit: FilmEdit) =>
+  edit.texts.length === 0 || filters === '' || filters.includes(' drawtext ')
+    ? null
+    : "This computer's ffmpeg cannot draw the texts (it has no drawtext filter): take the texts off the film, or use an ffmpeg that has it."
+
 const formatRefusal = async (edit: FilmEdit) => {
   const format = edit.output?.format ?? 'h264'
   return (await availableFormats()).includes(format)
-    ? null
+    ? drawtextRefusal(await availableFilters(), edit)
     : `This computer's ffmpeg cannot make ${format.toUpperCase()}: choose H.264.`
 }
 
@@ -457,6 +469,7 @@ export {
   availableFormats,
   cancelRendering,
   formatRefusal,
+  drawtextRefusal,
   duckOf,
   filmArgs,
   filmShape,

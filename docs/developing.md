@@ -204,7 +204,9 @@ Nothing binary is committed. `npm run pack`
 ([scripts/build-payload.ts](../scripts/build-payload.ts)) builds the page and the server, fetches
 ExifTool, and takes ffmpeg and ffprobe from `SKYDOCK_TOOLS_DIR` or from this machine;
 [scripts/fetch-tools.ts](../scripts/fetch-tools.ts) fetches builds of those two that need nothing
-beside them, which is what a release does — it prints the folder to hand over. The window itself is
+beside them — with the `drawtext` filter, which the texts of a film are drawn with, and with H.264, H.265 and,
+on Linux, AV1 — which is what a release does; a folder that already holds the two is not fetched again,
+so an older build there is replaced by deleting it — it prints the folder to hand over. The window itself is
 two TypeScript files built into what Electron runs by
 [scripts/build-shell.ts](../scripts/build-shell.ts); `npm run app` and `npm run installers` run it
 first.

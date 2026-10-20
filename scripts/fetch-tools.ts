@@ -39,11 +39,11 @@ type Source = {
 
 const SOURCES: Record<string, Source> = {
   'x86_64-unknown-linux-gnu': {
-    from: 'https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz',
+    from: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz',
     archive: 'tar.xz'
   },
   'aarch64-unknown-linux-gnu': {
-    from: 'https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-arm64-static.tar.xz',
+    from: 'https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz',
     archive: 'tar.xz'
   },
   'x86_64-apple-darwin': {
