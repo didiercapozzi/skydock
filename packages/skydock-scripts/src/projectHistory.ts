@@ -1,5 +1,5 @@
-import { copyFile, mkdir, readdir } from 'node:fs/promises'
-import { basename, join } from 'node:path'
+import { copyFile, mkdir, readdir, rm } from 'node:fs/promises'
+import { basename, dirname, join } from 'node:path'
 import { stampOf } from './lib/clock'
 import { pathExists, sameBytes } from './lib/fs'
 
@@ -30,4 +30,13 @@ const keepProject = async (outputDir: string, dir: string, baseName: string, at 
   return kept.find((target) => target !== null) ?? null
 }
 
-export { keepProject, keptProjectsDir }
+const setEditAside = async (outputDir: string, editPath: string, at = new Date()) => {
+  const folder = join(keptProjectsDir(outputDir), basename(dirname(editPath)))
+  await mkdir(folder, { recursive: true })
+  const name = `${basename(editPath, '.edit.json')}-${stampOf(at)}.unreadable.json`
+  await copyFile(editPath, join(folder, name))
+  await rm(editPath, { force: true })
+  return join(HISTORY, basename(folder), name)
+}
+
+export { keepProject, keptProjectsDir, setEditAside }

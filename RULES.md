@@ -1585,6 +1585,10 @@ it was kept. What is kept is what changed, so pressing the same button twice lea
 than two, and nothing there is ever deleted, not even when the montage is: a project is a few hundred
 kilobytes beside the gigabytes it describes. It also travels with every backup, whatever else was
 chosen to go — the edit exists nowhere else, and a tick nobody remembers is no protection at all.
+**An edit SkyDock cannot read** — one written by a newer SkyDock, or changed by hand past what the
+editor allows — **is never written over.** Opening the editor puts it whole among the kept edits under a
+name of its own (`<name>_<date>-<moment>.unreadable.json`), says so and why, and starts the film again
+from its first edit; the hours in it are still there for whoever can read them.
 
 **Preparing it again is allowed.** Preparing writes the copies and nothing else: the project, the film
 and the archives are left exactly where they are, and each copy keeps the name the montage and the

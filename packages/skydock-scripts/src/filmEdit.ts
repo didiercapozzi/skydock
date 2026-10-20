@@ -18,6 +18,7 @@ import { getGroupProcessedDir } from './process'
 import { getCutProxyDir, videoShape } from './proxy'
 import type { Manifest, ManifestGroup } from './types'
 import { mapWithLimit } from './utils'
+import { setEditAside } from './projectHistory'
 import { passengerOf } from './workspace'
 
 const TITLE_SECONDS = 4
@@ -165,9 +166,21 @@ const firstEdit = (group: ManifestGroup, sources: EditSource[]) => {
 
 const readEdit = async (editPath: string) => {
   const text = await readFile(editPath, 'utf-8').catch(() => null)
-  if (text === null) return null
+  if (text === null) return { edit: null, unreadable: null }
   const parsed = jsonText.pipe(filmEditSchema).safeParse(text)
-  return parsed.success ? parsed.data : null
+  if (parsed.success) return { edit: parsed.data, unreadable: null }
+  const issue = parsed.error.issues[0]
+  const where = issue?.path.length ? `${issue.path.join('.')}: ` : ''
+  return { edit: null, unreadable: issue ? `${where}${issue.message}` : 'it is not an edit' }
+}
+
+const readOrSetAside = async (outputDir: string, editPath: string) => {
+  const read = await readEdit(editPath)
+  if (read.unreadable === null) return { edit: read.edit, setAside: null }
+  return {
+    edit: null,
+    setAside: { as: await setEditAside(outputDir, editPath), reason: read.unreadable }
+  }
 }
 
 const saveEdit = (editPath: string, edit: FilmEdit) => writeJsonAtomic(editPath, edit)
@@ -182,6 +195,6 @@ export {
   isImageFile,
   isMusicFile,
   musicSources,
-  readEdit,
+  readOrSetAside,
   saveEdit
 }

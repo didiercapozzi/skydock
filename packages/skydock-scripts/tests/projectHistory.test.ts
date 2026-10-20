@@ -2,6 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { readOrSetAside } from '../src/filmEdit'
 import { keepProject, keptProjectsDir } from '../src/projectHistory'
 import { createTmpDir } from './fixtures'
 
@@ -89,5 +90,35 @@ describe('the film editor’s edit, kept aside', () => {
       'luc_favre_20260802-2026-09-21T18-05-12.kdenlive',
       'luc_favre_20260802-2026-09-21T21-40-00.kdenlive'
     ])
+  })
+
+  it('sets an edit that cannot be read aside whole, says why, and leaves no edit in its place', async () => {
+    const hours = '{"version":1,"clips":"an afternoon of work"}'
+    fs.writeFileSync(edit(), hours)
+
+    const read = await readOrSetAside(outputDir, edit())
+
+    expect(read.edit).toBeNull()
+    expect(read.setAside?.reason).toContain('clips')
+    expect(fs.existsSync(edit())).toBe(false)
+    const [aside] = kept()
+    expect(aside).toMatch(/^luc_favre_20260802-.*\.unreadable\.json$/)
+    expect(read.setAside?.as).toBe(path.join('.projects', 'Luc Favre', aside!))
+    expect(
+      fs.readFileSync(path.join(keptProjectsDir(outputDir), 'Luc Favre', aside!), 'utf-8')
+    ).toBe(hours)
+  })
+
+  it('reads an edit that can be read, and sets nothing aside', async () => {
+    fs.writeFileSync(
+      edit(),
+      JSON.stringify({ version: 1, clips: [], music: [], texts: [], underSound: 0.15 })
+    )
+
+    const read = await readOrSetAside(outputDir, edit())
+
+    expect(read.edit?.clips).toEqual([])
+    expect(read.setAside).toBeNull()
+    expect(kept()).toEqual([])
   })
 })

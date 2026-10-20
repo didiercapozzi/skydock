@@ -18,7 +18,7 @@ import {
   editSources,
   firstEdit,
   musicSources,
-  readEdit,
+  readOrSetAside,
   saveEdit
 } from '../../../packages/skydock-scripts/src/filmEdit'
 import {
@@ -63,13 +63,14 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   if (!found.ok) return Response.json({ ok: false, reason: found.refused })
   const { manifest, group, outputDir } = found
   const sources = await editSources(manifest, outputDir, group)
-  const saved = await readEdit(editPathOf(outputDir, group))
+  const { edit: saved, setAside } = await readOrSetAside(outputDir, editPathOf(outputDir, group))
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   return Response.json({
     ok: true,
     title: passengerOf(group).trim() || group.label,
     edit: saved ?? firstEdit(group, sources),
     saved: saved !== null,
+    setAside,
     sources,
     music: await musicSources(outputDir),
     images: await imageSources(outputDir),
@@ -90,6 +91,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     if (!found.ok) return refuse(found.refused)
     const { manifest, group, outputDir } = found
     try {
+      await readOrSetAside(outputDir, editPathOf(outputDir, group))
       await saveEdit(editPathOf(outputDir, group), data.edit)
       if (data.intent === 'save') return { saved: true, rendering: isRendering(group.id) }
       if (isRendering(group.id)) return refuse('This film is already being rendered.')

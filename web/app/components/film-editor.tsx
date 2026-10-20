@@ -1586,6 +1586,11 @@ const FilmEditor = ({
         if (!parsed.data.ok) return setProblem(parsed.data.reason)
         setLoaded(parsed.data)
         setRendering(parsed.data.rendering)
+        const aside = parsed.data.setAside
+        if (aside)
+          setProblem(
+            t`The saved edit could not be read (${aside.reason}), so it was kept aside as ${aside.as} and the film starts again from its first edit.`
+          )
         if (latest.current === null) {
           latest.current = parsed.data.edit
           setEditNow(parsed.data.edit)

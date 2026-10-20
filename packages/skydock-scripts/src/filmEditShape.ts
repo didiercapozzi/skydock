@@ -161,6 +161,7 @@ const editAnswerSchema = z.discriminatedUnion('ok', [
     images: z.array(imageSourceSchema).default([]),
     rendering: z.boolean(),
     film: z.string().nullable(),
+    setAside: z.object({ as: z.string(), reason: z.string() }).nullable().default(null),
     formats: z.array(z.enum(OUTPUT_FORMATS)).default(['h264'])
   })
 ])

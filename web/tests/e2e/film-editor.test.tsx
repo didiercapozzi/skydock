@@ -1149,6 +1149,28 @@ describe('the film editor and the film templates', () => {
       .toBeVisible()
   })
 
+  test('says an edit that could not be read was kept aside, and starts the film again from its first edit', async () => {
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') return Response.json({ ok: true })
+      if (String(url).includes('/api/film-templates')) return Response.json({ templates: [], music: [] })
+      return Response.json({
+        ...answer,
+        saved: false,
+        setAside: { as: '.projects/Luc Favre/luc_favre_20260906-2026-09-06T18-00-00.unreadable.json', reason: 'fps: Invalid input' }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', day: '06.09.2026', onClose: () => {} }))
+
+    await expect
+      .element(
+        page.getByText(
+          'The saved edit could not be read (fps: Invalid input), so it was kept aside as .projects/Luc Favre/luc_favre_20260906-2026-09-06T18-00-00.unreadable.json and the film starts again from its first edit.'
+        )
+      )
+      .toBeVisible()
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+  })
+
   test('does not ask when the film was started before', async () => {
     await start()
     await expect.element(picker()).not.toBeInTheDocument()
