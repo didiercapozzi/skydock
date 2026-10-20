@@ -32,10 +32,16 @@ const stemOf = (group: ManifestGroup) =>
 
 type PartFile = ArchiveEntry & { size: number }
 
+const endingOf = (part: SendPart, file: string) =>
+  part === 'film' ? '.mp4' : file.endsWith('.edit.json') ? '.edit.json' : '.kdenlive'
+
 const partEntries = (part: SendPart, files: PartFile[], stem: string): PartFile[] =>
   part === 'videos' || part === 'photos'
     ? files.map((f) => ({ ...f, name: `${part}/${f.name}` }))
-    : files.map((f) => ({ ...f, name: `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}` }))
+    : files.map((f) => ({ ...f, name: `${stem}${endingOf(part, f.file)}` }))
+
+const partFileNames = (part: SendPart, files: PartFile[], stem: string) =>
+  partEntries(part, files, stem).map((entry) => entry.name)
 
 const zipNameOf = (stem: string, ending: string) => `${stem}${ending ? `.${ending}` : ''}.zip`
 
@@ -93,7 +99,10 @@ const itemsFrom = (
   })
   const loose = present.map((part) => {
     const entries = partEntries(part, files[part], stem)
-    const name = part === 'videos' || part === 'photos' ? `${part}/` : entries[0]!.name
+    const name =
+      part === 'videos' || part === 'photos'
+        ? `${part}/`
+        : entries.map((entry) => entry.name).join(' + ')
     return itemOf(part, name, false, [part], entries)
   })
   return [...zipped, ...loose]
@@ -106,6 +115,7 @@ export {
   folderFor,
   itemsFrom,
   PARTS,
+  partFileNames,
   planOf,
   projectFolderOf,
   slugOf,

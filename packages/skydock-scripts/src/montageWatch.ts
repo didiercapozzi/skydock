@@ -53,7 +53,7 @@ const lookAtMontages = async (outputDir: string) => {
     const found = await montageArtifacts(outputDir, group)
     secondsOf(found)
     const film = found.film ? `${found.film.size}:${found.film.mtime}` : 'none'
-    const signature = `${found.project}|${film}`
+    const signature = `${found.kdenlive ?? ''}|${found.edit}|${film}`
     const before = seen.get(group.id)
     const state: Seen =
       before && before.signature === signature

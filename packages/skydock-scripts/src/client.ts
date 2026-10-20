@@ -101,6 +101,7 @@ export {
   DEFAULT_PLAN,
   PARTS,
   itemsFrom,
+  partFileNames,
   projectFolderOf,
   slugOf,
   stemFor,

@@ -1,6 +1,7 @@
 import {
   itemsFrom,
   PARTS,
+  partFileNames,
   projectFolderOf,
   slugOf,
   stemFor,
@@ -27,7 +28,16 @@ const PART_NAMES = {
   project: msg`The kdenlive project`
 } as const
 
-const partName = (part: SendPart) => i18n._(PART_NAMES[part])
+const EDIT_NAMES = {
+  edit: msg`The edit`,
+  both: msg`The kdenlive project and the edit`
+} as const
+
+const partName = (part: SendPart, parts: Parts) => {
+  const edits = parts.project.map((f) => f.file.endsWith('.edit.json'))
+  if (part !== 'project' || !edits.includes(true)) return i18n._(PART_NAMES[part])
+  return i18n._(edits.includes(false) ? EDIT_NAMES.both : EDIT_NAMES.edit)
+}
 
 const SHOWN = 3
 
@@ -51,7 +61,7 @@ const partsOf = (group: ManifestGroup, facts?: MontageFact, picked = false): Par
     })
     .sort((a, b) => a.name.localeCompare(b.name)),
   film: facts?.film ? [{ file: facts.film.path, name: 'film', size: facts.film.size }] : [],
-  project: facts?.project ? [{ file: facts.projectPath, name: 'project', size: 0 }] : []
+  project: (facts?.projectFiles ?? []).map((file) => ({ file, name: 'project', size: 0 }))
 })
 
 const sizeOfPart = (files: PartFile[]) => files.reduce((sum, f) => sum + f.size, 0)
@@ -63,7 +73,7 @@ const aboutPart = (part: SendPart, parts: Parts, stem: string) => {
     return `${plural(parts.videos.length, { one: '# clip', other: '# clips' })}${much}`
   if (part === 'photos')
     return `${plural(parts.photos.length, { one: '# photo', other: '# photos' })}${much}`
-  return `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}${much}`
+  return `${partFileNames(part, parts[part], stem).join(' + ')}${much}`
 }
 
 const NOTE = 'text-micro leading-normal text-ink-3'
@@ -133,7 +143,7 @@ const PartLine = ({
           size={15}
         />
         <code className='font-mono text-small font-medium tracking-title break-all text-ink'>
-          {folder ? `${part}/` : `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}`}
+          {folder ? `${part}/` : partFileNames(part, files, stem).join(' + ')}
         </code>
         {folder && (
           <span>
@@ -147,11 +157,6 @@ const PartLine = ({
     </span>
   )
 }
-
-const partLabel = (part: SendPart, stem: string) =>
-  part === 'videos' || part === 'photos'
-    ? `${part}/`
-    : `${stem}.${part === 'film' ? 'mp4' : 'kdenlive'}`
 
 const PART_ICONS: Record<SendPart, IconName> = {
   videos: 'play',
@@ -351,13 +356,13 @@ const UploadDialog = ({
                   putInZip([part], null)
                 }
               }}
-              aria-label={partName(part)}
+              aria-label={partName(part, parts)}
               title={`${aboutPart(part, parts, stem)} — ${t`press to put it in a new zip`}`}
               className={`flex h-9 cursor-grab items-center gap-2 rounded-corner px-3.5 font-bold ${
                 zipsIn(part) > 0 ? 'bg-up-soft text-up' : 'bg-well text-ink hover:bg-line'
               }`}>
               <Icon name={PART_ICONS[part]} />
-              {partName(part)}
+              {partName(part, parts)}
               {zipsIn(part) === 1 && (
                 <Icon
                   name='check'
@@ -451,7 +456,7 @@ const UploadDialog = ({
                       parts={parts}
                       stem={stem}
                       remove={{
-                        label: t`Take ${partName(part)} out of ${name}`,
+                        label: t`Take ${partName(part, parts)} out of ${name}`,
                         onClick: () => takeFromZip(part, at)
                       }}
                     />
@@ -617,7 +622,7 @@ const UploadDialog = ({
                         }
                       />
                       <code className='min-w-0 flex-1 font-mono text-body tracking-title break-all text-ink'>
-                        {item.zip ? item.name : partLabel(item.holds[0]!, stem)}
+                        {item.name}
                       </code>
                       {item.holds[0] === 'film' && !item.zip && (
                         <span

@@ -26,7 +26,6 @@ const presentOf = async (files: { path: string; filename: string }[]) => {
 const partFiles = async (group: ManifestGroup, outputDir: string, film: string | null) => {
   const artifacts = await montageArtifacts(outputDir, group)
   const photosDir = path.join(artifacts.dir, 'photos')
-  const project = path.join(artifacts.dir, `${artifacts.baseName}.kdenlive`)
   const renderedFilm =
     film ??
     (artifacts.film
@@ -39,7 +38,7 @@ const partFiles = async (group: ManifestGroup, outputDir: string, film: string |
     videos: await presentOf(group.files.filter((f) => isVideoFile(f.path))),
     photos: await mapWithLimit(photoNames, 16, (name) => one(path.join(photosDir, name))),
     film: renderedFilm ? [await one(renderedFilm)] : [],
-    project: (await pathExists(project)) ? [await one(project)] : []
+    project: await mapWithLimit(artifacts.projectFiles, 2, (file) => one(file))
   } satisfies Record<SendPart, PartFile[]>
 }
 

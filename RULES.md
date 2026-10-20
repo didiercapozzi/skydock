@@ -1623,8 +1623,9 @@ Neither touches the originals or the storage, and neither can run while the mont
 
 A montage belongs to no destination, so uploading it says where each thing goes. It has four parts to
 send, each taken whole and never file by file: its **original videos**, its **original photos** as
-prepared, **the montage** itself (the rendered film), and **the kdenlive project**. A part the montage
-does not have — no photos, say — is simply not offered. Uploading is two steps, side by side in one
+prepared, **the montage** itself (the rendered film), and **its edit** — the kdenlive project, the film
+editor's edit, or both when it has both, called by what it is. A part the montage does not have — no
+photos, say — is simply not offered. Uploading is two steps, side by side in one
 dialog — the zips on the left, where it all goes on the right — and nothing is sent until its own
 button is pressed.
 
@@ -1646,7 +1647,8 @@ back there.
 short. Beside them are the destinations something is already in; any other is added with **+ Add a
 destination**, and one can be left out of the upload again, taking out whatever was in it. As they
 are, the videos go as the files of a `videos/` folder, the photos of a `photos/` folder, the montage as
-`<name>_<date>_<time>.mp4` and the project as `<name>_<date>_<time>.kdenlive`. Each is dragged onto one
+`<name>_<date>_<time>.mp4` and the edit as `<name>_<date>_<time>.kdenlive`, `<name>_<date>_<time>.edit.json`,
+or the two. Each is dragged onto one
 destination or more — several at once when they are ticked. **The
 same item can go to several**; it is built once and sent to each. Each destination shows exactly what
 will land in it, as a tree from its folder on the storage, and anything can be taken out again before

@@ -30,15 +30,35 @@ const filmSeconds = (target: string, size: number, mtime: number) => {
   return null
 }
 
+const kdenliveIn = async (dir: string, baseName: string, entries: string[]) => {
+  const named = `${baseName}.kdenlive`
+  if (entries.includes(named)) return named
+  const others = entries.filter((e) => e.endsWith('.kdenlive'))
+  const stats = await Promise.all(others.map((e) => statOrNull(path.join(dir, e))))
+  return others
+    .map((name, i) => ({ name, at: stats[i]?.mtimeMs ?? 0 }))
+    .reduce<{ name: string; at: number } | null>(
+      (newest, one) => (newest === null || one.at > newest.at ? one : newest),
+      null
+    )?.name
+}
+
 const montageArtifacts = async (outputDir: string, group: ManifestGroup) => {
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   const entries: string[] = await readdir(dir).catch(() => [])
   const stat = await statOrNull(path.join(dir, filmNameOf(baseName)))
+  const kdenlive = await kdenliveIn(dir, baseName, entries)
+  const edit = entries.includes(editNameOf(baseName))
   return {
     dir,
     baseName,
-    project: entries.some((e) => e.endsWith('.kdenlive') || e === editNameOf(baseName)),
-    edit: entries.includes(editNameOf(baseName)),
+    project: Boolean(kdenlive) || edit,
+    kdenlive: kdenlive ? path.join(dir, kdenlive) : null,
+    edit,
+    projectFiles: [
+      ...(kdenlive ? [path.join(dir, kdenlive)] : []),
+      ...(edit ? [path.join(dir, editNameOf(baseName))] : [])
+    ],
     film: stat ? { size: stat.size, mtime: mtimeSeconds(stat) } : null,
     strayFilms: entries.filter((e) => e.endsWith('.mp4') && e !== filmNameOf(baseName))
   }
@@ -90,7 +110,12 @@ const sameEditedGroup = (a: ManifestGroup, b: ManifestGroup) => editedShape(a) =
 const factOf = (found: Awaited<ReturnType<typeof montageArtifacts>>, outputDir: string) => ({
   project: found.project,
   edit: found.edit,
-  projectPath: toHostPath(path.join(found.dir, `${found.baseName}.kdenlive`), outputDir),
+  kdenlive: found.kdenlive !== null,
+  projectFiles: found.projectFiles,
+  projectPath: toHostPath(
+    found.projectFiles[0] ?? path.join(found.dir, `${found.baseName}.kdenlive`),
+    outputDir
+  ),
   film: found.film
     ? {
         ...found.film,

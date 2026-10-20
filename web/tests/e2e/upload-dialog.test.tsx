@@ -54,6 +54,8 @@ const board = {
   montages: {
     g1: {
       project: true,
+      kdenlive: true,
+      projectFiles: ['/workspace/output/processed/Montages/Luc Favre/luc_favre_20260801.kdenlive'],
       projectPath: '/output/processed/Montages/Luc Favre/luc_favre_20260801.kdenlive',
       film: {
         size: 3 * GB,
@@ -127,6 +129,26 @@ describe('uploading a montage — the zips', () => {
     await expect.element(zip('full').getByText(`${STEM}.kdenlive`)).toBeInTheDocument()
     await page.screenshot({ path: './playwright-screenshots/upload-dialog.png' })
     expect(requests).toEqual([])
+  })
+
+  test('offers the film editor’s edit as the montage’s edit when that is the edit it has', async () => {
+    setSendPlan(DEFAULT_PLAN)
+    const edited = {
+      ...board,
+      montages: {
+        g1: {
+          ...board.montages.g1,
+          kdenlive: false,
+          edit: true,
+          projectFiles: ['/workspace/output/processed/Montages/Luc Favre/luc_favre_20260801.edit.json']
+        }
+      }
+    }
+    await renderBoard(edited)
+
+    await expect.element(zip('full').getByText(`${STEM}.edit.json`)).toBeInTheDocument()
+    await expect.element(dialog().getByText(`${STEM}.kdenlive`)).not.toBeInTheDocument()
+    await expect.element(dialog().getByLabelText('The edit', { exact: true })).toBeInTheDocument()
   })
 
   test('puts a part dragged onto the drop area into a new zip, the same part in two zips', async () => {
