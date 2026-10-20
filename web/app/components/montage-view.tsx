@@ -2,6 +2,7 @@ import { plural, t } from '@lingui/core/macro'
 import {
   goneSent,
   hasCompletePassenger,
+  hasKdenlive,
   isMontage,
   isVideoFile,
   passengerOf,
@@ -55,6 +56,8 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       onMontage={() => model.takeStep(group, 'Project')}
       onKdenlive={() => void model.askMontage(group)}
       onOpenMontage={() => model.takeStep(group, 'Film')}
+      opensKdenlive={model.opensKdenlive(group)}
+      onOpenKdenlive={() => model.openKdenlive(group)}
       onUpload={() => model.takeStep(group, 'Uploaded')}
       onEmail={
         group.uploaded && linked && progress.steps[progress.at]?.name === 'Sent'
@@ -387,19 +390,28 @@ const MontageMenu = ({
           {emailed ? t`✓ Emailed · again…` : t`Email ${firstname}…`}
         </MenuItem>
       )}
-      {facts?.edit && !group.freed && (
+      {group.processed && !group.freed && (
         <MenuItem
           icon='montage'
           onClick={act(() => model.openEditor(group))}>
           {t`Edit the film`}
         </MenuItem>
       )}
-      {facts?.project && group.montage && !group.freed && (
+      {hasKdenlive(facts) && !group.freed && (
         <MenuItem
           icon='open'
           disabled={busy}
           onClick={act(() => model.openKdenlive(group))}>
           {t`Open in kdenlive`}
+        </MenuItem>
+      )}
+      {group.processed && !hasKdenlive(facts) && !group.freed && (
+        <MenuItem
+          icon='project'
+          disabled={busy}
+          title={t`Write a kdenlive project from a template instead, and open it`}
+          onClick={act(() => void model.askMontage(group))}>
+          {t`Make a kdenlive project`}
         </MenuItem>
       )}
 

@@ -1,4 +1,5 @@
 import { t } from '@lingui/core/macro'
+import { hasKdenlive } from '@skydock/scripts/client'
 import type { MontageFact } from '@skydock/scripts'
 import { Note } from './blurbs'
 import { Danger, Mini } from './buttons'
@@ -19,7 +20,7 @@ const StartAgainDialog = ({
 }) => {
   const edits: Which[] = [
     ...(facts.edit ? (['edit'] as const) : []),
-    ...(facts.kdenlive ? (['kdenlive'] as const) : [])
+    ...(hasKdenlive(facts) ? (['kdenlive'] as const) : [])
   ]
   const named = { edit: t`the film editor’s edit`, kdenlive: t`the kdenlive project` }
   return (

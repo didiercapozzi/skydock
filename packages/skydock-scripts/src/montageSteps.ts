@@ -39,10 +39,13 @@ const montageSteps = ({
   return { steps, at, next: step ? NEXT[step.name] : null }
 }
 
+const hasKdenlive = (facts?: MontageFact) =>
+  facts?.kdenlive ?? Boolean(facts?.project && !facts.edit)
+
 const montageLockOf = (group: ManifestGroup, facts?: MontageFact) =>
   group.freed
     ? ('freed' as const)
-    : facts?.kdenlive || (facts?.project && !facts.edit)
+    : hasKdenlive(facts)
       ? ('kdenlive' as const)
       : facts?.edit
         ? ('edit' as const)
@@ -56,5 +59,5 @@ const furthestBehind = (progress: MontageProgress[]) =>
     null
   )
 
-export { furthestBehind, montageLockOf, montageSteps }
+export { furthestBehind, hasKdenlive, montageLockOf, montageSteps }
 export type { MontageProgress, MontageStep }

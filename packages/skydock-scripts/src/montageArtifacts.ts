@@ -49,12 +49,22 @@ const montageArtifacts = async (outputDir: string, group: ManifestGroup) => {
   const stat = await statOrNull(path.join(dir, filmNameOf(baseName)))
   const kdenlive = await kdenliveIn(dir, baseName, entries)
   const edit = entries.includes(editNameOf(baseName))
+  const [kdenliveAt, editAt] = await Promise.all([
+    kdenlive ? statOrNull(path.join(dir, kdenlive)) : null,
+    edit ? statOrNull(path.join(dir, editNameOf(baseName))) : null
+  ])
   return {
     dir,
     baseName,
     project: Boolean(kdenlive) || edit,
     kdenlive: kdenlive ? path.join(dir, kdenlive) : null,
     edit,
+    latest:
+      kdenliveAt && (!editAt || kdenliveAt.mtimeMs > editAt.mtimeMs)
+        ? ('kdenlive' as const)
+        : editAt
+          ? ('edit' as const)
+          : null,
     projectFiles: [
       ...(kdenlive ? [path.join(dir, kdenlive)] : []),
       ...(edit ? [path.join(dir, editNameOf(baseName))] : [])
@@ -129,6 +139,7 @@ const factOf = (found: Awaited<ReturnType<typeof montageArtifacts>>, outputDir: 
   project: found.project,
   edit: found.edit,
   kdenlive: found.kdenlive !== null,
+  latest: found.latest,
   projectFiles: found.projectFiles,
   projectPath: toHostPath(
     found.projectFiles[0] ?? path.join(found.dir, `${found.baseName}.kdenlive`),

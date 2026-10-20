@@ -2,6 +2,7 @@ import { plural, t } from '@lingui/core/macro'
 import {
   filmNameOf,
   hasCompletePassenger,
+  hasKdenlive,
   lastSegment,
   passengerFrom,
   passengerName,
@@ -322,6 +323,8 @@ const MontageCardActions = ({
   onMontage,
   onKdenlive,
   onOpenMontage,
+  opensKdenlive = false,
+  onOpenKdenlive,
   onUpload,
   onEmail,
   onFree,
@@ -340,6 +343,8 @@ const MontageCardActions = ({
   onMontage: () => void
   onKdenlive?: () => void
   onOpenMontage: () => void
+  opensKdenlive?: boolean
+  onOpenKdenlive?: () => void
   onUpload: () => void
   onEmail?: { name: string; open: () => void }
   onFree?: () => void
@@ -405,13 +410,13 @@ const MontageCardActions = ({
       return (
         <Go
           disabled={working}
-          title={facts.edit ? t`Open the film editor` : t`Open this project in kdenlive`}
+          title={opensKdenlive ? t`Open this project in kdenlive` : t`Open the film editor`}
           onClick={onOpenMontage}>
           {busy === `open:${group.id}`
             ? t`Opening…`
-            : facts.edit
-              ? t`Edit the film`
-              : t`Open in kdenlive`}
+            : opensKdenlive
+              ? t`Open in kdenlive`
+              : t`Edit the film`}
         </Go>
       )
     if (!group.uploaded)
@@ -466,7 +471,7 @@ const MontageCardActions = ({
       </Upload>
       <Mini
         disabled={working}
-        title={facts.edit ? t`Open the film editor` : t`Open this project in kdenlive`}
+        title={opensKdenlive ? t`Open this project in kdenlive` : t`Open the film editor`}
         onClick={onOpenMontage}>
         <Icon
           name='open'
@@ -475,10 +480,34 @@ const MontageCardActions = ({
         />
         {busy === `open:${group.id}`
           ? t`Opening…`
-          : facts.edit
-            ? t`Edit the film`
-            : t`Open in kdenlive`}
+          : opensKdenlive
+            ? t`Open in kdenlive`
+            : t`Edit the film`}
       </Mini>
+      {opensKdenlive ? (
+        <Mini
+          disabled={working}
+          title={t`Open the film editor`}
+          onClick={onMontage}>
+          {t`Edit the film`}
+        </Mini>
+      ) : hasKdenlive(facts) && onOpenKdenlive ? (
+        <Mini
+          disabled={working}
+          title={t`Open this project in kdenlive`}
+          onClick={onOpenKdenlive}>
+          {busy === `open:${group.id}` ? t`Opening…` : t`Open in kdenlive`}
+        </Mini>
+      ) : (
+        onKdenlive && (
+          <Mini
+            disabled={working}
+            title={t`Write a kdenlive project from a template instead, and open it`}
+            onClick={onKdenlive}>
+            {busy === group.id ? t`Writing…` : t`Make a kdenlive project`}
+          </Mini>
+        )
+      )}
       <Mini
         disabled={working}
         title={t`Make the copies again from the originals — the project, the film and the archives are left alone`}

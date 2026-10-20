@@ -127,7 +127,7 @@ const covers: Record<string, string[]> = {
   'Open to the editor': [
     'leaves what the archive brought readable and writable by anyone, so the editor can open every file'
   ],
-  'The project is made once': [
+  'Each edit is made once': [
     'refuses to make a second project for a montage that has one, and the edit is left as it was'
   ],
   'An edit holds the montage': [

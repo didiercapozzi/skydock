@@ -574,7 +574,7 @@ off what is there — the name, the copies, the project, the film, the upload, t
 freed montage went through every step up to the upload, with nothing left here to show for it. A
 montage with several jumps is where the one furthest behind is, since one name is one folder.
 
-**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — edit the film, open it in kdenlive, process it again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
+**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — edit the film, open it in kdenlive or make its kdenlive project, process it again, start the edit again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
 
 **Montages done** lists the freed montages as a table — who it was for, the day, when its link was emailed (a dash while it has not been), how much is on the storage, whether its link still works — each with buttons for its storage cards and its page. With no montage left to do the Montages heading says so.
 
@@ -1494,7 +1494,8 @@ one film at a time; _Render again_ replaces the film with the edit as it now is.
 ## The editing project
 
 Instead of the film editor, a processed montage can be turned into a kdenlive editing project —
-_Make a kdenlive project_, beside _Edit the film_ — made from a copy of the chosen template
+_Make a kdenlive project_, beside _Edit the film_ and offered for as long as the montage has no kdenlive
+project, a film already edited in SkyDock included — made from a copy of the chosen template
 and named after it. The template is taken exactly as its owner made it: every track, title,
 photo and piece of music stays where it is, and nothing in it is moved, cut or faded — and nothing is
 added to its timeline either, so the tracks the editor finds are the template's own. The montage's
@@ -1571,7 +1572,11 @@ user (in a container, as root). Whatever the archive brought is left owned by th
 folder and readable and writable by anyone, whatever mode it was packed with, so the editor can open
 every file of the template.
 
-**The project is made once.** Asking again for a montage that has a project is refused.
+**Each edit is made once.** Asking again for a kdenlive project for a montage that has one is refused,
+and the film editor opens on the edit that is there. The two are not one: a montage edited in SkyDock
+can still be given a kdenlive project, and one with a kdenlive project can still be edited in SkyDock —
+both stay in reach in its ⋯ menu. With both, the next step opens the one changed last,
+and the film is whichever was rendered last.
 
 **An edit holds the montage**, each kind of edit as far as it needs and no further.
 

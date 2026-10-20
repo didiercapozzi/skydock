@@ -80,7 +80,7 @@ export { idsOf } from './lib/words'
 export { liveEventSchema, mergeRow } from './liveShape'
 export { folderOfUpload, lostOf } from './montageEntry'
 export { EDIT_LOCKED, editNameOf, filmNameOf, FREED_LOCKED } from './montageNames'
-export { furthestBehind, montageLockOf, montageSteps } from './montageSteps'
+export { furthestBehind, hasKdenlive, montageLockOf, montageSteps } from './montageSteps'
 export {
   DEFAULT_TEMPLATES,
   EMAIL_VARIABLES,

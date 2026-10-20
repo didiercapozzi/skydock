@@ -14,6 +14,7 @@ const montageFactSchema = z.object({
   project: z.boolean(),
   edit: z.boolean().optional(),
   kdenlive: z.boolean().optional(),
+  latest: z.enum(['edit', 'kdenlive']).nullable().optional(),
   projectFiles: z.array(z.string()).optional(),
   projectPath: z.string(),
   film: z

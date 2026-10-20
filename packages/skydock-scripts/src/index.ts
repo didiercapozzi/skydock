@@ -104,6 +104,7 @@ import {
   frozenMontages,
   isNamedMontage,
   lockedSaid,
+  montageArtifacts,
   montageLocks,
   sameEditedGroup,
   statMontageArtifacts
@@ -275,6 +276,7 @@ export {
   folderLock,
   FREED_LOCKED,
   lockedSaid,
+  montageArtifacts,
   montageLocks,
   importOutcomeSchema,
   isoDay,
