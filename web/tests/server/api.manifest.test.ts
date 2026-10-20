@@ -650,6 +650,21 @@ describe('changes made on the board', () => {
       expect(g?.passenger).toBeUndefined()
     })
 
+    it('is lifted by starting the edit again, which keeps the project aside and leaves the copies and the name', async () => {
+      const res = answer(
+        await send({ intent: 'start-edit-again', groupId: 'group_1', edit: 'kdenlive' })
+      )
+
+      expect(fs.existsSync(projectPath())).toBe(false)
+      expect(fs.readdirSync(path.join(tmpDir, '.projects', 'Luc Favre'))).toHaveLength(1)
+      expect(res.groups[0]?.processed).toBe(true)
+      expect(res.groups[0]?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
+      const cropped = luc()
+      cropped.files[0] = { ...cropped.files[0]!, cropStart: 1, cropEnd: 3 }
+      const saved = answer(await send({ intent: 'save-groups', groups: [cropped, other()] }))
+      expect(saved.groups[0]?.files[0]?.cropStart).toBe(1)
+    })
+
     it('is lifted by deleting the project', async () => {
       fs.rmSync(projectPath())
       const cropped = luc()
@@ -766,6 +781,19 @@ describe('changes made on the board', () => {
       const kept = res.groups.find((g) => g.id === 'group_1')?.files[0]?.processed?.path
       expect(kept).toBe(path.join(dir, 'videos', `${baseName}_one.mp4`))
       expect((await current()).files.find((f) => f.id === 'a')?.processed?.path).toBe(kept)
+    })
+
+    it('starts its edit again, keeping it aside and leaving the copies and the film', async () => {
+      const { dir, baseName } = where(luc())
+
+      await send({ intent: 'start-edit-again', groupId: 'group_1' })
+
+      expect(fs.existsSync(path.join(dir, `${baseName}.edit.json`))).toBe(false)
+      expect(fs.readFileSync(path.join(dir, `${baseName}.mp4`), 'utf-8')).toBe('the film')
+      expect(fs.readdirSync(path.join(dir, 'videos'))).toHaveLength(2)
+      const kept = fs.readdirSync(path.join(tmpDir, '.projects', 'Luc Favre'))
+      expect(kept).toHaveLength(1)
+      expect(kept[0]).toMatch(/\.edit\.json$/)
     })
 
     it('refuses a new name another montage’s folder already has, and moves nothing', async () => {

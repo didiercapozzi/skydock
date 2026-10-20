@@ -492,7 +492,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     setProblem(
       held.freed
         ? t`${who}’s montage was freed from this machine — give this one another name, such as “${who} 2”.`
-        : t`${who}’s montage has a kdenlive project — change it in kdenlive.`
+        : t`${who}’s montage has a kdenlive project — change it in kdenlive, or start the edit again.`
     )
     return true
   }

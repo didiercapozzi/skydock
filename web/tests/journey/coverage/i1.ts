@@ -160,6 +160,8 @@ const covers: Record<string, string[]> = {
 const exempt: Record<string, string> = {
   'An edit SkyDock cannot read':
     'An unreadable edit is one a newer SkyDock or a hand wrote, which no step of the journey makes; the film editor’s browser test walks the editor saying it was kept aside, and the scripts’ test that it is set aside whole and never written over.',
+  'Starting the edit again':
+    'Taking the edit away is one file kept aside and removed, with nothing processed or rendered; the board’s browser test walks the question and the choice, and the server tests that the copies, the film and the name stay and the lock goes.',
   'Taking the next step from where it is said':
     'The step is taken from the trail on the Montages page when no montage is open there, which the board never leaves it at: it opens the first montage itself, so no click reaches the trail; each step’s own button is walked in the six steps and project chapters.'
 }

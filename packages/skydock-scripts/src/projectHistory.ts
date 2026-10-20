@@ -9,24 +9,29 @@ const EDITS = ['.kdenlive', '.edit.json'] as const
 
 const keptProjectsDir = (outputDir: string) => join(outputDir, HISTORY)
 
-const keepOne = async (folder: string, dir: string, baseName: string, ending: string, at: Date) => {
-  const project = join(dir, `${baseName}${ending}`)
+const keepOne = async (folder: string, dir: string, stem: string, ending: string, at: Date) => {
+  const project = join(dir, `${stem}${ending}`)
   if (!(await pathExists(project))) return null
   await mkdir(folder, { recursive: true })
   const newest = (await readdir(folder))
-    .filter((entry) => entry.endsWith(ending))
+    .filter((entry) => entry.startsWith(`${stem}-`) && entry.endsWith(ending))
     .sort()
     .at(-1)
   if (newest && (await sameBytes(project, join(folder, newest)))) return null
-  const target = join(folder, `${baseName}-${stampOf(at)}${ending}`)
+  const target = join(folder, `${stem}-${stampOf(at)}${ending}`)
   await copyFile(project, target)
   return target
 }
 
 const keepProject = async (outputDir: string, dir: string, baseName: string, at = new Date()) => {
   const folder = join(keptProjectsDir(outputDir), basename(dir))
+  const others = (await readdir(dir).catch(() => [] as string[])).filter(
+    (entry) => entry.endsWith('.kdenlive') && entry !== `${baseName}.kdenlive`
+  )
   const kept = []
   for (const ending of EDITS) kept.push(await keepOne(folder, dir, baseName, ending, at))
+  for (const other of others)
+    kept.push(await keepOne(folder, dir, other.slice(0, -'.kdenlive'.length), '.kdenlive', at))
   return kept.find((target) => target !== null) ?? null
 }
 

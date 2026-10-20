@@ -1580,7 +1580,7 @@ every file of the template.
   any of that would break it silently. So once a montage has a kdenlive project, what decides those
   names and which files there are is fixed: no trim, frame or turn, no file in or out, no re-timing, no
   new name, no other jump joining the montage. Its files show a lock and say why, in the same words
-  wherever the lock is met. Previewing, opening the
+  wherever the lock is met: change it in kdenlive, or start the edit again. Previewing, opening the
   project and uploading go on.
 - **The film editor's edit lets the montage go on changing under it.** The editor reads the copies again
   each time it opens, so files and jumps come in and go out, and clips are trimmed, framed, turned and
@@ -1596,14 +1596,23 @@ every file of the template.
   an edit. A name a freed montage had is not joined: the refusal says to give the new montage another
   name, such as "Luc Favre 2".
 
-Resetting the montage, or deleting its edit, lifts the lock.
+Resetting the montage, or starting the edit again, lifts the lock.
+
+**Starting the edit again.** _Start the edit again…_ in the ⋯ menu of a montage that has an edit asks
+first, naming the edit it takes away — the film editor's, the kdenlive project, or one of the two when
+it has both — then keeps it aside as every version is kept and takes it away. Nothing else moves: the
+copies, the film rendered last, the name, every trim, frame and time stay, so a montage frozen by a
+kdenlive project can take a file again, or a kdenlive project made from the wrong template can be made
+anew, without processing forty clips again. The film editor then starts from the clips laid end to end.
+Deleting the edit by hand does the same, without the copy kept aside.
 
 **The edit is kept aside, every version of it.** Before SkyDock does anything to a montage that could
 stand between the person and those hours — preparing it again, resetting it, deleting it — the project
 as it stands is copied into a folder of kept edits, under the montage's folder name and the moment
 it was kept. What is kept is what changed, so pressing the same button twice leaves one version rather
 than two, and nothing there is ever deleted, not even when the montage is: a project is a few hundred
-kilobytes beside the gigabytes it describes. It also travels with every backup, whatever else was
+kilobytes beside the gigabytes it describes. Every kdenlive project in the montage's folder is kept so, whatever kdenlive's
+_Save as_ named it. It also travels with every backup, whatever else was
 chosen to go — the edit exists nowhere else, and a tick nobody remembers is no protection at all.
 **An edit SkyDock cannot read** — one written by a newer SkyDock, or changed by hand past what the
 editor allows — **is never written over.** Opening the editor puts it whole among the kept edits under a
@@ -1632,7 +1641,7 @@ and the record of what was uploaded. They differ in what they leave behind.
 | **Reset**, to before processing | kept               | kept                          | kept, still a montage                         |
 | **Delete**, undoing the montage | forgotten          | forgotten                     | loose in Fresh files, on their cameras' times |
 
-Reset is how an edit is started over. Delete works at whatever step the montage has reached — named,
+Starting the edit again is how an edit alone is started over; Reset goes back to before processing. Delete works at whatever step the montage has reached — named,
 processed, edited, rendered, uploaded or emailed — and is offered on the montage's own panel as well as
 on its page; regrouping puts its files back into jumps. Only a freed montage cannot be
 deleted: nothing of it is left on this machine to put back.

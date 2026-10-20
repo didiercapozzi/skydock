@@ -435,6 +435,15 @@ const MontageMenu = ({
           {t`Trim every clip to the jump`}
         </MenuItem>
       )}
+      {facts?.project && !group.freed && (
+        <MenuItem
+          icon='back'
+          disabled={busy}
+          title={t`Keep the edit aside and take it away — the copies and the film stay`}
+          onClick={act(() => model.setDialog({ kind: 'start-again', groupId: group.id }))}>
+          {t`Start the edit again…`}
+        </MenuItem>
+      )}
       {!group.freed && (
         <MenuItem
           icon='back'

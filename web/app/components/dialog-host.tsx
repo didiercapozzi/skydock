@@ -18,6 +18,8 @@ import { RemoveFilesDialog } from './remove-files-dialog'
 import { NameMontageDialog } from './name-montage-dialog'
 import { NasFolderBrowser } from './nas-folder-browser'
 import { ResetFreshDialog } from './reset-fresh-dialog'
+import { StartAgainDialog } from './start-again-dialog'
+import type { StartAgainWhich } from './start-again-dialog'
 import { TakeBackDialog } from './take-back-dialog'
 import { FilmTemplatesDialog } from './film-templates-dialog'
 import { TemplatesDialog } from './templates-dialog'
@@ -42,6 +44,7 @@ type BoardDialog =
   | UploadDialogState
   | SendDialogState
   | { kind: 'take-back'; mode: TakeBackMode; who: string }
+  | { kind: 'start-again'; groupId: string }
   | { kind: 'free'; groupId: string }
   | { kind: 'free-place'; place: string }
   | { kind: 'remove-place'; place: string }
@@ -81,6 +84,7 @@ const DialogHost = ({
   onRemovePlace,
   onDisconnect,
   onTakeBack,
+  onStartAgain,
   onDeleteJump,
   onMontage,
   passengers,
@@ -119,6 +123,7 @@ const DialogHost = ({
   onRemovePlace: (place: string) => void
   onDisconnect: () => void
   onTakeBack: (mode: TakeBackMode, group: ManifestGroup) => void
+  onStartAgain: (group: ManifestGroup, which: StartAgainWhich) => void
   onDeleteJump: (group: ManifestGroup) => void
   onMontage: (groupId: string, template: string) => void
   passengers: Passenger[]
@@ -337,6 +342,21 @@ const DialogHost = ({
               facts={theirs.map((g) => facts[g.id])}
               onClose={close}
               onConfirm={() => onTakeBack(dialog.mode, first)}
+            />
+          )
+        })()}
+
+      {dialog?.kind === 'start-again' &&
+        (() => {
+          const group = groups.find((g) => g.id === dialog.groupId)
+          const known = group && facts[group.id]
+          if (!group || !known?.project) return null
+          return (
+            <StartAgainDialog
+              who={passengerOf(group)}
+              facts={known}
+              onClose={close}
+              onConfirm={(which) => onStartAgain(group, which)}
             />
           )
         })()}

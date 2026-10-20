@@ -8,10 +8,8 @@ import {
   idsOf
 } from '@skydock/scripts'
 import type { ManifestGroup } from '@skydock/scripts'
-import {
-  renameEditedMontage,
-  sharingFolder
-} from '../../../../packages/skydock-scripts/src/renameMontage'
+import { renameEditedMontage } from '../../../../packages/skydock-scripts/src/renameMontage'
+import { sharingFolder } from '../../../../packages/skydock-scripts/src/resetMontage'
 import { boardAnswer } from '../../helpers/manifest'
 import { placeNameProblem } from '../../helpers/places'
 import type { Intent } from './change'

@@ -7,7 +7,7 @@ import { editNameOf, filmNameOf } from './montageNames'
 import { getGroupProcessedDir, processingNow } from './process'
 import { keepProject } from './projectHistory'
 import { getCutProxyDir } from './proxy'
-import type { Manifest, ManifestFile, ManifestGroup } from './types'
+import type { ManifestFile, ManifestGroup } from './types'
 import { hasCompletePassenger, passengerOf } from './workspace'
 
 const moveIfThere = async (from: string, to: string) => {
@@ -88,9 +88,4 @@ const renameEditedMontage = async ({
   return null
 }
 
-const sharingFolder = (manifest: Manifest, outputDir: string, group: ManifestGroup) => {
-  const { dir } = getGroupProcessedDir(outputDir, group)
-  return manifest.groups.filter((g) => getGroupProcessedDir(outputDir, g).dir === dir)
-}
-
-export { renameEditedMontage, sharingFolder }
+export { renameEditedMontage }

@@ -4,7 +4,7 @@ import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { shotTimes } from './scan'
 import { keepProject } from './projectHistory'
-import { isNamedMontage } from './montageArtifacts'
+import { isNamedMontage, montageArtifacts } from './montageArtifacts'
 import type { Manifest, ManifestGroup } from './types'
 import { idsOf } from './lib/words'
 
@@ -83,10 +83,32 @@ const takeBack = async (
   return { groupIds: [...taken] }
 }
 
+const startEditAgain = async (
+  manifest: Manifest,
+  outputDir: string,
+  groupId: string,
+  which?: 'edit' | 'kdenlive'
+) => {
+  const group = manifest.groups.find((g) => g.id === groupId)
+  if (!group || !isNamedMontage(group)) throw new Error('Montage not found.')
+  if (group.freed)
+    throw new Error('This montage lives only on the storage now — there is no edit here.')
+  const found = await montageArtifacts(outputDir, group)
+  const going = found.projectFiles.filter(
+    (file) => which === undefined || (which === 'edit') === file.endsWith('.edit.json')
+  )
+  if (going.length === 0) throw new Error('This montage has no such edit to start again.')
+  await keepProject(outputDir, found.dir, found.baseName)
+  for (const file of going) await rm(file, { force: true })
+  if (going.some((file) => file.endsWith('.kdenlive')))
+    for (const jump of sharingFolder(manifest, outputDir, group)) delete jump.montage
+  return { groupIds: [group.id] }
+}
+
 const resetMontage = (manifest: Manifest, outputDir: string, groupId: string) =>
   takeBack(manifest, outputDir, groupId, false)
 
 const deleteMontage = (manifest: Manifest, outputDir: string, groupId: string) =>
   takeBack(manifest, outputDir, groupId, true)
 
-export { deleteMontage, resetMontage }
+export { deleteMontage, resetMontage, sharingFolder, startEditAgain }

@@ -386,6 +386,11 @@ const Board = ({ loaderData }: Route.ComponentProps) => {
             if (mode === 'delete') model.pickPlace({ kind: 'sort' })
           })
         }
+        onStartAgain={(group, which) =>
+          closeThen(() =>
+            send('start-again', { intent: 'start-edit-again', groupId: group.id, edit: which })
+          )
+        }
         onDeleteJump={(group) => closeThen(() => model.deleteJump(group, true))}
         onResetFresh={(what) =>
           closeThen(() => {

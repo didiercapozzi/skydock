@@ -92,6 +92,14 @@ describe('the film editor’s edit, kept aside', () => {
     ])
   })
 
+  it('keeps a kdenlive project saved under another name as well', async () => {
+    fs.writeFileSync(path.join(dir, 'luc final.kdenlive'), '<mlt>saved as</mlt>')
+
+    await keepProject(outputDir, dir, BASE, new Date(2026, 8, 21, 18, 5, 12))
+
+    expect(kept()).toEqual(['luc final-2026-09-21T18-05-12.kdenlive'])
+  })
+
   it('sets an edit that cannot be read aside whole, says why, and leaves no edit in its place', async () => {
     const hours = '{"version":1,"clips":"an afternoon of work"}'
     fs.writeFileSync(edit(), hours)

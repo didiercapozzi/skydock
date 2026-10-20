@@ -136,3 +136,57 @@ describe('processing a dropzone', () => {
     await expect.poll(() => sent.map((b) => b.intent)).toEqual(['process', 'cancel-process'])
   })
 })
+
+describe('starting the edit again', () => {
+  const edited = boardOf({
+    groups: [{ ...montage('g7', { firstname: 'Luc', lastname: 'Favre' }), processed: true }],
+    montages: {
+      g7: {
+        project: true,
+        edit: true,
+        kdenlive: true,
+        projectPath: '/o/luc.kdenlive',
+        film: null,
+        baseName: 'luc_favre_20260801'
+      }
+    }
+  })
+  const sent: { intent: string; edit?: string }[] = []
+  const openMenu = async () => {
+    sent.length = 0
+    const Stub = createRoutesStub([
+      boardRoute(() => edited),
+      {
+        path: '/api/manifest',
+        action: async ({ request }) => {
+          sent.push(await request.json())
+          return { ok: true }
+        }
+      }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    await userEvent.click(page.getByRole('link', { name: /Luc Favre/ }).first())
+    await userEvent.click(page.getByRole('button', { name: 'More', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Start the edit again…' }))
+  }
+
+  test('asks first, naming each edit it would take away and what stays', async () => {
+    await openMenu()
+    const dialog = page.getByRole('dialog', { name: 'Start the edit again' })
+
+    await expect.element(dialog.getByText('the film editor’s edit')).toBeVisible()
+    await expect.element(dialog.getByText('the kdenlive project')).toBeVisible()
+    await expect.element(dialog.getByText('the copies, and the film rendered last')).toBeVisible()
+    await userEvent.click(dialog.getByRole('button', { name: 'Cancel' }))
+    expect(sent).toEqual([])
+  })
+
+  test('starts the one chosen again, and only that one', async () => {
+    await openMenu()
+    await userEvent.click(page.getByRole('button', { name: 'Start the kdenlive project again' }))
+
+    await expect
+      .poll(() => sent.find((one) => one.intent === 'start-edit-again'))
+      .toMatchObject({ intent: 'start-edit-again', groupId: 'g7', edit: 'kdenlive' })
+  })
+})

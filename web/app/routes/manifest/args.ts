@@ -58,6 +58,7 @@ const actionArgs = z.object({
     /* back to before processing, keeping every decision — or undone altogether */
     'reset-montage',
     'delete-montage',
+    'start-edit-again',
     /* delete it from this machine, once the storage is proved to hold it all */
     'free-montage',
     /* what of a dropzone is proved on the storage, deleted from this machine */
@@ -110,6 +111,7 @@ const actionArgs = z.object({
     })
     .optional(),
   resetWhat: z.enum(['times', 'everything']).optional(),
+  edit: z.enum(['edit', 'kdenlive']).optional(),
   name: z.string().optional(),
   plan: sendPlanSchema.optional(),
   emailed: z

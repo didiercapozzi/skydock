@@ -29,21 +29,29 @@ describe('an edit freezes the montage', () => {
     await makeAndPrepare(j)
     await makeProject(j.page, path.join(j.world.computer, 'club'))
     await j.page
-      .getByText('This montage has a kdenlive project — change it in kdenlive.')
+      .getByText(
+        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
+      )
       .first()
       .waitFor()
     expect(await j.page.getByRole('button', { name: /^Pick luc_favre/ }).count()).toBe(0)
     expect(await j.page.getByRole('button', { name: 'Change the name' }).count()).toBe(0)
     await j.page.getByText('luc_favre_20260906_090000.mp4').first().click()
     await details(j.page)
-      .getByText('This montage has a kdenlive project — change it in kdenlive.')
+      .getByText(
+        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
+      )
       .waitFor()
 
     await j.page.getByText('luc_favre_20260906_090000.mp4').first().dblclick()
     const dialog = preview(j.page)
     await dialog.waitFor()
     await dialog.getByRole('button', { name: '▶ Play' }).waitFor()
-    await dialog.getByText('This montage has a kdenlive project — change it in kdenlive.').waitFor()
+    await dialog
+      .getByText(
+        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
+      )
+      .waitFor()
     expect(await dialog.getByRole('button', { name: 'Save', exact: true }).count()).toBe(0)
     await dialog.getByRole('button', { name: 'Cancel' }).click()
     await dialog.waitFor({ state: 'detached' })
@@ -58,7 +66,9 @@ describe('an edit freezes the montage', () => {
     await j.page.getByText('Joins Luc Favre’s montage').waitFor()
     await j.page.getByRole('button', { name: 'Join montage' }).click()
     await j.page
-      .getByText('Luc Favre’s montage has a kdenlive project — change it in kdenlive.')
+      .getByText(
+        'Luc Favre’s montage has a kdenlive project — change it in kdenlive, or start the edit again.'
+      )
       .first()
       .waitFor()
     expect(groupsOf(j.world).filter((g) => g.passenger)).toHaveLength(1)
@@ -150,7 +160,9 @@ describe('the edit is kept aside, every version of it', () => {
     fs.writeFileSync(projectFile(j.world), mine)
     await stepOf('to upload')
     await j.page
-      .getByText('This montage has a kdenlive project — change it in kdenlive.')
+      .getByText(
+        'This montage has a kdenlive project — change it in kdenlive, or start the edit again.'
+      )
       .first()
       .waitFor()
     await quiet()

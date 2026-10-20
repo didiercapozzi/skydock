@@ -113,14 +113,16 @@ describe('processing a montage again', () => {
     expect(inside(path.join(outputDir, 'proxies', 'cut', 'g1'))).toHaveLength(1)
   })
 
-  it('keeps nothing aside — no bin, no copy of the copy', async () => {
+  it('keeps nothing aside — no bin, no copy of the copy — but the edit', async () => {
     await prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
     addEdit()
     const after = everything()
 
     await prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
 
-    expect(everything()).toEqual(after)
+    const kept = everything().filter((file) => file.startsWith('.projects'))
+    expect(kept).toEqual([expect.stringMatching(/^\.projects\/Luc Favre\/luc_favre-.*\.kdenlive$/)])
+    expect(everything().filter((file) => !kept.includes(file))).toEqual(after)
     expect(fs.existsSync(path.join(outputDir, '.trash'))).toBe(false)
   })
 

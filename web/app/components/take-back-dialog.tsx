@@ -53,7 +53,7 @@ const TakeBackDialog = ({
         <Line mark='✕'>{t`${processed}, and the working copies made for the editor`}</Line>
         {project && (
           <Line mark='✕'>
-            <b className='text-changed'>{t`the edit itself, which cannot be undone`}</b>
+            <b className='text-changed'>{t`the edit itself — a copy of it is kept aside in .projects`}</b>
           </Line>
         )}
         {film && <Line mark='✕'>{t`the rendered film (${filmSize})`}</Line>}
