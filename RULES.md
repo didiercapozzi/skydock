@@ -745,7 +745,7 @@ joins this jump as well and stays in that one** — a briefing filmed once belon
 the day — and each jump holds it as its own, with its own trim, off the one original on the disk. An
 edit on the jump it is already in is no obstacle, since nothing about that jump changes. Dropped
 anywhere else it is a file on its own, so it moves there as a drag would have moved it, and one the
-jump it is in will not let go of stays where it is with the reason said. Footage a jump already holds
+jump it is in will not let go of stays where it is with the reason said. Footage whose copy here was freed after its upload is a drop like any other: the file dropped is the very footage, so its bytes are put back where the copy was, it is no longer said to live on the storage only, and the drop then means what it would for any footage on the board, whether or not the storage is connected. Footage a jump already holds
 is left alone. What is not a video or a photo is refused, and so is a drop on a montage that has a
 kdenlive project or lives on the storage only. The board says what came of the drop, and a file nothing happened to is
 not called a failure.

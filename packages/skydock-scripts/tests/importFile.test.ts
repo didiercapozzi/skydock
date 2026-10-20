@@ -133,6 +133,28 @@ describe('adding a file from the computer', () => {
     expect(fs.existsSync(path.join(outputDir, '.incoming'))).toBe(false)
   })
 
+  it('puts the bytes back where they were when the file was freed from this machine after its upload', async () => {
+    await setup()
+    await add('clip.mp4', 'same', { kind: 'sort' })
+    const before = (await loadManifestAsync(manifestPath()))!
+    const held = before.files[0]!
+    fs.rmSync(held.path)
+    before.files[0] = {
+      ...held,
+      freed: true,
+      uploaded: { remotePath: '/v/clip.mp4', md5: 'x', size: 4, localPath: held.path, at: 1 }
+    }
+    await saveManifest(manifestPath(), before)
+
+    const again = await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
+
+    expect(again).toMatchObject({ outcome: 'moved' })
+    expect(fs.readFileSync(held.path, 'utf8')).toBe('same')
+    const after = (await loadManifestAsync(manifestPath()))!
+    expect(after.files[0]?.freed).toBeUndefined()
+    expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['clip.mp4'])
+  })
+
   it('says so, and changes nothing, when it is already exactly there', async () => {
     await setup()
     await add('clip.mp4', 'same', { kind: 'destination', name: 'Yverdon' })

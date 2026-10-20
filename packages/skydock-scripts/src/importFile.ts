@@ -1,10 +1,11 @@
-import { rename, rm, stat, utimes } from 'node:fs/promises'
+import { mkdir, rename, rm, stat, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import { pipeline } from 'node:stream/promises'
 import type { Readable } from 'node:stream'
 import { MEDIA_EXTENSIONS_SET } from './constants'
 import { counted } from './lib/counted'
 import { incomingPartial, removeIfEmpty } from './lib/fs'
+import { restored } from './bringBack'
 import { originalEntry } from './fileId'
 import { gentleWriter } from './lib/gentle'
 import { landingFor } from './copy'
@@ -159,8 +160,19 @@ const importFile = async ({
     const manifest = await checkTarget()
     const existing = manifest.files.find((f) => f.id === id)
     if (existing) {
+      if (existing.freed) {
+        await mkdir(path.dirname(existing.path), { recursive: true })
+        await rename(partial, existing.path)
+        restored(manifest, id, id, (await stat(existing.path)).size, true)
+        await saveManifest(manifestPath, manifest)
+      }
       await rm(partial, { force: true })
-      const result = await placeExisting(manifest, outputDir, existing, target)
+      const result = await placeExisting(
+        manifest,
+        outputDir,
+        manifest.files.find((f) => f.id === id)!,
+        target
+      )
       if (result.outcome === 'moved' || result.outcome === 'copied')
         await saveManifest(manifestPath, manifest)
       return result
