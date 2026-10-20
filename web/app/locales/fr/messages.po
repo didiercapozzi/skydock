@@ -927,6 +927,11 @@ msgstr "Un modèle pour le montage de {who}"
 msgid "A text goes in at the playhead. Drag it in the picture to place it."
 msgstr "Le texte arrive à la tête de lecture. Faites-le glisser dans l’image pour le placer."
 
+#. placeholder {0}: sizeWords(estimatedBytes(size.points, crf, timelineEnd(edit), heard))
+#: app/components/film-editor.tsx
+msgid "About {0}"
+msgstr "Environ {0}"
+
 #: app/components/about-dialog.tsx
 msgid "About SkyDock"
 msgstr "À propos de SkyDock"
@@ -2274,6 +2279,10 @@ msgstr "Esc"
 #: app/helpers/filmKeys.ts
 msgid "Esc closes the editor and its dialogs"
 msgstr "Échap ferme l’éditeur et ses fenêtres"
+
+#: app/components/film-editor.tsx
+msgid "Estimating the size…"
+msgstr "Estimation de la taille…"
 
 #: app/components/templates-dialog.tsx
 msgid "every file here"

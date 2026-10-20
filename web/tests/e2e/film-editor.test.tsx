@@ -2361,12 +2361,18 @@ describe('the output of the film', () => {
   const start = async (
     formats: string[],
     onClose: () => void = () => {},
-    edit: Record<string, unknown> = {}
+    edit: Record<string, unknown> = {},
+    estimate: unknown = [
+      { crf: 12, bytesPerSecond: 5_000_000 },
+      { crf: 40, bytesPerSecond: 200_000 }
+    ]
   ) => {
     const posts: Array<{ intent?: string; edit: { output?: Record<string, unknown> } }> = []
     vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
       if (init?.method === 'POST') {
-        posts.push(JSON.parse(String(init.body)))
+        const body = JSON.parse(String(init.body))
+        if (body.intent === 'estimate') return Response.json({ estimate })
+        posts.push(body)
         return Response.json({ ok: true })
       }
       return Response.json({ ...answer, formats, edit: { ...answer.edit, ...edit } })
@@ -2419,6 +2425,28 @@ describe('the output of the film', () => {
     await expect.element(page.getByText('0%', { exact: true })).toBeVisible()
     await expect.element(page.getByText('Smallest file')).toBeVisible()
     await expect.element(page.getByText('Best quality')).toBeVisible()
+  })
+
+  test('says about how big the film will be, from what was measured, and follows the quality slider', async () => {
+    await start(['h264'])
+    await open()
+
+    await expect.element(page.getByText('About 23 MB', { exact: true })).toBeVisible()
+
+    page.getByRole('slider', { name: 'Quality' }).element().focus()
+    await userEvent.keyboard('{End}')
+
+    await expect.element(page.getByText('About 80 MB', { exact: true })).toBeVisible()
+    await userEvent.keyboard('{Home}')
+    await expect.element(page.getByText('About 3 MB', { exact: true })).toBeVisible()
+  })
+
+  test('says it is estimating until the measure is back, and says nothing when there is nothing to measure', async () => {
+    await start(['h264'], () => {}, {}, null)
+    await open()
+
+    await expect.element(page.getByText('Estimating the size…')).not.toBeInTheDocument()
+    await expect.element(page.getByText(/^About /)).not.toBeInTheDocument()
   })
 
   test('renders only from the button of the panel, which saves the edit and leaves the editor', async () => {

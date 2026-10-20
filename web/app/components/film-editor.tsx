@@ -7,6 +7,9 @@ import {
   DAY_TOKEN,
   editAnswerSchema,
   DUCK_RAMP,
+  estimateKey,
+  estimatedBytes,
+  sizeWords,
   fadeInOf,
   fadeInto,
   fadeOutOf,
@@ -119,6 +122,12 @@ const fadeWhy = (blocked: ReturnType<typeof fadeBlock>) =>
         : t`Fade the picked clip in over the end of the clip before it`
 
 type Loaded = Extract<z.infer<typeof editAnswerSchema>, { ok: true }>
+type SizePoint = { crf: number; bytesPerSecond: number }
+
+const estimateAnswerSchema = z.object({
+  estimate: z.array(z.object({ crf: z.number(), bytesPerSecond: z.number() })).nullable()
+})
+
 type Library = 'clips' | 'music' | 'images' | 'text'
 
 const LENGTH = { min: 5, max: 3600 }
@@ -143,6 +152,8 @@ const PRESSED = 'button, input[type=checkbox]'
 const ARROWED = '[role=slider], input[type=range]'
 
 const COLOURS = ['#ffffff', '#ffd84d', '#ff8a5c', '#7fd3ff', '#0f2f47'] as const
+
+const SIZE_AFTER = 600
 
 const SAMPLE_SIZE = 0.07
 const SAMPLE_SCALE = { min: 0.7, max: 1.3 }
@@ -769,6 +780,7 @@ const Inspector = ({
   renderOpen,
   rendering,
   again,
+  size,
   onChange,
   onOpenPart,
   onRemove,
@@ -785,6 +797,7 @@ const Inspector = ({
   renderOpen: boolean
   rendering: boolean
   again: boolean
+  size: { measuring: boolean; points: SizePoint[] | null }
   onChange: (edit: FilmEdit) => void
   onOpenPart: (id: string) => void
   onRemove: () => void
@@ -804,6 +817,9 @@ const Inspector = ({
   )
   const many = picked !== null && also.length > 0
   const crf = edit.output?.crf ?? OUTPUT_CRF[edit.output?.format ?? 'h264']
+  const heard =
+    edit.music.length > 0 ||
+    edit.clips.some((clip) => clip.sound && sources.get(clip.name)?.sound === true)
   const solo = many ? null : picked
   const clip = solo?.kind === 'clip' ? edit.clips.find((one) => one.id === solo.id) : undefined
   const clipIndex = clip ? edit.clips.indexOf(clip) : -1
@@ -1453,6 +1469,15 @@ const Inspector = ({
               <span>{t`Smallest file`}</span>
               <span>{t`Best quality`}</span>
             </p>
+            {size.measuring ? (
+              <p className='m-0 text-body text-ink-3'>{t`Estimating the size…`}</p>
+            ) : (
+              size.points && (
+                <p className='m-0 text-body font-medium text-ink'>
+                  {t`About ${sizeWords(estimatedBytes(size.points, crf, timelineEnd(edit), heard))}`}
+                </p>
+              )
+            )}
             <Go
               disabled={edit.clips.length === 0 || rendering}
               title={t`Render the film into the montage’s folder, from the processed copies`}
@@ -1565,6 +1590,27 @@ const FilmEditor = ({
   useEffect(() => {
     if (picked) setRenderOpen(false)
   }, [picked])
+  const [sized, setSized] = useState<{ key: string; points: SizePoint[] | null } | null>(null)
+  const sizeKey = edit && renderOpen && !scratch ? estimateKey(groupId ?? '', edit) : null
+  useEffect(() => {
+    if (!sizeKey) return
+    const timer = setTimeout(() => {
+      const asked = latest.current
+      if (!asked || !groupId) return
+      routingEngine
+        .action({
+          url: '/api/edit',
+          searchParamsArgs: { groupId },
+          actionArgs: { intent: 'estimate', groupId, edit: asked }
+        })
+        .then((answer) => {
+          const parsed = estimateAnswerSchema.safeParse(answer)
+          setSized({ key: sizeKey, points: parsed.success ? parsed.data.estimate : null })
+        })
+        .catch(() => setSized({ key: sizeKey, points: null }))
+    }, SIZE_AFTER)
+    return () => clearTimeout(timer)
+  }, [sizeKey, groupId])
   const [readAgain, setReadAgain] = useState(0)
   const [starting, setStarting] = useState<Listed | null>(null)
   const [templating, setTemplating] = useState(false)
@@ -2466,6 +2512,10 @@ const FilmEditor = ({
               renderOpen={renderOpen}
               rendering={rendering}
               again={Boolean(loaded?.film)}
+              size={{
+                measuring: sizeKey !== null && sized?.key !== sizeKey,
+                points: sized?.key === sizeKey ? sized.points : null
+              }}
               onChange={change}
               onOpenPart={setPartOf}
               onRemove={removePicked}

@@ -182,6 +182,64 @@ type TextEffect = (typeof TEXT_EFFECTS)[number]
 type TextFont = (typeof TEXT_FONTS)[number]
 type Span = { from: number; to: number; under?: number; ramp?: number }
 
+const SAMPLE_SECONDS = 3
+const SAMPLE_COUNT = 3
+const AUDIO_BYTES_PER_SECOND = 24_000
+
+const sampleWindows = (edit: FilmEdit, sources: Map<string, { still?: boolean | undefined }>) => {
+  const videos = edit.clips.filter(
+    (clip) => sources.has(clip.name) && !sources.get(clip.name)?.still && clip.end > clip.start
+  )
+  const count = Math.min(SAMPLE_COUNT, videos.length)
+  return Array.from({ length: count }, (_, i) => {
+    const clip = videos[Math.floor(((i + 0.5) * videos.length) / count)]!
+    const length = clip.end - clip.start
+    const start = length <= SAMPLE_SECONDS ? clip.start : clip.start + (length - SAMPLE_SECONDS) / 2
+    return {
+      clipId: clip.id,
+      start,
+      end: length <= SAMPLE_SECONDS ? clip.end : start + SAMPLE_SECONDS
+    }
+  })
+}
+
+const estimateKey = (groupId: string, edit: FilmEdit) =>
+  JSON.stringify([
+    groupId,
+    edit.output?.format ?? 'h264',
+    edit.output?.fps ?? 30,
+    edit.clips.map((clip) => [
+      clip.name,
+      clip.start,
+      clip.end,
+      clip.speed,
+      clip.frame,
+      clip.rotation
+    ])
+  ])
+
+const sizeAtCrf = (points: Array<{ crf: number; bytesPerSecond: number }>, crf: number) => {
+  const [first, last] = [...points]
+    .sort((a, b) => a.crf - b.crf)
+    .filter((_, i, all) => i === 0 || i === all.length - 1)
+  if (!first || !last || first.crf === last.crf) return first?.bytesPerSecond ?? 0
+  const share = (crf - first.crf) / (last.crf - first.crf)
+  return Math.exp(
+    Math.log(first.bytesPerSecond) +
+      (Math.log(last.bytesPerSecond) - Math.log(first.bytesPerSecond)) * share
+  )
+}
+
+const estimatedBytes = (
+  points: Array<{ crf: number; bytesPerSecond: number }>,
+  crf: number,
+  seconds: number,
+  heard: boolean
+) => (sizeAtCrf(points, crf) + (heard ? AUDIO_BYTES_PER_SECOND : 0)) * seconds
+
+const sizeWords = (bytes: number) =>
+  bytes < 1e9 ? `${Math.round(bytes / 1e6)} MB` : `${(bytes / 1e9).toFixed(1)} GB`
+
 const imageAsStill = (image: ImageSource): EditSource => ({
   name: image.name,
   path: image.path,
@@ -370,7 +428,12 @@ export {
   filmEditSchema,
   filmLength,
   heardSpans,
+  estimateKey,
+  estimatedBytes,
   imageAsStill,
+  sampleWindows,
+  sizeAtCrf,
+  sizeWords,
   MUSIC_EXTENSIONS,
   musicCrossfadeOf,
   musicFadesOf,

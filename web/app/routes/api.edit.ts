@@ -29,6 +29,7 @@ import {
   isRendering,
   renderFilm
 } from '../../../packages/skydock-scripts/src/filmRender'
+import { estimateFor } from '../../../packages/skydock-scripts/src/filmEstimate'
 import { filmNameOf } from '../../../packages/skydock-scripts/src/montageNames'
 import { pathExists } from '../../../packages/skydock-scripts/src/lib/fs'
 import { routingEngine } from '../helpers/routing'
@@ -37,7 +38,7 @@ import type { Route } from './+types/api.edit'
 const searchParamsArgs = z.object({ groupId: z.string() })
 
 const actionArgs = z.object({
-  intent: z.enum(['save', 'render']),
+  intent: z.enum(['save', 'render', 'estimate']),
   groupId: z.string(),
   edit: filmEditSchema
 })
@@ -93,6 +94,8 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     if (!found.ok) return refuse(found.refused)
     const { manifest, group, outputDir } = found
     try {
+      if (data.intent === 'estimate')
+        return { estimate: await estimateFor({ manifest, outputDir, group, edit: data.edit }) }
       await readOrSetAside(outputDir, editPathOf(outputDir, group))
       await saveEdit(editPathOf(outputDir, group), data.edit)
       if (data.intent === 'save') return { saved: true, rendering: isRendering(group.id) }
