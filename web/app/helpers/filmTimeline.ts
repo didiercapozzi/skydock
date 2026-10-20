@@ -519,7 +519,8 @@ const nearestBoundary = (edit: FilmEdit, t: number) =>
 const moveBlocks = (edit: FilmEdit, to: (at: number) => number) => ({
   ...edit,
   texts: edit.texts.map((text) => ({ ...text, at: to(text.at) })),
-  music: edit.music.map((piece) => ({ ...piece, at: to(piece.at) }))
+  music: edit.music.map((piece) => ({ ...piece, at: to(piece.at) })),
+  ...(edit.layers ? { layers: edit.layers.map((layer) => ({ ...layer, at: to(layer.at) })) } : {})
 })
 
 const rippleBy = (edit: FilmEdit, after: number, by: number, ripple: boolean) =>

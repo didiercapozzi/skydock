@@ -2881,3 +2881,25 @@ describe('the room between the preview and the timeline', () => {
     expect(getComputedStyle(document.querySelector('.film-room')!).maxHeight).toBe('none')
   })
 })
+
+describe('texts that are on at the same moment', () => {
+  const look = { seconds: 3, effect: 'fade', font: 'bold', x: 0.5, y: 0.5, size: 0.09, colour: '#ffffff' }
+  const start = async (texts: unknown[]) => {
+    vi.stubGlobal('fetch', async () => Response.json({ ...answer, edit: { ...answer.edit, texts } }))
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+  }
+  const block = (text: string) =>
+    page.getByText(text, { exact: true }).first().element().parentElement!.getBoundingClientRect()
+
+  test('are stacked on rows of the Text track, so that none hides another', async () => {
+    await start([
+      { ...look, id: 'text-1', text: 'Alpha', at: 1 },
+      { ...look, id: 'text-2', text: 'Beta', at: 2 },
+      { ...look, id: 'text-3', text: 'Gamma', at: 8 }
+    ])
+
+    expect(block('Beta').top).toBeGreaterThan(block('Alpha').bottom - 1)
+    expect(block('Gamma').top).toBe(block('Alpha').top)
+  })
+})

@@ -69,13 +69,20 @@ const copyBack = (entry: ManifestFile, id: string, size: number): ManifestFile =
   processed: undefined
 })
 
-const restored = (board: Manifest, fileId: string, id: string, size: number, original: boolean) => {
+const restored = (
+  board: Manifest,
+  fileId: string,
+  id: string,
+  size: number,
+  original: boolean,
+  reviving = true
+) => {
   const put = (file: ManifestFile) =>
     file.id === fileId ? (original ? sameFileBack : copyBack)(file, id, size) : file
   board.files = board.files.map(put)
   board.groups = board.groups.map((group) => {
     const files = group.files.map(put)
-    return group.freed && files.some((f) => f.id === id)
+    return reviving && group.freed && files.some((f) => f.id === id)
       ? { ...group, files, freedBefore: group.freed, freed: undefined }
       : { ...group, files }
   })

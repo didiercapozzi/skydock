@@ -155,6 +155,22 @@ describe('ripple', () => {
     expect(moved.music[0]!.at).toBe(9)
   })
 
+  it('moves the pictures and backgrounds that start after the change as well', () => {
+    const layer = (id: string, at: number) => ({
+      id,
+      at,
+      seconds: 2,
+      colour: '#000000',
+      x: 0.5,
+      y: 0.5,
+      width: 1
+    })
+    const withLayers = { ...edit, layers: [layer('early', 5), layer('late', 12)] }
+
+    expect(rippleBy(withLayers, 11.5, -3, true).layers?.map((one) => one.at)).toEqual([5, 9])
+    expect(rippleBy(edit, 11.5, -3, true)).not.toHaveProperty('layers')
+  })
+
   it('moves nothing when it is off', () => {
     expect(rippleBy(edit, 0, -3, false)).toEqual(edit)
   })

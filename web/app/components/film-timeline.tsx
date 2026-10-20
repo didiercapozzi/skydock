@@ -233,6 +233,8 @@ const FilmTimeline = ({
   const layers = edit.layers ?? []
   const rows = layerRows(layers)
   const rowCount = Math.max(1, ...[...rows.values()].map((row) => row + 1))
+  const textRows = layerRows(edit.texts)
+  const textRowCount = Math.max(1, ...[...textRows.values()].map((row) => row + 1))
   const total = timelineEnd(edit)
   const width = Math.max(room - HEAD, total * pps + 240)
   const step = stepFor(pps)
@@ -998,13 +1000,18 @@ const FilmTimeline = ({
           name={t`Text`}
           tag='T1'
           note={t`Your titles`}
-          height='h-10'>
+          height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, textRowCount)]!}>
           {edit.texts.map((text) => (
             <div
               key={text.id}
               onPointerDown={(e) => moveText(e, text.id, 'body')}
-              style={{ left: text.at * pps, width: Math.max(8, text.seconds * pps - 2) }}
-              className={`group absolute inset-y-1.5 cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
+              style={{
+                left: text.at * pps,
+                width: Math.max(8, text.seconds * pps - 2),
+                top: `calc(${((textRows.get(text.id) ?? 0) / textRowCount) * 100}% + 6px)`,
+                height: `calc(${100 / textRowCount}% - 12px)`
+              }}
+              className={`group absolute cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
                 lit('text', text.id) || (picked?.kind === 'text' && picked.id === text.id)
                   ? 'shadow-ring-2'
                   : 'shadow-hairline'

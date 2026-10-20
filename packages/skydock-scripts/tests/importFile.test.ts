@@ -155,6 +155,29 @@ describe('adding a file from the computer', () => {
     expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['clip.mp4'])
   })
 
+  it('leaves a montage freed from this machine freed when a file of it is dropped again', async () => {
+    await setup()
+    await add('clip.mp4', 'same', { kind: 'group', groupId: 'g1' })
+    const before = (await loadManifestAsync(manifestPath()))!
+    const held = before.files[0]!
+    fs.rmSync(held.path)
+    const gone = { ...held, freed: true as const }
+    before.files[0] = gone
+    before.groups[0] = {
+      ...before.groups[0]!,
+      files: [gone],
+      freed: { at: 1, bytes: 4 }
+    }
+    await saveManifest(manifestPath(), before)
+
+    await add('clip.mp4', 'same', { kind: 'sort' })
+
+    const after = (await loadManifestAsync(manifestPath()))!
+    expect(fs.readFileSync(held.path, 'utf8')).toBe('same')
+    expect(after.groups.find((g) => g.id === 'g1')?.freed).toEqual({ at: 1, bytes: 4 })
+    expect(after.groups.find((g) => g.id === 'g1')?.freedBefore).toBeUndefined()
+  })
+
   it('says so, and changes nothing, when it is already exactly there', async () => {
     await setup()
     await add('clip.mp4', 'same', { kind: 'destination', name: 'Yverdon' })

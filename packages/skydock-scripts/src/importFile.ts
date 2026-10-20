@@ -163,7 +163,7 @@ const importFile = async ({
       if (existing.freed) {
         await mkdir(path.dirname(existing.path), { recursive: true })
         await rename(partial, existing.path)
-        restored(manifest, id, id, (await stat(existing.path)).size, true)
+        restored(manifest, id, id, (await stat(existing.path)).size, true, false)
         await saveManifest(manifestPath, manifest)
       }
       await rm(partial, { force: true })
