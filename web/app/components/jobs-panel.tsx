@@ -9,6 +9,7 @@ import { Mini } from './buttons'
 import type { IconName } from './icons'
 import { ProgressPanel } from './progress-panel'
 import type { ProgressRow } from './progress-panel'
+import type { ActionData } from '../routes/manifest/args'
 import { formatSize } from './utils'
 
 type Looks = {
@@ -266,6 +267,13 @@ const StopButton = ({ stop }: { stop: Stop }) => {
   )
 }
 
+const cancelling = (actionArgs: ActionData, title: string): Stop => ({
+  run: () => void routingEngine.action({ url: '/api/manifest', actionArgs }).catch(() => null),
+  word: t`Cancel`,
+  busy: t`Cancelling…`,
+  title
+})
+
 const stopOf = ({ type, id, groupIds }: Job): Stop | null =>
   type === 'camera-copy'
     ? {
@@ -278,41 +286,20 @@ const stopOf = ({ type, id, groupIds }: Job): Stop | null =>
         title: t`Stop after the file under way — what came across stays, the rest stays on the card`
       }
     : type === 'upload'
-      ? {
-          run: () =>
-            void routingEngine
-              .action({ url: '/api/manifest', actionArgs: { intent: 'cancel-upload' } })
-              .catch(() => null),
-          word: t`Cancel`,
-          busy: t`Cancelling…`,
-          title: t`Stop it now — nothing of it is recorded, and what already went up is found there next time`
-        }
+      ? cancelling(
+          { intent: 'cancel-upload' },
+          t`Stop it now — nothing of it is recorded, and what already went up is found there next time`
+        )
       : type === 'render'
-        ? {
-            run: () =>
-              void routingEngine
-                .action({
-                  url: '/api/manifest',
-                  actionArgs: { intent: 'cancel-render', groupId: groupIds?.[0] }
-                })
-                .catch(() => null),
-            word: t`Cancel`,
-            busy: t`Cancelling…`,
-            title: t`Stop this film’s render now — the film as it was before stays as it is`
-          }
+        ? cancelling(
+            { intent: 'cancel-render', groupId: groupIds?.[0] },
+            t`Stop this film’s render now — the film as it was before stays as it is`
+          )
         : type === 'process'
-          ? {
-              run: () =>
-                void routingEngine
-                  .action({
-                    url: '/api/manifest',
-                    actionArgs: { intent: 'cancel-process', jobId: id }
-                  })
-                  .catch(() => null),
-              word: t`Cancel`,
-              busy: t`Cancelling…`,
-              title: t`Stop it now — the copies already finished stay, and nothing of it counts as processed`
-            }
+          ? cancelling(
+              { intent: 'cancel-process', jobId: id },
+              t`Stop it now — the copies already finished stay, and nothing of it counts as processed`
+            )
           : null
 
 const JobPanel = ({ job, dsmHost }: { job: Job; dsmHost?: string | null }) => {

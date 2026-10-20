@@ -4,17 +4,19 @@ import * as path from 'node:path'
 import { editSources, imageSources, musicSources } from './filmEdit'
 import {
   clipLength,
+  DEFAULT_FPS,
   DUCK_RAMP,
   fadeInOf,
   fadeInto,
   fadeOutOf,
   filmLength,
   heardSpans,
-  imageAsStill,
+  layerFadesOf,
   musicFadesOf,
   OUTPUT_CRF,
   OUTPUT_FORMATS,
   POP,
+  sourcesByName,
   speedOf,
   TEXT_FADE,
   textFadesOf,
@@ -40,7 +42,6 @@ import type { Manifest, ManifestGroup } from './types'
 import { ffmpegPath, hasCommand } from './utils'
 import { passengerOf } from './workspace'
 
-const FPS = 30
 const SHORT_SIDE = 1080
 const LONG_SIDE = 1920
 
@@ -161,7 +162,7 @@ const filmArgs = ({
 }) => {
   const inputs: string[] = []
   const graph: string[] = []
-  const fps = edit.output?.fps ?? FPS
+  const fps = edit.output?.fps ?? DEFAULT_FPS
   const stereo = 'aresample=48000,aformat=sample_fmts=fltp:channel_layouts=stereo'
   const parts: Array<{ label: string; length: number; fade: number }> = []
   const black = (name: string, length: number) => {
@@ -237,11 +238,10 @@ const filmArgs = ({
   let picture = layerBase
   layers.forEach((layer, index) => {
     const until = layer.at + layer.seconds
+    const { fadeIn, fadeOut } = layerFadesOf(layer)
     const fades = [
-      ...(layer.fadeIn ? [`fade=t=in:st=${n(layer.at)}:d=${n(layer.fadeIn)}:alpha=1`] : []),
-      ...(layer.fadeOut
-        ? [`fade=t=out:st=${n(until - layer.fadeOut)}:d=${n(layer.fadeOut)}:alpha=1`]
-        : [])
+      ...(fadeIn > 0 ? [`fade=t=in:st=${n(layer.at)}:d=${n(fadeIn)}:alpha=1`] : []),
+      ...(fadeOut > 0 ? [`fade=t=out:st=${n(until - fadeOut)}:d=${n(fadeOut)}:alpha=1`] : [])
     ]
     const shown = `setpts=PTS-STARTPTS+${n(layer.at)}/TB${fades.map((one) => `,${one}`).join('')}`
     const file = layer.name === undefined ? null : images.get(layer.name)
@@ -285,8 +285,6 @@ const filmArgs = ({
     const file = layer.name === undefined ? null : images.get(layer.name)
     if (file)
       inputs.push('-loop', '1', '-framerate', String(fps), '-t', n(layer.seconds), '-i', file.path)
-    else if (layer.name !== undefined)
-      throw new Error(`The image ${layer.name} is not in the images folder any more.`)
   })
   graph.push(
     edit.music.length === 0
@@ -399,17 +397,19 @@ const renderFilm = async ({
 }) => {
   if (isRendering(group.id)) throw new Error('This film is already being rendered.')
   if (edit.clips.length === 0) throw new Error('The film has no clips.')
-  if (!(await hasCommand('ffmpeg'))) throw new Error('ffmpeg is not installed.')
-  const refused = await formatRefusal(edit)
-  if (refused) throw new Error(refused)
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
   const filmPath = path.join(dir, filmNameOf(baseName))
   const partPath = path.join(dir, `.${baseName}.rendering`)
   const name = filmNameOf(baseName)
   const stop = new AbortController()
   renderingNow().set(group.id, stop)
-  const scratch = await mkdtemp(path.join(os.tmpdir(), 'skydock-render-'))
+  let scratch: string | undefined
   try {
+    if (!(await hasCommand('ffmpeg'))) throw new Error('ffmpeg is not installed.')
+    const refused = await formatRefusal(edit)
+    if (refused) throw new Error(refused)
+    const folder = await mkdtemp(path.join(os.tmpdir(), 'skydock-render-'))
+    scratch = folder
     return await inJob(
       {
         type: 'render',
@@ -421,10 +421,7 @@ const renderFilm = async ({
         rendering.rows([{ key: 'film', name, size: 0 }])
         rendering.row({ key: 'film', at: 'now', part: 0 })
         const pictures = await imageSources(outputDir)
-        const sources = new Map([
-          ...pictures.map((one) => [one.name, imageAsStill(one)] as const),
-          ...(await editSources(manifest, outputDir, group)).map((one) => [one.name, one] as const)
-        ])
+        const sources = sourcesByName(pictures, await editSources(manifest, outputDir, group))
         const music = new Map((await musicSources(outputDir)).map((one) => [one.name, one]))
         const images = new Map(pictures.map((one) => [one.name, one]))
         const used = [...new Set(edit.texts.map((text) => text.font))]
@@ -432,7 +429,7 @@ const renderFilm = async ({
           await Promise.all(used.map(async (font) => [font, await fontFile(font)] as const))
         )
         await Promise.all(
-          edit.texts.map((text) => writeFile(path.join(scratch, `${text.id}.txt`), text.text))
+          edit.texts.map((text) => writeFile(path.join(folder, `${text.id}.txt`), text.text))
         )
         const args = filmArgs({
           edit,
@@ -441,7 +438,7 @@ const renderFilm = async ({
           music,
           ...(await filmShape(sources.get(edit.clips[0]!.name))),
           fonts,
-          textFileOf: (id) => path.join(scratch, `${id}.txt`),
+          textFileOf: (id) => path.join(folder, `${id}.txt`),
           out: partPath
         })
         const ran = await stoppable().run(stop.signal, async () =>
@@ -462,7 +459,7 @@ const renderFilm = async ({
     )
   } finally {
     renderingNow().delete(group.id)
-    await rm(scratch, { recursive: true, force: true })
+    if (scratch) await rm(scratch, { recursive: true, force: true })
     await rm(partPath, { force: true })
   }
 }

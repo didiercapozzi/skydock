@@ -75,15 +75,6 @@ const montageLocks = async (manifest: Manifest, outputDir: string) => {
   )
 }
 
-const frozenMontages = async (manifest: Manifest, outputDir: string) =>
-  new Set(
-    [...(await montageLocks(manifest, outputDir))].flatMap(([id, lock]) =>
-      lock === 'freed' ? [id] : []
-    )
-  )
-
-const lockedSaid = () => FREED_LOCKED
-
 const editedShape = (group: ManifestGroup) =>
   JSON.stringify({
     label: group.label,
@@ -128,9 +119,7 @@ export {
   filmNameOf,
   folderLock,
   FREED_LOCKED,
-  frozenMontages,
   isNamedMontage,
-  lockedSaid,
   montageLocks,
   sameEditedGroup,
   statMontageArtifacts,

@@ -18,7 +18,9 @@ import {
   utimes
 } from 'node:fs/promises'
 import * as path from 'node:path'
+import { Readable } from 'node:stream'
 import * as streams from 'node:stream/promises'
+import type { ReadableStream as NodeWebStream } from 'node:stream/web'
 import { isMediaName } from '../constants'
 
 const DEFAULT_MAX_FIND_DEPTH = 10
@@ -35,6 +37,23 @@ const incomingPartial = async (outputDir: string, filename: string) => {
   const incoming = path.join(outputDir, '.incoming')
   await mkdir(incoming, { recursive: true })
   return path.join(incoming, `${crypto.randomBytes(8).toString('hex')}-${filename}`)
+}
+
+const saveUploadedFiles = async (dir: string, files: File[]) => {
+  await mkdir(dir, { recursive: true })
+  for (const file of files) {
+    const name = path.basename(file.name).replace(/^\.+/, '')
+    const part = path.join(dir, `.${name}.arriving`)
+    try {
+      await streams.pipeline(
+        Readable.fromWeb(file.stream() as NodeWebStream<Uint8Array>),
+        fs.createWriteStream(part)
+      )
+      await rename(part, path.join(dir, name))
+    } finally {
+      await rm(part, { force: true })
+    }
+  }
 }
 
 const removeIfEmpty = async (dir: string) => {
@@ -185,6 +204,7 @@ export {
   pathExists,
   removeIfEmpty,
   sameBytes,
+  saveUploadedFiles,
   statOrNull,
   walkFiles,
   writeJsonAtomic

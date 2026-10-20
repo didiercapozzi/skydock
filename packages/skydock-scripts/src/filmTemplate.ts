@@ -145,6 +145,16 @@ const applyTemplate = (
   const film = filmLength(edit)
   const startOf = (item: { from: 'start' | 'end'; at: number }) =>
     item.from === 'end' ? Math.max(0, film - item.at) : item.at
+  const fit = (item: { from: 'start' | 'end'; at: number; seconds: number }) => {
+    const seconds = film > 0 ? Math.min(item.seconds, Math.max(MIN_PIECE, film)) : item.seconds
+    const begin =
+      film > 0
+        ? Math.min(startOf(item), Math.max(0, film - seconds))
+        : item.from === 'end'
+          ? 0
+          : item.at
+    return { seconds, at: begin }
+  }
   const left: string[] = []
   const cut: string[] = []
   const texts = template.texts.flatMap(({ from, at, ...rest }) => {
@@ -152,14 +162,7 @@ const applyTemplate = (
       .replace(/\{(name|day)\}/g, (_, token: string) => (token === 'name' ? name : day).trim())
       .slice(0, TEXT_MAX)
     if (!text.trim()) return []
-    const length = film > 0 ? Math.min(rest.seconds, Math.max(0.5, film)) : rest.seconds
-    const begin =
-      film > 0
-        ? Math.min(startOf({ from, at }), Math.max(0, film - length))
-        : from === 'end'
-          ? 0
-          : at
-    return [{ ...rest, text, seconds: length, at: begin, id: '' }]
+    return [{ ...rest, text, ...fit({ from, at, seconds: rest.seconds }), id: '' }]
   })
   const pieces = template.music.flatMap((piece) => {
     const file = music?.find((one) => one.name === piece.name)
@@ -192,14 +195,7 @@ const applyTemplate = (
       left.push(rest.name)
       return []
     }
-    const length = film > 0 ? Math.min(rest.seconds, Math.max(0.5, film)) : rest.seconds
-    const begin =
-      film > 0
-        ? Math.min(startOf({ from, at }), Math.max(0, film - length))
-        : from === 'end'
-          ? 0
-          : at
-    return [{ ...rest, seconds: length, at: begin, id: '' }]
+    return [{ ...rest, ...fit({ from, at, seconds: rest.seconds }), id: '' }]
   })
   const numbered = <T extends { id: string }>(list: T[], prefix: string) =>
     list.map((one, index) => ({ ...one, id: `${prefix}-${index + 1}` }))

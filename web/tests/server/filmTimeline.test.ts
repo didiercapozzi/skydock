@@ -754,6 +754,33 @@ describe('a clip played faster or slower', () => {
     expect(placed(trimmed)[1]!.from).toBe(3)
     expect(trimmed.music[0]!.at).toBe(10)
   })
+
+  it('keeps its right edge on the timeline when its start is trimmed with Ripple off', () => {
+    const gapped: FilmEdit = {
+      ...fast,
+      clips: [{ ...fast.clips[0]!, gap: 3 }, fast.clips[1]!]
+    }
+    const trimmed = trimClip(gapped, 'clip-1', 'start', 4, 20, false)
+    expect(placed(trimmed)[0]!.from).toBe(5)
+    expect(placed(trimmed)[0]!.to).toBe(placed(gapped)[0]!.to)
+  })
+
+  it('is snapped to at the source marks, counted at its speed', () => {
+    const sources = new Map([
+      [
+        'a.mp4',
+        {
+          name: 'a.mp4',
+          path: '',
+          play: '',
+          seconds: 10,
+          sound: true,
+          marks: [{ which: 'exit' as const, at: 4 }]
+        }
+      ]
+    ])
+    expect(snapPoints({ ...fast, music: [], texts: [] }, sources, 99)).toContain(2)
+  })
 })
 
 describe('the fade of a clip, a text and a piece of music', () => {
@@ -948,6 +975,33 @@ describe('the markers of a clip and of a piece of music', () => {
       ['OPENING', 9]
     ])
     expect(importMarkers(once, sources, 'clip-1', name)).toBe(once)
+  })
+
+  it('get ids of their own when several are imported to a clip that has markers already', () => {
+    const sources = new Map([
+      [
+        'a.mp4',
+        {
+          name: 'a.mp4',
+          path: '',
+          play: '',
+          seconds: 30,
+          sound: true,
+          marks: [
+            { which: 'exit' as const, at: 4 },
+            { which: 'opening' as const, at: 9 }
+          ]
+        }
+      ]
+    ])
+    const marked: FilmEdit = {
+      ...edit,
+      clips: [{ ...edit.clips[0]!, markers: [{ id: 'mark-2', label: 'X', at: 1 }] }, edit.clips[1]!]
+    }
+    const ids = importMarkers(marked, sources, 'clip-1', (which) => which).clips[0]!.markers!.map(
+      (mark) => mark.id
+    )
+    expect(new Set(ids).size).toBe(3)
   })
 
   it('are snapped to by what is dragged, apart from the markers of what is dragged', () => {

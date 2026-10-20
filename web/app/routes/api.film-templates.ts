@@ -23,11 +23,12 @@ const actionArgs = z.object({
 
 const loader = async () => {
   const outputDir = getOutputDir()
-  return Response.json({
-    ...(await listFilmTemplates(outputDir)),
-    music: await musicSources(outputDir),
-    images: await imageSources(outputDir)
-  })
+  const [templates, music, images] = await Promise.all([
+    listFilmTemplates(outputDir),
+    musicSources(outputDir),
+    imageSources(outputDir)
+  ])
+  return Response.json({ ...templates, music, images })
 }
 
 const action = createValidatedFormAction()({

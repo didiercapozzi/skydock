@@ -1,7 +1,7 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { busyWith, jumpsOfMontage, scopeOfFiles } from '../src/busy'
+import { busyWith, busyWithFiles, jumpsOfMontage, scopeOfFiles } from '../src/busy'
 import { processJumps } from '../src/process'
 import { runUpload } from '../src/uploading'
 import type { Manifest } from '../src/types'
@@ -164,6 +164,23 @@ describe('what a change touches', () => {
     expect(scopeOfFiles(manifest, new Set(['a', 'b']))).toEqual({
       groupIds: ['m1'],
       destinations: ['Yverdon']
+    })
+  })
+
+  it('putting loose files in the bin is allowed during an upload, and refused during a whole-board process', async () => {
+    const loose: Manifest = {
+      ...manifest,
+      files: [
+        ...manifest.files,
+        { id: 'x', path: '/o/x.mp4', filename: 'x.mp4', size: 1, mtime: 3 }
+      ]
+    }
+    await whileUploading({ key: 'montage:m1', label: 'Luc Favre', groupIds: ['m1'] }, () => {
+      expect(busyWithFiles(loose, new Set(['x']))).toBeNull()
+      expect(busyWithFiles(loose, new Set(['a']))).toBe('uploading')
+    })
+    await whileProcessing({}, () => {
+      expect(busyWithFiles(loose, new Set(['x']))).toBe('processing')
     })
   })
 

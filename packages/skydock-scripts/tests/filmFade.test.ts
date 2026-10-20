@@ -1,36 +1,19 @@
 // @vitest-environment node
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { fadeInto, filmEditSchema, filmLength, heardSpans } from '../src/filmEditShape'
-import type { EditSource, FilmEdit } from '../src/filmEditShape'
+import type { FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
+import { durationOf, makeClip, meanDb, rgbAt as pixelAt } from './ffmpegFixtures'
 import { createTmpDir } from './fixtures'
 
 let dir: string
 let renders = 0
 
-const clip = (name: string, color: string, seconds: number, sound = true) => {
-  const file = path.join(dir, name)
-  execFileSync('ffmpeg', [
-    '-y',
-    '-loglevel',
-    'error',
-    '-f',
-    'lavfi',
-    '-i',
-    `color=c=${color}:s=320x180:r=25:d=${seconds}`,
-    ...(sound ? ['-f', 'lavfi', '-i', `sine=f=440:d=${seconds}`] : []),
-    '-c:v',
-    'libx264',
-    '-pix_fmt',
-    'yuv420p',
-    ...(sound ? ['-c:a', 'aac', '-shortest'] : []),
-    file
-  ])
-  return { name, path: file, play: file, seconds, sound, marks: [] } satisfies EditSource
-}
+const clip = (name: string, color: string, seconds: number, sound = true) =>
+  makeClip(dir, name, color, seconds, sound)
 
 const film = (change: Partial<FilmEdit>): FilmEdit => ({
   version: 1,
@@ -77,64 +60,7 @@ const render = (
   return out
 }
 
-const seconds = (file: string) =>
-  Number(
-    execFileSync('ffprobe', [
-      '-v',
-      'error',
-      '-show_entries',
-      'format=duration',
-      '-of',
-      'csv=p=0',
-      file
-    ])
-      .toString()
-      .trim()
-  )
-
-const rgbAt = (file: string, at: number) => {
-  const [r = 0, g = 0, b = 0] = execFileSync('ffmpeg', [
-    '-loglevel',
-    'error',
-    '-ss',
-    String(at),
-    '-i',
-    file,
-    '-frames:v',
-    '1',
-    '-vf',
-    'scale=1:1',
-    '-f',
-    'rawvideo',
-    '-pix_fmt',
-    'rgb24',
-    '-'
-  ])
-  return { r, g, b }
-}
-
-const meanDb = (file: string, from: number, to: number, band = 'anull') => {
-  const ran = spawnSync(
-    'ffmpeg',
-    [
-      '-hide_banner',
-      '-ss',
-      String(from),
-      '-t',
-      String(to - from),
-      '-i',
-      file,
-      '-af',
-      `${band},volumedetect`,
-      '-vn',
-      '-f',
-      'null',
-      '-'
-    ],
-    { encoding: 'utf-8' }
-  )
-  return Number(/mean_volume: (-?[\d.]+|-inf) dB/.exec(ran.stderr)?.[1] ?? Number.NEGATIVE_INFINITY)
-}
+const rgbAt = (file: string, at: number) => pixelAt(file, { at, filter: 'scale=1:1' })
 
 beforeEach(() => {
   dir = createTmpDir('skydock-fade-')
@@ -148,7 +74,7 @@ describe('rendering a film with a crossfade', () => {
   it('is pure first before the overlap, a blend in the middle of it and pure second after it', () => {
     const file = render(film({}))
 
-    expect(seconds(file)).toBeCloseTo(5, 0)
+    expect(durationOf(file)).toBeCloseTo(5, 0)
     const before = rgbAt(file, 1)
     const middle = rgbAt(file, 2.5)
     const after = rgbAt(file, 4)
@@ -184,7 +110,7 @@ describe('rendering a film with a crossfade', () => {
       })
     )
 
-    expect(seconds(file)).toBeCloseTo(5, 0)
+    expect(durationOf(file)).toBeCloseTo(5, 0)
     expect(rgbAt(file, 4).b).toBeGreaterThan(150)
     expect(meanDb(file, 0.2, 1.8)).toBeGreaterThan(-40)
     expect(meanDb(file, 3.2, 4.8)).toBeLessThan(-60)
@@ -202,7 +128,7 @@ describe('rendering a film with a crossfade', () => {
       })
     )
 
-    expect(seconds(file)).toBeCloseTo(10, 0)
+    expect(durationOf(file)).toBeCloseTo(10, 0)
     expect(rgbAt(file, 2.5).r).toBeGreaterThan(60)
     expect(rgbAt(file, 2.5).b).toBeGreaterThan(60)
     expect(rgbAt(file, 4.5).b).toBeGreaterThan(150)
@@ -222,7 +148,7 @@ describe('rendering a film with a crossfade', () => {
       })
     )
 
-    expect(seconds(file)).toBeCloseTo(7, 0)
+    expect(durationOf(file)).toBeCloseTo(7, 0)
     expect(rgbAt(file, 2.5).b).toBeGreaterThan(60)
     expect(rgbAt(file, 2.5).r).toBeGreaterThan(60)
     expect(rgbAt(file, 4.5).r).toBeGreaterThan(60)
@@ -241,7 +167,7 @@ describe('rendering a film with a crossfade', () => {
     const file = render(edit)
 
     expect(filmLength(edit)).toBe(6)
-    expect(Math.abs(seconds(file) - 6)).toBeLessThan(0.05)
+    expect(Math.abs(durationOf(file) - 6)).toBeLessThan(0.05)
     expect(rgbAt(file, 2.5).r).toBeGreaterThan(60)
     expect(rgbAt(file, 2.5).b).toBeGreaterThan(60)
     expect(rgbAt(file, 3.5).r).toBeGreaterThan(60)
@@ -259,7 +185,7 @@ describe('rendering a film with a crossfade', () => {
       })
     )
 
-    expect(seconds(file)).toBeCloseTo(3.5, 0)
+    expect(durationOf(file)).toBeCloseTo(3.5, 0)
   })
 
   it('ends the film where the text goes on past the shortened video', () => {
@@ -283,7 +209,7 @@ describe('rendering a film with a crossfade', () => {
       })
     )
 
-    expect(seconds(file)).toBeCloseTo(6, 0)
+    expect(durationOf(file)).toBeCloseTo(6, 0)
   })
 })
 
@@ -309,7 +235,7 @@ describe('music over a crossfade', () => {
     )
     const high = 'highpass=f=2500'
 
-    expect(seconds(file)).toBeCloseTo(8, 0)
+    expect(durationOf(file)).toBeCloseTo(8, 0)
     const open = meanDb(file, 0.1, 1, high)
     const under = meanDb(file, 3.2, 4.6, high)
     const after = meanDb(file, 6.6, 7.8, high)
@@ -357,7 +283,7 @@ describe('a fade on one clip alone', () => {
   it('comes from black, reaches the colour and goes back to black', () => {
     const file = render(film({ clips: faded() }))
 
-    expect(seconds(file)).toBeCloseTo(3, 0)
+    expect(durationOf(file)).toBeCloseTo(3, 0)
     expect(rgbAt(file, 0.04).r).toBeLessThan(40)
     expect(rgbAt(file, 0.5).r).toBeGreaterThan(40)
     expect(rgbAt(file, 0.5).r).toBeLessThan(rgbAt(file, 1.5).r)
@@ -412,7 +338,7 @@ describe('a fade on one clip alone', () => {
         ]
       })
     )
-    expect(seconds(crossed)).toBeCloseTo(5, 0)
+    expect(durationOf(crossed)).toBeCloseTo(5, 0)
     expect(rgbAt(crossed, 0.04).r).toBeLessThan(40)
     expect(rgbAt(crossed, 1.5).r).toBeGreaterThan(150)
     expect(rgbAt(crossed, 2.5).r).toBeGreaterThan(60)

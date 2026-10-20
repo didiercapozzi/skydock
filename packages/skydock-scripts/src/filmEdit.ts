@@ -32,11 +32,20 @@ const getMusicDir = (outputDir: string) => path.join(outputDir, 'music')
 
 const getImagesDir = (outputDir: string) => path.join(outputDir, 'images')
 
-const isImageFile = (name: string) =>
-  IMAGE_EXTENSIONS.some((ending) => name.toLowerCase().endsWith(ending))
+const hasEnding = (name: string, endings: readonly string[]) =>
+  endings.some((ending) => name.toLowerCase().endsWith(ending))
 
-const isMusicFile = (name: string) =>
-  MUSIC_EXTENSIONS.some((ending) => name.toLowerCase().endsWith(ending))
+const isImageFile = (name: string) => hasEnding(name, IMAGE_EXTENSIONS)
+
+const isMusicFile = (name: string) => hasEnding(name, MUSIC_EXTENSIONS)
+
+const visibleFiles = async (dir: string, endings: readonly string[]) =>
+  (await readdir(dir, { withFileTypes: true }).catch(() => []))
+    .filter(
+      (entry) => entry.isFile() && !entry.name.startsWith('.') && hasEnding(entry.name, endings)
+    )
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b))
 
 const SOURCES_PARALLEL = 4
 
@@ -57,7 +66,7 @@ const editSources = async (
   const found = await mapWithLimit(names, SOURCES_PARALLEL, async (name) => {
     const full = path.join(videos, name)
     const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(name).name}.mp4`)
-    const length = await mediaSeconds(full)
+    const [length, sound] = await Promise.all([mediaSeconds(full), mediaHasSound(full)])
     if (length === null || length <= 0) return null
     const measured = copies.get(name)
     const source = measured && manifest.files.find((f) => f.id === measured.id)
@@ -75,37 +84,26 @@ const editSources = async (
       path: full,
       play: (await pathExists(proxy)) ? proxy : full,
       seconds: length,
-      sound: await mediaHasSound(full),
+      sound,
       marks
     }
   })
   const photos = path.join(dir, 'photos')
-  const stills = (await readdir(photos, { withFileTypes: true }).catch(() => []))
-    .filter(
-      (entry) =>
-        entry.isFile() &&
-        !entry.name.startsWith('.') &&
-        STILL_EXTENSIONS.some((ending) => entry.name.toLowerCase().endsWith(ending))
-    )
-    .map((entry) => ({
-      name: entry.name,
-      path: path.join(photos, entry.name),
-      play: path.join(photos, entry.name),
-      seconds: STILL_MAX,
-      sound: false,
-      marks: [],
-      still: true
-    }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+  const stills = (await visibleFiles(photos, STILL_EXTENSIONS)).map((name) => ({
+    name,
+    path: path.join(photos, name),
+    play: path.join(photos, name),
+    seconds: STILL_MAX,
+    sound: false,
+    marks: [],
+    still: true
+  }))
   return [...found.filter((one) => one !== null), ...stills]
 }
 
 const imageSources = async (outputDir: string) => {
   const dir = getImagesDir(outputDir)
-  const names = (await readdir(dir, { withFileTypes: true }).catch(() => []))
-    .filter((entry) => entry.isFile() && !entry.name.startsWith('.') && isImageFile(entry.name))
-    .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b))
+  const names = await visibleFiles(dir, IMAGE_EXTENSIONS)
   const found = await mapWithLimit(names, SOURCES_PARALLEL, async (name) => {
     const full = path.join(dir, name)
     const shape = await videoShape(full)
@@ -118,10 +116,7 @@ const imageSources = async (outputDir: string) => {
 
 const musicSources = async (outputDir: string) => {
   const dir = getMusicDir(outputDir)
-  const names = (await readdir(dir, { withFileTypes: true }).catch(() => []))
-    .filter((entry) => entry.isFile() && !entry.name.startsWith('.') && isMusicFile(entry.name))
-    .map((entry) => entry.name)
-    .sort((a, b) => a.localeCompare(b))
+  const names = await visibleFiles(dir, MUSIC_EXTENSIONS)
   const found = await mapWithLimit(names, SOURCES_PARALLEL, async (name) => {
     const full = path.join(dir, name)
     const length = await mediaSeconds(full)

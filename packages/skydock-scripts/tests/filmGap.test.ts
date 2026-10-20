@@ -1,39 +1,16 @@
 // @vitest-environment node
-import { execFileSync, spawnSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import type { EditSource, FilmEdit } from '../src/filmEditShape'
+import type { FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
+import { durationOf, makeClip, meanDb, rgbAt } from './ffmpegFixtures'
 import { createTmpDir } from './fixtures'
 
 let dir: string
 
-const clip = (name: string, color: string, seconds: number) => {
-  const file = path.join(dir, name)
-  execFileSync('ffmpeg', [
-    '-y',
-    '-loglevel',
-    'error',
-    '-f',
-    'lavfi',
-    '-i',
-    `color=c=${color}:s=320x180:r=25:d=${seconds}`,
-    '-f',
-    'lavfi',
-    '-i',
-    `sine=f=440:d=${seconds}`,
-    '-c:v',
-    'libx264',
-    '-pix_fmt',
-    'yuv420p',
-    '-c:a',
-    'aac',
-    '-shortest',
-    file
-  ])
-  return { name, path: file, play: file, seconds, sound: true, marks: [] } satisfies EditSource
-}
+const clip = (name: string, color: string, seconds: number) => makeClip(dir, name, color, seconds)
 
 const film = (change: Partial<FilmEdit>): FilmEdit => ({
   version: 1,
@@ -76,64 +53,10 @@ const render = (
   return out
 }
 
-const seconds = (file: string) =>
-  Number(
-    execFileSync('ffprobe', [
-      '-v',
-      'error',
-      '-show_entries',
-      'format=duration',
-      '-of',
-      'csv=p=0',
-      file
-    ])
-      .toString()
-      .trim()
-  )
-
 const colourAt = (file: string, at: number) => {
-  const [r = 0, g = 0, b = 0] = execFileSync('ffmpeg', [
-    '-loglevel',
-    'error',
-    '-ss',
-    String(at),
-    '-i',
-    file,
-    '-frames:v',
-    '1',
-    '-vf',
-    'scale=1:1',
-    '-f',
-    'rawvideo',
-    '-pix_fmt',
-    'rgb24',
-    '-'
-  ])
+  const { r, g, b } = rgbAt(file, { at, filter: 'scale=1:1' })
   if (Math.max(r, g, b) < 40) return 'black'
   return r > b ? 'red' : 'blue'
-}
-
-const meanDb = (file: string, from: number, to: number) => {
-  const ran = spawnSync(
-    'ffmpeg',
-    [
-      '-hide_banner',
-      '-ss',
-      String(from),
-      '-t',
-      String(to - from),
-      '-i',
-      file,
-      '-af',
-      'volumedetect',
-      '-vn',
-      '-f',
-      'null',
-      '-'
-    ],
-    { encoding: 'utf-8' }
-  )
-  return Number(/mean_volume: (-?[\d.]+|-inf) dB/.exec(ran.stderr)?.[1] ?? Number.NEGATIVE_INFINITY)
 }
 
 beforeEach(() => {
@@ -148,7 +71,7 @@ describe('rendering a film with a gap', () => {
   it('shows black in the gap and the clip colours around it, over the whole length', () => {
     const file = render(film({}))
 
-    expect(seconds(file)).toBeCloseTo(5.5, 0)
+    expect(durationOf(file)).toBeCloseTo(5.5, 0)
     expect(colourAt(file, 1)).toBe('red')
     expect(colourAt(file, 2.75)).toBe('black')
     expect(colourAt(file, 4.5)).toBe('blue')
@@ -183,7 +106,7 @@ describe('rendering a film with a gap', () => {
       })
     )
 
-    expect(seconds(file)).toBeCloseTo(7.5, 0)
+    expect(durationOf(file)).toBeCloseTo(7.5, 0)
     expect(colourAt(file, 5.2)).toBe('blue')
     expect(colourAt(file, 6.8)).toBe('black')
   })
@@ -205,7 +128,7 @@ describe('rendering a film with a gap', () => {
       new Map([['song.mp3', { name: 'song.mp3', path: song, seconds: 8 }]])
     )
 
-    expect(seconds(file)).toBeCloseTo(8, 0)
+    expect(durationOf(file)).toBeCloseTo(8, 0)
     expect(colourAt(file, 7)).toBe('black')
     expect(meanDb(file, 6, 7.5)).toBeGreaterThan(-40)
   })
@@ -213,6 +136,6 @@ describe('rendering a film with a gap', () => {
   it('does not change the length of a film that has no gap and nothing after its last video', () => {
     const file = render(film({ clips: film({}).clips.map((one) => ({ ...one, gap: undefined })) }))
 
-    expect(seconds(file)).toBeCloseTo(4, 0)
+    expect(durationOf(file)).toBeCloseTo(4, 0)
   })
 })

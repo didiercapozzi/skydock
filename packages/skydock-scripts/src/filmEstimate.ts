@@ -2,7 +2,7 @@ import { mkdtemp, rm, stat } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { editSources, imageSources } from './filmEdit'
-import { clipLength, CRF_RANGE, estimateKey, imageAsStill, sampleWindows } from './filmEditShape'
+import { clipLength, CRF_RANGE, estimateKey, sampleWindows, sourcesByName } from './filmEditShape'
 import type { EditSource, FilmEdit } from './filmEditShape'
 import { filmArgs, filmShape, isRendering } from './filmRender'
 import { run } from './tools'
@@ -92,10 +92,7 @@ const estimateFor = async ({
   const known = kept.get(key)
   if (known) return known
   const pictures = await imageSources(outputDir)
-  const sources = new Map([
-    ...pictures.map((one) => [one.name, imageAsStill(one)] as const),
-    ...(await editSources(manifest, outputDir, group)).map((one) => [one.name, one] as const)
-  ])
+  const sources = sourcesByName(pictures, await editSources(manifest, outputDir, group))
   const first = edit.clips[0] ? sources.get(edit.clips[0].name) : undefined
   const measuring = measureFilm({ edit, sources, ...(await filmShape(first)) }).catch(() => {
     kept.delete(key)

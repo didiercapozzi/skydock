@@ -8,8 +8,7 @@ const keys = remembered<FilmKeys>({
   to: JSON.stringify
 })
 
-const readFilmKeys = keys.read
 const setFilmKeys = keys.set
 const useFilmKeys = keys.use
 
-export { readFilmKeys, setFilmKeys, useFilmKeys }
+export { setFilmKeys, useFilmKeys }

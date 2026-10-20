@@ -40,6 +40,7 @@ import type { actionArgs as manifestArgs } from '../routes/api.manifest'
 import { useCameraLanded, useJobs } from './liveStore'
 import { useGroups } from './useJumps'
 import { useLiveProgress } from './useLiveProgress'
+import type { Job } from './useLiveProgress'
 
 type ManifestArgs = z.infer<typeof manifestArgs>
 
@@ -333,21 +334,15 @@ const useBoardState = (loaded: Loaded, onFreed: (groupId: string) => void) => {
   }
 
   const going = useJobs().filter((job) => job.stage !== 'failed')
-  const works: Work[] = going.flatMap((job) =>
+  const workOf = (job: Job): Work[] =>
     job.type === 'process' || job.type === 'upload' || job.type === 'render'
       ? [{ type: job.type, groupIds: job.groupIds ?? [], destinations: job.destinations ?? [] }]
       : []
-  )
+  const works = going.flatMap(workOf)
   const busyWith = (scope: BusyScope, among?: Work['type'][]) => busyAmong(works, scope, among)
   const processingOf = (scope: BusyScope) =>
-    going.find(
-      (job) =>
-        job.type === 'process' &&
-        busyAmong(
-          [{ type: 'process', groupIds: job.groupIds ?? [], destinations: job.destinations ?? [] }],
-          scope
-        ) !== null
-    )?.id ?? null
+    going.find((job) => job.type === 'process' && busyAmong(workOf(job), scope) !== null)?.id ??
+    null
 
   const proxyFacts = Object.values(proxies)
   const clips = [...groups.flatMap((g) => g.files), ...loose].filter(

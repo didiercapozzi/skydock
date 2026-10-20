@@ -77,7 +77,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const lockOf = (group: ManifestGroup) => montageLockOf(group, board.montageFacts[group.id])
   const frozen = new Set(groups.filter((g) => lockOf(g) === 'freed').map((g) => g.id))
   const edited = new Set(groups.filter((g) => lockOf(g) === 'edit').map((g) => g.id))
-  const lockSaid = (_groupId?: string) => FREED_LOCKED
   const frozenFiles = new Set(
     groups
       .filter((g) => frozen.has(g.id))
@@ -226,7 +225,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
 
   const trimToJump = (group: ManifestGroup) => {
     if (frozen.has(group.id)) {
-      setProblem(lockSaid(group.id))
+      setProblem(FREED_LOCKED)
       return
     }
     const montage = isMontage(group)
@@ -275,7 +274,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     if (where.copy && where.targetGroupId) {
       const here = ids.filter((id) => !fileById(id)?.freed)
       if (here.length === 0) setProblem(t`Freed from this machine — there is no file here to copy.`)
-      else if (frozen.has(where.targetGroupId)) setProblem(lockSaid(where.targetGroupId))
+      else if (frozen.has(where.targetGroupId)) setProblem(FREED_LOCKED)
       else send('copy', { intent: 'copy-files', fileIds: here, targetGroupId: where.targetGroupId })
       return
     }
@@ -290,15 +289,11 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       return
     }
     const free = ids.filter((id) => !frozenFiles.has(id) && !locked.includes(id))
-    const heldIn = ids.find((id) => frozenFiles.has(id))
-    const said = lockSaid(
-      free.length === 0 && heldIn ? jumpOf.get(heldIn)?.id : where.targetGroupId
-    )
     if (free.length === 0 || (where.targetGroupId && frozen.has(where.targetGroupId))) {
       setProblem(
         free.length === 0 && where.targetGroupId
-          ? `${said} ${t`Hold alt while dropping to copy it into the other jump instead.`}`
-          : said
+          ? `${FREED_LOCKED} ${t`Hold alt while dropping to copy it into the other jump instead.`}`
+          : FREED_LOCKED
       )
       return
     }
@@ -311,7 +306,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
       ...(where.name ? { name: where.name } : {}),
       ...(where.startsAt !== undefined ? { anchorEpoch: where.startsAt } : {})
     })
-    if (free.length < ids.length) setProblem(`${said} ${t`Its files stayed where they were.`}`)
+    if (free.length < ids.length)
+      setProblem(`${FREED_LOCKED} ${t`Its files stayed where they were.`}`)
     if (!where.destination && !where.targetGroupId) leaveEmptied(free)
   }
 
@@ -541,7 +537,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
 
   const setPassenger = (groupId: string, firstname: string, lastname: string) => {
     if (frozen.has(groupId)) {
-      setProblem(lockSaid(groupId))
+      setProblem(FREED_LOCKED)
       return
     }
     updateGroups(
@@ -619,8 +615,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const openEditor = (group: ManifestGroup) => goTo(editHref(group.id))
   const takeStep = (group: ManifestGroup, step: MontageStep) => {
     if (step === 'Prepared') send(group.id, { intent: 'process', groupId: group.id })
-    if (step === 'Project') openEditor(group)
-    if (step === 'Film') openEditor(group)
+    if (step === 'Project' || step === 'Film') openEditor(group)
     if (step === 'Uploaded') {
       const gate = facts.gateFor(group.files)
       if (gate.blocked) board.setProblem(gate.message ?? t`It cannot be uploaded yet.`)
@@ -664,7 +659,6 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     clearSelection,
     frozen,
     edited,
-    lockSaid,
     ...facts,
     groupOfFile,
     fileById,

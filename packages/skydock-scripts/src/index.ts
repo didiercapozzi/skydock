@@ -19,10 +19,11 @@ import {
 import { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED } from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { forgetLostFiles } from './forgetLost'
-import { busySaid, busyWith, jumpsOfMontage, scopeOfFiles } from './busy'
+import { busySaid, busyWith, busyWithFiles, jumpsOfMontage } from './busy'
 import type { Busy, BusyScope } from './busyScope'
 import { learnStorage, settleListsDir } from './originIndex'
 import { freeablePlace } from './freeable'
+import { saveUploadedFiles } from './lib/fs'
 import { jsonText } from './lib/json'
 import { idsOf, messageOf } from './lib/words'
 import {
@@ -94,9 +95,7 @@ import {
   filmNameOf,
   folderLock,
   FREED_LOCKED,
-  frozenMontages,
   isNamedMontage,
-  lockedSaid,
   montageArtifacts,
   montageLocks,
   sameEditedGroup,
@@ -189,8 +188,8 @@ export {
   transfersFileSchema,
   busySaid,
   busyWith,
+  busyWithFiles,
   jumpsOfMontage,
-  scopeOfFiles,
   workUnderWay,
   DEFAULT_TEMPLATE,
   DEFAULT_TEMPLATES,
@@ -259,7 +258,6 @@ export {
   filmNameOf,
   fitRatio,
   forgetLostFiles,
-  frozenMontages,
   getGroupProcessedDir,
   ffmpegPath,
   getManifestPath,
@@ -270,8 +268,8 @@ export {
   groupsInScope,
   hasCompletePassenger,
   folderLock,
+  saveUploadedFiles,
   FREED_LOCKED,
-  lockedSaid,
   montageArtifacts,
   montageLocks,
   importOutcomeSchema,

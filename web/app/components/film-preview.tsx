@@ -13,6 +13,45 @@ const FONT_LOOK: Record<TextFont, string> = {
   hand: 'film-hand'
 }
 
+const dragPointer = (
+  e: React.PointerEvent<HTMLElement>,
+  move: (event: PointerEvent) => void,
+  end?: () => void
+) => {
+  const target = e.currentTarget
+  target.setPointerCapture(e.pointerId)
+  const done = () => {
+    end?.()
+    target.removeEventListener('pointermove', move)
+    target.removeEventListener('pointerup', done)
+    target.removeEventListener('pointercancel', done)
+  }
+  target.addEventListener('pointermove', move)
+  target.addEventListener('pointerup', done)
+  target.addEventListener('pointercancel', done)
+}
+
+const dragOnStage = (
+  e: React.PointerEvent<HTMLElement>,
+  onPick: () => void,
+  onPoint: (x: number, y: number) => void,
+  onEnd?: () => void
+) => {
+  const stage = e.currentTarget.parentElement?.getBoundingClientRect()
+  if (!stage) return
+  e.preventDefault()
+  e.stopPropagation()
+  onPick()
+  dragPointer(
+    e,
+    (move) =>
+      onPoint((move.clientX - stage.left) / stage.width, (move.clientY - stage.top) / stage.height),
+    onEnd
+  )
+}
+
+const within = (fraction: number) => Math.min(1, Math.max(0, fraction))
+
 const TextOnFilm = ({
   text,
   at,
@@ -31,35 +70,18 @@ const TextOnFilm = ({
   const look = textLookAt(text, at)
   const showing = look.opacity > 0 || picked
   if (!showing) return null
-  const grab = (e: React.PointerEvent<HTMLDivElement>) => {
-    const stage = e.currentTarget.parentElement?.getBoundingClientRect()
-    if (!stage) return
-    e.preventDefault()
-    e.stopPropagation()
-    onPick()
-    const target = e.currentTarget
-    target.setPointerCapture(e.pointerId)
-    const follow = (move: PointerEvent) => {
-      const rawX = (move.clientX - stage.left) / stage.width
-      const rawY = (move.clientY - stage.top) / stage.height
-      const snapX = Math.abs(rawX - 0.5) < CENTRE_PULL
-      const snapY = Math.abs(rawY - 0.5) < CENTRE_PULL
-      onGuides({ x: snapX, y: snapY })
-      onMove(
-        snapX ? 0.5 : Math.min(1, Math.max(0, rawX)),
-        snapY ? 0.5 : Math.min(1, Math.max(0, rawY))
-      )
-    }
-    const done = () => {
-      onGuides({ x: false, y: false })
-      target.removeEventListener('pointermove', follow)
-      target.removeEventListener('pointerup', done)
-      target.removeEventListener('pointercancel', done)
-    }
-    target.addEventListener('pointermove', follow)
-    target.addEventListener('pointerup', done)
-    target.addEventListener('pointercancel', done)
-  }
+  const grab = (e: React.PointerEvent<HTMLDivElement>) =>
+    dragOnStage(
+      e,
+      onPick,
+      (rawX, rawY) => {
+        const snapX = Math.abs(rawX - 0.5) < CENTRE_PULL
+        const snapY = Math.abs(rawY - 0.5) < CENTRE_PULL
+        onGuides({ x: snapX, y: snapY })
+        onMove(snapX ? 0.5 : within(rawX), snapY ? 0.5 : within(rawY))
+      },
+      () => onGuides({ x: false, y: false })
+    )
   return (
     <div
       role='button'
@@ -114,28 +136,8 @@ const LayerOnFilm = ({
         className='pointer-events-none absolute inset-0'
       />
     )
-  const grab = (e: React.PointerEvent<HTMLImageElement>) => {
-    const stage = e.currentTarget.parentElement?.getBoundingClientRect()
-    if (!stage) return
-    e.preventDefault()
-    e.stopPropagation()
-    onPick()
-    const target = e.currentTarget
-    target.setPointerCapture(e.pointerId)
-    const follow = (move: PointerEvent) =>
-      onMove(
-        Math.min(1, Math.max(0, (move.clientX - stage.left) / stage.width)),
-        Math.min(1, Math.max(0, (move.clientY - stage.top) / stage.height))
-      )
-    const done = () => {
-      target.removeEventListener('pointermove', follow)
-      target.removeEventListener('pointerup', done)
-      target.removeEventListener('pointercancel', done)
-    }
-    target.addEventListener('pointermove', follow)
-    target.addEventListener('pointerup', done)
-    target.addEventListener('pointercancel', done)
-  }
+  const grab = (e: React.PointerEvent<HTMLImageElement>) =>
+    dragOnStage(e, onPick, (x, y) => onMove(within(x), within(y)))
   return url === null ? null : (
     <img
       data-layer=''
@@ -280,4 +282,4 @@ const FilmPreview = ({
   )
 }
 
-export { FilmPreview, FONT_LOOK }
+export { dragPointer, FilmPreview, FONT_LOOK }

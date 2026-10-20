@@ -13,19 +13,30 @@ import {
   SLOT,
   textFadesOf
 } from '@skydock/scripts/client'
-import type { EditClip, EditSource, FilmEdit, MusicSource } from '@skydock/scripts/client'
+import type {
+  EditClip,
+  EditMarker,
+  EditMusic,
+  EditSource,
+  FilmEdit,
+  MusicSource
+} from '@skydock/scripts/client'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   clockOf,
   FADE,
   fadeMost,
   groupOf,
+  markersWithin,
   layerRows,
   moveClip,
   nearestBoundary,
   placeClip,
   setItemFade,
+  SHORTEST,
+  SHORTEST_MUSIC,
   shiftItems,
+  SINGULAR,
   placed,
   setFade,
   snapPoints,
@@ -37,11 +48,11 @@ import {
   unturnedFrame,
   zoomAround
 } from '../helpers/filmTimeline'
-import type { Selected } from '../helpers/filmTimeline'
+import type { FadeKind, Selected } from '../helpers/filmTimeline'
 import { Icon } from './icons'
 import { getThumbUrl } from './utils'
 
-type Picked = { kind: 'clip' | 'music' | 'text' | 'layer'; id: string } | null
+type Picked = Selected | null
 
 const ZOOM = { min: 2, max: 80 }
 const WHEEL_ZOOM = 0.0015
@@ -49,8 +60,7 @@ const LINE = 16
 const STEPS = [1, 2, 5, 10, 15, 30, 60, 120]
 const TICK_ROOM = 70
 const ENVELOPE_STEP = 0.25
-const SHORTEST_TEXT = 0.5
-const SHORTEST_MUSIC = 1
+const LONGEST = { text: 60, layer: 600 }
 const DOUBLE_CLICK = 350
 const SNAP_REACH = 8
 const GUIDE_LINGER = 600
@@ -148,6 +158,85 @@ const thumbLook = (clip: EditClip): React.CSSProperties => {
         height: '100%',
         ...(rotation ? { transform: `rotate(${rotation}deg)` } : {})
       }
+}
+
+const Thumbs = ({ clip, source, pps }: { clip: EditClip; source: EditSource; pps: number }) => (
+  <span className='pointer-events-none absolute inset-0 flex'>
+    {Array.from({ length: Math.ceil((clipLength(clip) * pps) / FRAME) }, (_, i) => (
+      <span
+        key={i}
+        className='relative h-full w-14 flex-none overflow-hidden border-r border-black/20 bg-well [container-type:size]'>
+        <img
+          src={getThumbUrl(
+            source.play,
+            Math.max(
+              0,
+              Math.min(clip.end - 0.1, Math.round(clip.start + (i * FRAME * speedOf(clip)) / pps))
+            ),
+            160
+          )}
+          alt=''
+          loading='lazy'
+          draggable={false}
+          style={thumbLook(clip)}
+          className='absolute object-cover'
+        />
+      </span>
+    ))}
+  </span>
+)
+
+const MarkerFlag = ({ mark, left }: { mark: EditMarker; left: number }) => (
+  <span
+    data-marker=''
+    title={mark.label}
+    style={{ left }}
+    className='pointer-events-none absolute inset-y-0 w-0.5 bg-accent'>
+    <span className='absolute bottom-1 left-1 max-w-24 truncate rounded-full bg-accent px-1.5 text-micro font-semibold text-on-accent'>
+      {mark.label}
+    </span>
+  </span>
+)
+
+const MusicEnvelope = ({
+  piece,
+  music,
+  underSound,
+  spans,
+  pps
+}: {
+  piece: EditMusic
+  music: EditMusic[]
+  underSound: number
+  spans: ReturnType<typeof heardSpans>
+  pps: number
+}) => {
+  const length = piece.end - piece.start
+  const fades = musicFadesOf(piece, music)
+  const points = Array.from(
+    { length: Math.floor(length / ENVELOPE_STEP) + 1 },
+    (_, i) => i * ENVELOPE_STEP
+  )
+    .map(
+      (into) =>
+        `${into * pps},${(1 - musicLevelAt(piece, underSound, spans, piece.at + into, music, fades)) * 100}`
+    )
+    .join(' ')
+  return (
+    <svg
+      aria-hidden='true'
+      preserveAspectRatio='none'
+      viewBox={`0 0 ${Math.max(1, length * pps)} 100`}
+      className='pointer-events-none absolute inset-0 h-full w-full text-up'>
+      <polyline
+        points={points}
+        fill='none'
+        stroke='currentColor'
+        strokeWidth='2'
+        vectorEffect='non-scaling-stroke'
+      />
+    </svg>
+  )
 }
 
 const FadeHandle = ({
@@ -349,7 +438,11 @@ const FilmTimeline = ({
 
   const edgeAt = (original: FilmEdit, value: number, skip?: string) => {
     if (!snap) return value
-    const near = snapTo(snapPoints(original, sources, at, skip), value, SNAP_REACH / pps)
+    const near = snapTo(
+      snapPoints(original, sources, playhead.current, skip),
+      value,
+      SNAP_REACH / pps
+    )
     if (near !== value) snapped.current = near
     return near
   }
@@ -359,14 +452,12 @@ const FilmTimeline = ({
     const clip = original.clips.find((one) => one.id === id)
     const piece = original.music.find((one) => one.id === id)
     const own = clip
-      ? (clip.markers ?? [])
-          .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
-          .map((mark) => (mark.at - clip.start) / speedOf(clip))
-      : (piece?.markers ?? [])
-          .filter((mark) => mark.at >= piece!.start && mark.at <= piece!.end)
-          .map((mark) => mark.at - piece!.start)
+      ? markersWithin(clip).map((mark) => (mark.at - clip.start) / speedOf(clip))
+      : piece
+        ? markersWithin(piece).map((mark) => mark.at - piece.start)
+        : []
     const pulled = snapBlock(
-      snapPoints(original, sources, at, id),
+      snapPoints(original, sources, playhead.current, id),
       start,
       [0, length, ...own],
       SNAP_REACH / pps
@@ -423,7 +514,7 @@ const FilmTimeline = ({
     }
     const up = (event: PointerEvent) => {
       if (fingers.current.size >= 2) stop()
-      if (!stopped) {
+      if (!stopped && (changed || !changes)) {
         snapped.current = null
         apply((event.clientX - x0) / pps, original, true, event)
         setGuide(snapped.current)
@@ -473,7 +564,7 @@ const FilmTimeline = ({
 
   const fadeOfItem = (
     original: FilmEdit,
-    kind: 'clips' | 'texts' | 'music' | 'layers',
+    kind: FadeKind,
     id: string,
     side: 'fadeIn' | 'fadeOut'
   ) => {
@@ -495,7 +586,7 @@ const FilmTimeline = ({
   }
 
   const fadeHandle = (
-    kind: 'clips' | 'texts' | 'music' | 'layers',
+    kind: FadeKind,
     id: string,
     side: 'fadeIn' | 'fadeOut',
     name: string,
@@ -508,17 +599,7 @@ const FilmTimeline = ({
       label={side === 'fadeIn' ? t`Fade in of ${name}` : t`Fade out of ${name}`}
       chosen={chosen}
       onGrab={(e) => {
-        onPick({
-          kind:
-            kind === 'clips'
-              ? 'clip'
-              : kind === 'texts'
-                ? 'text'
-                : kind === 'layers'
-                  ? 'layer'
-                  : 'music',
-          id
-        })
+        onPick({ kind: SINGULAR[kind], id })
         const start = fadeOfItem(edit, kind, id, side)
         drag(e, (seconds, original) =>
           onChange(
@@ -555,72 +636,42 @@ const FilmTimeline = ({
           )
         : false))
 
-  const moveText = (e: React.PointerEvent<HTMLElement>, id: string, part: 'body' | 'end') => {
-    if (e.shiftKey) return onAlso({ kind: 'text', id })
+  const moveBlock = (
+    e: React.PointerEvent<HTMLElement>,
+    kind: 'text' | 'layer',
+    id: string,
+    part: 'body' | 'end'
+  ) => {
+    if (e.shiftKey) return onAlso({ kind, id })
     onAlso(null)
-    onPick({ kind: 'text', id })
+    onPick({ kind, id })
     drag(e, (seconds, original) => {
-      const text = original.texts.find((one) => one.id === id)
-      if (!text) return
-      onChange(
-        part === 'body'
-          ? shiftItems(
-              original,
-              groupOf(original, { kind: 'text', id }),
-              Math.max(0, blockAt(original, id, text.at + seconds, text.seconds)) - text.at
-            )
-          : {
-              ...original,
-              texts: original.texts.map((one) =>
-                one.id !== id
-                  ? one
-                  : {
-                      ...one,
-                      seconds: Math.min(
-                        60,
-                        Math.max(
-                          SHORTEST_TEXT,
-                          edgeAt(original, one.at + one.seconds + seconds, id) - one.at
-                        )
-                      )
-                    }
-              )
-            }
+      const found = (kind === 'text' ? original.texts : (original.layers ?? [])).find(
+        (one) => one.id === id
       )
-    })
-  }
-
-  const moveLayer = (e: React.PointerEvent<HTMLElement>, id: string, part: 'body' | 'end') => {
-    if (e.shiftKey) return onAlso({ kind: 'layer', id })
-    onAlso(null)
-    onPick({ kind: 'layer', id })
-    drag(e, (seconds, original) => {
-      const layer = original.layers?.find((one) => one.id === id)
-      if (!layer) return
+      if (!found) return
+      const resize = <T extends { id: string; at: number; seconds: number }>(items: T[]) =>
+        items.map((one) =>
+          one.id !== id
+            ? one
+            : {
+                ...one,
+                seconds: Math.min(
+                  LONGEST[kind],
+                  Math.max(SHORTEST, edgeAt(original, one.at + one.seconds + seconds, id) - one.at)
+                )
+              }
+        )
       onChange(
         part === 'body'
           ? shiftItems(
               original,
-              groupOf(original, { kind: 'layer', id }),
-              Math.max(0, blockAt(original, id, layer.at + seconds, layer.seconds)) - layer.at
+              groupOf(original, { kind, id }),
+              Math.max(0, blockAt(original, id, found.at + seconds, found.seconds)) - found.at
             )
-          : {
-              ...original,
-              layers: (original.layers ?? []).map((one) =>
-                one.id !== id
-                  ? one
-                  : {
-                      ...one,
-                      seconds: Math.min(
-                        600,
-                        Math.max(
-                          SHORTEST_TEXT,
-                          edgeAt(original, one.at + one.seconds + seconds, id) - one.at
-                        )
-                      )
-                    }
-              )
-            }
+          : kind === 'text'
+            ? { ...original, texts: resize(original.texts) }
+            : { ...original, layers: resize(original.layers ?? []) }
       )
     })
   }
@@ -769,32 +820,11 @@ const FilmTimeline = ({
                   style={{ left: from * pps, width: Math.max(4, length * pps - 2) }}
                   className={`group absolute inset-y-1.25 cursor-grab overflow-hidden rounded-corner border bg-proc-soft ${ring(chosen)}`}>
                   {source && (
-                    <span className='pointer-events-none absolute inset-0 flex'>
-                      {Array.from({ length: Math.ceil((length * pps) / FRAME) }, (_, i) => (
-                        <span
-                          key={i}
-                          className='relative h-full w-14 flex-none overflow-hidden border-r border-black/20 bg-well [container-type:size]'>
-                          <img
-                            src={getThumbUrl(
-                              source.play,
-                              Math.max(
-                                0,
-                                Math.min(
-                                  clip.end - 0.1,
-                                  Math.round(clip.start + (i * FRAME * speedOf(clip)) / pps)
-                                )
-                              ),
-                              160
-                            )}
-                            alt=''
-                            loading='lazy'
-                            draggable={false}
-                            style={thumbLook(clip)}
-                            className='absolute object-cover'
-                          />
-                        </span>
-                      ))}
-                    </span>
+                    <Thumbs
+                      clip={clip}
+                      source={source}
+                      pps={pps}
+                    />
                   )}
                   <Ramps
                     fadeIn={fadeInOf(edit.clips, index)}
@@ -823,20 +853,13 @@ const FilmTimeline = ({
                         </span>
                       </span>
                     ))}
-                  {(clip.markers ?? [])
-                    .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
-                    .map((mark) => (
-                      <span
-                        key={mark.id}
-                        data-marker=''
-                        title={mark.label}
-                        style={{ left: ((mark.at - clip.start) / speedOf(clip)) * pps }}
-                        className='pointer-events-none absolute inset-y-0 w-0.5 bg-accent'>
-                        <span className='absolute bottom-1 left-1 max-w-24 truncate rounded-full bg-accent px-1.5 text-micro font-semibold text-on-accent'>
-                          {mark.label}
-                        </span>
-                      </span>
-                    ))}
+                  {markersWithin(clip).map((mark) => (
+                    <MarkerFlag
+                      key={mark.id}
+                      mark={mark}
+                      left={((mark.at - clip.start) / speedOf(clip)) * pps}
+                    />
+                  ))}
                   <span
                     onPointerDown={(e) => trim(e, clip.id, 'start')}
                     aria-label={t`Trim the start`}
@@ -993,7 +1016,7 @@ const FilmTimeline = ({
                 <div
                   key={layer.id}
                   title={layer.name ?? layer.colour}
-                  onPointerDown={(e) => moveLayer(e, layer.id, 'body')}
+                  onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'body')}
                   style={{
                     left: layer.at * pps,
                     width: Math.max(8, layer.seconds * pps - 2),
@@ -1033,7 +1056,7 @@ const FilmTimeline = ({
                       {layer.name ?? layer.colour}
                     </span>
                     <span
-                      onPointerDown={(e) => moveLayer(e, layer.id, 'end')}
+                      onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'end')}
                       aria-label={t`Make the picture longer or shorter`}
                       className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
                     />
@@ -1052,7 +1075,7 @@ const FilmTimeline = ({
           {edit.texts.map((text) => (
             <div
               key={text.id}
-              onPointerDown={(e) => moveText(e, text.id, 'body')}
+              onPointerDown={(e) => moveBlock(e, 'text', text.id, 'body')}
               style={{
                 left: text.at * pps,
                 width: Math.max(8, text.seconds * pps - 2),
@@ -1086,7 +1109,7 @@ const FilmTimeline = ({
                 {text.text || t`Text`}
               </span>
               <span
-                onPointerDown={(e) => moveText(e, text.id, 'end')}
+                onPointerDown={(e) => moveBlock(e, 'text', text.id, 'end')}
                 aria-label={t`Make the text longer or shorter`}
                 className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
               />
@@ -1109,15 +1132,6 @@ const FilmTimeline = ({
           ))}
           {edit.music.map((piece) => {
             const length = piece.end - piece.start
-            const points = Array.from(
-              { length: Math.floor(length / ENVELOPE_STEP) + 1 },
-              (_, i) => i * ENVELOPE_STEP
-            )
-              .map(
-                (into) =>
-                  `${into * pps},${(1 - musicLevelAt(piece, edit.underSound, spans, piece.at + into, edit.music)) * 100}`
-              )
-              .join(' ')
             return (
               <div
                 key={piece.id}
@@ -1134,19 +1148,13 @@ const FilmTimeline = ({
                     ? 'shadow-ring-2'
                     : 'shadow-hairline'
                 }`}>
-                <svg
-                  aria-hidden='true'
-                  preserveAspectRatio='none'
-                  viewBox={`0 0 ${Math.max(1, length * pps)} 100`}
-                  className='pointer-events-none absolute inset-0 h-full w-full text-up'>
-                  <polyline
-                    points={points}
-                    fill='none'
-                    stroke='currentColor'
-                    strokeWidth='2'
-                    vectorEffect='non-scaling-stroke'
-                  />
-                </svg>
+                <MusicEnvelope
+                  piece={piece}
+                  music={edit.music}
+                  underSound={edit.underSound}
+                  spans={spans}
+                  pps={pps}
+                />
                 {fadeHandle(
                   'music',
                   piece.id,
@@ -1161,20 +1169,13 @@ const FilmTimeline = ({
                   piece.name,
                   picked?.kind === 'music' && picked.id === piece.id
                 )}
-                {(piece.markers ?? [])
-                  .filter((mark) => mark.at >= piece.start && mark.at <= piece.end)
-                  .map((mark) => (
-                    <span
-                      key={mark.id}
-                      data-marker=''
-                      title={mark.label}
-                      style={{ left: (mark.at - piece.start) * pps }}
-                      className='pointer-events-none absolute inset-y-0 w-0.5 bg-accent'>
-                      <span className='absolute bottom-1 left-1 max-w-24 truncate rounded-full bg-accent px-1.5 text-micro font-semibold text-on-accent'>
-                        {mark.label}
-                      </span>
-                    </span>
-                  ))}
+                {markersWithin(piece).map((mark) => (
+                  <MarkerFlag
+                    key={mark.id}
+                    mark={mark}
+                    left={(mark.at - piece.start) * pps}
+                  />
+                ))}
                 <span className='pointer-events-none absolute top-1 left-2 truncate text-micro font-semibold text-up'>
                   {piece.name} · {Math.round(piece.volume * 100)}%
                 </span>

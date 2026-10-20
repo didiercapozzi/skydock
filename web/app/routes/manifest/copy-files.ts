@@ -14,7 +14,7 @@ const copyFilesIntent: Intent = async ({
   const ids = new Set(data.fileIds ?? [])
   if (ids.size === 0 || !data.targetGroupId)
     return refuse('Pick files and a jump to copy them into.')
-  if (frozen.has(data.targetGroupId)) return refuseFrozen(data.targetGroupId)
+  if (frozen.has(data.targetGroupId)) return refuseFrozen()
   try {
     const { copied, passedOver, freed } = copyFiles(manifest, ids, data.targetGroupId)
     if (copied === 0)

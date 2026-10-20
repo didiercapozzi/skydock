@@ -1,5 +1,6 @@
 import { plural, t } from '@lingui/core/macro'
 import {
+  FREED_LOCKED,
   goneSent,
   hasCompletePassenger,
   isMontage,
@@ -147,9 +148,7 @@ const MontageAbove = ({
           picture={filmPicture(group)}
         />
       )}
-      {!group.uploaded && (
-        <FilmNote locked={model.frozen.has(group.id) ? model.lockSaid(group.id) : null} />
-      )}
+      {!group.uploaded && <FilmNote locked={model.frozen.has(group.id) ? FREED_LOCKED : null} />}
     </div>
   )
 }

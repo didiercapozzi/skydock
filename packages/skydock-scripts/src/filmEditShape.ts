@@ -8,6 +8,7 @@ const UNDER_SOUND = 0.15
 const STILL_SECONDS = 5
 const OUTPUT_FORMATS = ['h264', 'h265', 'av1'] as const
 const OUTPUT_FPS = [24, 25, 30, 50, 60] as const
+const DEFAULT_FPS = 30
 const OUTPUT_CRF = { h264: 23, h265: 28, av1: 32 } as const
 const CRF_RANGE = { least: 12, most: 40 }
 const STILL_MAX = 60
@@ -21,6 +22,8 @@ const SPEED = { least: 0.25, most: 4 }
 
 const seconds = z.number().min(0)
 const fraction = z.number().min(0).max(1)
+
+const hexColour = z.string().regex(/^#[0-9a-fA-F]{6}$/)
 const fadeLength = seconds.finite().optional()
 
 const editMarkerSchema = z.object({
@@ -74,7 +77,7 @@ const editTextSchema = z.object({
   x: fraction,
   y: fraction,
   size: z.number().min(0.02).max(0.3),
-  colour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  colour: hexColour,
   fadeIn: fadeLength,
   fadeOut: fadeLength,
   group: z.string().min(1).optional()
@@ -97,10 +100,7 @@ const editLayerObject = z.object({
   at: seconds,
   seconds: z.number().min(0.5).max(600),
   name: z.string().min(1).optional(),
-  colour: z
-    .string()
-    .regex(/^#[0-9a-fA-F]{6}$/)
-    .optional(),
+  colour: hexColour.optional(),
   x: fraction,
   y: fraction,
   width: z.number().min(0.02).max(1),
@@ -207,7 +207,7 @@ const estimateKey = (groupId: string, edit: FilmEdit) =>
   JSON.stringify([
     groupId,
     edit.output?.format ?? 'h264',
-    edit.output?.fps ?? 30,
+    edit.output?.fps ?? DEFAULT_FPS,
     edit.clips.map((clip) => [
       clip.name,
       clip.start,
@@ -249,6 +249,12 @@ const imageAsStill = (image: ImageSource): EditSource => ({
   marks: [],
   still: true
 })
+
+const sourcesByName = (images: ImageSource[], sources: EditSource[]) =>
+  new Map([
+    ...images.map((one) => [one.name, imageAsStill(one)] as const),
+    ...sources.map((one) => [one.name, one] as const)
+  ])
 
 const speedOf = (clip: { speed?: number }) => clip.speed ?? 1
 
@@ -377,9 +383,10 @@ const musicLevelAt = (
   underSound: number,
   spans: Span[],
   t: number,
-  music?: EditMusic[]
+  music?: EditMusic[],
+  fades = musicFadesOf(piece, music)
 ) => {
-  const { fadeIn, fadeOut } = musicFadesOf(piece, music)
+  const { fadeIn, fadeOut } = fades
   return (
     piece.volume *
     rampAt(t - piece.at, piece.end - piece.start, fadeIn, fadeOut) *
@@ -409,7 +416,9 @@ const textLookAt = (text: EditText, t: number) => {
 
 export {
   clipLength,
+  DEFAULT_FPS,
   SPEED,
+  sourcesByName,
   speedOf,
   DUCK_RAMP,
   duckAt,

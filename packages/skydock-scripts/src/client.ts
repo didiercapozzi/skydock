@@ -18,7 +18,9 @@ export {
 } from './frameCrop'
 export {
   clipLength,
+  DEFAULT_FPS,
   SPEED,
+  sourcesByName,
   speedOf,
   DUCK_RAMP,
   duckAt,

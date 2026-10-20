@@ -11,15 +11,15 @@ const processIntent: Intent = async ({
   latest
 }) => {
   const requestedGroups = data.groupIds ?? (data.groupId ? [data.groupId] : undefined)
+  const chosen = requestedGroups?.length ? requestedGroups : undefined
   const asked = { groupIds: requestedGroups, destination: data.destination }
   if (busyWith(asked, ['upload']))
     return refuse('It is being uploaded — process it again once the upload is done.')
   const touched =
-    requestedGroups && requestedGroups.length > 0
-      ? requestedGroups
-      : manifest.groups
-          .filter((g) => !data.destination || g.destination === data.destination)
-          .map((g) => g.id)
+    chosen ??
+    manifest.groups
+      .filter((g) => !data.destination || g.destination === data.destination)
+      .map((g) => g.id)
   if (busyWith({ groupIds: touched }, ['render']))
     return refuse(
       'Its film is being rendered from these copies — process it again once the render is done, or cancel it.'
@@ -27,7 +27,7 @@ const processIntent: Intent = async ({
   void processJumps({
     manifestPath,
     outputDir,
-    groupIds: requestedGroups && requestedGroups.length > 0 ? requestedGroups : undefined,
+    groupIds: chosen,
     destination: data.destination,
     fileIds: data.fileIds
   }).catch((e) => console.warn(`[Process] ${messageOf(e)}`))

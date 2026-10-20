@@ -9,6 +9,7 @@ import type { EditSource, FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
 import { getGroupProcessedDir } from '../src/process'
 import type { Manifest, ManifestGroup } from '../src/types'
+import { durationOf, rgbAt } from './ffmpegFixtures'
 import { createTmpDir } from './fixtures'
 
 let dir: string
@@ -65,39 +66,8 @@ const video = (name: string, color: string, seconds: number) => {
   return file
 }
 
-const seconds = (file: string) =>
-  Number(
-    execFileSync('ffprobe', [
-      '-v',
-      'error',
-      '-show_entries',
-      'format=duration',
-      '-of',
-      'csv=p=0',
-      file
-    ])
-      .toString()
-      .trim()
-  )
-
 const colourAt = (file: string, at: number) => {
-  const [r = 0, , b = 0] = execFileSync('ffmpeg', [
-    '-loglevel',
-    'error',
-    '-ss',
-    String(at),
-    '-i',
-    file,
-    '-frames:v',
-    '1',
-    '-vf',
-    'scale=1:1',
-    '-f',
-    'rawvideo',
-    '-pix_fmt',
-    'rgb24',
-    '-'
-  ])
+  const { r, b } = rgbAt(file, { at, filter: 'scale=1:1' })
   return r > b ? 'red' : 'blue'
 }
 
@@ -175,7 +145,7 @@ describe('the photos of a montage in its film', () => {
       { stdio: 'pipe' }
     )
 
-    expect(seconds(out)).toBeCloseTo(7, 0)
+    expect(durationOf(out)).toBeCloseTo(7, 0)
     expect(colourAt(out, 1)).toBe('blue')
     expect(colourAt(out, 3.5)).toBe('red')
     expect(colourAt(out, 5.5)).toBe('blue')

@@ -48,11 +48,9 @@ const saveGroups: Intent = async ({
       const to = getGroupProcessedDir(outputDir, incoming)
       if (from.dir !== to.dir || from.baseName !== to.baseName)
         renames.push({ before, after: incoming })
-      continue
     }
   }
-  const held = data.fileUpdates?.find((u) => u.id && frozenFiles.has(u.id))
-  if (held?.id) return refuseFrozen()
+  if (data.fileUpdates?.some((u) => u.id && frozenFiles.has(u.id))) return refuseFrozen()
   for (const update of data.fileUpdates ?? []) {
     const current = manifest.files.find((f) =>
       update.id ? f.id === update.id : f.path === update.path

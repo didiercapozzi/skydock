@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { filmEditSchema, imageAsStill, timelineEnd } from '../src/filmEditShape'
 import type { EditSource, FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
+import { rgbAt } from './ffmpegFixtures'
 import { createTmpDir } from './fixtures'
 
 let dir: string
@@ -76,26 +77,8 @@ const render = (edit: FilmEdit) => {
 
 const red = (got: { r: number; g: number; b: number }) => got.r > 200 && got.g < 60 && got.b < 60
 
-const colourAt = (file: string, at: number, x: number, y: number) => {
-  const [r = 0, g = 0, b = 0] = execFileSync('ffmpeg', [
-    '-loglevel',
-    'error',
-    '-ss',
-    String(at),
-    '-i',
-    file,
-    '-frames:v',
-    '1',
-    '-vf',
-    `crop=2:2:${x}:${y}`,
-    '-f',
-    'rawvideo',
-    '-pix_fmt',
-    'rgb24',
-    '-'
-  ])
-  return { r, g, b }
-}
+const colourAt = (file: string, at: number, x: number, y: number) =>
+  rgbAt(file, { at, filter: `crop=2:2:${x}:${y}` })
 
 beforeEach(() => {
   dir = createTmpDir('skydock-layers-')
@@ -132,6 +115,25 @@ afterEach(() => {
 })
 
 describe('the layers of a film', () => {
+  it('fade in and out for no more than half of their time each, as they do in the preview', () => {
+    const args = filmArgs({
+      edit: film([layer({ colour: '#ff0000', at: 1, seconds: 2, fadeIn: 4, fadeOut: 4 })]),
+      sources: new Map([
+        ['a.mp4', { name: 'a.mp4', path: 'a.mp4', play: '', seconds: 4, sound: false, marks: [] }]
+      ]),
+      music: new Map(),
+      width: 320,
+      height: 180,
+      fonts: {},
+      textFileOf: (id) => `${id}.txt`,
+      out: 'film.mp4'
+    })
+    const graph = args[args.indexOf('-filter_complex') + 1]
+
+    expect(graph).toContain('fade=t=in:st=1:d=1:alpha=1')
+    expect(graph).toContain('fade=t=out:st=2:d=1:alpha=1')
+  })
+
   it('are a picture from the images folder or a colour, with a place on the frame, and never both or neither', () => {
     expect(filmEditSchema.safeParse(film([layer({ name: 'dot.png' })])).success).toBe(true)
     expect(filmEditSchema.safeParse(film([layer({ colour: '#ffffff' })])).success).toBe(true)

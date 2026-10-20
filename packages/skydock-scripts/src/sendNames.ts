@@ -1,5 +1,6 @@
 import type { ArchiveEntry } from './archive'
 import { startOfFiles } from './clustering'
+import { EDIT_ENDING } from './montageNames'
 import { parseDayEpoch } from './plain'
 import { sendPlanSchema } from './types'
 import type { ManifestFile, ManifestGroup, SendPart, SendPlan } from './types'
@@ -32,7 +33,7 @@ const stemOf = (group: ManifestGroup) =>
 
 type PartFile = ArchiveEntry & { size: number }
 
-const endingOf = (part: SendPart) => (part === 'film' ? '.mp4' : '.edit.json')
+const endingOf = (part: SendPart) => (part === 'film' ? '.mp4' : EDIT_ENDING)
 
 const partEntries = (part: SendPart, files: PartFile[], stem: string): PartFile[] =>
   part === 'videos' || part === 'photos'

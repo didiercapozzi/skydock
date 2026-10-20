@@ -5,6 +5,7 @@ import {
   clipLength,
   clipLevelAt,
   DAY_TOKEN,
+  DEFAULT_FPS,
   editAnswerSchema,
   DUCK_RAMP,
   estimateKey,
@@ -27,7 +28,7 @@ import {
   SLOT,
   slotEdit,
   speedOf,
-  imageAsStill,
+  sourcesByName,
   STILL_SECONDS,
   TEXT_FADE,
   textFadesOf
@@ -91,10 +92,10 @@ import { useLiveJobs } from '../hooks/useLiveProgress'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
 import { Go, Mini, Seg } from './buttons'
-import { FilmPart, SPEEDS } from './film-part'
+import { FilmPart, SpeedSelect } from './film-part'
 import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-template-modals'
 import type { Listed } from './film-template-modals'
-import { FONT_LOOK, FilmPreview } from './film-preview'
+import { dragPointer, FONT_LOOK, FilmPreview } from './film-preview'
 import { FilmShortcuts } from './film-shortcuts'
 import { partOf, StopButton, stopOf } from './jobs-panel'
 import { FILM_ACTIONS, keyLabel, keyNames, type FilmAction } from '../helpers/filmKeys'
@@ -139,11 +140,11 @@ const SEEK_EPS = 0.001
 const SEEK_TOLERANCE = 0.05
 const CUE_WITHIN = 5
 const MUSIC_VOLUME = 0.8
-const SHORTEST_MUSIC = 5
+const DEFAULT_MUSIC_LENGTH = 5
 const UNDOABLE = 50
 const ONE_CHANGE = 400
 
-const musicAnswerSchema = z.object({ ok: z.boolean(), error: z.string().optional() })
+const bringAnswerSchema = z.object({ ok: z.boolean(), error: z.string().optional() })
 
 const TEXT_INPUTS = /^(text|number|search|email|url|tel|password)$/
 const REPEATING = /^(Arrow\w+|Enter| )$/
@@ -152,6 +153,7 @@ const PRESSED = 'button, input[type=checkbox]'
 const ARROWED = '[role=slider], input[type=range]'
 
 const COLOURS = ['#ffffff', '#ffd84d', '#ff8a5c', '#7fd3ff', '#0f2f47'] as const
+const BACKGROUND_COLOURS = [...COLOURS, '#000000']
 
 const SIZE_AFTER = 600
 
@@ -303,12 +305,44 @@ const TimeBox = ({
       onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
       onBlur={(e) => {
         const seconds = secondsOf(e.currentTarget.value)
-        if (onCommit && Number.isFinite(seconds) && seconds !== value) onCommit(seconds)
+        if (
+          onCommit &&
+          e.currentTarget.value !== e.currentTarget.defaultValue &&
+          Number.isFinite(seconds) &&
+          seconds !== value
+        )
+          onCommit(seconds)
         e.currentTarget.value = clockOf(value)
       }}
       className='min-w-0 rounded-corner border border-line bg-well px-2 py-1 font-mono text-body tabular-nums read-only:text-ink-2'
     />
   </Field>
+)
+
+const Swatches = ({
+  colours,
+  value,
+  onPick
+}: {
+  colours: readonly string[]
+  value?: string
+  onPick: (colour: string) => void
+}) => (
+  <span className='flex gap-2'>
+    {colours.map((colour) => (
+      <button
+        key={colour}
+        type='button'
+        aria-label={colour}
+        aria-pressed={value === undefined ? undefined : value.toLowerCase() === colour}
+        onClick={() => onPick(colour)}
+        style={{ background: colour }}
+        className={`size-5.5 rounded-full ${
+          value?.toLowerCase() === colour ? 'shadow-picked' : 'shadow-hairline'
+        }`}
+      />
+    ))}
+  </span>
 )
 
 const Slider = ({
@@ -385,6 +419,31 @@ const Add = ({ title, onClick }: { title?: string; onClick: () => void }) => (
   </button>
 )
 
+const BringIn = ({
+  label,
+  accept,
+  onFiles
+}: {
+  label: string
+  accept: string
+  onFiles: (files: FileList | null) => void
+}) => (
+  <label className='mt-2 inline-flex h-control-sm cursor-pointer items-center justify-center gap-1.5 rounded-corner bg-pane px-3.5 text-body font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
+    <Icon
+      name='plus'
+      size={13}
+    />
+    {label}
+    <input
+      type='file'
+      multiple
+      accept={accept}
+      className='sr-only'
+      onChange={(e) => onFiles(e.target.files)}
+    />
+  </label>
+)
+
 const FORMAT_NAMES = { h264: 'H.264', h265: 'H.265', av1: 'AV1' } as const
 
 const Library = ({
@@ -400,7 +459,7 @@ const Library = ({
   onAddImage,
   onAddBackground,
   onAddText,
-  onMusicArrived
+  onBroughtIn
 }: {
   tab: Library
   onTab: (tab: Library) => void
@@ -414,42 +473,26 @@ const Library = ({
   onAddImage: (name: string) => void
   onAddBackground: (colour: string) => void
   onAddText: (preset: (typeof PRESETS)[number]) => void
-  onMusicArrived: () => void
+  onBroughtIn: () => void
 }) => {
   const [bringing, setBringing] = useState<string | null>(null)
-  const bringImages = async (files: FileList | null) => {
+  const bringIn = async (
+    files: FileList | null,
+    url: '/api/images' | '/api/music',
+    busy: string,
+    failed: string
+  ) => {
     if (!files || files.length === 0) return
     const body = new FormData()
     for (const file of files) body.append('files', file)
-    setBringing(t`Bringing the pictures in…`)
-    const answer = musicAnswerSchema.safeParse(
-      await routingEngine.upload({ url: '/api/images', body }).catch(() => null)
+    setBringing(busy)
+    const answer = bringAnswerSchema.safeParse(
+      await routingEngine.upload({ url, body }).catch(() => null)
     )
     setBringing(
-      answer.success && answer.data.ok
-        ? null
-        : answer.success
-          ? (answer.data.error ?? t`The pictures could not be brought in.`)
-          : t`The pictures could not be brought in.`
+      answer.success && answer.data.ok ? null : (answer.success && answer.data.error) || failed
     )
-    onMusicArrived()
-  }
-  const bring = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
-    const body = new FormData()
-    for (const file of files) body.append('files', file)
-    setBringing(t`Bringing the music in…`)
-    const answer = musicAnswerSchema.safeParse(
-      await routingEngine.upload({ url: '/api/music', body }).catch(() => null)
-    )
-    setBringing(
-      answer.success && answer.data.ok
-        ? null
-        : answer.success
-          ? (answer.data.error ?? t`The music could not be brought in.`)
-          : t`The music could not be brought in.`
-    )
-    onMusicArrived()
+    onBroughtIn()
   }
   return (
     <aside
@@ -555,20 +598,18 @@ const Library = ({
             {music.length === 0 && (
               <p className='text-small text-ink-3'>{t`No music yet. Bring some in below.`}</p>
             )}
-            <label className='mt-2 inline-flex h-control-sm cursor-pointer items-center justify-center gap-1.5 rounded-corner bg-pane px-3.5 text-body font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
-              <Icon
-                name='plus'
-                size={13}
-              />
-              {t`Bring in music…`}
-              <input
-                type='file'
-                multiple
-                accept='audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac'
-                className='sr-only'
-                onChange={(e) => void bring(e.target.files)}
-              />
-            </label>
+            <BringIn
+              label={t`Bring in music…`}
+              accept='audio/*,.mp3,.m4a,.aac,.wav,.ogg,.flac'
+              onFiles={(files) =>
+                void bringIn(
+                  files,
+                  '/api/music',
+                  t`Bringing the music in…`,
+                  t`The music could not be brought in.`
+                )
+              }
+            />
             {bringing && <p className='text-small text-ink-3'>{bringing}</p>}
           </>
         )}
@@ -588,6 +629,8 @@ const Library = ({
                   <img
                     src={getFileUrl(image.path)}
                     alt=''
+                    loading='lazy'
+                    decoding='async'
                     draggable={false}
                     className='size-full object-contain'
                   />
@@ -613,20 +656,18 @@ const Library = ({
             {images.length === 0 && (
               <p className='text-small text-ink-3'>{t`No pictures yet. Bring some in below.`}</p>
             )}
-            <label className='mt-2 inline-flex h-control-sm cursor-pointer items-center justify-center gap-1.5 rounded-corner bg-pane px-3.5 text-body font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
-              <Icon
-                name='plus'
-                size={13}
-              />
-              {t`Bring in pictures…`}
-              <input
-                type='file'
-                multiple
-                accept='image/*,.png,.jpg,.jpeg,.webp'
-                className='sr-only'
-                onChange={(e) => void bringImages(e.target.files)}
-              />
-            </label>
+            <BringIn
+              label={t`Bring in pictures…`}
+              accept='image/*,.png,.jpg,.jpeg,.webp'
+              onFiles={(files) =>
+                void bringIn(
+                  files,
+                  '/api/images',
+                  t`Bringing the pictures in…`,
+                  t`The pictures could not be brought in.`
+                )
+              }
+            />
             {bringing && <p className='text-small text-ink-3'>{bringing}</p>}
           </>
         )}
@@ -825,17 +866,10 @@ const Inspector = ({
   const clipIndex = clip ? edit.clips.indexOf(clip) : -1
   const fade = clip ? fadeInto(edit.clips, clipIndex) : 0
   const changeClip = (change: Partial<EditClip>) =>
-    clip &&
-    onChange({
-      ...edit,
-      clips: edit.clips.map((one) => (one.id === clip.id ? { ...one, ...change } : one))
-    })
-  const changePiece = (change: Partial<EditMusic>) =>
-    onChange({
-      ...edit,
-      music: edit.music.map((one) => (one.id === picked?.id ? { ...one, ...change } : one))
-    })
+    clip && onChange(patchItems(edit, [{ kind: 'clip', id: clip.id }], change))
   const piece = solo?.kind === 'music' ? edit.music.find((one) => one.id === solo.id) : undefined
+  const changePiece = (change: Partial<EditMusic>) =>
+    piece && onChange(patchItems(edit, [{ kind: 'music', id: piece.id }], change))
   const text = solo?.kind === 'text' ? edit.texts.find((one) => one.id === solo.id) : undefined
   const layer =
     solo?.kind === 'layer' ? (edit.layers ?? []).find((one) => one.id === solo.id) : undefined
@@ -843,7 +877,8 @@ const Inspector = ({
     layer && onChange(changeLike(edit, { kind: 'layer', id: layer.id }, change, also))
   const changeText = (change: Partial<EditText>) =>
     text && onChange(changeLike(edit, { kind: 'text', id: text.id }, change, also))
-  const picks: Selected[] = picked ? [{ kind: picked.kind, id: picked.id }, ...also] : []
+  const picks: Selected[] = picked ? [picked, ...also] : []
+  const first = picks[0]
   const allOf = (kind: Selected['kind']) =>
     picks.length > 0 && picks.every((one) => one.kind === kind)
   const rawFade = (pick: Selected | undefined) => {
@@ -858,16 +893,18 @@ const Inspector = ({
     return { fadeIn: one?.fadeIn ?? 0, fadeOut: one?.fadeOut ?? 0 }
   }
   const shortest = Math.min(
-    ...picks.map((pick) =>
-      pick.kind === 'clip'
-        ? clipLength(edit.clips.find((c) => c.id === pick.id) ?? { start: 0, end: 2 })
-        : pick.kind === 'music'
-          ? (edit.music.find((c) => c.id === pick.id)?.end ?? 2) -
-            (edit.music.find((c) => c.id === pick.id)?.start ?? 0)
-          : ((
-              edit.texts.find((c) => c.id === pick.id) ?? edit.layers?.find((c) => c.id === pick.id)
-            )?.seconds ?? 2)
-    )
+    ...picks.map((pick) => {
+      if (pick.kind === 'clip')
+        return clipLength(edit.clips.find((c) => c.id === pick.id) ?? { start: 0, end: 2 })
+      if (pick.kind === 'music') {
+        const one = edit.music.find((c) => c.id === pick.id)
+        return (one?.end ?? 2) - (one?.start ?? 0)
+      }
+      return (
+        (edit.texts.find((c) => c.id === pick.id) ?? edit.layers?.find((c) => c.id === pick.id))
+          ?.seconds ?? 2
+      )
+    })
   )
   const apart = (kind: Grouped['kind'], id: string) =>
     groupOf(edit, { kind, id }).length > 1 && (
@@ -957,21 +994,10 @@ const Inspector = ({
             )}
             {!sources.get(clip.name)?.still && (
               <Field label={t`Speed`}>
-                <select
-                  aria-label={t`Speed`}
+                <SpeedSelect
                   value={speedOf(clip)}
-                  onChange={(e) =>
-                    onChange(setSpeed(edit, clip.id, Number(e.target.value), ripple))
-                  }
-                  className='h-7 rounded-corner border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
-                  {SPEEDS.map((speed) => (
-                    <option
-                      key={speed}
-                      value={speed}>
-                      {speed === 1 ? t`Normal` : `${speed}×`}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(speed) => onChange(setSpeed(edit, clip.id, speed, ripple))}
+                />
               </Field>
             )}
             <label className='flex items-center gap-2 text-body'>
@@ -979,14 +1005,7 @@ const Inspector = ({
                 type='checkbox'
                 checked={clip.sound}
                 disabled={!sources.get(clip.name)?.sound}
-                onChange={(e) =>
-                  onChange({
-                    ...edit,
-                    clips: edit.clips.map((one) =>
-                      one.id === clip.id ? { ...one, sound: e.target.checked } : one
-                    )
-                  })
-                }
+                onChange={(e) => changeClip({ sound: e.target.checked })}
                 className='accent-accent'
               />
               {sources.get(clip.name)?.sound ? t`Hear this clip` : t`This clip has no sound`}
@@ -1059,12 +1078,7 @@ const Inspector = ({
               max={1}
               step={0.01}
               shown={`${Math.round(piece.volume * 100)}%`}
-              onChange={(volume) =>
-                onChange({
-                  ...edit,
-                  music: edit.music.map((one) => (one.id === piece.id ? { ...one, volume } : one))
-                })
-              }
+              onChange={(volume) => changePiece({ volume })}
             />
             <div className='grid grid-cols-2 gap-2'>
               <FadeLengths
@@ -1131,7 +1145,7 @@ const Inspector = ({
             </h3>
             <div className='grid grid-cols-2 gap-2'>
               <FadeLengths
-                {...rawFade(picks[0])}
+                {...rawFade(first)}
                 max={shortest / 2}
                 onChange={(change) => onChange(patchItems(edit, picks, change))}
               />
@@ -1139,46 +1153,37 @@ const Inspector = ({
             {allOf('music') && (
               <Slider
                 label={t`Volume`}
-                value={edit.music.find((one) => one.id === picks[0]!.id)?.volume ?? 1}
+                value={edit.music.find((one) => one.id === first?.id)?.volume ?? 1}
                 min={0}
                 max={1}
                 step={0.01}
-                shown={`${Math.round((edit.music.find((one) => one.id === picks[0]!.id)?.volume ?? 1) * 100)}%`}
+                shown={`${Math.round((edit.music.find((one) => one.id === first?.id)?.volume ?? 1) * 100)}%`}
                 onChange={(volume) => onChange(patchItems(edit, picks, { volume }))}
               />
             )}
             {allOf('clip') && (
               <>
                 <Field label={t`Speed`}>
-                  <select
-                    aria-label={t`Speed`}
-                    value={speedOf(edit.clips.find((one) => one.id === picks[0]!.id) ?? {})}
-                    onChange={(e) =>
+                  <SpeedSelect
+                    value={speedOf(edit.clips.find((one) => one.id === first?.id) ?? {})}
+                    onChange={(speed) =>
                       onChange(
                         picks.reduce(
                           (now, pick) =>
                             sources.get(now.clips.find((one) => one.id === pick.id)?.name ?? '')
                               ?.still
                               ? now
-                              : setSpeed(now, pick.id, Number(e.target.value), ripple),
+                              : setSpeed(now, pick.id, speed, ripple),
                           edit
                         )
                       )
                     }
-                    className='h-7 rounded-corner border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
-                    {SPEEDS.map((speed) => (
-                      <option
-                        key={speed}
-                        value={speed}>
-                        {speed === 1 ? t`Normal` : `${speed}×`}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <label className='flex items-center gap-2 text-body'>
                   <input
                     type='checkbox'
-                    checked={edit.clips.find((one) => one.id === picks[0]!.id)?.sound ?? false}
+                    checked={edit.clips.find((one) => one.id === first?.id)?.sound ?? false}
                     onChange={(e) =>
                       onChange(
                         patchItems(
@@ -1200,18 +1205,10 @@ const Inspector = ({
             )}
             {allOf('text') && (
               <Field label={t`Colour`}>
-                <span className='flex gap-2'>
-                  {COLOURS.map((colour) => (
-                    <button
-                      key={colour}
-                      type='button'
-                      aria-label={colour}
-                      onClick={() => onChange(patchItems(edit, picks, { colour }))}
-                      style={{ background: colour }}
-                      className='size-6 rounded-full shadow-hairline'
-                    />
-                  ))}
-                </span>
+                <Swatches
+                  colours={COLOURS}
+                  onPick={(colour) => onChange(patchItems(edit, picks, { colour }))}
+                />
               </Field>
             )}
             {remove}
@@ -1308,21 +1305,11 @@ const Inspector = ({
               />
             </div>
             <Field label={t`Colour`}>
-              <span className='flex gap-2'>
-                {COLOURS.map((colour) => (
-                  <button
-                    key={colour}
-                    type='button'
-                    aria-label={colour}
-                    aria-pressed={text.colour.toLowerCase() === colour}
-                    onClick={() => changeText({ colour })}
-                    style={{ background: colour }}
-                    className={`size-5.5 rounded-full ${
-                      text.colour.toLowerCase() === colour ? 'shadow-picked' : 'shadow-hairline'
-                    }`}
-                  />
-                ))}
-              </span>
+              <Swatches
+                colours={COLOURS}
+                value={text.colour}
+                onPick={(colour) => changeText({ colour })}
+              />
             </Field>
             {apart('text', text!.id)}
             {remove}
@@ -1384,21 +1371,11 @@ const Inspector = ({
             )}
             {layer.colour !== undefined && (
               <Field label={t`Colour`}>
-                <span className='flex gap-2'>
-                  {[...COLOURS, '#000000'].map((colour) => (
-                    <button
-                      key={colour}
-                      type='button'
-                      aria-label={colour}
-                      aria-pressed={layer.colour?.toLowerCase() === colour}
-                      onClick={() => changeLayer({ colour })}
-                      style={{ background: colour }}
-                      className={`size-5.5 rounded-full ${
-                        layer.colour?.toLowerCase() === colour ? 'shadow-picked' : 'shadow-hairline'
-                      }`}
-                    />
-                  ))}
-                </span>
+                <Swatches
+                  colours={BACKGROUND_COLOURS}
+                  value={layer.colour}
+                  onPick={(colour) => changeLayer({ colour })}
+                />
               </Field>
             )}
             {apart('layer', layer!.id)}
@@ -1444,7 +1421,7 @@ const Inspector = ({
               <Seg
                 label={t`Frame rate`}
                 wide
-                value={String(edit.output?.fps ?? 30)}
+                value={String(edit.output?.fps ?? DEFAULT_FPS)}
                 options={OUTPUT_FPS.map((rate) => [String(rate), String(rate)] as const)}
                 onPick={(rate) =>
                   onChange({ ...edit, output: { ...edit.output, fps: Number(rate) } })
@@ -1516,7 +1493,7 @@ const templateNamed = (raw: unknown, name: string) => {
 const asEdit = (raw: unknown, name: string) => {
   const listed = filmTemplatesAnswerSchema.safeParse(raw)
   if (!listed.success) return null
-  const one = templateNamed(raw, name)
+  const one = listed.data.templates.find((kept) => kept.name === name)
   return one
     ? {
         ok: true,
@@ -1587,13 +1564,12 @@ const FilmEditor = ({
   )
   const stopRender = followed && followed.stage !== 'failed' ? stopOf(followed) : null
   const [renderOpen, setRenderOpen] = useState(false)
-  useEffect(() => {
-    if (picked) setRenderOpen(false)
-  }, [picked])
+  if (picked && renderOpen) setRenderOpen(false)
   const [sized, setSized] = useState<{ key: string; points: SizePoint[] | null } | null>(null)
   const sizeKey = edit && renderOpen && !scratch ? estimateKey(groupId ?? '', edit) : null
   useEffect(() => {
     if (!sizeKey) return
+    let stale = false
     const timer = setTimeout(() => {
       const asked = latest.current
       if (!asked || !groupId) return
@@ -1605,11 +1581,17 @@ const FilmEditor = ({
         })
         .then((answer) => {
           const parsed = estimateAnswerSchema.safeParse(answer)
-          setSized({ key: sizeKey, points: parsed.success ? parsed.data.estimate : null })
+          if (!stale)
+            setSized({ key: sizeKey, points: parsed.success ? parsed.data.estimate : null })
         })
-        .catch(() => setSized({ key: sizeKey, points: null }))
+        .catch(() => {
+          if (!stale) setSized({ key: sizeKey, points: null })
+        })
     }, SIZE_AFTER)
-    return () => clearTimeout(timer)
+    return () => {
+      stale = true
+      clearTimeout(timer)
+    }
   }, [sizeKey, groupId])
   const [readAgain, setReadAgain] = useState(0)
   const [starting, setStarting] = useState<Listed | null>(null)
@@ -1638,11 +1620,10 @@ const FilmEditor = ({
   const now = useRef(0)
   const fade = useRef<number | undefined>(undefined)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const unsaved = useRef(false)
+  const stuck = useRef(false)
 
-  const sources = new Map([
-    ...(loaded?.images ?? []).map((one) => [one.name, imageAsStill(one)] as const),
-    ...(loaded?.sources ?? []).map((one) => [one.name, one] as const)
-  ])
+  const sources = sourcesByName(loaded?.images ?? [], loaded?.sources ?? [])
   const music = new Map((loaded?.music ?? []).map((one) => [one.name, one]))
   const changedClips = clipsChanged(scratch ? null : edit, loaded ? sources : null)
 
@@ -1658,7 +1639,8 @@ const FilmEditor = ({
         name: template,
         template: { ...captureTemplate(current, { name: '', day: '' }), fade: fade.current }
       })
-      setSaving(said === null ? 'saved' : 'failed')
+      if (said === null && latest.current === current) unsaved.current = false
+      if (said !== null || latest.current === current) setSaving(said === null ? 'saved' : 'failed')
       if (said !== null) setProblem(said)
       return said === null
     }
@@ -1670,7 +1652,9 @@ const FilmEditor = ({
       })
       .catch((e: unknown) => ({ success: false as const, globalErrors: [String(e)] }))
     const refused = refusalSchema.safeParse(answer)
-    setSaving(refused.success ? 'failed' : 'saved')
+    if (!refused.success && latest.current === current) unsaved.current = false
+    if (refused.success || latest.current === current)
+      setSaving(refused.success ? 'failed' : 'saved')
     if (refused.success)
       setProblem(refused.data.globalErrors?.[0] ?? t`The film could not be saved.`)
     return !refused.success
@@ -1678,6 +1662,8 @@ const FilmEditor = ({
 
   const apply = (next: FilmEdit) => {
     latest.current = next
+    unsaved.current = true
+    stuck.current = false
     setEditNow(next)
     setSaving('waiting')
     if (timer.current) clearTimeout(timer.current)
@@ -1704,7 +1690,7 @@ const FilmEditor = ({
   })
   useEffect(
     () => () => {
-      if (timer.current) void leaving.current('save')
+      if (timer.current || unsaved.current) void leaving.current('save')
     },
     []
   )
@@ -1924,7 +1910,10 @@ const FilmEditor = ({
     players.forEach((player, k) => {
       if (!taken[k] && player && !player.paused) player.pause()
     })
-    const spans = heardSpans(current, (clip) => sources.get(clip.name)?.sound === true)
+    const spans =
+      current.music.length > 0
+        ? heardSpans(current, (clip) => sources.get(clip.name)?.sound === true)
+        : []
     for (const piece of current.music) {
       const sound = sounds.current.get(piece.id)
       if (!sound) continue
@@ -2017,7 +2006,10 @@ const FilmEditor = ({
 
   const close = async () => {
     setPlaying(false)
-    if (timer.current) await save('save')
+    if (unsaved.current && !stuck.current && !(await save('save'))) {
+      stuck.current = true
+      return
+    }
     onClose()
   }
 
@@ -2029,10 +2021,16 @@ const FilmEditor = ({
     }
   }
 
+  const pickAlone = (item: Selected) => {
+    setAlso([])
+    setPicked(item)
+  }
+
   const undo = () => {
     const before = history.at(-1)
     if (!before) return
     setHistory(history.slice(0, -1))
+    setAlso([])
     joined.current = false
     setPicked((now) =>
       now &&
@@ -2048,7 +2046,7 @@ const FilmEditor = ({
   const removePicked = () => {
     if (!edit || !picked) return
     joined.current = false
-    const chosen: Selected[] = [{ kind: picked.kind, id: picked.id }, ...also]
+    const chosen: Selected[] = [picked, ...also]
     const members = chosen.flatMap((one) =>
       one.kind === 'text' || one.kind === 'layer'
         ? groupOf(edit, { kind: one.kind, id: one.id })
@@ -2241,7 +2239,7 @@ const FilmEditor = ({
       name,
       at: from,
       start: 0,
-      end: Math.min(source.seconds, Math.max(SHORTEST_MUSIC, room)),
+      end: Math.min(source.seconds, Math.max(DEFAULT_MUSIC_LENGTH, room)),
       volume: MUSIC_VOLUME
     }
     change({ ...edit, music: [...edit.music, piece] })
@@ -2420,7 +2418,7 @@ const FilmEditor = ({
               onAddClip={(name) => addClip(name)}
               onAddMusic={addMusic}
               onAddText={addText}
-              onMusicArrived={() => setReadAgain(readAgain + 1)}
+              onBroughtIn={() => setReadAgain(readAgain + 1)}
             />
             <div className='flex min-h-0 min-w-0 flex-col justify-center bg-well max-wide:order-first max-wide:h-[40vh] max-wide:min-h-72 max-wide:col-span-2 max-wide:border-b max-wide:border-line max-desk:col-span-1'>
               <FilmPreview
@@ -2439,9 +2437,9 @@ const FilmEditor = ({
                 underRef={under}
                 images={loaded?.images ?? []}
                 pickedLayer={picked?.kind === 'layer' ? picked.id : null}
-                onPickLayer={(id) => setPicked({ kind: 'layer', id })}
+                onPickLayer={(id) => pickAlone({ kind: 'layer', id })}
                 onMoveLayer={(id, x, y) => change(moveLook(edit, { kind: 'layer', id }, x, y))}
-                onPickText={(id) => setPicked({ kind: 'text', id })}
+                onPickText={(id) => pickAlone({ kind: 'text', id })}
                 onMoveText={(id, x, y) => change(moveLook(edit, { kind: 'text', id }, x, y))}
                 onShape={(tall) => here?.index === 0 && setUpright(tall)}
               />
@@ -2545,19 +2543,8 @@ const FilmEditor = ({
             }}
             onPointerDown={(e) => {
               e.preventDefault()
-              const bar = e.currentTarget
-              bar.setPointerCapture(e.pointerId)
               const [y0, h0] = [e.clientY, timelineHeight]
-              const move = (event: PointerEvent) =>
-                setTimelineHeight(resizedTimeline(h0 + y0 - event.clientY))
-              const stop = () => {
-                bar.removeEventListener('pointermove', move)
-                bar.removeEventListener('pointerup', stop)
-                bar.removeEventListener('pointercancel', stop)
-              }
-              bar.addEventListener('pointermove', move)
-              bar.addEventListener('pointerup', stop)
-              bar.addEventListener('pointercancel', stop)
+              dragPointer(e, (event) => setTimelineHeight(resizedTimeline(h0 + y0 - event.clientY)))
             }}
             className='h-1.5 flex-none cursor-row-resize touch-none bg-well hover:bg-line focus-visible:bg-accent-soft'
           />
@@ -2594,9 +2581,7 @@ const FilmEditor = ({
                 title={t`Shift-click texts and pictures on the timeline, then group them to move together`}
                 onClick={() => {
                   if (edit && picked) {
-                    change(
-                      groupItems(edit, [{ kind: picked.kind, id: picked.id }, ...also] as Grouped[])
-                    )
+                    change(groupItems(edit, [picked, ...also] as Grouped[]))
                     setAlso([])
                   }
                 }}>
@@ -2798,6 +2783,7 @@ const FilmEditor = ({
           onApply={(next) => {
             joined.current = false
             setPicked(null)
+            setAlso([])
             change(next)
           }}
           onClose={() => setTemplating(false)}

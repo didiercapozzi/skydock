@@ -4,7 +4,7 @@ import { isQuarterTurn, speedOf, turnBy, turnedSize } from '@skydock/scripts/cli
 import type { EditClip, EditSource } from '@skydock/scripts/client'
 import type { FrameCrop, Rotation } from '@skydock/scripts'
 import { useRef, useState } from 'react'
-import { clockOf } from '../helpers/filmTimeline'
+import { clockOf, SHORTEST } from '../helpers/filmTimeline'
 import { Go, Mini, Seg } from './buttons'
 import { fitRatio, FrameCropper } from './frame-cropper'
 import { Modal } from './modal'
@@ -12,8 +12,6 @@ import { pictureStyle, RATIOS, savedShape } from './preview-drawer'
 import type { RatioOption } from './preview-drawer'
 import { getFileUrl, getThumbUrl } from './utils'
 import { VideoCropper } from './video-cropper'
-
-const SHORTEST = 0.5
 
 const SPEEDS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4]
 
@@ -31,6 +29,22 @@ const choice = (on: boolean) =>
   `flex h-10 items-center justify-center rounded-corner px-3 text-small font-medium ${
     on ? 'bg-accent-soft text-accent-ink' : 'bg-well text-ink hover:bg-line'
   }`
+
+const SpeedSelect = ({ value, onChange }: { value: number; onChange: (speed: number) => void }) => (
+  <select
+    aria-label={t`Speed`}
+    value={value}
+    onChange={(e) => onChange(Number(e.target.value))}
+    className='h-7 rounded-corner border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
+    {SPEEDS.map((one) => (
+      <option
+        key={one}
+        value={one}>
+        {one === 1 ? t`Normal` : `${one}×`}
+      </option>
+    ))}
+  </select>
+)
 
 const FilmPart = ({
   clip,
@@ -95,7 +109,8 @@ const FilmPart = ({
     setRotation(next)
   }
 
-  const place = () =>
+  const place = () => {
+    if (part.end - part.start < SHORTEST) return
     onPlace({
       start: part.start,
       end: part.end,
@@ -103,6 +118,7 @@ const FilmPart = ({
       frame: framing ? frame : null,
       rotation
     })
+  }
 
   return (
     <Modal
@@ -190,19 +206,10 @@ const FilmPart = ({
             <div className='flex flex-wrap items-center gap-3 text-body text-ink-2'>
               <label className='flex items-center gap-2'>
                 {t`Speed`}
-                <select
-                  aria-label={t`Speed`}
+                <SpeedSelect
                   value={speed}
-                  onChange={(e) => setSpeed(Number(e.target.value))}
-                  className='h-7 rounded-corner border border-line-strong bg-pane px-1.5 text-small text-ink-2'>
-                  {SPEEDS.map((one) => (
-                    <option
-                      key={one}
-                      value={one}>
-                      {one === 1 ? t`Normal` : `${one}×`}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSpeed}
+                />
               </label>
               <span className='tabular-nums'>
                 {clockOf(part.start)} – {clockOf(part.end)} · {t`lasts ${lasts}`}
@@ -263,5 +270,5 @@ const FilmPart = ({
   )
 }
 
-export { FilmPart, SPEEDS }
+export { FilmPart, SpeedSelect }
 export type { Placed }

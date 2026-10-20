@@ -31,10 +31,8 @@ const sendMontage = async (
 ) => {
   const group = manifest.groups.find((g) => g.id === groupId)
   if (!group) return refuse('Group not found.')
-  const busy = busyWith({ groupIds: jumpsOfMontage(manifest, outputDir, group.id) }, [
-    'process',
-    'render'
-  ])
+  const jumps = jumpsOfMontage(manifest, outputDir, group.id)
+  const busy = busyWith({ groupIds: jumps }, ['process', 'render'])
   if (busy === 'processing')
     return refuse('This montage is being processed — upload it once that is done.')
   if (busy === 'rendering')
@@ -92,7 +90,7 @@ const sendMontage = async (
       }
     })
   }
-  return reportedUpload({ key, label, groupIds: [group.id], outputDir, latest, refuse }, send)
+  return reportedUpload({ key, label, groupIds: jumps, outputDir, latest, refuse }, send)
 }
 
 const uploadMontageIntent: Intent = (change) => sendMontage(change, change.data.groupId)

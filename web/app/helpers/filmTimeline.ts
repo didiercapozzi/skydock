@@ -12,12 +12,13 @@ import type { FrameCrop, Rotation } from '@skydock/scripts'
 
 const SHORTEST = 0.5
 const SHORTEST_MUSIC = 1
-const BEFORE_MARK = 1
 const HAIR = 1e-6
 const TILE_LOOP = 4
 const FADE = { default: 1, least: 0.2, most: 3, shortest: 0.4 }
 
 type FadeKind = 'clips' | 'texts' | 'music' | 'layers'
+
+const SINGULAR = { clips: 'clip', texts: 'text', layers: 'layer', music: 'music' } as const
 type Faded = EditClip | EditText | EditMusic | EditLayer
 
 type Placed = { clip: EditClip; index: number; from: number; to: number }
@@ -185,8 +186,29 @@ const withMarkers = (
   })
 })
 
+const markersWithin = (one: { start: number; end: number; markers?: EditMarker[] | undefined }) =>
+  (one.markers ?? []).filter((mark) => mark.at >= one.start && mark.at <= one.end)
+
 const markersOf = (edit: FilmEdit, kind: MarkKind, id: string) =>
   (edit[kind] as Array<EditClip | EditMusic>).find((one) => one.id === id)?.markers ?? []
+
+const addMarkers = (
+  edit: FilmEdit,
+  kind: MarkKind,
+  id: string,
+  fresh: Array<{ label: string; at: number }>
+) =>
+  withMarkers(
+    edit,
+    kind,
+    id,
+    fresh
+      .reduce(
+        (taken, one) => [...taken, { id: nextId('mark', taken), ...one }],
+        markersOf(edit, kind, id)
+      )
+      .sort((a, b) => a.at - b.at)
+  )
 
 const addMarkerAt = (
   edit: FilmEdit,
@@ -204,28 +226,14 @@ const addMarkerAt = (
     picked?.kind === 'music' ? edit.music.find((one) => one.id === picked.id) : undefined
   if (piece) {
     if (at < piece.at || at > piece.at + piece.end - piece.start) return null
-    const markers = piece.markers ?? []
-    return withMarkers(
-      edit,
-      'music',
-      piece.id,
-      [...markers, { id: nextId('mark', markers), label, at: piece.start + at - piece.at }].sort(
-        (a, b) => a.at - b.at
-      )
-    )
+    return addMarkers(edit, 'music', piece.id, [{ label, at: piece.start + at - piece.at }])
   }
   if (!clip || at < clip.from - HAIR || at > clip.to + HAIR) return null
-  const markers = clip.clip.markers ?? []
   const local = Math.min(
     clip.clip.end,
     Math.max(clip.clip.start, clip.clip.start + (at - clip.from) * speedOf(clip.clip))
   )
-  return withMarkers(
-    edit,
-    'clips',
-    clip.clip.id,
-    [...markers, { id: nextId('mark', markers), label, at: local }].sort((a, b) => a.at - b.at)
-  )
+  return addMarkers(edit, 'clips', clip.clip.id, [{ label, at: local }])
 }
 
 const renameMarker = (edit: FilmEdit, kind: MarkKind, id: string, markId: string, label: string) =>
@@ -262,46 +270,20 @@ const importMarkers = (
           mark.at <= clip.end &&
           !have.some((one) => Math.abs(one.at - mark.at) < IMPORTED_APART)
       )
-      .map((mark, index) => ({
-        id: nextId('mark', [
-          ...have,
-          ...Array.from({ length: index }, (_, i) => ({ id: `mark-${have.length + i + 1}` }))
-        ]),
-        label: name(mark.which),
-        at: mark.at
-      }))
-    return fresh.length === 0
-      ? all
-      : withMarkers(
-          all,
-          'clips',
-          clip.id,
-          [...have, ...fresh].sort((a, b) => a.at - b.at)
-        )
+      .map((mark) => ({ label: name(mark.which), at: mark.at }))
+    return fresh.length === 0 ? all : addMarkers(all, 'clips', clip.id, fresh)
   }, edit)
 
 const markerTimes = (edit: FilmEdit, skip?: string) => [
   ...placed(edit)
     .filter(({ clip }) => clip.id !== skip)
     .flatMap(({ clip, from }) =>
-      (clip.markers ?? [])
-        .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
-        .map((mark) => from + (mark.at - clip.start) / speedOf(clip))
+      markersWithin(clip).map((mark) => from + (mark.at - clip.start) / speedOf(clip))
     ),
   ...edit.music
     .filter((piece) => piece.id !== skip)
-    .flatMap((piece) =>
-      (piece.markers ?? [])
-        .filter((mark) => mark.at >= piece.start && mark.at <= piece.end)
-        .map((mark) => piece.at + mark.at - piece.start)
-    )
+    .flatMap((piece) => markersWithin(piece).map((mark) => piece.at + mark.at - piece.start))
 ]
-
-const withoutLayer = (edit: FilmEdit, id: string): FilmEdit => {
-  const { layers, ...rest } = edit
-  const kept = (layers ?? []).filter((layer) => layer.id !== id)
-  return kept.length > 0 ? { ...rest, layers: kept } : rest
-}
 
 type Selected = { kind: 'clip' | 'music' | 'text' | 'layer'; id: string }
 
@@ -320,21 +302,31 @@ const groupOf = (edit: FilmEdit, item: Grouped): Grouped[] => {
     : all.filter((one) => one.group === group).map(({ kind, id }) => ({ kind, id }))
 }
 
+const hasItem = (items: Array<{ kind: string; id: string }>, kind: string, id: string) =>
+  items.some((one) => one.kind === kind && one.id === id)
+
+const itemOf = (edit: FilmEdit, item: Grouped) =>
+  item.kind === 'text'
+    ? edit.texts.find((one) => one.id === item.id)
+    : edit.layers?.find((one) => one.id === item.id)
+
 const mapItems = (
   edit: FilmEdit,
   items: Grouped[],
   change: (one: { group?: string | undefined; at: number }) => object
 ): FilmEdit => {
-  const has = (kind: Grouped['kind'], id: string) =>
-    items.some((one) => one.kind === kind && one.id === id)
   const next: FilmEdit = {
     ...edit,
-    texts: edit.texts.map((one) => (has('text', one.id) ? { ...one, ...change(one) } : one))
+    texts: edit.texts.map((one) =>
+      hasItem(items, 'text', one.id) ? { ...one, ...change(one) } : one
+    )
   }
   return edit.layers
     ? {
         ...next,
-        layers: edit.layers.map((one) => (has('layer', one.id) ? { ...one, ...change(one) } : one))
+        layers: edit.layers.map((one) =>
+          hasItem(items, 'layer', one.id) ? { ...one, ...change(one) } : one
+        )
       }
     : next
 }
@@ -356,13 +348,11 @@ const ungroup = (edit: FilmEdit, item: Grouped): FilmEdit => {
     const { group: _group, ...rest } = one
     return rest
   }
-  const has = (kind: Grouped['kind'], id: string) =>
-    members.some((one) => one.kind === kind && one.id === id)
   return {
     ...edit,
-    texts: edit.texts.map((one) => (has('text', one.id) ? strip(one) : one)),
+    texts: edit.texts.map((one) => (hasItem(members, 'text', one.id) ? strip(one) : one)),
     ...(edit.layers
-      ? { layers: edit.layers.map((one) => (has('layer', one.id) ? strip(one) : one)) }
+      ? { layers: edit.layers.map((one) => (hasItem(members, 'layer', one.id) ? strip(one) : one)) }
       : {})
   }
 }
@@ -370,10 +360,7 @@ const ungroup = (edit: FilmEdit, item: Grouped): FilmEdit => {
 const shiftItems = (edit: FilmEdit, items: Grouped[], seconds: number): FilmEdit => {
   const earliest = Math.min(
     ...items.flatMap((item) => {
-      const one =
-        item.kind === 'text'
-          ? edit.texts.find((t) => t.id === item.id)
-          : edit.layers?.find((l) => l.id === item.id)
+      const one = itemOf(edit, item)
       return one ? [one.at] : []
     })
   )
@@ -382,16 +369,11 @@ const shiftItems = (edit: FilmEdit, items: Grouped[], seconds: number): FilmEdit
 }
 
 const moveLook = (edit: FilmEdit, item: Grouped, x: number, y: number): FilmEdit => {
-  const one =
-    item.kind === 'text'
-      ? edit.texts.find((text) => text.id === item.id)
-      : edit.layers?.find((layer) => layer.id === item.id)
+  const one = itemOf(edit, item)
   if (!one) return edit
   const [dx, dy] = [x - one.x, y - one.y]
   const clamp = (value: number) => Math.min(1, Math.max(0, value))
   const members = groupOf(edit, item)
-  const has = (kind: Grouped['kind'], id: string) =>
-    members.some((m) => m.kind === kind && m.id === id)
   const shift = <T extends { x: number; y: number }>(look: T) => ({
     ...look,
     x: clamp(look.x + dx),
@@ -399,9 +381,13 @@ const moveLook = (edit: FilmEdit, item: Grouped, x: number, y: number): FilmEdit
   })
   return {
     ...edit,
-    texts: edit.texts.map((text) => (has('text', text.id) ? shift(text) : text)),
+    texts: edit.texts.map((text) => (hasItem(members, 'text', text.id) ? shift(text) : text)),
     ...(edit.layers
-      ? { layers: edit.layers.map((layer) => (has('layer', layer.id) ? shift(layer) : layer)) }
+      ? {
+          layers: edit.layers.map((layer) =>
+            hasItem(members, 'layer', layer.id) ? shift(layer) : layer
+          )
+        }
       : {})
   }
 }
@@ -436,10 +422,8 @@ const patchItems = (
   items: Selected[],
   patch: Record<string, unknown>
 ): FilmEdit => {
-  const has = (kind: Selected['kind'], id: string) =>
-    items.some((one) => one.kind === kind && one.id === id)
   const apply = <T extends { id: string }>(kind: Selected['kind'], ones: T[]) =>
-    ones.map((one) => (has(kind, one.id) ? { ...one, ...patch } : one))
+    ones.map((one) => (hasItem(items, kind, one.id) ? { ...one, ...patch } : one))
   return {
     ...edit,
     clips: apply('clip', edit.clips),
@@ -450,13 +434,11 @@ const patchItems = (
 }
 
 const withoutItems = (edit: FilmEdit, items: Grouped[]): FilmEdit => {
-  const gone = (kind: Grouped['kind'], id: string) =>
-    items.some((one) => one.kind === kind && one.id === id)
   const { layers, ...rest } = edit
-  const kept = (layers ?? []).filter((one) => !gone('layer', one.id))
+  const kept = (layers ?? []).filter((one) => !hasItem(items, 'layer', one.id))
   return {
     ...rest,
-    texts: edit.texts.filter((one) => !gone('text', one.id)),
+    texts: edit.texts.filter((one) => !hasItem(items, 'text', one.id)),
     ...(kept.length > 0 ? { layers: kept } : {})
   }
 }
@@ -667,7 +649,9 @@ const trimClip = (
   const end = side === 'end' ? Math.max(Math.min(seconds, value), clip.start + SHORTEST) : clip.end
   const by = clipLength({ ...clip, start, end }) - clipLength(clip)
   const offset = offsetOf(clip)
-  const moved = ripple ? offset : Math.max(Math.min(0, offset), offset + start - clip.start)
+  const moved = ripple
+    ? offset
+    : Math.max(Math.min(0, offset), offset + (start - clip.start) / speedOf(clip))
   return fitFades(
     rippleBy(
       {
@@ -719,21 +703,6 @@ const setSpeed = (edit: FilmEdit, id: string, speed: number, ripple: boolean) =>
   )
 }
 
-const snapPart = (
-  start: number,
-  length: number,
-  seconds: number,
-  marks: number[],
-  reach: number
-) => {
-  const latest = Math.max(0, seconds - length)
-  const free = Math.min(latest, Math.max(0, start))
-  const near = marks
-    .map((mark) => Math.min(latest, Math.max(0, mark - BEFORE_MARK)))
-    .find((snapped) => Math.abs(snapped - free) <= reach)
-  return near ?? free
-}
-
 const snapTo = (candidates: number[], value: number, reach: number) => {
   const near = candidates.filter((one) => Math.abs(one - value) <= reach)
   return near.reduce(
@@ -760,14 +729,9 @@ const snapPoints = (
   skip?: string
 ) => {
   const moving = new Set(
-    [
-      ...(edit.texts.some((text) => text.id === skip)
-        ? [{ kind: 'text' as const, id: skip! }]
-        : []),
-      ...(edit.layers?.some((layer) => layer.id === skip)
-        ? [{ kind: 'layer' as const, id: skip! }]
-        : [])
-    ].flatMap((item) => groupOf(edit, item).map((one) => one.id))
+    groupedItems(edit)
+      .filter((item) => item.id === skip)
+      .flatMap((item) => groupOf(edit, item).map((one) => one.id))
   )
   return [
     0,
@@ -779,7 +743,7 @@ const snapPoints = (
         ...(clip.gap || clip.fade ? [from] : []),
         ...(sources.get(clip.name)?.marks ?? [])
           .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
-          .map((mark) => from + mark.at - clip.start)
+          .map((mark) => from + (mark.at - clip.start) / speedOf(clip))
       ]),
     ...edit.texts
       .filter((text) => text.id !== skip && !moving.has(text.id))
@@ -809,6 +773,9 @@ const clockOf = (t: number) => {
 }
 
 export {
+  SHORTEST,
+  SHORTEST_MUSIC,
+  SINGULAR,
   TILE_LOOP,
   boundaries,
   clipAt,
@@ -819,11 +786,11 @@ export {
   fadeMost,
   fitItemFades,
   addMarkerAt,
+  markersWithin,
   importMarkers,
   insertClip,
   layerRows,
   lookGeometry,
-  markerTimes,
   moveClip,
   nearestBoundary,
   nextId,
@@ -838,7 +805,6 @@ export {
   setItemFade,
   setPart,
   setSpeed,
-  snapPart,
   snapPoints,
   snapBlock,
   snapTo,
@@ -854,11 +820,10 @@ export {
   changeLike,
   patchItems,
   withoutItems,
-  withoutLayer,
   groupItems,
   groupOf,
   shiftItems,
   ungroup,
   zoomAround
 }
-export type { Grouped, Placed, Selected }
+export type { FadeKind, Grouped, Placed, Selected }

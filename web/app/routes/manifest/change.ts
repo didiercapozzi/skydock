@@ -1,12 +1,12 @@
 import {
   getManifestPath,
-  lockedSaid,
   montageLocks,
   getOutputDir,
   loadManifestAsync,
   busySaid,
   busyWith,
-  idsOf
+  idsOf,
+  FREED_LOCKED
 } from '@skydock/scripts'
 import type { BoardAnswer, BusyScope, Manifest, MontageLock } from '@skydock/scripts'
 import type { FormResult } from '../../../../packages/ui/forms/types'
@@ -21,9 +21,9 @@ type Change = {
   outputDir: string
   locks: Map<string, MontageLock>
   frozen: Set<string>
-  frozenFiles: Map<string, string>
+  frozenFiles: Set<string>
   refuse: (message: string) => Refusal
-  refuseFrozen: (groupId?: string) => Refusal
+  refuseFrozen: () => Refusal
   refuseBusy: (scope: BusyScope) => Refusal | null
   latest: () => Promise<Manifest>
 }
@@ -38,10 +38,8 @@ const changeOn = async (
   const outputDir = getOutputDir()
   const locks = await montageLocks(manifest, outputDir)
   const frozen = new Set([...locks].flatMap(([id, lock]) => (lock === 'freed' ? [id] : [])))
-  const frozenFiles = new Map(
-    manifest.groups
-      .filter((g) => frozen.has(g.id))
-      .flatMap((g) => idsOf(g.files).map((id) => [id, g.id] as const))
+  const frozenFiles = new Set(
+    manifest.groups.filter((g) => frozen.has(g.id)).flatMap((g) => idsOf(g.files))
   )
   return {
     data,
@@ -52,7 +50,7 @@ const changeOn = async (
     frozen,
     frozenFiles,
     refuse,
-    refuseFrozen: (_groupId?: string) => refuse(lockedSaid()),
+    refuseFrozen: () => refuse(FREED_LOCKED),
     refuseBusy: (scope: BusyScope) => {
       const busy = busyWith(scope)
       return busy ? refuse(busySaid(busy)) : null

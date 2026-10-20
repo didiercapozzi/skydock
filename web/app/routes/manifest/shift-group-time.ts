@@ -12,7 +12,7 @@ const shiftGroupTime: Intent = async ({
   refuse,
   refuseFrozen
 }) => {
-  if (frozen.has(data.groupId ?? '')) return refuseFrozen(data.groupId)
+  if (frozen.has(data.groupId ?? '')) return refuseFrozen()
   if (!data.groupId) return refuse('Shift needs a group id.')
   if (data.anchorEpoch === undefined || !Number.isFinite(data.anchorEpoch))
     return refuse('Shift needs a valid anchor time.')

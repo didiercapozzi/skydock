@@ -5,30 +5,12 @@ import * as path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { EditSource, FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
+import { durationOf, rgbAt } from './ffmpegFixtures'
 import { createTmpDir } from './fixtures'
 
 let dir: string
 
-const colourAt = (file: string, at: number) => {
-  const [r = 0, g = 0, b = 0] = execFileSync('ffmpeg', [
-    '-loglevel',
-    'error',
-    '-ss',
-    String(at),
-    '-i',
-    file,
-    '-frames:v',
-    '1',
-    '-vf',
-    'crop=2:2:30:30',
-    '-f',
-    'rawvideo',
-    '-pix_fmt',
-    'rgb24',
-    '-'
-  ])
-  return { r, g, b }
-}
+const colourAt = (file: string, at: number) => rgbAt(file, { at, filter: 'crop=2:2:30:30' })
 
 beforeEach(() => {
   dir = createTmpDir('skydock-seek-')
@@ -99,19 +81,7 @@ describe('a clip taken from the middle of a file', () => {
       })
     ])
 
-    const length = Number(
-      execFileSync('ffprobe', [
-        '-v',
-        'error',
-        '-show_entries',
-        'format=duration',
-        '-of',
-        'csv=p=0',
-        out
-      ])
-        .toString()
-        .trim()
-    )
+    const length = durationOf(out)
     expect(length).toBeCloseTo(1, 0)
     expect(colourAt(out, 0.1).g).toBeGreaterThan(200)
     expect(colourAt(out, 0.1).r).toBeLessThan(60)

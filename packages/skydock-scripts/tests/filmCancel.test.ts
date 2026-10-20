@@ -47,6 +47,9 @@ const until = async (done: () => boolean) => {
 
 beforeEach(() => {
   dir = createTmpDir('skydock-cancel-')
+})
+
+const encodeSource = () => {
   const { dir: montage } = getGroupProcessedDir(dir, group)
   fs.mkdirSync(path.join(montage, 'videos'), { recursive: true })
   execFileSync('ffmpeg', [
@@ -65,7 +68,7 @@ beforeEach(() => {
     'yuv420p',
     path.join(montage, 'videos', 'a.mp4')
   ])
-})
+}
 
 afterEach(() => {
   fs.rmSync(dir, { recursive: true, force: true })
@@ -73,6 +76,7 @@ afterEach(() => {
 
 describe('cancelling a render', () => {
   it('stops it, leaves no half film, and keeps the film that was there', async () => {
+    encodeSource()
     const { dir: montage, baseName } = getGroupProcessedDir(dir, group)
     const before = path.join(montage, filmNameOf(baseName))
     fs.writeFileSync(before, 'the earlier film')
@@ -93,6 +97,39 @@ describe('cancelling a render', () => {
     expect(fs.readFileSync(before, 'utf-8')).toBe('the earlier film')
     expect(isRendering(group.id)).toBe(false)
   }, 60_000)
+
+  it('cannot be started twice by two quick presses on render', async () => {
+    encodeSource()
+    const first = renderFilm({ manifest, outputDir: dir, group, edit })
+    const firstEnded = first.then(
+      () => null,
+      (error: Error) => error
+    )
+    const second = renderFilm({ manifest, outputDir: dir, group, edit })
+
+    await expect(second).rejects.toThrow(/already being rendered/)
+    expect(isRendering(group.id)).toBe(true)
+
+    cancelRendering()
+    expect((await firstEnded)?.message).toMatch(/cancel/i)
+    expect(isRendering(group.id)).toBe(false)
+  }, 60_000)
+
+  it('does not stay marked as rendering when it is refused before anything is made', async () => {
+    globalThis.skydockFormats = Promise.resolve(['h264'])
+
+    await expect(
+      renderFilm({
+        manifest,
+        outputDir: dir,
+        group,
+        edit: { ...edit, output: { format: 'h265' } }
+      })
+    ).rejects.toThrow(/H\.?265/)
+
+    expect(isRendering(group.id)).toBe(false)
+    globalThis.skydockFormats = undefined
+  })
 
   it('starts afresh from what an older running server left behind', () => {
     globalThis.skydockRendering = new Set(['g1']) as never

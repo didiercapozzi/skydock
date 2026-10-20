@@ -65,9 +65,15 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   const found = await montageOf(groupId)
   if (!found.ok) return Response.json({ ok: false, reason: found.refused })
   const { manifest, group, outputDir } = found
-  const sources = await editSources(manifest, outputDir, group)
-  const { edit: saved, setAside } = await readOrSetAside(outputDir, editPathOf(outputDir, group))
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
+  const [sources, { edit: saved, setAside }, music, images, formats, hasFilm] = await Promise.all([
+    editSources(manifest, outputDir, group),
+    readOrSetAside(outputDir, editPathOf(outputDir, group)),
+    musicSources(outputDir),
+    imageSources(outputDir),
+    availableFormats(),
+    pathExists(path.join(dir, filmNameOf(baseName)))
+  ])
   return Response.json({
     ok: true,
     title: passengerOf(group).trim() || group.label,
@@ -75,11 +81,11 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     saved: saved !== null,
     setAside,
     sources,
-    music: await musicSources(outputDir),
-    images: await imageSources(outputDir),
+    music,
+    images,
     rendering: isRendering(group.id),
-    formats: await availableFormats(),
-    film: (await pathExists(path.join(dir, filmNameOf(baseName)))) ? filmNameOf(baseName) : null
+    formats,
+    film: hasFilm ? filmNameOf(baseName) : null
   })
 }
 
@@ -99,7 +105,6 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       await readOrSetAside(outputDir, editPathOf(outputDir, group))
       await saveEdit(editPathOf(outputDir, group), data.edit)
       if (data.intent === 'save') return { saved: true, rendering: isRendering(group.id) }
-      if (isRendering(group.id)) return refuse('This film is already being rendered.')
       const busy = busyWith({ groupIds: jumpsOfMontage(manifest, outputDir, group.id) }, [
         'process',
         'upload'
@@ -111,6 +116,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       if (data.edit.clips.length === 0) return refuse('Put at least one clip in the film.')
       const unmakable = await formatRefusal(data.edit)
       if (unmakable) return refuse(unmakable)
+      if (isRendering(group.id)) return refuse('This film is already being rendered.')
       void renderFilm({ manifest, outputDir, group, edit: data.edit }).catch((e) =>
         console.warn(`[Render] ${passengerOf(group)}: ${messageOf(e)}`)
       )

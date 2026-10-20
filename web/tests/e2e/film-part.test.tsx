@@ -64,6 +64,14 @@ describe('choosing the part of a clip', () => {
     expect(placed).toEqual([whole, whole])
   })
 
+  test('does not place a part shorter than half a second from the cropper’s Apply', async () => {
+    const { placed } = await open({ start: 2, end: 2.3 })
+
+    await userEvent.click(page.getByRole('button', { name: 'Apply' }))
+
+    expect(placed).toEqual([])
+  })
+
   test('has a speed, from a quarter to four times, and says how long the part then lasts', async () => {
     const { placed } = await open({ speed: 2 })
     const speed = page.getByRole('combobox', { name: 'Speed' })

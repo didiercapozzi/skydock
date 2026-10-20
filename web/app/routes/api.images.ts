@@ -1,10 +1,4 @@
-import { createWriteStream } from 'node:fs'
-import { mkdir, rename, rm } from 'node:fs/promises'
-import * as path from 'node:path'
-import { Readable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
-import type { ReadableStream as NodeWebStream } from 'node:stream/web'
-import { getOutputDir, messageOf } from '@skydock/scripts'
+import { getOutputDir, messageOf, saveUploadedFiles } from '@skydock/scripts'
 import {
   getImagesDir,
   imageSources,
@@ -25,20 +19,7 @@ const action = async ({ request }: Route.ActionArgs) => {
         { ok: false, error: 'Only pictures come in: png, jpg, jpeg or webp.' },
         { status: 400 }
       )
-    await mkdir(dir, { recursive: true })
-    for (const file of files) {
-      const name = path.basename(file.name).replace(/^\.+/, '')
-      const part = path.join(dir, `.${name}.arriving`)
-      try {
-        await pipeline(
-          Readable.fromWeb(file.stream() as NodeWebStream<Uint8Array>),
-          createWriteStream(part)
-        )
-        await rename(part, path.join(dir, name))
-      } finally {
-        await rm(part, { force: true })
-      }
-    }
+    await saveUploadedFiles(dir, files)
     return Response.json({ ok: true, images: await imageSources(getOutputDir()) })
   } catch (e) {
     return Response.json({ ok: false, error: messageOf(e) }, { status: 422 })

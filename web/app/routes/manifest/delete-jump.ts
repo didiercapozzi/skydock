@@ -17,7 +17,7 @@ const deleteJumpIntent: Intent = async ({
 }) => {
   const group = manifest.groups.find((g) => g.id === data.groupId)
   if (!group) return refuse('That jump is no longer on the board.')
-  if (frozen.has(group.id)) return refuseFrozen(group.id)
+  if (frozen.has(group.id)) return refuseFrozen()
   if (group.freed)
     return refuse('This jump is on the storage only — there is nothing here to move.')
   if (group.uploaded || group.files.some((f) => f.uploaded))

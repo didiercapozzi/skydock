@@ -61,4 +61,10 @@ const scopeOfFiles = (manifest: Manifest, ids: Set<string>) => {
   }
 }
 
-export { busySaid, busyWith, jumpsOfMontage, scopeOfFiles }
+const busyWithFiles = (manifest: Manifest, ids: Set<string>) => {
+  const scope = scopeOfFiles(manifest, ids)
+  const loose = scope.groupIds.length === 0 && scope.destinations.length === 0
+  return busyWith(scope, loose ? ['process', 'render'] : undefined)
+}
+
+export { busySaid, busyWith, busyWithFiles, jumpsOfMontage, scopeOfFiles }

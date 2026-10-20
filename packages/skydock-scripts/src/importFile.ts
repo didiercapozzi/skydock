@@ -14,7 +14,7 @@ import { copyBegins } from './lib/quiet'
 import { loadManifestAsync, saveManifest } from './manifest'
 import { shotTimes } from './scan'
 import { copyFiles, moveFiles, shotTimesFor } from './moveFiles'
-import { frozenMontages, isNamedMontage } from './montageArtifacts'
+import { isNamedMontage } from './montageArtifacts'
 import type { Manifest, ManifestFile } from './types'
 import { getExtension } from './utils'
 import { isMontage } from './filed'
@@ -68,7 +68,7 @@ const placeExisting = async (
     copyFiles(manifest, new Set([id]), joining.id)
     return { filename: file.filename, outcome: 'copied', stays }
   }
-  if (inGroup && (await frozenMontages(manifest, outputDir)).has(inGroup.id))
+  if (inGroup?.freed)
     return {
       filename: file.filename,
       outcome: 'kept',
@@ -135,7 +135,7 @@ const importFile = async ({
     if (target.kind === 'group') {
       const group = manifest.groups.find((g) => g.id === target.groupId)
       if (!group) throw new Error('That jump is no longer there.')
-      if ((await frozenMontages(manifest, outputDir)).has(group.id))
+      if (group.freed)
         throw new Error('This montage lives on the storage only — nothing can join it.')
     }
     return manifest

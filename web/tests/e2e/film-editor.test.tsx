@@ -103,10 +103,31 @@ const later = {
   music: [{ id: 'music-1', name: 'song.mp3', at: 13, start: 0, end: 5, volume: 1 }]
 }
 
+type Sent = { url: string; body: unknown }
+
 const playheadAt = async (seconds: number) => {
   page.getByRole('slider', { name: 'Timeline ruler' }).element().focus()
   for (let i = 0; i < seconds; i++) await userEvent.keyboard('{ArrowRight}')
 }
+
+const serve = (body: unknown) => {
+  const sent: Sent[] = []
+  vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+      return Response.json({ ok: true })
+    }
+    return Response.json(body)
+  })
+  return sent
+}
+
+const clock = () => page.getByText(/^\d:\d\d\.\d \//).element().textContent
+
+const pick = (name: string) =>
+  userEvent.click(page.getByTitle(`${name} · double-click to choose the part`))
+
+const tool = (name: string) => page.getByRole('button', { name, exact: true })
 
 const textBlock = () =>
   [...document.querySelectorAll<HTMLElement>('div.cursor-grab')].find((one) =>
@@ -441,6 +462,14 @@ describe('the film editor', () => {
     expect(parseFloat(leftOf(textBlock()))).toBeCloseTo(5 * pps + 3, 0)
   })
 
+  test('makes no edit when a text is pressed and let go without moving, even with Snap on', async () => {
+    await open(later)
+
+    await userEvent.click(textBlock())
+
+    await expect.element(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
+  })
+
   test('pulls a trimmed clip edge to a jump mark with Snap on, and not with Snap off', async () => {
     await open({}, [{ which: 'canopy', at: 8 }])
     const clip = page.getByTitle(`${FIRST} · double-click to choose the part`)
@@ -483,7 +512,6 @@ describe('the film editor', () => {
       { id: 'clip-3', name: SECOND, start: 3, end: 6, sound: false, gap: 3 }
     ]
     const unit = () => (parseFloat((clipBy(FIRST) as HTMLElement).style.width) + 2) / 10
-    const clock = () => page.getByText(/^\d:\d\d\.\d \//).element().textContent
     const clipBy = (name: string, nth = 0) =>
       page.getByTitle(`${name} · double-click to choose the part`).elements()[nth]!
     const dragClip = async (name: string, seconds: number, nth = 0) => {
@@ -612,7 +640,6 @@ describe('the film editor', () => {
     const ruler = () => page.getByRole('slider', { name: 'Timeline ruler' }).element() as HTMLElement
     const scroller = () => ruler().closest('.overflow-auto') as HTMLElement
     const zoom = () => Number((page.getByRole('slider', { name: 'Zoom the timeline' }).element() as HTMLInputElement).value)
-    const clock = () => page.getByText(/^\d:\d\d\.\d \//).element().textContent
     const secondClipX = () => page.getByTitle(`${SECOND} · double-click to choose the part`).element().getBoundingClientRect().left
     const wheel = (init: WheelEventInit) =>
       scroller().dispatchEvent(
@@ -755,10 +782,8 @@ describe('the film editor', () => {
 })
 
 describe('a crossfade between two clips', () => {
-  const clock = () => page.getByText(/^\d:\d\d\.\d \//).element().textContent
   const fadeButton = () => page.getByRole('button', { name: 'Fade in', exact: true })
   const handle = () => page.getByRole('slider', { name: `Fade into ${SECOND}` })
-  const pick = (name: string) => userEvent.click(page.getByTitle(`${name} · double-click to choose the part`))
 
   test('is added with one click on the picked clip, shortens the film, and is taken off with a second click', async () => {
     await open()
@@ -1510,9 +1535,6 @@ describe('the preview at a seam', () => {
 describe('the film editor keys', () => {
   const playing = () => page.getByRole('button', { name: 'Pause', exact: true })
   const stopped = () => page.getByRole('button', { name: 'Play', exact: true })
-  const clock = () => page.getByText(/^\d:\d\d\.\d \//).element().textContent
-  const pick = (name: string) => userEvent.click(page.getByTitle(`${name} · double-click to choose the part`))
-  const tool = (name: string) => page.getByRole('button', { name, exact: true })
 
   test('plays and stops with Enter and with Space', async () => {
     await open()
@@ -1812,9 +1834,7 @@ describe('the film editor keys', () => {
 describe('the keys of the film editor that can be changed', () => {
   afterEach(() => setFilmKeys(DEFAULT_KEYS))
 
-  const tool = (name: string) => page.getByRole('button', { name, exact: true })
   const button = (name: string) => page.getByRole('button', { name, exact: true })
-  const pick = (name: string) => userEvent.click(page.getByTitle(`${name} · double-click to choose the part`))
   const help = () => page.getByRole('dialog', { name: 'Film editor shortcuts' })
   const edited = async () => {
     await userEvent.keyboard('?')
@@ -2127,8 +2147,6 @@ describe('the keys of the film editor that can be changed', () => {
 })
 
 describe('the fade in and the fade out of clips, texts and music', () => {
-  const pick = (name: string) =>
-    userEvent.click(page.getByTitle(`${name} · double-click to choose the part`))
   const box = (name: string) => page.getByRole('textbox', { name, exact: true })
   const type = async (name: string, value: string) => {
     await userEvent.fill(box(name), value)
@@ -2667,7 +2685,6 @@ describe('the markers of a clip and of a piece of music', () => {
 
 describe('the layers of a film: pictures and backgrounds over the video', () => {
   const logo = { name: 'logo.png', path: '/o/images/logo.png', width: 2752, height: 1134 }
-  type Sent = { url: string; body: unknown }
   const start = async (edit: Record<string, unknown> = {}, images: unknown[] = [logo]) => {
     const sent: Sent[] = []
     vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
@@ -2772,26 +2789,18 @@ describe('the layers of a film: pictures and backgrounds over the video', () => 
 })
 
 describe('texts and pictures grouped to move together', () => {
-  type Sent = { url: string; body: unknown }
   const look = { seconds: 3, effect: 'fade', font: 'bold', x: 0.5, y: 0.5, size: 0.09, colour: '#ffffff' }
   const start = async () => {
-    const sent: Sent[] = []
-    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
-        return Response.json({ ok: true })
+    const sent = serve({
+      ...answer,
+      edit: {
+        ...answer.edit,
+        texts: [
+          { ...look, id: 'text-1', text: 'Alpha', at: 1 },
+          { ...look, id: 'text-2', text: 'Beta', at: 6 }
+        ],
+        layers: [{ id: 'layer-1', at: 1, seconds: 4, colour: '#000000', x: 0.5, y: 0.5, width: 1 }]
       }
-      return Response.json({
-        ...answer,
-        edit: {
-          ...answer.edit,
-          texts: [
-            { ...look, id: 'text-1', text: 'Alpha', at: 1 },
-            { ...look, id: 'text-2', text: 'Beta', at: 6 }
-          ],
-          layers: [{ id: 'layer-1', at: 1, seconds: 4, colour: '#000000', x: 0.5, y: 0.5, width: 1 }]
-        }
-      })
     })
     await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
@@ -2821,6 +2830,17 @@ describe('texts and pictures grouped to move together', () => {
     expect(saved(sent)?.layers).toHaveLength(1)
   })
 
+  test('are no longer picked together once a text is picked in the picture', async () => {
+    await start()
+    await userEvent.click(page.getByText('Alpha', { exact: true }).first(), { force: true })
+    await addWithShift('Beta')
+    await expect.element(page.getByRole('button', { name: 'Group', exact: true })).toBeEnabled()
+
+    await userEvent.click(page.getByRole('button', { name: 'Move the text' }))
+
+    await expect.element(page.getByRole('button', { name: 'Group', exact: true })).toBeDisabled()
+  })
+
   test('are ungrouped from the Inspector', async () => {
     const sent = await start()
     await userEvent.click(page.getByText('Alpha', { exact: true }).first(), { force: true })
@@ -2847,17 +2867,129 @@ describe('texts and pictures grouped to move together', () => {
   })
 })
 
-describe('several clips picked with Shift, changed together', () => {
-  type Sent = { url: string; body: unknown }
-  const start = async () => {
-    const sent: Sent[] = []
-    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+describe('the film editor’s saving', () => {
+  type Post = { intent: string; edit: { clips: unknown[] } }
+  const clip = (name: string) => page.getByTitle(`${name} · double-click to choose the part`)
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+  test('stays open with the problem when Close cannot save what was changed, and the second Close leaves', async () => {
+    const posts: Post[] = []
+    const closed = vi.fn()
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method !== 'POST') return Response.json(answer)
+      posts.push(JSON.parse(String(init.body)))
+      return Response.json({ success: false, globalErrors: ['The film is locked.'] })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: closed }))
+    await expect.element(clip(FIRST).first()).toBeVisible()
+    await userEvent.click(clip(SECOND))
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+    await expect.poll(() => posts.length).toBe(1)
+    await expect.element(page.getByText('Not saved')).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: 'Close', exact: true }))
+
+    await expect.poll(() => posts.length).toBe(2)
+    expect(posts[1]!.edit.clips).toHaveLength(1)
+    await expect.element(page.getByText('The film is locked.')).toBeVisible()
+    expect(closed).not.toHaveBeenCalled()
+    expect(clipsOnTimeline()).toHaveLength(1)
+
+    await userEvent.click(page.getByRole('button', { name: 'Close', exact: true }))
+
+    await expect.poll(() => closed.mock.calls.length).toBe(1)
+  })
+
+  test('does not say Saved while a newer change still waits to be saved', async () => {
+    const release: Array<() => void> = []
+    vi.stubGlobal('fetch', (_url: string | URL, init?: RequestInit) =>
+      init?.method === 'POST'
+        ? new Promise<Response>((resolve) =>
+            release.push(() => resolve(Response.json({ ok: true })))
+          )
+        : Promise.resolve(Response.json(answer))
+    )
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(clip(FIRST).first()).toBeVisible()
+    await userEvent.click(clip(SECOND))
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+    await expect.poll(() => release.length).toBe(1)
+
+    await userEvent.click(page.getByRole('button', { name: 'Undo' }))
+    release[0]!()
+    await wait(150)
+
+    await expect.element(page.getByText('Saving…')).toBeVisible()
+    await expect.element(page.getByText('Saved', { exact: true })).not.toBeInTheDocument()
+    await expect.poll(() => release.length).toBe(2)
+    release[1]!()
+    await expect.element(page.getByText('Saved', { exact: true })).toBeVisible()
+  })
+
+  test('does not read the time of a field that was only entered and left as a change', async () => {
+    const posts: Post[] = []
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
       if (init?.method === 'POST') {
-        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        posts.push(JSON.parse(String(init.body)))
         return Response.json({ ok: true })
       }
-      return Response.json(answer)
+      return Response.json({
+        ...answer,
+        edit: {
+          ...answer.edit,
+          clips: [{ id: 'clip-1', name: FIRST, start: 0, end: 9.04, sound: false }]
+        }
+      })
     })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(clip(FIRST).first()).toBeVisible()
+    await userEvent.click(clip(FIRST).first())
+
+    const length = page.getByRole('textbox', { name: 'Length', exact: true })
+    await userEvent.click(length)
+    await userEvent.click(page.getByText('Inspector', { exact: true }))
+    await wait(1000)
+
+    expect(posts).toEqual([])
+    await expect.element(page.getByRole('button', { name: 'Undo' })).toBeDisabled()
+  })
+})
+
+describe('the size of the film', () => {
+  test('is not left estimating by an older measure that comes back after a newer one', async () => {
+    const points = [
+      { crf: 12, bytesPerSecond: 5_000_000 },
+      { crf: 40, bytesPerSecond: 200_000 }
+    ]
+    let asked = 0
+    let late: () => void = () => {}
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method !== 'POST') return Response.json({ ...answer, formats: ['h264'] })
+      if (JSON.parse(String(init.body)).intent !== 'estimate') return Response.json({ ok: true })
+      asked++
+      if (asked > 1) return Response.json({ estimate: points })
+      return new Promise<Response>((resolve) => {
+        late = () => resolve(Response.json({ estimate: points }))
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`).first()).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Render…' }))
+    await expect.poll(() => asked).toBe(1)
+
+    await userEvent.click(page.getByRole('group', { name: 'Frame rate' }).getByRole('button', { name: '24' }))
+    await expect.element(page.getByText(/^About /)).toBeVisible()
+    late()
+    await new Promise((resolve) => setTimeout(resolve, 150))
+
+    await expect.element(page.getByText(/^About /)).toBeVisible()
+    await expect.element(page.getByText('Estimating the size…')).not.toBeInTheDocument()
+  })
+})
+
+describe('several clips picked with Shift, changed together', () => {
+  const start = async () => {
+    const sent = serve(answer)
     await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
     return sent
@@ -2965,21 +3097,13 @@ describe('texts that are on at the same moment', () => {
 })
 
 describe('the music under the camera sound, clip by clip', () => {
-  type Sent = { url: string; body: unknown }
   const start = async () => {
-    const sent: Sent[] = []
-    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
-        return Response.json({ ok: true })
+    const sent = serve({
+      ...answer,
+      edit: {
+        ...answer.edit,
+        clips: answer.edit.clips.map((clip) => ({ ...clip, sound: true }))
       }
-      return Response.json({
-        ...answer,
-        edit: {
-          ...answer.edit,
-          clips: answer.edit.clips.map((clip) => ({ ...clip, sound: true }))
-        }
-      })
     })
     await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
@@ -3006,22 +3130,14 @@ describe('the music under the camera sound, clip by clip', () => {
 })
 
 describe('a piece of music cut and trimmed on the timeline', () => {
-  type Sent = { url: string; body: unknown }
   const start = async () => {
-    const sent: Sent[] = []
-    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
-        return Response.json({ ok: true })
+    const sent = serve({
+      ...answer,
+      music: [{ name: 'song.mp3', path: '/o/music/song.mp3', seconds: 40 }],
+      edit: {
+        ...answer.edit,
+        music: [{ id: 'music-1', name: 'song.mp3', at: 2, start: 0, end: 20, volume: 1 }]
       }
-      return Response.json({
-        ...answer,
-        music: [{ name: 'song.mp3', path: '/o/music/song.mp3', seconds: 40 }],
-        edit: {
-          ...answer.edit,
-          music: [{ id: 'music-1', name: 'song.mp3', at: 2, start: 0, end: 20, volume: 1 }]
-        }
-      })
     })
     await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
@@ -3139,34 +3255,27 @@ describe('a text and a picture that are on at the same time', () => {
 
 describe('a marker of the music snapping to a marker of the video', () => {
   test('pulls the music by its own marker to the marker of the clip, and draws the line there', async () => {
-    const sent: Array<{ url: string; body: unknown }> = []
-    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
-        return Response.json({ ok: true })
+    const sent = serve({
+      ...answer,
+      music: [{ name: 'song.mp3', path: '/o/music/song.mp3', seconds: 40 }],
+      edit: {
+        ...answer.edit,
+        clips: [
+          { ...answer.edit.clips[0]!, markers: [{ id: 'mark-1', label: 'Door', at: 5 }] },
+          answer.edit.clips[1]!
+        ],
+        music: [
+          {
+            id: 'music-1',
+            name: 'song.mp3',
+            at: 12,
+            start: 0,
+            end: 20,
+            volume: 1,
+            markers: [{ id: 'mark-1', label: 'Drop', at: 3 }]
+          }
+        ]
       }
-      return Response.json({
-        ...answer,
-        music: [{ name: 'song.mp3', path: '/o/music/song.mp3', seconds: 40 }],
-        edit: {
-          ...answer.edit,
-          clips: [
-            { ...answer.edit.clips[0]!, markers: [{ id: 'mark-1', label: 'Door', at: 5 }] },
-            answer.edit.clips[1]!
-          ],
-          music: [
-            {
-              id: 'music-1',
-              name: 'song.mp3',
-              at: 12,
-              start: 0,
-              end: 20,
-              volume: 1,
-              markers: [{ id: 'mark-1', label: 'Drop', at: 3 }]
-            }
-          ]
-        }
-      })
     })
     await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
@@ -3191,28 +3300,20 @@ describe('a marker of the music snapping to a marker of the video', () => {
 })
 
 describe('pieces of music that overlap', () => {
-  type Sent = { url: string; body: unknown }
   const start = async () => {
-    const sent: Sent[] = []
-    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
-      if (init?.method === 'POST') {
-        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
-        return Response.json({ ok: true })
-      }
-      return Response.json({
-        ...answer,
+    const sent = serve({
+      ...answer,
+      music: [
+        { name: 'one.mp3', path: '/o/music/one.mp3', seconds: 40 },
+        { name: 'two.mp3', path: '/o/music/two.mp3', seconds: 40 }
+      ],
+      edit: {
+        ...answer.edit,
         music: [
-          { name: 'one.mp3', path: '/o/music/one.mp3', seconds: 40 },
-          { name: 'two.mp3', path: '/o/music/two.mp3', seconds: 40 }
-        ],
-        edit: {
-          ...answer.edit,
-          music: [
-            { id: 'music-1', name: 'one.mp3', at: 0, start: 0, end: 12, volume: 1 },
-            { id: 'music-2', name: 'two.mp3', at: 8, start: 0, end: 12, volume: 1 }
-          ]
-        }
-      })
+          { id: 'music-1', name: 'one.mp3', at: 0, start: 0, end: 12, volume: 1 },
+          { id: 'music-2', name: 'two.mp3', at: 8, start: 0, end: 12, volume: 1 }
+        ]
+      }
     })
     await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
     await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()

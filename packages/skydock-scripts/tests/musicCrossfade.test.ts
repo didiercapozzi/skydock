@@ -64,6 +64,14 @@ describe('a fade from the previous piece of music', () => {
     expect(level(pair[1]!, 21)).toBeCloseTo(1)
   })
 
+  it('gives the same level when the fades of the piece are worked out once for all the moments', () => {
+    const fades = musicFadesOf(pair[1]!, pair)
+    for (const t of [17, 18.5, 19, 20, 21, 25])
+      expect(musicLevelAt(pair[1]!, 0.15, [], t, pair, fades)).toBe(
+        musicLevelAt(pair[1]!, 0.15, [], t, pair)
+      )
+  })
+
   it('is said to the render as an fade out on the first and a fade in on the second', () => {
     const out = filmArgs({
       edit: film(pair),

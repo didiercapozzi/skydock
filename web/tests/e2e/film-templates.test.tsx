@@ -51,9 +51,6 @@ const made = (name: string, over: Partial<Made> = {}): Made => ({
 const server = { templates: [] as Made[], broken: [] as string[], failing: false }
 const posted: Record<string, unknown>[] = []
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
-
 const realFetch = globalThis.fetch
 
 beforeEach(() => {
@@ -61,16 +58,16 @@ beforeEach(() => {
   server.failing = false
   server.broken = []
   vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
-    if (!String(url).includes('/api/film-templates')) return json({})
+    if (!String(url).includes('/api/film-templates')) return Response.json({})
     if (init?.method !== 'POST')
       return server.failing
-        ? json({ nope: true })
-        : json({ templates: server.templates, broken: server.broken, music: [] })
+        ? Response.json({ nope: true })
+        : Response.json({ templates: server.templates, broken: server.broken, music: [] })
     const body = JSON.parse(String(init.body)) as Record<string, string>
     posted.push(body)
     const there = server.templates.find((one) => one.name === body.name)
     if (body.intent === 'create' && there)
-      return json({
+      return Response.json({
         success: false,
         globalErrors: [`There is already a film template called ${body.name}.`]
       })
@@ -83,7 +80,7 @@ beforeEach(() => {
       server.templates = server.templates.filter((one) => one.name !== body.name)
       server.broken = server.broken.filter((one) => one !== body.name)
     }
-    return json({ ok: true, name: kept })
+    return Response.json({ ok: true, name: kept })
   })
 })
 
@@ -254,9 +251,9 @@ describe('the film template editor', () => {
     vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
       if (init?.method === 'POST') {
         posted.push(JSON.parse(String(init.body)))
-        return json({ ok: true })
+        return Response.json({ ok: true })
       }
-      return json({ templates: server.templates, music: [summer] })
+      return Response.json({ templates: server.templates, music: [summer] })
     })
     const Stub = createRoutesStub([{ path: '/film-template/:name', Component: FilmTemplate }])
     await render(createElement(Stub, { initialEntries: [`/film-template/${name}`] }))

@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { filmEditSchema } from '../src/filmEditShape'
 import type { EditClip, EditSource, FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
+import { rgbAt } from './ffmpegFixtures'
 import { createTmpDir } from './fixtures'
 
 let dir: string
@@ -51,21 +52,7 @@ const render = (edit: FilmEdit, name = 'film.mp4') => {
 }
 
 const colourAt = (file: string, x: number, y: number) => {
-  const [r = 0, , b = 0] = execFileSync('ffmpeg', [
-    '-loglevel',
-    'error',
-    '-i',
-    file,
-    '-frames:v',
-    '1',
-    '-vf',
-    `crop=2:2:${x}:${y}`,
-    '-f',
-    'rawvideo',
-    '-pix_fmt',
-    'rgb24',
-    '-'
-  ])
+  const { r, b } = rgbAt(file, { filter: `crop=2:2:${x}:${y}` })
   return r + b < 60 ? 'black' : r > b ? 'red' : 'blue'
 }
 

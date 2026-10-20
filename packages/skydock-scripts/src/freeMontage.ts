@@ -11,6 +11,7 @@ import { getGroupProcessedDir, isFlatGroup } from './process'
 import { getCutProxyDir } from './proxy'
 import { sendItems, slugOf } from './sending'
 import { isNamedMontage } from './montageArtifacts'
+import { EDIT_ENDING } from './montageNames'
 import type { Manifest, ManifestFile, SendPart } from './types'
 import { uploadedFiles } from './upload'
 import { getTrashDir, isVideoFile, mapWithLimit } from './utils'
@@ -285,7 +286,7 @@ const freeMontage = async ({
       const stamp = new Date().toISOString().replace(/[:.]/g, '-')
       const bin = path.join(trashDir, `montage-${slugOf(label) || 'montage'}-${stamp}`)
       for (const entry of await readdir(dir).catch(() => []))
-        if (entry.endsWith('.edit.json'))
+        if (entry.endsWith(EDIT_ENDING))
           await moveFile(path.join(dir, entry), path.join(bin, entry))
       bytes += await removeTree(path.join(outputDir, 'processed'), dir)
 

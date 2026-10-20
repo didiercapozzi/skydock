@@ -36,7 +36,7 @@ const makeMontageIntent: Intent = async ({
     return refuse(
       `${passengerName(passenger)}’s montage was freed from this machine — give this one another name, such as “${passengerName(passenger)} 2”.`
     )
-  if (held) return refuseFrozen(held.id)
+  if (held) return refuseFrozen()
 
   const fresh = freshIds(manifest)
   try {
