@@ -582,6 +582,30 @@ const splitMusic = (edit: FilmEdit, id: string, at: number): FilmEdit | null => 
   return { ...edit, music }
 }
 
+const musicBefore = (edit: FilmEdit, id: string) => {
+  const sorted = [...edit.music].sort((a, b) => a.at - b.at)
+  const here = sorted.findIndex((one) => one.id === id)
+  return here > 0 ? sorted[here - 1] : undefined
+}
+
+const musicFadeBlock = (edit: FilmEdit, id: string) =>
+  musicBefore(edit, id) ? null : ('first' as const)
+
+const setMusicFade = (edit: FilmEdit, id: string, seconds: number): FilmEdit => {
+  const before = musicBefore(edit, id)
+  const piece = edit.music.find((one) => one.id === id)
+  if (!before || !piece) return edit
+  const ends = before.at + before.end - before.start
+  const length = Math.min(seconds, (before.end - before.start) / 2, (piece.end - piece.start) / 2)
+  const { fade: _gone, ...plain } = piece
+  const next =
+    seconds > 0
+      ? { ...plain, at: Math.max(0, ends - length), fade: length }
+      : { ...plain, at: Math.max(piece.at, ends) }
+  if (seconds <= 0 && piece.fade === undefined) return edit
+  return { ...edit, music: edit.music.map((one) => (one.id === id ? next : one)) }
+}
+
 const trimMusicStart = (edit: FilmEdit, id: string, to: number): FilmEdit => ({
   ...edit,
   music: edit.music.map((piece) => {
@@ -821,6 +845,8 @@ export {
   splitClip,
   splitMusic,
   trimMusicStart,
+  musicFadeBlock,
+  setMusicFade,
   timelineEnd,
   trimClip,
   unturnedFrame,

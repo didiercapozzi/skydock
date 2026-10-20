@@ -59,6 +59,7 @@ const editMusicSchema = z
     volume: fraction,
     fadeIn: fadeLength,
     fadeOut: fadeLength,
+    fade: z.number().gt(0).finite().optional(),
     markers: z.array(editMarkerSchema).optional()
   })
   .refine((music) => music.end > music.start, 'a piece of music ends after it starts')
@@ -222,10 +223,36 @@ const layerFadesOf = (layer: EditLayer) => ({
   fadeOut: halved(layer.fadeOut, layer.seconds)
 })
 
-const musicFadesOf = (piece: EditMusic) => ({
-  fadeIn: halved(piece.fadeIn ?? 0, piece.end - piece.start),
-  fadeOut: halved(piece.fadeOut ?? 0, piece.end - piece.start)
-})
+const musicLength = (piece: EditMusic) => piece.end - piece.start
+
+const musicCrossfadeOf = (piece: EditMusic, music: EditMusic[] = []) => {
+  const sorted = [...music].sort((a, b) => a.at - b.at)
+  const here = sorted.findIndex((one) => one.id === piece.id)
+  const before = here > 0 ? sorted[here - 1] : undefined
+  const after = here >= 0 ? sorted[here + 1] : undefined
+  const shared = (earlier: EditMusic, later: EditMusic) =>
+    Math.max(
+      0,
+      Math.min(
+        later.fade ?? 0,
+        earlier.at + musicLength(earlier) - later.at,
+        musicLength(earlier) / 2,
+        musicLength(later) / 2
+      )
+    )
+  return {
+    into: before ? shared(before, piece) : 0,
+    out: after ? shared(piece, after) : 0
+  }
+}
+
+const musicFadesOf = (piece: EditMusic, music?: EditMusic[]) => {
+  const across = musicCrossfadeOf(piece, music)
+  return {
+    fadeIn: across.into > 0 ? across.into : halved(piece.fadeIn ?? 0, musicLength(piece)),
+    fadeOut: across.out > 0 ? across.out : halved(piece.fadeOut ?? 0, musicLength(piece))
+  }
+}
 
 const within = (value: number) => Math.min(1, Math.max(0, value))
 
@@ -287,8 +314,14 @@ const duckAt = (spans: Span[], t: number) =>
 const underAt = (spans: Span[], underSound: number, t: number) =>
   Math.min(1, ...spans.map((span) => 1 - (1 - (span.under ?? underSound)) * duckOfSpan(span, t)))
 
-const musicLevelAt = (piece: EditMusic, underSound: number, spans: Span[], t: number) => {
-  const { fadeIn, fadeOut } = musicFadesOf(piece)
+const musicLevelAt = (
+  piece: EditMusic,
+  underSound: number,
+  spans: Span[],
+  t: number,
+  music?: EditMusic[]
+) => {
+  const { fadeIn, fadeOut } = musicFadesOf(piece, music)
   return (
     piece.volume *
     rampAt(t - piece.at, piece.end - piece.start, fadeIn, fadeOut) *
@@ -339,6 +372,7 @@ export {
   heardSpans,
   imageAsStill,
   MUSIC_EXTENSIONS,
+  musicCrossfadeOf,
   musicFadesOf,
   musicLevelAt,
   imageSourceSchema,

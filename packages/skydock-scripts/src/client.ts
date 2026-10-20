@@ -31,6 +31,7 @@ export {
   filmLength,
   heardSpans,
   layerFadesOf,
+  musicCrossfadeOf,
   musicFadesOf,
   musicLevelAt,
   POP,

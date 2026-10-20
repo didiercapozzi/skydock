@@ -14,6 +14,7 @@ import {
   layerFadesOf,
   filmTemplatesAnswerSchema,
   heardSpans,
+  musicCrossfadeOf,
   musicFadesOf,
   musicLevelAt,
   CRF_RANGE,
@@ -73,7 +74,9 @@ import {
   changeLike,
   groupOf,
   moveLook,
+  musicFadeBlock,
   patchItems,
+  setMusicFade,
   ungroup,
   withoutItems,
   TILE_LOOP,
@@ -1047,12 +1050,50 @@ const Inspector = ({
             />
             <div className='grid grid-cols-2 gap-2'>
               <FadeLengths
-                fadeIn={musicFadesOf(piece).fadeIn}
-                fadeOut={musicFadesOf(piece).fadeOut}
+                fadeIn={musicFadesOf(piece, edit.music).fadeIn}
+                fadeOut={musicFadesOf(piece, edit.music).fadeOut}
                 max={(piece.end - piece.start) / 2}
+                whyIn={
+                  musicCrossfadeOf(piece, edit.music).into > 0
+                    ? t`The fade from the previous piece already fades this piece in.`
+                    : undefined
+                }
+                whyOut={
+                  musicCrossfadeOf(piece, edit.music).out > 0
+                    ? t`The next piece fades in over this one, which fades it out.`
+                    : undefined
+                }
                 onChange={changePiece}
               />
             </div>
+            <label className='flex items-center gap-2 text-body'>
+              <input
+                type='checkbox'
+                checked={piece.fade !== undefined}
+                disabled={musicFadeBlock(edit, piece.id) !== null}
+                title={
+                  musicFadeBlock(edit, piece.id) !== null
+                    ? t`There is no piece of music before this one to fade from`
+                    : undefined
+                }
+                onChange={(e) =>
+                  onChange(setMusicFade(edit, piece.id, e.target.checked ? FADE.default : 0))
+                }
+                className='accent-accent'
+              />
+              {t`Fade from the previous piece`}
+            </label>
+            {piece.fade !== undefined && (
+              <Slider
+                label={t`Length of the fade`}
+                value={piece.fade}
+                min={FADE.least}
+                max={Math.max(FADE.least, (piece.end - piece.start) / 2)}
+                step={0.1}
+                shown={`${piece.fade.toFixed(1)}s`}
+                onChange={(seconds) => onChange(setMusicFade(edit, piece.id, seconds))}
+              />
+            )}
             <Markers
               edit={edit}
               kind='music'
@@ -1832,7 +1873,10 @@ const FilmEditor = ({
       if (rolling && into >= 0 && into < piece.end - piece.start) {
         const want = piece.start + into
         if (Math.abs(sound.currentTime - want) > DRIFT) sound.currentTime = want
-        sound.volume = Math.min(1, Math.max(0, musicLevelAt(piece, current.underSound, spans, t)))
+        sound.volume = Math.min(
+          1,
+          Math.max(0, musicLevelAt(piece, current.underSound, spans, t, current.music))
+        )
         if (sound.paused) void sound.play().catch(() => undefined)
       } else if (!sound.paused) sound.pause()
     }
@@ -1982,10 +2026,17 @@ const FilmEditor = ({
     )
   )
 
+  const pickedMusic = picked?.kind === 'music' ? picked.id : null
+  const musicBlocked = edit && pickedMusic ? musicFadeBlock(edit, pickedMusic) : 'first'
+  const musicFading = Boolean(
+    pickedMusic && edit?.music.find((one) => one.id === pickedMusic)?.fade !== undefined
+  )
+
   const fadeHere = () => {
-    if (!edit || !pickedId) return
+    if (!edit) return
     joined.current = false
-    change(setFade(edit, pickedId, fading ? 0 : FADE.default, ripple))
+    if (pickedMusic) change(setMusicFade(edit, pickedMusic, musicFading ? 0 : FADE.default))
+    else if (pickedId) change(setFade(edit, pickedId, fading ? 0 : FADE.default, ripple))
   }
 
   const markHere = () => {
@@ -2078,7 +2129,8 @@ const FilmEditor = ({
     if (shifted) return
     if (has('cut')) cutHere()
     if (has('marker')) markHere()
-    if (has('fade') && pickedId && blocked === null) fadeHere()
+    if (has('fade') && ((pickedId && blocked === null) || (pickedMusic && musicBlocked === null)))
+      fadeHere()
     if (has('ripple')) setRipple((was) => !was)
     if (has('snap')) setSnap((was) => !was)
     if (has('title')) addText(PRESETS[0]!)
@@ -2182,7 +2234,7 @@ const FilmEditor = ({
         0,
         ...edit.music
           .filter((piece) => at >= piece.at && at < piece.at + piece.end - piece.start)
-          .map((piece) => musicLevelAt(piece, edit.underSound, spans, at))
+          .map((piece) => musicLevelAt(piece, edit.underSound, spans, at, edit.music))
       )
     : 0
   const heard = heardClip
@@ -2511,11 +2563,17 @@ const FilmEditor = ({
                 {t`Marker`}
               </Mini>
               <Mini
-                pressed={fading}
-                disabled={blocked !== null}
+                pressed={fading || musicFading}
+                disabled={pickedMusic ? musicBlocked !== null : blocked !== null}
                 keys={shortcuts('fade')}
                 title={hint(
-                  pickedId ? fadeWhy(blocked) : t`Pick a clip to fade it in over the one before it`,
+                  pickedMusic
+                    ? musicBlocked !== null
+                      ? t`There is no piece of music before this one to fade from`
+                      : t`Fade the picked piece in over the end of the piece before it`
+                    : pickedId
+                      ? fadeWhy(blocked)
+                      : t`Pick a clip or a piece of music to fade it in over the one before it`,
                   'fade'
                 )}
                 onClick={fadeHere}>

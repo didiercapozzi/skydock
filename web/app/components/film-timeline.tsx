@@ -6,6 +6,7 @@ import {
   fadeOutOf,
   heardSpans,
   layerFadesOf,
+  musicCrossfadeOf,
   musicFadesOf,
   musicLevelAt,
   speedOf,
@@ -240,6 +241,13 @@ const FilmTimeline = ({
   const rows = layerRows(layers)
   const rowCount = Math.max(1, ...[...rows.values()].map((row) => row + 1))
   const textRows = layerRows(edit.texts)
+  const musicRows = layerRows(
+    edit.music.map((piece) => {
+      const into = musicCrossfadeOf(piece, edit.music).into
+      return { id: piece.id, at: piece.at + into, seconds: piece.end - piece.start - into }
+    })
+  )
+  const musicRowCount = Math.max(1, ...[...musicRows.values()].map((row) => row + 1))
   const textRowCount = Math.max(1, ...[...textRows.values()].map((row) => row + 1))
   const total = timelineEnd(edit)
   const width = Math.max(room - HEAD, total * pps + 240)
@@ -482,7 +490,7 @@ const FilmTimeline = ({
         ? textFadesOf(text)[side]
         : 0
       : piece
-        ? musicFadesOf(piece)[side]
+        ? musicFadesOf(piece, original.music)[side]
         : 0
   }
 
@@ -1090,7 +1098,7 @@ const FilmTimeline = ({
           name={t`Music`}
           tag='M1'
           note={t`From the music`}
-          height='h-13'>
+          height={['h-13', 'h-13', 'h-26', 'h-39', 'h-52'][Math.min(4, musicRowCount)]!}>
           {spans.map((span) => (
             <span
               key={span.from}
@@ -1107,7 +1115,7 @@ const FilmTimeline = ({
             )
               .map(
                 (into) =>
-                  `${into * pps},${(1 - musicLevelAt(piece, edit.underSound, spans, piece.at + into)) * 100}`
+                  `${into * pps},${(1 - musicLevelAt(piece, edit.underSound, spans, piece.at + into, edit.music)) * 100}`
               )
               .join(' ')
             return (
@@ -1115,8 +1123,13 @@ const FilmTimeline = ({
                 key={piece.id}
                 onPointerDown={(e) => moveMusic(e, piece.id, 'body')}
                 title={piece.name}
-                style={{ left: piece.at * pps, width: Math.max(8, length * pps - 2) }}
-                className={`group absolute inset-y-1.5 cursor-grab overflow-hidden rounded-corner bg-up-soft ${
+                style={{
+                  left: piece.at * pps,
+                  width: Math.max(8, length * pps - 2),
+                  top: `calc(${((musicRows.get(piece.id) ?? 0) / musicRowCount) * 100}% + 6px)`,
+                  height: `calc(${100 / musicRowCount}% - 12px)`
+                }}
+                className={`group absolute cursor-grab overflow-hidden rounded-corner bg-up-soft ${
                   lit('music', piece.id) || (picked?.kind === 'music' && picked.id === piece.id)
                     ? 'shadow-ring-2'
                     : 'shadow-hairline'

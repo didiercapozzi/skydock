@@ -3146,3 +3146,94 @@ describe('a marker of the music snapping to a marker of the video', () => {
       .toBeCloseTo(2, 3)
   })
 })
+
+describe('pieces of music that overlap', () => {
+  type Sent = { url: string; body: unknown }
+  const start = async () => {
+    const sent: Sent[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        return Response.json({ ok: true })
+      }
+      return Response.json({
+        ...answer,
+        music: [
+          { name: 'one.mp3', path: '/o/music/one.mp3', seconds: 40 },
+          { name: 'two.mp3', path: '/o/music/two.mp3', seconds: 40 }
+        ],
+        edit: {
+          ...answer.edit,
+          music: [
+            { id: 'music-1', name: 'one.mp3', at: 0, start: 0, end: 12, volume: 1 },
+            { id: 'music-2', name: 'two.mp3', at: 8, start: 0, end: 12, volume: 1 }
+          ]
+        }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+  const songs = (sent: Sent[]) =>
+    (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as
+      | { edit: { music: Array<{ id: string; at: number; fade?: number }> } }
+      | undefined)?.edit.music
+
+  test('are stacked on rows of the Music track, so that each can be picked', async () => {
+    await start()
+    const one = page.getByTitle('one.mp3', { exact: true }).last().element().getBoundingClientRect()
+    const two = page.getByTitle('two.mp3', { exact: true }).last().element().getBoundingClientRect()
+
+    expect(two.top).toBeGreaterThanOrEqual(one.bottom - 1)
+
+    await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
+    await expect.element(page.getByRole('heading', { name: 'two.mp3' })).toBeVisible()
+  })
+
+  test('are faded one into the other with Fade from the previous piece, which makes them share that much', async () => {
+    const sent = await start()
+    await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
+
+    await userEvent.click(page.getByRole('checkbox', { name: 'Fade from the previous piece' }))
+
+    await expect.poll(() => songs(sent)?.[1]).toMatchObject({ id: 'music-2' })
+    const second = songs(sent)![1]!
+    expect(second.fade).toBeGreaterThan(0)
+    expect(second.at).toBeCloseTo(12 - second.fade!, 3)
+  })
+
+  test('are faded with the F key, as clips are, and F again takes the fade off', async () => {
+    const sent = await start()
+    await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
+
+    await userEvent.keyboard('f')
+    await expect.poll(() => songs(sent)?.[1]?.fade).toBeGreaterThan(0)
+
+    await userEvent.keyboard('f')
+    await expect.poll(() => songs(sent)?.[1]?.fade).toBeUndefined()
+    expect(songs(sent)?.[1]?.at).toBe(12)
+  })
+
+  test('stay on one row when they are faded one into the other, as clips are, and are not stacked', async () => {
+    await start()
+    await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
+    await userEvent.keyboard('f')
+
+    await expect
+      .poll(
+        () =>
+          page.getByTitle('two.mp3', { exact: true }).last().element().getBoundingClientRect().top
+      )
+      .toBe(page.getByTitle('one.mp3', { exact: true }).last().element().getBoundingClientRect().top)
+  })
+
+  test('has no fade from the previous piece for the first one', async () => {
+    await start()
+    await userEvent.click(page.getByTitle('one.mp3', { exact: true }).last())
+
+    await expect
+      .element(page.getByRole('checkbox', { name: 'Fade from the previous piece' }))
+      .toBeDisabled()
+  })
+})

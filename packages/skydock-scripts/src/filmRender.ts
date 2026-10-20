@@ -264,7 +264,7 @@ const filmArgs = ({
     const source = music.get(piece.name)
     if (!source) throw new Error(`The music ${piece.name} is not in the music folder any more.`)
     const length = piece.end - piece.start
-    const { fadeIn, fadeOut } = musicFadesOf(piece)
+    const { fadeIn, fadeOut } = musicFadesOf(piece, edit.music)
     const delay = Math.round(piece.at * 1000)
     inputs.push('-i', source.path)
     graph.push(

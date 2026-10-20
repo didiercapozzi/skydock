@@ -2345,6 +2345,10 @@ msgid "Fade from the previous clip"
 msgstr "Fondu enchaîné depuis le clip précédent"
 
 #: app/components/film-editor.tsx
+msgid "Fade from the previous piece"
+msgstr "Fondu depuis le morceau précédent"
+
+#: app/components/film-editor.tsx
 #: app/components/film-shortcuts.tsx
 msgid "Fade in"
 msgstr "Fondu enchaîné"
@@ -2378,6 +2382,10 @@ msgstr "Faire apparaître le clip choisi en fondu sur la fin du clip précédent
 #: app/components/film-shortcuts.tsx
 msgid "fade the picked clip in over the one before it, or take the fade off"
 msgstr "enchaîner le clip choisi en fondu sur le précédent, ou retirer le fondu"
+
+#: app/components/film-editor.tsx
+msgid "Fade the picked piece in over the end of the piece before it"
+msgstr "Faire entrer le morceau choisi en fondu sur la fin du morceau précédent"
 
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
@@ -4245,8 +4253,8 @@ msgid "Pick {name}"
 msgstr "Sélectionner {name}"
 
 #: app/components/film-editor.tsx
-msgid "Pick a clip to fade it in over the one before it"
-msgstr "Choisissez un clip pour le faire apparaître en fondu sur le précédent"
+msgid "Pick a clip or a piece of music to fade it in over the one before it"
+msgstr "Choisissez un clip ou un morceau pour le faire entrer en fondu sur le précédent"
 
 #: app/components/film-editor.tsx
 msgid "Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part."
@@ -5488,6 +5496,10 @@ msgstr "Les modèles de montage dont un montage est fait — les parcourir, ou e
 msgid "The fade from the previous clip already fades this clip in."
 msgstr "Le fondu enchaîné depuis le clip précédent fait déjà apparaître ce clip."
 
+#: app/components/film-editor.tsx
+msgid "The fade from the previous piece already fades this piece in."
+msgstr "Le fondu depuis le morceau précédent fait déjà entrer ce morceau en fondu."
+
 #: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
 msgid "The file"
@@ -5673,6 +5685,10 @@ msgstr "le nom, chaque coupe et cadrage, et chaque heure corrigée — chaque fi
 msgid "The next clip fades in over this one, which fades it out."
 msgstr "Le clip suivant apparaît en fondu par-dessus celui-ci, ce qui le fait déjà disparaître."
 
+#: app/components/film-editor.tsx
+msgid "The next piece fades in over this one, which fades it out."
+msgstr "Le morceau suivant entre en fondu sur celui-ci, qui sort donc en fondu."
+
 #: app/components/jump-graph.tsx
 msgid "the opening"
 msgstr "l’ouverture"
@@ -5812,6 +5828,10 @@ msgstr "Puis supprimé de cette machine"
 #: app/routes/place.tsx
 msgid "Then it is ready to go to the storage."
 msgstr "Il sera alors prêt à partir sur le stockage."
+
+#: app/components/film-editor.tsx
+msgid "There is no piece of music before this one to fade from"
+msgstr "Il n’y a pas de morceau avant celui-ci pour un fondu"
 
 #: app/components/inspector.tsx
 msgid "these"

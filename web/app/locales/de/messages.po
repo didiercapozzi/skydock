@@ -2345,6 +2345,10 @@ msgid "Fade from the previous clip"
 msgstr "Überblendung vom vorherigen Clip"
 
 #: app/components/film-editor.tsx
+msgid "Fade from the previous piece"
+msgstr "Überblendung vom vorherigen Stück"
+
+#: app/components/film-editor.tsx
 #: app/components/film-shortcuts.tsx
 msgid "Fade in"
 msgstr "Überblenden"
@@ -2378,6 +2382,10 @@ msgstr "Den gewählten Clip über das Ende des vorherigen Clips einblenden"
 #: app/components/film-shortcuts.tsx
 msgid "fade the picked clip in over the one before it, or take the fade off"
 msgstr "den gewählten Clip über den vorherigen einblenden oder die Überblendung entfernen"
+
+#: app/components/film-editor.tsx
+msgid "Fade the picked piece in over the end of the piece before it"
+msgstr "Das gewählte Stück über das Ende des vorherigen Stücks einblenden"
 
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
@@ -4245,8 +4253,8 @@ msgid "Pick {name}"
 msgstr "{name} auswählen"
 
 #: app/components/film-editor.tsx
-msgid "Pick a clip to fade it in over the one before it"
-msgstr "Wähl einen Clip, um ihn über den vorherigen einzublenden"
+msgid "Pick a clip or a piece of music to fade it in over the one before it"
+msgstr "Einen Clip oder ein Musikstück wählen, um es über das vorherige einzublenden"
 
 #: app/components/film-editor.tsx
 msgid "Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part."
@@ -5488,6 +5496,10 @@ msgstr "Die Schnittvorlagen, aus denen eine Montage entsteht — ansehen oder ei
 msgid "The fade from the previous clip already fades this clip in."
 msgstr "Die Überblendung vom vorherigen Clip blendet diesen Clip bereits ein."
 
+#: app/components/film-editor.tsx
+msgid "The fade from the previous piece already fades this piece in."
+msgstr "Die Überblendung vom vorherigen Stück blendet dieses Stück bereits ein."
+
 #: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
 msgid "The file"
@@ -5673,6 +5685,10 @@ msgstr "der Name, jede Kürzung und jeder Bildausschnitt sowie jede korrigierte 
 msgid "The next clip fades in over this one, which fades it out."
 msgstr "Der nächste Clip wird über diesen eingeblendet und blendet ihn damit bereits aus."
 
+#: app/components/film-editor.tsx
+msgid "The next piece fades in over this one, which fades it out."
+msgstr "Das nächste Stück wird über dieses eingeblendet, das dadurch ausgeblendet wird."
+
 #: app/components/jump-graph.tsx
 msgid "the opening"
 msgstr "die Öffnung"
@@ -5812,6 +5828,10 @@ msgstr "Dann von diesem Rechner gelöscht"
 #: app/routes/place.tsx
 msgid "Then it is ready to go to the storage."
 msgstr "Dann ist sie bereit für den Speicher."
+
+#: app/components/film-editor.tsx
+msgid "There is no piece of music before this one to fade from"
+msgstr "Vor diesem Stück gibt es kein Musikstück für eine Überblendung"
 
 #: app/components/inspector.tsx
 msgid "these"

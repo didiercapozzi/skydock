@@ -28,7 +28,9 @@ import {
   rippleBy,
   setFade,
   setClipFrame,
+  musicFadeBlock,
   setItemFade,
+  setMusicFade,
   setPart,
   snapPoints,
   snapBlock,
@@ -1240,5 +1242,42 @@ describe('a dragged block pulled by its edges and by its own markers', () => {
   it('takes the smallest pull when several edges or markers are within reach', () => {
     expect(snapBlock([20, 22], 19.5, [0, 3], 2)).toEqual({ start: 20, to: 20 })
     expect(snapBlock([20, 22], 18.9, [0, 3], 2)).toEqual({ start: 19, to: 22 })
+  })
+})
+
+describe('a fade from the previous piece of music', () => {
+  const two: FilmEdit = {
+    ...edit,
+    music: [
+      { id: 'a', name: 'a.mp3', at: 0, start: 0, end: 20, volume: 1 },
+      { id: 'b', name: 'b.mp3', at: 20, start: 5, end: 25, volume: 1 }
+    ]
+  }
+
+  it('makes the second piece begin that much before the first one ends, which is the fade', () => {
+    const made = setMusicFade(two, 'b', 2)
+
+    expect(made.music[1]).toMatchObject({ at: 18, fade: 2 })
+    expect(made.music[0]).toEqual(two.music[0])
+    expect(setMusicFade(made, 'b', 3).music[1]).toMatchObject({ at: 17, fade: 3 })
+  })
+
+  it('takes it away by putting the piece back where the first ends, as a clip comes back with no fade', () => {
+    const made = setMusicFade(two, 'b', 2)
+    const back = setMusicFade(made, 'b', 0)
+
+    expect(back.music[1]).toMatchObject({ at: 20 })
+    expect(back.music[1]).not.toHaveProperty('fade')
+    expect(setMusicFade(two, 'b', 0)).toEqual(two)
+  })
+
+  it('is not for the first piece, which has none before it', () => {
+    expect(musicFadeBlock(two, 'a')).toBe('first')
+    expect(musicFadeBlock(two, 'b')).toBeNull()
+    expect(setMusicFade(two, 'a', 2)).toBe(two)
+  })
+
+  it('is held to half of the shorter piece', () => {
+    expect(setMusicFade(two, 'b', 15).music[1]).toMatchObject({ at: 10, fade: 10 })
   })
 })

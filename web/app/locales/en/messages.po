@@ -2345,6 +2345,10 @@ msgid "Fade from the previous clip"
 msgstr "Fade from the previous clip"
 
 #: app/components/film-editor.tsx
+msgid "Fade from the previous piece"
+msgstr "Fade from the previous piece"
+
+#: app/components/film-editor.tsx
 #: app/components/film-shortcuts.tsx
 msgid "Fade in"
 msgstr "Fade in"
@@ -2378,6 +2382,10 @@ msgstr "Fade the picked clip in over the end of the clip before it"
 #: app/components/film-shortcuts.tsx
 msgid "fade the picked clip in over the one before it, or take the fade off"
 msgstr "fade the picked clip in over the one before it, or take the fade off"
+
+#: app/components/film-editor.tsx
+msgid "Fade the picked piece in over the end of the piece before it"
+msgstr "Fade the picked piece in over the end of the piece before it"
 
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
@@ -4245,8 +4253,8 @@ msgid "Pick {name}"
 msgstr "Pick {name}"
 
 #: app/components/film-editor.tsx
-msgid "Pick a clip to fade it in over the one before it"
-msgstr "Pick a clip to fade it in over the one before it"
+msgid "Pick a clip or a piece of music to fade it in over the one before it"
+msgstr "Pick a clip or a piece of music to fade it in over the one before it"
 
 #: app/components/film-editor.tsx
 msgid "Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part."
@@ -5488,6 +5496,10 @@ msgstr "The editing templates a montage is made from — look them over, or brin
 msgid "The fade from the previous clip already fades this clip in."
 msgstr "The fade from the previous clip already fades this clip in."
 
+#: app/components/film-editor.tsx
+msgid "The fade from the previous piece already fades this piece in."
+msgstr "The fade from the previous piece already fades this piece in."
+
 #: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
 msgid "The file"
@@ -5673,6 +5685,10 @@ msgstr "the name, every trim and frame, and every corrected time — each file g
 msgid "The next clip fades in over this one, which fades it out."
 msgstr "The next clip fades in over this one, which fades it out."
 
+#: app/components/film-editor.tsx
+msgid "The next piece fades in over this one, which fades it out."
+msgstr "The next piece fades in over this one, which fades it out."
+
 #: app/components/jump-graph.tsx
 msgid "the opening"
 msgstr "the opening"
@@ -5812,6 +5828,10 @@ msgstr "Then deleted from this machine"
 #: app/routes/place.tsx
 msgid "Then it is ready to go to the storage."
 msgstr "Then it is ready to go to the storage."
+
+#: app/components/film-editor.tsx
+msgid "There is no piece of music before this one to fade from"
+msgstr "There is no piece of music before this one to fade from"
 
 #: app/components/inspector.tsx
 msgid "these"
