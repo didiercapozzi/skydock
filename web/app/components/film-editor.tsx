@@ -6,6 +6,7 @@ import {
   clipLevelAt,
   DAY_TOKEN,
   editAnswerSchema,
+  DUCK_RAMP,
   fadeInOf,
   fadeInto,
   fadeOutOf,
@@ -64,6 +65,7 @@ import {
   setPart,
   setSpeed,
   splitClip,
+  splitMusic,
   timelineEnd,
   lookGeometry,
   unturnedFrame,
@@ -968,6 +970,28 @@ const Inspector = ({
               />
               {sources.get(clip.name)?.sound ? t`Hear this clip` : t`This clip has no sound`}
             </label>
+            {clip.sound && sources.get(clip.name)?.sound && (
+              <>
+                <Slider
+                  label={t`Music under this clip`}
+                  value={clip.under ?? edit.underSound}
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  shown={`${Math.round((clip.under ?? edit.underSound) * 100)}%`}
+                  onChange={(under) => changeClip({ under })}
+                />
+                <Slider
+                  label={t`Music fade around this clip`}
+                  value={clip.underFade ?? DUCK_RAMP}
+                  min={0.1}
+                  max={5}
+                  step={0.1}
+                  shown={`${(clip.underFade ?? DUCK_RAMP).toFixed(1)}s`}
+                  onChange={(underFade) => changeClip({ underFade })}
+                />
+              </>
+            )}
             <label className='flex items-center gap-2 text-body'>
               <input
                 type='checkbox'
@@ -1941,7 +1965,12 @@ const FilmEditor = ({
     setAlso([])
   }
 
-  const cut = edit && !scratch ? splitClip(edit, at) : null
+  const cut =
+    edit && !scratch
+      ? picked?.kind === 'music'
+        ? splitMusic(edit, picked.id, at)
+        : splitClip(edit, at)
+      : null
 
   const pickedId = picked?.kind === 'clip' ? picked.id : null
   const blocked = edit && pickedId ? fadeBlock(edit, pickedId) : 'first'
@@ -1975,6 +2004,8 @@ const FilmEditor = ({
     change(cut)
     const second = cut.clips.find((one) => !edit?.clips.some((was) => was.id === one.id))
     if (second) setPicked({ kind: 'clip', id: second.id })
+    const piece = cut.music.find((one) => !edit?.music.some((was) => was.id === one.id))
+    if (piece) setPicked({ kind: 'music', id: piece.id })
   }
 
   const bound = useFilmKeys()

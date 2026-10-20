@@ -2920,3 +2920,229 @@ describe('texts that are on at the same moment', () => {
     expect(block('Gamma').top).toBe(block('Alpha').top)
   })
 })
+
+describe('the music under the camera sound, clip by clip', () => {
+  type Sent = { url: string; body: unknown }
+  const start = async () => {
+    const sent: Sent[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        return Response.json({ ok: true })
+      }
+      return Response.json({
+        ...answer,
+        edit: {
+          ...answer.edit,
+          clips: answer.edit.clips.map((clip) => ({ ...clip, sound: true }))
+        }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+  const clips = (sent: Sent[]) =>
+    (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as
+      | { edit: { clips: Array<{ under?: number; underFade?: number }> } }
+      | undefined)?.edit.clips
+
+  test('has its own level and its own fade in the Inspector of the clip, which the other clip does not share', async () => {
+    const sent = await start()
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+
+    page.getByRole('slider', { name: 'Music under this clip' }).element().focus()
+    await userEvent.keyboard('{ArrowRight}{ArrowRight}')
+    page.getByRole('slider', { name: 'Music fade around this clip' }).element().focus()
+    await userEvent.keyboard('{ArrowRight}')
+
+    await expect.poll(() => clips(sent)?.[0]?.under).toBeCloseTo(0.17)
+    await expect.poll(() => clips(sent)?.[0]?.underFade).toBeGreaterThan(0.8)
+    expect(clips(sent)?.[1]?.under).toBeUndefined()
+  })
+})
+
+describe('a piece of music cut and trimmed on the timeline', () => {
+  type Sent = { url: string; body: unknown }
+  const start = async () => {
+    const sent: Sent[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        return Response.json({ ok: true })
+      }
+      return Response.json({
+        ...answer,
+        music: [{ name: 'song.mp3', path: '/o/music/song.mp3', seconds: 40 }],
+        edit: {
+          ...answer.edit,
+          music: [{ id: 'music-1', name: 'song.mp3', at: 2, start: 0, end: 20, volume: 1 }]
+        }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+  const songs = (sent: Sent[]) =>
+    (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as
+      | { edit: { music: Array<{ id: string; at: number; start: number; end: number }> } }
+      | undefined)?.edit.music
+
+  test('is cut in two at the playhead with Cut at playhead, and the second piece is picked', async () => {
+    const sent = await start()
+    await userEvent.click(page.getByTitle('song.mp3', { exact: true }).last())
+    await playheadAt(5)
+
+    await userEvent.click(page.getByRole('button', { name: 'Cut at playhead' }))
+
+    await expect
+      .poll(() => songs(sent)?.map((one) => [one.at, one.start, one.end]))
+      .toEqual([
+        [2, 0, 3],
+        [5, 3, 20]
+      ])
+    await expect.element(page.getByRole('heading', { name: 'song.mp3' })).toBeVisible()
+  })
+
+  test('has its start trimmed by its left edge, which leaves the sound where it was heard', async () => {
+    const sent = await start()
+    const pps = pxPerSecond()
+
+    await userEvent.dragAndDrop(
+      page.getByTitle('song.mp3', { exact: true }).last(),
+      page.getByRole('slider', { name: 'Timeline ruler' }),
+      { sourcePosition: { x: 2, y: 5 }, targetPosition: { x: 6 * pps + 2, y: 5 } }
+    )
+
+    await expect.poll(() => songs(sent)?.[0]?.start).toBeGreaterThan(3)
+    expect(songs(sent)?.[0]?.at).toBeCloseTo(2 + (songs(sent)?.[0]?.start ?? 0), 3)
+    expect(songs(sent)?.[0]?.end).toBe(20)
+  })
+})
+
+describe('the line that shows what a dragged item snaps to', () => {
+  const look = { seconds: 3, effect: 'fade', font: 'bold', x: 0.5, y: 0.5, size: 0.09, colour: '#ffffff' }
+  const open = async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        ...answer,
+        edit: {
+          ...answer.edit,
+          texts: [
+            { ...look, id: 'text-1', text: 'Alpha', at: 1 },
+            { ...look, id: 'text-2', text: 'Beta', at: 8 }
+          ]
+        }
+      })
+    )
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+  }
+  const dragBeta = () =>
+    userEvent.dragAndDrop(
+      [...document.querySelectorAll<HTMLElement>('div.cursor-grab')].find((one) =>
+        one.textContent?.includes('Beta')
+      )!,
+      page.getByRole('slider', { name: 'Timeline ruler' }),
+      { sourcePosition: { x: 2, y: 5 }, targetPosition: { x: 4 * pxPerSecond() + 5, y: 5 } }
+    )
+
+  test('is a vertical line at the edge it snaps to, from another item of any kind, and stays a moment', async () => {
+    await open()
+
+    await dragBeta()
+
+    const line = document.querySelector<HTMLElement>('[data-snap-guide]')
+    expect(line).not.toBeNull()
+    expect(parseFloat(line!.style.left)).toBeCloseTo(150 + 4 * pxPerSecond(), 0)
+  })
+
+  test('is not drawn with Snap off', async () => {
+    await open()
+    await userEvent.click(page.getByRole('button', { name: 'Snap', exact: true }))
+
+    await dragBeta()
+
+    expect(document.querySelector('[data-snap-guide]')).toBeNull()
+  })
+})
+
+describe('a text and a picture that are on at the same time', () => {
+  const look = { seconds: 3, effect: 'fade', font: 'bold', x: 0.5, y: 0.5, size: 0.09, colour: '#ffffff' }
+
+  test('are drawn from the same start to the same end on the timeline', async () => {
+    vi.stubGlobal('fetch', async () =>
+      Response.json({
+        ...answer,
+        images: [{ name: 'logo.png', path: '/o/images/logo.png', width: 100, height: 100 }],
+        edit: {
+          ...answer.edit,
+          texts: [{ ...look, id: 'text-1', text: 'Alpha', at: 2 }],
+          layers: [{ id: 'layer-1', at: 2, seconds: 3, name: 'logo.png', x: 0.5, y: 0.5, width: 0.3 }]
+        }
+      })
+    )
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+
+    const text = page.getByText('Alpha', { exact: true }).last().element().parentElement!.getBoundingClientRect()
+    const picture = page.getByTitle('logo.png', { exact: true }).last().element().firstElementChild!.getBoundingClientRect()
+
+    expect(picture.left).toBeCloseTo(text.left, 0)
+    expect(picture.right).toBeCloseTo(text.right, 0)
+  })
+})
+
+describe('a marker of the music snapping to a marker of the video', () => {
+  test('pulls the music by its own marker to the marker of the clip, and draws the line there', async () => {
+    const sent: Array<{ url: string; body: unknown }> = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+        return Response.json({ ok: true })
+      }
+      return Response.json({
+        ...answer,
+        music: [{ name: 'song.mp3', path: '/o/music/song.mp3', seconds: 40 }],
+        edit: {
+          ...answer.edit,
+          clips: [
+            { ...answer.edit.clips[0]!, markers: [{ id: 'mark-1', label: 'Door', at: 5 }] },
+            answer.edit.clips[1]!
+          ],
+          music: [
+            {
+              id: 'music-1',
+              name: 'song.mp3',
+              at: 12,
+              start: 0,
+              end: 20,
+              volume: 1,
+              markers: [{ id: 'mark-1', label: 'Drop', at: 3 }]
+            }
+          ]
+        }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    const pps = pxPerSecond()
+
+    await userEvent.dragAndDrop(
+      page.getByTitle('song.mp3', { exact: true }).last(),
+      page.getByRole('slider', { name: 'Timeline ruler' }),
+      { sourcePosition: { x: 60, y: 5 }, targetPosition: { x: 12 * pps + 60 - 10 * pps + 3, y: 5 } }
+    )
+
+    const line = document.querySelector<HTMLElement>('[data-snap-guide]')
+    expect(parseFloat(line!.style.left)).toBeCloseTo(150 + 5 * pps, 0)
+    await expect
+      .poll(() =>
+        (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as
+          | { edit: { music: Array<{ at: number }> } }
+          | undefined)?.edit.music[0]?.at
+      )
+      .toBeCloseTo(2, 3)
+  })
+})

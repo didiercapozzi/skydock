@@ -3391,6 +3391,10 @@ msgid "Make the music longer or shorter"
 msgstr "Allonger ou raccourcir la musique"
 
 #: app/components/film-timeline.tsx
+msgid "Make the music start later or earlier"
+msgstr "Faire commencer la musique plus tard ou plus tôt"
+
+#: app/components/film-timeline.tsx
 msgid "Make the picture longer or shorter"
 msgstr "Allonger ou raccourcir l’image"
 
@@ -3585,8 +3589,16 @@ msgid "Music {0}%"
 msgstr "Musique {0} %"
 
 #: app/components/film-editor.tsx
+msgid "Music fade around this clip"
+msgstr "Fondu de la musique autour de ce clip"
+
+#: app/components/film-editor.tsx
 msgid "Music under the camera sound"
 msgstr "Musique sous le son de la caméra"
+
+#: app/components/film-editor.tsx
+msgid "Music under this clip"
+msgstr "Musique sous ce clip"
 
 #: app/components/connection-dialog.tsx
 msgid "Must be a valid URL (e.g. https://nas.local:5001)"

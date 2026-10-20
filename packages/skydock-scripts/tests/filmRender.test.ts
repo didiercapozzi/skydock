@@ -90,7 +90,12 @@ describe('rendering the film', () => {
   })
 
   it('leaves the music alone when no clip is heard', () => {
-    expect(duckOf(heardSpans(edit(), () => false))).toBeNull()
+    expect(
+      duckOf(
+        heardSpans(edit(), () => false),
+        0.15
+      )
+    ).toBeNull()
   })
 
   it('draws each text the way the picture shows it, from its own file of words', () => {

@@ -31,8 +31,11 @@ import {
   setItemFade,
   setPart,
   snapPoints,
+  snapBlock,
   snapTo,
   splitClip,
+  splitMusic,
+  trimMusicStart,
   timelineEnd,
   trimClip,
   unturnedFrame,
@@ -1099,5 +1102,143 @@ describe('a look shared by what is picked, whatever its kind', () => {
         (clip) => clip.sound
       )
     ).toEqual([false, false])
+  })
+})
+
+describe('a piece of music cut and trimmed', () => {
+  const song: FilmEdit = {
+    ...edit,
+    music: [
+      {
+        id: 'music-1',
+        name: 'm.mp3',
+        at: 10,
+        start: 20,
+        end: 60,
+        volume: 0.8,
+        fadeIn: 2,
+        fadeOut: 3,
+        markers: [
+          { id: 'mark-1', label: 'Drop', at: 30 },
+          { id: 'mark-2', label: 'End', at: 50 }
+        ]
+      }
+    ]
+  }
+
+  it('is cut in two at the playhead, the first piece keeping its start and the second its end', () => {
+    const cut = splitMusic(song, 'music-1', 25)!
+
+    expect(cut.music.map((one) => [one.id, one.at, one.start, one.end])).toEqual([
+      ['music-1', 10, 20, 35],
+      ['music-2', 25, 35, 60]
+    ])
+    expect(cut.music[0]).toMatchObject({ fadeIn: 2, volume: 0.8 })
+    expect(cut.music[0]).not.toHaveProperty('fadeOut')
+    expect(cut.music[1]).toMatchObject({ fadeOut: 3, volume: 0.8 })
+    expect(cut.music[1]).not.toHaveProperty('fadeIn')
+    expect(cut.music[0]!.markers).toEqual(song.music[0]!.markers)
+    expect(cut.music[1]!.markers).toEqual(song.music[0]!.markers)
+  })
+
+  it('keeps every marker on the sound it was put on, at the moment of the sound, whatever is trimmed', () => {
+    const marker = song.music[0]!.markers![0]!
+    const where = (edit: FilmEdit) => {
+      const piece = edit.music[0]!
+      return piece.at + marker.at - piece.start
+    }
+
+    const trimmed = trimMusicStart(song, 'music-1', 15)
+    expect(trimmed.music[0]!.markers).toEqual(song.music[0]!.markers)
+    expect(where(trimmed)).toBe(where(song))
+
+    const shorter = { ...song, music: [{ ...song.music[0]!, end: 40 }] }
+    expect(where(shorter)).toBe(where(song))
+
+    const clip = {
+      ...edit,
+      clips: [
+        { ...edit.clips[0]!, markers: [{ id: 'mark-1', label: 'Door', at: 6 }] },
+        edit.clips[1]!
+      ]
+    }
+    const cutClip = trimClip(clip, 'clip-1', 'start', 2, 10, true)
+    expect(cutClip.clips[0]!.markers).toEqual([{ id: 'mark-1', label: 'Door', at: 6 }])
+  })
+
+  it('is not cut too near its ends, nor outside it', () => {
+    expect(splitMusic(song, 'music-1', 10.5)).toBeNull()
+    expect(splitMusic(song, 'music-1', 49.5)).toBeNull()
+    expect(splitMusic(song, 'music-1', 5)).toBeNull()
+    expect(splitMusic(song, 'music-9', 25)).toBeNull()
+  })
+
+  it('has its start trimmed so the sound stays where it was heard, and not before the file or the film begins', () => {
+    const later = trimMusicStart(song, 'music-1', 15)
+    expect(later.music[0]).toMatchObject({ at: 15, start: 25, end: 60 })
+
+    const earlier = trimMusicStart(song, 'music-1', 2)
+    expect(earlier.music[0]).toMatchObject({ at: 2, start: 12, end: 60 })
+    expect(trimMusicStart(song, 'music-1', -5).music[0]).toMatchObject({ at: 0, start: 10 })
+
+    const filmEarly = trimMusicStart(
+      { ...song, music: [{ ...song.music[0]!, start: 3 }] },
+      'music-1',
+      2
+    )
+    expect(filmEarly.music[0]).toMatchObject({ at: 7, start: 0 })
+
+    expect(trimMusicStart(song, 'music-1', 80).music[0]).toMatchObject({
+      at: 49,
+      start: 59,
+      end: 60
+    })
+  })
+})
+
+describe('what a dragged item snaps to, of any kind', () => {
+  it('has the edges of the pictures and backgrounds among them, and not those of the item dragged', () => {
+    const withLayer: FilmEdit = {
+      ...edit,
+      layers: [{ id: 'layer-1', at: 30, seconds: 4, colour: '#000000', x: 0.5, y: 0.5, width: 1 }]
+    }
+
+    expect(snapPoints(withLayer, new Map(), 0)).toEqual(expect.arrayContaining([30, 34]))
+    expect(snapPoints(withLayer, new Map(), 0, 'layer-1')).not.toContain(30)
+  })
+
+  it('has not the edges of the items that move with the one dragged, as a group', () => {
+    const grouped = groupItems(
+      {
+        ...edit,
+        texts: [
+          { ...edit.texts[0]!, id: 'text-1', at: 20 },
+          { ...edit.texts[0]!, id: 'text-2', at: 25 }
+        ]
+      },
+      [
+        { kind: 'text', id: 'text-1' },
+        { kind: 'text', id: 'text-2' }
+      ]
+    )
+
+    expect(snapPoints(grouped, new Map(), 0)).toContain(25)
+    expect(snapPoints(grouped, new Map(), 0, 'text-1')).not.toContain(25)
+  })
+})
+
+describe('a dragged block pulled by its edges and by its own markers', () => {
+  it('is pulled by the edge or the marker that is nearest to a point, and says which point it is', () => {
+    const points = [20, 50]
+
+    expect(snapBlock(points, 12, [0, 6], 1)).toEqual({ start: 12, to: null })
+    expect(snapBlock(points, 19.6, [0, 6], 1)).toEqual({ start: 20, to: 20 })
+    expect(snapBlock(points, 13.6, [0, 6], 1)).toEqual({ start: 14, to: 20 })
+    expect(snapBlock(points, 44.2, [0, 6, 3], 1)).toEqual({ start: 44, to: 50 })
+  })
+
+  it('takes the smallest pull when several edges or markers are within reach', () => {
+    expect(snapBlock([20, 22], 19.5, [0, 3], 2)).toEqual({ start: 20, to: 20 })
+    expect(snapBlock([20, 22], 18.9, [0, 3], 2)).toEqual({ start: 19, to: 22 })
   })
 })

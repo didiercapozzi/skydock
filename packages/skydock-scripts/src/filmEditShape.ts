@@ -43,6 +43,8 @@ const editClipSchema = z
     rotation: rotationSchema.optional(),
     fadeIn: fadeLength,
     fadeOut: fadeLength,
+    under: fraction.optional(),
+    underFade: z.number().min(0.1).max(5).optional(),
     markers: z.array(editMarkerSchema).optional()
   })
   .refine((clip) => clip.end > clip.start, 'a clip ends after it starts')
@@ -177,7 +179,7 @@ type ImageSource = z.infer<typeof imageSourceSchema>
 type EditLayer = NonNullable<FilmEdit['layers']>[number]
 type TextEffect = (typeof TEXT_EFFECTS)[number]
 type TextFont = (typeof TEXT_FONTS)[number]
-type Span = { from: number; to: number }
+type Span = { from: number; to: number; under?: number; ramp?: number }
 
 const imageAsStill = (image: ImageSource): EditSource => ({
   name: image.name,
@@ -259,29 +261,38 @@ const heardSpans = (edit: FilmEdit, heard: (clip: EditClip) => boolean) => {
     at += (clip.gap ?? 0) - fadeInto(edit.clips, index)
     if (clip.sound && heard(clip)) {
       const last = spans.at(-1)
-      if (last && at <= last.to + 0.001) last.to = at + length
-      else spans.push({ from: at, to: at + length })
+      const own = {
+        ...(clip.under === undefined ? {} : { under: clip.under }),
+        ...(clip.underFade === undefined ? {} : { ramp: clip.underFade })
+      }
+      if (last && at <= last.to + 0.001 && last.under === own.under && last.ramp === own.ramp)
+        last.to = at + length
+      else spans.push({ from: at, to: at + length, ...own })
     }
     at += length
   }
   return spans
 }
 
+const rampOfSpan = (span: Span) => span.ramp ?? DUCK_RAMP
+
+const duckOfSpan = (span: Span, t: number) => {
+  const ramp = rampOfSpan(span)
+  return within((t - span.from + ramp) / ramp) * within((span.to + ramp - t) / ramp)
+}
+
 const duckAt = (spans: Span[], t: number) =>
-  Math.max(
-    0,
-    ...spans.map(
-      ({ from, to }) =>
-        within((t - from + DUCK_RAMP) / DUCK_RAMP) * within((to + DUCK_RAMP - t) / DUCK_RAMP)
-    )
-  )
+  Math.max(0, ...spans.map((span) => duckOfSpan(span, t)))
+
+const underAt = (spans: Span[], underSound: number, t: number) =>
+  Math.min(1, ...spans.map((span) => 1 - (1 - (span.under ?? underSound)) * duckOfSpan(span, t)))
 
 const musicLevelAt = (piece: EditMusic, underSound: number, spans: Span[], t: number) => {
   const { fadeIn, fadeOut } = musicFadesOf(piece)
   return (
     piece.volume *
     rampAt(t - piece.at, piece.end - piece.start, fadeIn, fadeOut) *
-    (1 - (1 - underSound) * duckAt(spans, t))
+    underAt(spans, underSound, t)
   )
 }
 

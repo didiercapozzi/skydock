@@ -11,6 +11,7 @@ import type {
 import type { FrameCrop, Rotation } from '@skydock/scripts'
 
 const SHORTEST = 0.5
+const SHORTEST_MUSIC = 1
 const BEFORE_MARK = 1
 const HAIR = 1e-6
 const TILE_LOOP = 4
@@ -562,6 +563,36 @@ const splitClip = (edit: FilmEdit, at: number) => {
   return fitFades({ ...edit, clips }, undefined, false)
 }
 
+const splitMusic = (edit: FilmEdit, id: string, at: number): FilmEdit | null => {
+  const index = edit.music.findIndex((one) => one.id === id)
+  const piece = edit.music[index]
+  if (!piece) return null
+  const into = at - piece.at
+  if (into < SHORTEST_MUSIC || into > piece.end - piece.start - SHORTEST_MUSIC) return null
+  const cut = piece.start + into
+  const { fadeIn: _in, ...second } = piece
+  const { fadeOut: _out, ...first } = piece
+  const music = [...edit.music]
+  music.splice(
+    index,
+    1,
+    { ...first, end: cut },
+    { ...second, id: nextId('music', edit.music), at, start: cut }
+  )
+  return { ...edit, music }
+}
+
+const trimMusicStart = (edit: FilmEdit, id: string, to: number): FilmEdit => ({
+  ...edit,
+  music: edit.music.map((piece) => {
+    if (piece.id !== id) return piece
+    const least = Math.max(0, piece.at - piece.start)
+    const most = piece.at + piece.end - piece.start - SHORTEST_MUSIC
+    const at = Math.min(most, Math.max(least, to))
+    return { ...piece, at, start: piece.start + at - piece.at }
+  })
+})
+
 const moveClip = (edit: FilmEdit, id: string, index: number) => {
   const from = edit.clips.findIndex((clip) => clip.id === id)
   if (from < 0) return edit
@@ -687,31 +718,57 @@ const snapTo = (candidates: number[], value: number, reach: number) => {
   )
 }
 
+const snapBlock = (points: number[], start: number, offsets: number[], reach: number) => {
+  let best: { start: number; to: number; by: number } | null = null
+  for (const offset of offsets) {
+    const edge = snapTo(points, start + offset, reach)
+    const by = Math.abs(edge - (start + offset))
+    if (edge !== start + offset && (best === null || by < best.by))
+      best = { start: edge - offset, to: edge, by }
+  }
+  return best ? { start: best.start, to: best.to } : { start, to: null }
+}
+
 const snapPoints = (
   edit: FilmEdit,
   sources: Map<string, EditSource>,
   at: number,
   skip?: string
-) => [
-  0,
-  at,
-  ...placed(edit)
-    .filter(({ clip }) => clip.id !== skip)
-    .flatMap(({ clip, from, to }) => [
-      to,
-      ...(clip.gap || clip.fade ? [from] : []),
-      ...(sources.get(clip.name)?.marks ?? [])
-        .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
-        .map((mark) => from + mark.at - clip.start)
-    ]),
-  ...edit.texts
-    .filter((text) => text.id !== skip)
-    .flatMap((text) => [text.at, text.at + text.seconds]),
-  ...edit.music
-    .filter((piece) => piece.id !== skip)
-    .flatMap((piece) => [piece.at, piece.at + piece.end - piece.start]),
-  ...markerTimes(edit, skip)
-]
+) => {
+  const moving = new Set(
+    [
+      ...(edit.texts.some((text) => text.id === skip)
+        ? [{ kind: 'text' as const, id: skip! }]
+        : []),
+      ...(edit.layers?.some((layer) => layer.id === skip)
+        ? [{ kind: 'layer' as const, id: skip! }]
+        : [])
+    ].flatMap((item) => groupOf(edit, item).map((one) => one.id))
+  )
+  return [
+    0,
+    at,
+    ...placed(edit)
+      .filter(({ clip }) => clip.id !== skip)
+      .flatMap(({ clip, from, to }) => [
+        to,
+        ...(clip.gap || clip.fade ? [from] : []),
+        ...(sources.get(clip.name)?.marks ?? [])
+          .filter((mark) => mark.at >= clip.start && mark.at <= clip.end)
+          .map((mark) => from + mark.at - clip.start)
+      ]),
+    ...edit.texts
+      .filter((text) => text.id !== skip && !moving.has(text.id))
+      .flatMap((text) => [text.at, text.at + text.seconds]),
+    ...(edit.layers ?? [])
+      .filter((layer) => layer.id !== skip && !moving.has(layer.id))
+      .flatMap((layer) => [layer.at, layer.at + layer.seconds]),
+    ...edit.music
+      .filter((piece) => piece.id !== skip)
+      .flatMap((piece) => [piece.at, piece.at + piece.end - piece.start]),
+    ...markerTimes(edit, skip)
+  ]
+}
 
 const nextId = (prefix: string, taken: Array<{ id: string }>) => {
   const used = new Set(taken.map((one) => one.id))
@@ -759,8 +816,11 @@ export {
   setSpeed,
   snapPart,
   snapPoints,
+  snapBlock,
   snapTo,
   splitClip,
+  splitMusic,
+  trimMusicStart,
   timelineEnd,
   trimClip,
   unturnedFrame,

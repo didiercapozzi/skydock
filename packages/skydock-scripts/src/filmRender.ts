@@ -95,16 +95,16 @@ const textFilter = (text: EditText, file: string, font: string | null, short: nu
   ].join(':')
 }
 
-const duckOf = (spans: Span[]) =>
+const duckOf = (spans: Span[], underSound: number) =>
   spans
-    .map(
-      ({ from, to }) =>
-        `clip((t-${n(from)}+${n(DUCK_RAMP)})/${n(DUCK_RAMP)},0,1)*clip((${n(to)}+${n(DUCK_RAMP)}-t)/${n(DUCK_RAMP)},0,1)`
-    )
-    .reduce<string | null>((all, one) => (all === null ? one : `max(${all},${one})`), null)
+    .map((span) => {
+      const ramp = span.ramp ?? DUCK_RAMP
+      return `(1-${n(1 - (span.under ?? underSound))}*clip((t-${n(span.from)}+${n(ramp)})/${n(ramp)},0,1)*clip((${n(span.to)}+${n(ramp)}-t)/${n(ramp)},0,1))`
+    })
+    .reduce<string | null>((all, one) => (all === null ? one : `min(${all},${one})`), null)
 
-const musicLevel = (volume: number, underSound: number, duck: string | null) =>
-  duck === null ? n(volume) : `${n(volume)}*(1-${n(1 - underSound)}*${duck})`
+const musicLevel = (volume: number, duck: string | null) =>
+  duck === null ? n(volume) : `${n(volume)}*${duck}`
 
 const ENCODERS = {
   h264: ['libx264', 'medium'],
@@ -256,7 +256,10 @@ const filmArgs = ({
           )
           .join(',')}[film]`
   )
-  const duck = duckOf(heardSpans(edit, (clip) => sources.get(clip.name)?.sound === true))
+  const duck = duckOf(
+    heardSpans(edit, (clip) => sources.get(clip.name)?.sound === true),
+    edit.underSound
+  )
   edit.music.forEach((piece, index) => {
     const source = music.get(piece.name)
     if (!source) throw new Error(`The music ${piece.name} is not in the music folder any more.`)
@@ -265,7 +268,7 @@ const filmArgs = ({
     const delay = Math.round(piece.at * 1000)
     inputs.push('-i', source.path)
     graph.push(
-      `[${edit.clips.length + index}:a]atrim=start=${n(piece.start)}:end=${n(piece.end)},asetpts=PTS-STARTPTS,${stereo},${[...(fadeIn > 0 ? [`afade=t=in:d=${n(fadeIn)}`] : []), ...(fadeOut > 0 ? [`afade=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])].map((one) => `${one},`).join('')}adelay=${delay}:all=1,volume=${quoted(musicLevel(piece.volume, edit.underSound, duck))}:eval=frame[m${index}]`
+      `[${edit.clips.length + index}:a]atrim=start=${n(piece.start)}:end=${n(piece.end)},asetpts=PTS-STARTPTS,${stereo},${[...(fadeIn > 0 ? [`afade=t=in:d=${n(fadeIn)}`] : []), ...(fadeOut > 0 ? [`afade=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])].map((one) => `${one},`).join('')}adelay=${delay}:all=1,volume=${quoted(musicLevel(piece.volume, duck))}:eval=frame[m${index}]`
     )
   })
   layers.forEach((layer) => {

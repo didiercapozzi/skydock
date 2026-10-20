@@ -1396,6 +1396,10 @@ presses of the keys too. With Snap on, the dragged clip's edges are pulled to th
 others, the playhead and the jump marks. A drag to the right never changes the order: a clip goes
 past the next by dragging the next to the left.
 
+With Snap on, what is dragged or trimmed — a clip, a text, a picture, a piece of music — is pulled, within a few pixels, to the start and the end of every other item of any kind, to the playhead and to the markers, except the items that move with it in a group, and a clip or a piece of music is pulled as well by its own markers, so that a marker of the music lines up with a marker of the video; and while it is pulled, a dashed vertical line crosses the timeline at the moment it is pulled to, which stays a moment after the drag ends. With Snap off there is no pull and no line. A text and a picture over it that start at the same moment are drawn from the same left edge, so that what is aligned in time looks aligned.
+
+A piece of music is trimmed at its start by its left edge as at its end by its right edge: trimming the start moves the piece so that the sound stays where it was heard on the timeline, and it cannot begin before the file does or before the film does. _Cut at playhead_ with a piece of music picked cuts it in two at the playhead, not within a second of an end: the first piece keeps its _Fade in_, the second its _Fade out_, both keep the volume, and the second is picked. Markers are at a moment of the sound or the footage, and stay at that moment whatever is trimmed or cut: both pieces of a cut keep them, each showing the ones inside the part it keeps.
+
 **A crossfade is one click.** With a video clip picked, _Fade in_ in the toolbar — pressed while the
 clip has one — makes the picked clip appear over the end of the clip before it, the two overlapping in
 the film while the second fades in over the first and the camera sound crosses with it; a second click
@@ -1468,7 +1472,7 @@ marks.
 
 **The music is the film's sound.** A clip is heard only when its speaker is turned on; then, for as
 long as it plays, the music dips to _Music under the camera sound_ — 15% of its own volume unless
-changed — over 0.8 seconds either side, and comes back up after. The music's level is drawn along its
+changed — over 0.8 seconds either side, and comes back up after. That is the film's default: a clip that is heard has, in its Inspector, its own _Music under this clip_ (from nothing to everything) and _Music fade around this clip_ (a tenth of a second to five), saved as optional `under` and `underFade` on the clip, so that two clips may lower the music differently; a clip with neither takes the film's. Where two clips lower it at once, or one is still coming back up as the next begins, the lower level is the one heard, and clips that touch are one stretch only when they ask for the same. The music's level is drawn along its
 track, and the picture says what is heard at the playhead: the music and how loud, the camera, or
 both. A clip with no sound of its own cannot be turned on.
 
