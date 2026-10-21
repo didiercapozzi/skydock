@@ -29,7 +29,9 @@ import {
   setFade,
   setClipFrame,
   musicFadeBlock,
+  musicFadeOf,
   setItemFade,
+  toggleMusicFade,
   setMusicFade,
   setPart,
   snapPoints,
@@ -1296,6 +1298,43 @@ describe('a dragged block pulled by its edges and by its own markers', () => {
   it('takes the smallest pull when several edges or markers are within reach', () => {
     expect(snapBlock([20, 22], 19.5, [0, 3], 2)).toEqual({ start: 20, to: 20 })
     expect(snapBlock([20, 22], 18.9, [0, 3], 2)).toEqual({ start: 19, to: 22 })
+  })
+})
+
+describe('the fade between pieces of music that overlap', () => {
+  const lap: FilmEdit = {
+    ...edit,
+    music: [
+      { id: 'a', name: 'a.mp3', at: 0, start: 0, end: 20, volume: 1 },
+      { id: 'b', name: 'b.mp3', at: 14, start: 0, end: 20, volume: 1 }
+    ]
+  }
+
+  it('is on by itself over what they share, and not for the first piece', () => {
+    expect(musicFadeOf(lap, 'b')).toEqual({ on: true, explicit: false, overlaps: true })
+    expect(musicFadeOf(lap, 'a')).toEqual({ on: false, explicit: false, overlaps: false })
+  })
+
+  it('is taken off, and put back, without moving the piece', () => {
+    const off = toggleMusicFade(lap, 'b')
+
+    expect(off.music[1]).toMatchObject({ at: 14, crossfade: false })
+    expect(musicFadeOf(off, 'b').on).toBe(false)
+
+    const on = toggleMusicFade(off, 'b')
+    expect(on.music[1]).toEqual(lap.music[1])
+  })
+
+  it('is a length of its own when the pieces only follow one another, and goes back with the piece', () => {
+    const follow: FilmEdit = { ...lap, music: [lap.music[0]!, { ...lap.music[1]!, at: 20 }] }
+
+    const made = toggleMusicFade(follow, 'b')
+    expect(made.music[1]).toMatchObject({ fade: 1, at: 19 })
+    expect(musicFadeOf(made, 'b')).toMatchObject({ on: true, explicit: true })
+
+    const back = toggleMusicFade(made, 'b')
+    expect(back.music[1]).toMatchObject({ at: 20 })
+    expect(back.music[1]).not.toHaveProperty('fade')
   })
 })
 

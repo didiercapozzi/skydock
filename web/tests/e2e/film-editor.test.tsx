@@ -2810,6 +2810,35 @@ describe('the markers of a clip and of a piece of music', () => {
       .toEqual([3, 5])
   })
 
+  test('stay inside a narrow Inspector, so each can be taken away without scrolling', async () => {
+    await posts({
+      clips: [
+        {
+          ...answer.edit.clips[0]!,
+          markers: [
+            { id: 'mark-1', label: 'Drop', at: 4 },
+            { id: 'mark-2', label: 'A marker with a rather long name indeed', at: 5.5 }
+          ]
+        },
+        answer.edit.clips[1]!
+      ]
+    })
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    const aside = document.querySelector('aside[aria-label="Inspector"]') as HTMLElement
+    aside.style.width = '210px'
+    aside.style.minWidth = '0'
+    aside.style.maxWidth = '210px'
+
+    await expect
+      .poll(() =>
+        [...document.querySelectorAll('button[aria-label^="Take away the marker"]')].map(
+          (button) => button.getBoundingClientRect().right <= aside.getBoundingClientRect().right
+        )
+      )
+      .toEqual([true, true])
+    expect(aside.scrollWidth).toBeLessThanOrEqual(aside.clientWidth)
+  })
+
   test('are listed with the picked clip, renamed and taken away from there', async () => {
     const sent = await posts({
       clips: [
@@ -3475,7 +3504,7 @@ describe('a marker of the music snapping to a marker of the video', () => {
 })
 
 describe('pieces of music that overlap', () => {
-  const start = async () => {
+  const start = async (secondAt = 8) => {
     const sent = serve({
       ...answer,
       music: [
@@ -3486,7 +3515,7 @@ describe('pieces of music that overlap', () => {
         ...answer.edit,
         music: [
           { id: 'music-1', name: 'one.mp3', at: 0, start: 0, end: 12, volume: 1 },
-          { id: 'music-2', name: 'two.mp3', at: 8, start: 0, end: 12, volume: 1 }
+          { id: 'music-2', name: 'two.mp3', at: secondAt, start: 0, end: 12, volume: 1 }
         ]
       }
     })
@@ -3496,7 +3525,7 @@ describe('pieces of music that overlap', () => {
   }
   const songs = (sent: Sent[]) =>
     (sent.filter((one) => one.url.includes('/api/edit')).at(-1)?.body as
-      | { edit: { music: Array<{ id: string; at: number; fade?: number }> } }
+      | { edit: { music: Array<{ id: string; at: number; fade?: number; crossfade?: false }> } }
       | undefined)?.edit.music
 
   test('are stacked on rows of the Music track, so that each can be picked', async () => {
@@ -3510,11 +3539,57 @@ describe('pieces of music that overlap', () => {
     await expect.element(page.getByRole('heading', { name: 'two.mp3' })).toBeVisible()
   })
 
-  test('are faded one into the other with Fade from the previous piece, which makes them share that much', async () => {
+  test('are faded one into the other over everything they share, by default, and stay stacked', async () => {
+    await start()
+    const box = page.getByRole('checkbox', { name: 'Fade from the previous piece' })
+
+    await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
+
+    await expect.element(box).toBeChecked()
+    await expect.element(page.getByText('Over everything the two pieces share', { exact: false })).toBeVisible()
+    await expect.element(page.getByRole('textbox', { name: 'Fade in' })).toHaveValue(clockOf(4))
+    const one = page.getByTitle('one.mp3', { exact: true }).last().element().getBoundingClientRect()
+    const two = page.getByTitle('two.mp3', { exact: true }).last().element().getBoundingClientRect()
+    expect(two.top).toBeGreaterThanOrEqual(one.bottom - 1)
+  })
+
+  test('are mixed as they are when Fade from the previous piece is unticked, and faded again when it is ticked', async () => {
+    const sent = await start()
+    const box = page.getByRole('checkbox', { name: 'Fade from the previous piece' })
+    await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
+
+    await userEvent.click(box)
+
+    await expect.poll(() => songs(sent)?.[1]?.crossfade).toBe(false)
+    expect(songs(sent)?.[1]?.at).toBe(8)
+    await expect.element(box).not.toBeChecked()
+    await expect.element(page.getByRole('textbox', { name: 'Fade in' })).toHaveValue(clockOf(0))
+
+    await userEvent.click(box)
+
+    await expect.poll(() => songs(sent)?.[1]?.crossfade).toBeUndefined()
+    await expect.element(box).toBeChecked()
+  })
+
+  test('are mixed as they are, and faded again, with the F key', async () => {
     const sent = await start()
     await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
 
-    await userEvent.click(page.getByRole('checkbox', { name: 'Fade from the previous piece' }))
+    await userEvent.keyboard('f')
+    await expect.poll(() => songs(sent)?.[1]?.crossfade).toBe(false)
+
+    await userEvent.keyboard('f')
+    await expect.poll(() => songs(sent)?.[1]?.crossfade).toBeUndefined()
+    expect(songs(sent)?.[1]?.at).toBe(8)
+  })
+
+  test('that only follow one another are faded with Fade from the previous piece, which makes them share that much', async () => {
+    const sent = await start(12)
+    await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
+    const box = page.getByRole('checkbox', { name: 'Fade from the previous piece' })
+    await expect.element(box).not.toBeChecked()
+
+    await userEvent.click(box)
 
     await expect.poll(() => songs(sent)?.[1]).toMatchObject({ id: 'music-2' })
     const second = songs(sent)![1]!
@@ -3522,8 +3597,8 @@ describe('pieces of music that overlap', () => {
     expect(second.at).toBeCloseTo(12 - second.fade!, 3)
   })
 
-  test('are faded with the F key, as clips are, and F again takes the fade off', async () => {
-    const sent = await start()
+  test('that follow one another are faded with the F key, and F again takes the fade off', async () => {
+    const sent = await start(12)
     await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
 
     await userEvent.keyboard('f')
@@ -3534,8 +3609,8 @@ describe('pieces of music that overlap', () => {
     expect(songs(sent)?.[1]?.at).toBe(12)
   })
 
-  test('stay on one row when they are faded one into the other, as clips are, and are not stacked', async () => {
-    await start()
+  test('stay on one row when they are faded into one another by a length of their own, as clips are', async () => {
+    await start(12)
     await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
     await userEvent.keyboard('f')
 

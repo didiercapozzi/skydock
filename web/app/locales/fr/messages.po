@@ -224,6 +224,10 @@ msgstr "{0} étapes sur {1}"
 msgid "{0} on the storage"
 msgstr "{0} sur le stockage"
 
+#: app/components/film-templates-dialog.tsx
+msgid "{added, plural, one {# picture or piece of music brought in.} other {# pictures and pieces of music brought in.}}"
+msgstr "{added, plural, one {# image ou musique apportée.} other {# images et musiques apportées.}}"
+
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
 msgstr "{addedCount, plural, one {# fichier ajouté} other {# fichiers ajoutés}} à {where}"
@@ -844,6 +848,10 @@ msgstr "Un modèle de film nommé {name} existe déjà."
 msgid "A film template has no clips. Your clips take the place of the grey bar when it is used."
 msgstr "Un modèle de film n’a pas de clips. Vos clips prennent la place de la barre grise quand il est utilisé."
 
+#: app/components/film-templates-dialog.tsx
+msgid "A film template of that name was already here, so it is kept as {name}."
+msgstr "Un modèle de film de ce nom était déjà là, il est donc gardé sous le nom {name}."
+
 #: app/components/film-editor.tsx
 msgid "A gap separates the two clips: close it first"
 msgstr "Un vide sépare les deux clips : refermez-le d’abord"
@@ -903,6 +911,10 @@ msgstr "Une analyse est en cours"
 #: app/components/film-editor.tsx
 msgid "A text goes in at the playhead. Drag it in the picture to place it."
 msgstr "Le texte arrive à la tête de lecture. Faites-le glisser dans l’image pour le placer."
+
+#: app/components/film-templates-dialog.tsx
+msgid "A zip of {name} with the pictures and the music it uses, to keep or to bring to another machine"
+msgstr "Un zip de {name} avec les images et la musique qu’il utilise, à garder ou à apporter sur une autre machine"
 
 #. placeholder {0}: sizeWords(estimatedBytes(size.points, crf, timelineEnd(edit), heard))
 #: app/components/film-editor.tsx
@@ -1172,6 +1184,10 @@ msgstr "Rapatrier ramène un fichier sur cette machine. Rien n'est supprimé du 
 #: app/components/bin-files.tsx
 msgid "Bring back to Fresh files"
 msgstr "Remettre dans Nouveaux fichiers"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Bring in a film template exported from SkyDock, with its pictures and music"
+msgstr "Apporter un modèle de film exporté de SkyDock, avec ses images et sa musique"
 
 #: app/components/film-editor.tsx
 msgid "Bring in music…"
@@ -2297,6 +2313,14 @@ msgstr "sortie"
 msgid "Exit"
 msgstr "Sortie"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Export"
+msgstr "Exporter"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Export {name} with its pictures and music"
+msgstr "Exporter {name} avec ses images et sa musique"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "F"
 msgstr "F"
@@ -2877,6 +2901,14 @@ msgstr "Images"
 msgid "Import the jump marks"
 msgstr "Importer les repères du saut"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Import…"
+msgstr "Importer…"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Imported {name}."
+msgstr "{name} est importé."
+
 #: app/components/file-browser.tsx
 msgid "in no jump"
 msgstr "dans aucun saut"
@@ -3185,6 +3217,10 @@ msgstr "Laissez décoché pour une caméra qui n’est pas la vôtre — vous ch
 #: app/components/start-again-dialog.tsx
 msgid "Left as they are"
 msgstr "Laissés tels quels"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Left as they were, since other files of the same names are already here: {left}."
+msgstr "Laissés tels quels, car d’autres fichiers de mêmes noms sont déjà là : {left}."
 
 #: app/components/film-editor.tsx
 msgid "Length"
@@ -3781,6 +3817,10 @@ msgstr "Absent du dossier de musique, laissé de côté : {list}"
 msgid "Not in the music folder: {list}"
 msgstr "Absent du dossier de musique : {list}"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Not in the zip: {absent}."
+msgstr "Absents du zip : {absent}."
+
 #: app/components/file-status.tsx
 msgid "Not processed yet"
 msgstr "Pas encore préparé"
@@ -4109,6 +4149,10 @@ msgstr "Originaux"
 #: app/components/montage-panel.tsx
 msgid "Originals in"
 msgstr "Originaux dans"
+
+#: app/components/film-editor.tsx
+msgid "Over everything the two pieces share — drag the piece to share more or less, or untick to mix them as they are."
+msgstr "Sur tout ce que les deux morceaux partagent — faites glisser le morceau pour partager plus ou moins, ou décochez pour les mélanger tels quels."
 
 #: app/components/film-timeline.tsx
 msgid "Over the video"
@@ -5311,6 +5355,10 @@ msgstr "Les textes sont enregistrés tels que saisis, sauf le nom du passager et
 msgid "That did not work."
 msgstr "Cela n’a pas fonctionné."
 
+#: app/components/film-templates-dialog.tsx
+msgid "That film template could not be imported."
+msgstr "Ce modèle de film n’a pas pu être importé."
+
 #: app/components/take-back-dialog.tsx
 msgid "the archives, and the record of what was uploaded"
 msgstr "les archives, et la trace de ce qui a été envoyé"
@@ -5670,6 +5718,10 @@ msgstr "tout le tableau plus grand, plus petit, taille d'origine"
 #: app/components/first-scan.tsx
 msgid "The work folder could not be looked through"
 msgstr "Le dossier de travail n’a pas pu être analysé"
+
+#: app/components/film-templates-dialog.tsx
+msgid "The zip of a film template"
+msgstr "Le zip d’un modèle de film"
 
 #: app/components/board-header.tsx
 msgid "Theme"

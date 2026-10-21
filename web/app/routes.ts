@@ -18,6 +18,8 @@ const routes = [
   route('api/dropped', 'routes/api.dropped.ts'),
   route('api/edit', 'routes/api.edit.ts'),
   route('api/film-templates', 'routes/api.film-templates.ts'),
+  route('api/film-template-export', 'routes/api.film-template-export.ts'),
+  route('api/film-template-import', 'routes/api.film-template-import.ts'),
   route('api/music', 'routes/api.music.ts'),
   route('api/images', 'routes/api.images.ts'),
   route('api/transfers', 'routes/api.transfers.ts'),

@@ -332,7 +332,7 @@ const FilmTimeline = ({
   const textRows = layerRows(edit.texts)
   const musicRows = layerRows(
     edit.music.map((piece) => {
-      const into = musicCrossfadeOf(piece, edit.music).into
+      const into = piece.fade === undefined ? 0 : musicCrossfadeOf(piece, edit.music).into
       return { id: piece.id, at: piece.at + into, seconds: piece.end - piece.start - into }
     })
   )
@@ -833,6 +833,71 @@ const FilmTimeline = ({
           ))}
         </Lane>
 
+        {layers.length > 0 && (
+          <Lane
+            name={t`Images`}
+            tag='I1'
+            note={t`Over the video`}
+            height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, rowCount)]!}>
+            {layers.map((layer) => {
+              const row = rows.get(layer.id) ?? 0
+              const chosen =
+                lit('layer', layer.id) || (picked?.kind === 'layer' && picked.id === layer.id)
+              return (
+                <div
+                  key={layer.id}
+                  title={layer.name ?? layer.colour}
+                  onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'body')}
+                  style={{
+                    left: layer.at * pps,
+                    width: Math.max(8, layer.seconds * pps - 2),
+                    top: `${(row / rowCount) * 100}%`,
+                    height: `${100 / rowCount}%`
+                  }}
+                  className='group absolute cursor-grab py-1'>
+                  <div
+                    className={`relative size-full truncate rounded-corner bg-well px-2 text-micro leading-text font-semibold text-ink-2 ${
+                      chosen ? 'shadow-ring-2' : 'shadow-hairline'
+                    }`}>
+                    <Ramps
+                      {...layerFadesOf(layer)}
+                      pps={pps}
+                    />
+                    {fadeHandle(
+                      'layers',
+                      layer.id,
+                      'fadeIn',
+                      layer.name ?? layer.colour ?? '',
+                      chosen
+                    )}
+                    {fadeHandle(
+                      'layers',
+                      layer.id,
+                      'fadeOut',
+                      layer.name ?? layer.colour ?? '',
+                      chosen
+                    )}
+                    <span className='pointer-events-none flex h-full items-center gap-1.5'>
+                      {layer.colour !== undefined && (
+                        <i
+                          style={{ background: layer.colour }}
+                          className='size-3 flex-none rounded-corner shadow-hairline'
+                        />
+                      )}
+                      {layer.name ?? layer.colour}
+                    </span>
+                    <span
+                      onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'end')}
+                      aria-label={t`Make the picture longer or shorter`}
+                      className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
+                    />
+                  </div>
+                </div>
+              )
+            })}
+          </Lane>
+        )}
+
         <Lane
           name={t`Video`}
           tag='V1'
@@ -1064,71 +1129,6 @@ const FilmTimeline = ({
             ) : null
           })}
         </Lane>
-
-        {layers.length > 0 && (
-          <Lane
-            name={t`Images`}
-            tag='I1'
-            note={t`Over the video`}
-            height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, rowCount)]!}>
-            {layers.map((layer) => {
-              const row = rows.get(layer.id) ?? 0
-              const chosen =
-                lit('layer', layer.id) || (picked?.kind === 'layer' && picked.id === layer.id)
-              return (
-                <div
-                  key={layer.id}
-                  title={layer.name ?? layer.colour}
-                  onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'body')}
-                  style={{
-                    left: layer.at * pps,
-                    width: Math.max(8, layer.seconds * pps - 2),
-                    top: `${(row / rowCount) * 100}%`,
-                    height: `${100 / rowCount}%`
-                  }}
-                  className='group absolute cursor-grab py-1'>
-                  <div
-                    className={`relative size-full truncate rounded-corner bg-well px-2 text-micro leading-text font-semibold text-ink-2 ${
-                      chosen ? 'shadow-ring-2' : 'shadow-hairline'
-                    }`}>
-                    <Ramps
-                      {...layerFadesOf(layer)}
-                      pps={pps}
-                    />
-                    {fadeHandle(
-                      'layers',
-                      layer.id,
-                      'fadeIn',
-                      layer.name ?? layer.colour ?? '',
-                      chosen
-                    )}
-                    {fadeHandle(
-                      'layers',
-                      layer.id,
-                      'fadeOut',
-                      layer.name ?? layer.colour ?? '',
-                      chosen
-                    )}
-                    <span className='pointer-events-none flex h-full items-center gap-1.5'>
-                      {layer.colour !== undefined && (
-                        <i
-                          style={{ background: layer.colour }}
-                          className='size-3 flex-none rounded-corner shadow-hairline'
-                        />
-                      )}
-                      {layer.name ?? layer.colour}
-                    </span>
-                    <span
-                      onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'end')}
-                      aria-label={t`Make the picture longer or shorter`}
-                      className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
-                    />
-                  </div>
-                </div>
-              )
-            })}
-          </Lane>
-        )}
 
         <Lane
           name={t`Music`}

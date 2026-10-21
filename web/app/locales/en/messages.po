@@ -224,6 +224,10 @@ msgstr "{0} of {1} steps"
 msgid "{0} on the storage"
 msgstr "{0} on the storage"
 
+#: app/components/film-templates-dialog.tsx
+msgid "{added, plural, one {# picture or piece of music brought in.} other {# pictures and pieces of music brought in.}}"
+msgstr "{added, plural, one {# picture or piece of music brought in.} other {# pictures and pieces of music brought in.}}"
+
 #: app/helpers/notes.ts
 msgid "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
 msgstr "{addedCount, plural, one {# file} other {# files}} have been added to {where}"
@@ -844,6 +848,10 @@ msgstr "A film template called {name} is already there."
 msgid "A film template has no clips. Your clips take the place of the grey bar when it is used."
 msgstr "A film template has no clips. Your clips take the place of the grey bar when it is used."
 
+#: app/components/film-templates-dialog.tsx
+msgid "A film template of that name was already here, so it is kept as {name}."
+msgstr "A film template of that name was already here, so it is kept as {name}."
+
 #: app/components/film-editor.tsx
 msgid "A gap separates the two clips: close it first"
 msgstr "A gap separates the two clips: close it first"
@@ -903,6 +911,10 @@ msgstr "A scan is running"
 #: app/components/film-editor.tsx
 msgid "A text goes in at the playhead. Drag it in the picture to place it."
 msgstr "A text goes in at the playhead. Drag it in the picture to place it."
+
+#: app/components/film-templates-dialog.tsx
+msgid "A zip of {name} with the pictures and the music it uses, to keep or to bring to another machine"
+msgstr "A zip of {name} with the pictures and the music it uses, to keep or to bring to another machine"
 
 #. placeholder {0}: sizeWords(estimatedBytes(size.points, crf, timelineEnd(edit), heard))
 #: app/components/film-editor.tsx
@@ -1172,6 +1184,10 @@ msgstr "Bring back fetches one file onto this machine again. Nothing is deleted 
 #: app/components/bin-files.tsx
 msgid "Bring back to Fresh files"
 msgstr "Bring back to Fresh files"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Bring in a film template exported from SkyDock, with its pictures and music"
+msgstr "Bring in a film template exported from SkyDock, with its pictures and music"
 
 #: app/components/film-editor.tsx
 msgid "Bring in music…"
@@ -2297,6 +2313,14 @@ msgstr "exit"
 msgid "Exit"
 msgstr "Exit"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Export"
+msgstr "Export"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Export {name} with its pictures and music"
+msgstr "Export {name} with its pictures and music"
+
 #: app/components/shortcuts-dialog.tsx
 msgid "F"
 msgstr "F"
@@ -2877,6 +2901,14 @@ msgstr "Images"
 msgid "Import the jump marks"
 msgstr "Import the jump marks"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Import…"
+msgstr "Import…"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Imported {name}."
+msgstr "Imported {name}."
+
 #: app/components/file-browser.tsx
 msgid "in no jump"
 msgstr "in no jump"
@@ -3185,6 +3217,10 @@ msgstr "Leave this unticked for a camera that is not yours — you will pick the
 #: app/components/start-again-dialog.tsx
 msgid "Left as they are"
 msgstr "Left as they are"
+
+#: app/components/film-templates-dialog.tsx
+msgid "Left as they were, since other files of the same names are already here: {left}."
+msgstr "Left as they were, since other files of the same names are already here: {left}."
 
 #: app/components/film-editor.tsx
 msgid "Length"
@@ -3781,6 +3817,10 @@ msgstr "Not in the music folder, left out: {list}"
 msgid "Not in the music folder: {list}"
 msgstr "Not in the music folder: {list}"
 
+#: app/components/film-templates-dialog.tsx
+msgid "Not in the zip: {absent}."
+msgstr "Not in the zip: {absent}."
+
 #: app/components/file-status.tsx
 msgid "Not processed yet"
 msgstr "Not processed yet"
@@ -4109,6 +4149,10 @@ msgstr "Originals"
 #: app/components/montage-panel.tsx
 msgid "Originals in"
 msgstr "Originals in"
+
+#: app/components/film-editor.tsx
+msgid "Over everything the two pieces share — drag the piece to share more or less, or untick to mix them as they are."
+msgstr "Over everything the two pieces share — drag the piece to share more or less, or untick to mix them as they are."
 
 #: app/components/film-timeline.tsx
 msgid "Over the video"
@@ -5311,6 +5355,10 @@ msgstr "Texts are saved as typed, apart from the passenger's name and the day, w
 msgid "That did not work."
 msgstr "That did not work."
 
+#: app/components/film-templates-dialog.tsx
+msgid "That film template could not be imported."
+msgstr "That film template could not be imported."
+
 #: app/components/take-back-dialog.tsx
 msgid "the archives, and the record of what was uploaded"
 msgstr "the archives, and the record of what was uploaded"
@@ -5670,6 +5718,10 @@ msgstr "the whole board bigger, smaller, as drawn"
 #: app/components/first-scan.tsx
 msgid "The work folder could not be looked through"
 msgstr "The work folder could not be looked through"
+
+#: app/components/film-templates-dialog.tsx
+msgid "The zip of a film template"
+msgstr "The zip of a film template"
 
 #: app/components/board-header.tsx
 msgid "Theme"

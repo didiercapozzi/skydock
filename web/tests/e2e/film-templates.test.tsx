@@ -201,6 +201,68 @@ describe('the film templates dialog', () => {
   })
 })
 
+describe('the film templates dialog, export and import', () => {
+  const importing = (answer: unknown) => {
+    const base = globalThis.fetch
+    const sent: Array<{ url: string; body: FormData }> = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (!String(url).includes('/api/film-template-import')) return base(url, init)
+      sent.push({ url: String(url), body: init?.body as FormData })
+      return Response.json(answer)
+    })
+    return sent
+  }
+
+  test('exports a film template as a zip, from its row', async () => {
+    server.templates = [made('Club'), made('Plain')]
+    const clicked: Array<{ href: string; download: string }> = []
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        clicked.push({ href: this.getAttribute('href') ?? '', download: this.download })
+      })
+    const dialog = await openDialog()
+
+    await userEvent.click(dialog.getByRole('button', { name: 'Export Plain with its pictures and music' }))
+
+    expect(clicked).toEqual([
+      { href: '/api/film-template-export?name=Plain', download: 'Plain.film-template.zip' }
+    ])
+    click.mockRestore()
+  })
+
+  test('imports the zip that is chosen with nothing to answer, and says what came of it', async () => {
+    const dialog = await openDialog()
+    const sent = importing({ ok: true, name: 'epco 2', renamed: true, added: 2, kept: ['logo.png'], missing: [] })
+
+    await userEvent.upload(
+      dialog.getByLabelText('The zip of a film template'),
+      new File(['zip'], 'epco.film-template.zip', { type: 'application/zip' })
+    )
+
+    await expect.element(dialog.getByText('Imported epco 2.', { exact: false })).toBeVisible()
+    await expect.element(dialog.getByText('2 pictures and pieces of music brought in.', { exact: false })).toBeVisible()
+    await expect.element(dialog.getByText('so it is kept as epco 2', { exact: false })).toBeVisible()
+    await expect.element(dialog.getByText('logo.png', { exact: false })).toBeVisible()
+    expect(sent).toHaveLength(1)
+    expect((sent[0]!.body.get('file') as File).name).toBe('epco.film-template.zip')
+  })
+
+  test('says why a zip was refused', async () => {
+    const dialog = await openDialog()
+    importing({ ok: false, error: 'That zip holds no film template exported from SkyDock.' })
+
+    await userEvent.upload(
+      dialog.getByLabelText('The zip of a film template'),
+      new File(['x'], 'notes.zip', { type: 'application/zip' })
+    )
+
+    await expect
+      .element(dialog.getByText('That zip holds no film template exported from SkyDock.'))
+      .toBeVisible()
+  })
+})
+
 describe('the film templates dialog, kept names and unreadable files', () => {
   test('opens the film template under the name the server kept', async () => {
     const dialog = await openDialog()

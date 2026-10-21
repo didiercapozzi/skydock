@@ -1,7 +1,8 @@
-import { t } from '@lingui/core/macro'
+import { plural, t } from '@lingui/core/macro'
 import { filmTemplatesAnswerSchema } from '@skydock/scripts/client'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router'
+import { z } from 'zod'
 import { filmTemplateHref } from '../helpers/places'
 import { useLoaded } from '../hooks/useLoaded'
 import { Go, Mini } from './buttons'
@@ -37,12 +38,31 @@ const DeleteAsk = ({
 
 type Doing = { kind: 'rename' | 'delete'; name: string }
 
+const importedSchema = z.object({
+  ok: z.boolean(),
+  error: z.string().optional(),
+  name: z.string().default(''),
+  renamed: z.boolean().default(false),
+  added: z.number().default(0),
+  kept: z.array(z.string()).default([]),
+  missing: z.array(z.string()).default([])
+})
+
+const exportIt = (name: string) => {
+  const link = document.createElement('a')
+  link.href = `/api/film-template-export?name=${encodeURIComponent(name)}`
+  link.download = `${name}.film-template.zip`
+  link.click()
+}
+
 const FilmTemplatesDialog = ({ onClose }: { onClose: () => void }) => {
   const navigate = useNavigate()
   const [again, setAgain] = useState(0)
   const [doing, setDoing] = useState<Doing | null>(null)
   const [adding, setAdding] = useState(false)
   const [refused, setRefused] = useState<string | null>(null)
+  const [said, setSaid] = useState<string[]>([])
+  const picker = useRef<HTMLInputElement>(null)
   const { data, problem } = useLoaded('/api/film-templates', filmTemplatesAnswerSchema, {
     failed: t`The film templates could not be read.`,
     deps: [again]
@@ -57,6 +77,45 @@ const FilmTemplatesDialog = ({ onClose }: { onClose: () => void }) => {
       setAgain((n) => n + 1)
     }
     return answer
+  }
+
+  const importIt = async (file: File) => {
+    setRefused(null)
+    setSaid([])
+    const body = new FormData()
+    body.append('file', file)
+    const answer = await fetch('/api/film-template-import', { method: 'POST', body })
+      .then((res) => res.json())
+      .then((json) => importedSchema.safeParse(json))
+      .catch(() => null)
+    if (!answer?.success || !answer.data.ok) {
+      setRefused(
+        (answer?.success && answer.data.error) || t`That film template could not be imported.`
+      )
+      return
+    }
+    const { name, renamed, added, kept, missing } = answer.data
+    const left = kept.join(', ')
+    const absent = missing.join(', ')
+    setSaid([
+      t`Imported ${name}.`,
+      ...(added > 0
+        ? [
+            plural(added, {
+              one: '# picture or piece of music brought in.',
+              other: '# pictures and pieces of music brought in.'
+            })
+          ]
+        : []),
+      ...(renamed
+        ? [t`A film template of that name was already here, so it is kept as ${name}.`]
+        : []),
+      ...(kept.length > 0
+        ? [t`Left as they were, since other files of the same names are already here: ${left}.`]
+        : []),
+      ...(missing.length > 0 ? [t`Not in the zip: ${absent}.`] : [])
+    ])
+    setAgain((n) => n + 1)
   }
 
   const templates = data?.templates ?? []
@@ -102,6 +161,12 @@ const FilmTemplatesDialog = ({ onClose }: { onClose: () => void }) => {
                     label={t`Rename ${name}`}
                     onClick={() => setDoing({ kind: 'rename', name })}>
                     {t`Rename`}
+                  </Mini>
+                  <Mini
+                    label={t`Export ${name} with its pictures and music`}
+                    title={t`A zip of ${name} with the pictures and the music it uses, to keep or to bring to another machine`}
+                    onClick={() => exportIt(name)}>
+                    {t`Export`}
                   </Mini>
                   <Mini
                     label={t`Duplicate ${name}`}
@@ -162,6 +227,13 @@ const FilmTemplatesDialog = ({ onClose }: { onClose: () => void }) => {
           )}
         </div>
       ))}
+      {said.length > 0 && (
+        <p
+          role='status'
+          className='m-0 text-body text-ink-2'>
+          {said.join(' ')}
+        </p>
+      )}
       {refused && (
         <p
           role='alert'
@@ -179,8 +251,26 @@ const FilmTemplatesDialog = ({ onClose }: { onClose: () => void }) => {
           onCancel={() => setAdding(false)}
         />
       ) : (
-        <span className='flex'>
+        <span className='flex flex-wrap gap-1.5'>
           <Go onClick={() => setAdding(true)}>{t`New film template`}</Go>
+          <Mini
+            title={t`Bring in a film template exported from SkyDock, with its pictures and music`}
+            onClick={() => picker.current?.click()}>
+            {t`Import…`}
+          </Mini>
+          <input
+            ref={picker}
+            type='file'
+            accept='.zip,application/zip'
+            aria-label={t`The zip of a film template`}
+            className='sr-only'
+            tabIndex={-1}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              e.target.value = ''
+              if (file) void importIt(file)
+            }}
+          />
         </span>
       )}
     </Modal>

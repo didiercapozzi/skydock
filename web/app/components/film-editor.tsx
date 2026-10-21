@@ -79,8 +79,10 @@ import {
   groupOf,
   moveLook,
   musicFadeBlock,
+  musicFadeOf,
   patchItems,
   setMusicFade,
+  toggleMusicFade,
   ungroup,
   withoutItems,
   TILE_LOOP,
@@ -774,7 +776,7 @@ const Markers = ({
   const marks =
     (edit[kind] as Array<EditClip | EditMusic>).find((one) => one.id === id)?.markers ?? []
   return marks.length === 0 && !importable ? null : (
-    <div className='grid gap-1.5'>
+    <div className='grid grid-cols-[minmax(0,1fr)] gap-1.5'>
       <span className='text-micro text-ink-2'>{t`Markers`}</span>
       {marks.map((mark, index) => {
         const number = index + 1
@@ -788,7 +790,7 @@ const Markers = ({
               value={mark.label}
               maxLength={40}
               onChange={(e) => onChange(renameMarker(edit, kind, id, mark.id, e.target.value))}
-              className='h-control-sm min-w-0 flex-1 rounded-corner border border-line-strong bg-pane px-2 text-small text-ink focus:border-accent focus:outline-none'
+              className='h-control-sm w-0 min-w-0 flex-1 rounded-corner border border-line-strong bg-pane px-2 text-small text-ink focus:border-accent focus:outline-none'
             />
             <span className='font-mono text-small text-ink-3 tabular-nums'>{clockOf(mark.at)}</span>
             <button
@@ -1101,20 +1103,23 @@ const Inspector = ({
             <label className='flex items-center gap-2 text-body'>
               <input
                 type='checkbox'
-                checked={piece.fade !== undefined}
+                checked={musicFadeOf(edit, piece.id).on}
                 disabled={musicFadeBlock(edit, piece.id) !== null}
                 title={
                   musicFadeBlock(edit, piece.id) !== null
                     ? t`There is no piece of music before this one to fade from`
                     : undefined
                 }
-                onChange={(e) =>
-                  onChange(setMusicFade(edit, piece.id, e.target.checked ? FADE.default : 0))
-                }
+                onChange={() => onChange(toggleMusicFade(edit, piece.id))}
                 className='accent-accent'
               />
               {t`Fade from the previous piece`}
             </label>
+            {musicFadeOf(edit, piece.id).on && piece.fade === undefined && (
+              <span className='text-micro leading-normal text-ink-3'>
+                {t`Over everything the two pieces share — drag the piece to share more or less, or untick to mix them as they are.`}
+              </span>
+            )}
             {piece.fade !== undefined && (
               <Slider
                 label={t`Length of the fade`}
@@ -2085,14 +2090,11 @@ const FilmEditor = ({
 
   const pickedMusic = picked?.kind === 'music' ? picked.id : null
   const musicBlocked = edit && pickedMusic ? musicFadeBlock(edit, pickedMusic) : 'first'
-  const musicFading = Boolean(
-    pickedMusic && edit?.music.find((one) => one.id === pickedMusic)?.fade !== undefined
-  )
 
   const fadeHere = () => {
     if (!edit) return
     joined.current = false
-    if (pickedMusic) change(setMusicFade(edit, pickedMusic, musicFading ? 0 : FADE.default))
+    if (pickedMusic) change(toggleMusicFade(edit, pickedMusic))
     else if (pickedId) change(setFade(edit, pickedId, fading ? 0 : FADE.default, ripple))
   }
 
@@ -2705,7 +2707,7 @@ const FilmEditor = ({
                 {t`Marker`}
               </Mini>
               <Mini
-                pressed={fading || musicFading}
+                pressed={pickedMusic ? musicFadeOf(edit!, pickedMusic).on : fading}
                 disabled={pickedMusic ? musicBlocked !== null : blocked !== null}
                 keys={shortcuts('fade')}
                 title={hint(

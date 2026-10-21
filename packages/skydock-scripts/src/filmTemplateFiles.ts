@@ -191,11 +191,16 @@ const deleteFilmTemplate = (outputDir: string, name: string) =>
     await rm(fileOf(outputDir, name))
   })
 
+const filmTemplateExists = (outputDir: string, name: string) => pathExists(fileOf(outputDir, name))
+
 export {
+  cleanName,
   createFilmTemplate,
   deleteFilmTemplate,
   duplicateFilmTemplate,
+  filmTemplateExists,
   listFilmTemplates,
+  readTemplate as readFilmTemplate,
   renameFilmTemplate,
   saveFilmTemplate,
   updateFilmTemplate

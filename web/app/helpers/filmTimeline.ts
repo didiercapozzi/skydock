@@ -588,6 +588,32 @@ const setMusicFade = (edit: FilmEdit, id: string, seconds: number): FilmEdit => 
   return { ...edit, music: edit.music.map((one) => (one.id === id ? next : one)) }
 }
 
+/* How the piece stands with the one before it: faded into it over a length of its own (it was moved to share
+   just that), faded over everything the two share (the way pieces that overlap are by default), or not faded. */
+const musicFadeOf = (edit: FilmEdit, id: string) => {
+  const before = musicBefore(edit, id)
+  const piece = edit.music.find((one) => one.id === id)
+  if (!before || !piece) return { on: false, explicit: false, overlaps: false }
+  const shares = before.at + before.end - before.start - piece.at > 0.001
+  const explicit = piece.fade !== undefined
+  return { on: explicit || (shares && piece.crossfade !== false), explicit, overlaps: shares }
+}
+
+const setMusicOverlapFade = (edit: FilmEdit, id: string, on: boolean): FilmEdit => ({
+  ...edit,
+  music: edit.music.map((piece) => {
+    if (piece.id !== id) return piece
+    const { crossfade: _gone, ...plain } = piece
+    return on ? plain : { ...plain, crossfade: false as const }
+  })
+})
+
+const toggleMusicFade = (edit: FilmEdit, id: string): FilmEdit => {
+  const now = musicFadeOf(edit, id)
+  if (now.on) return now.explicit ? setMusicFade(edit, id, 0) : setMusicOverlapFade(edit, id, false)
+  return now.overlaps ? setMusicOverlapFade(edit, id, true) : setMusicFade(edit, id, FADE.default)
+}
+
 const trimMusicStart = (edit: FilmEdit, id: string, to: number): FilmEdit => ({
   ...edit,
   music: edit.music.map((piece) => {
@@ -812,7 +838,10 @@ export {
   splitMusic,
   trimMusicStart,
   musicFadeBlock,
+  musicFadeOf,
   setMusicFade,
+  setMusicOverlapFade,
+  toggleMusicFade,
   timelineEnd,
   trimClip,
   unturnedFrame,

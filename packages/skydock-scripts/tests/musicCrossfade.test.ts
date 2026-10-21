@@ -95,3 +95,72 @@ describe('a fade from the previous piece of music', () => {
     expect(out).toContain('afade=t=in:d=2')
   })
 })
+
+describe('pieces of music that overlap', () => {
+  const first = piece('a', 0, 20)
+
+  it('are faded one into the other over everything they share, with no fade asked for', () => {
+    const second = piece('b', 14, 20)
+    expect(musicCrossfadeOf(second, [first, second])).toEqual({ into: 6, out: 0 })
+    expect(musicCrossfadeOf(first, [first, second])).toEqual({ into: 0, out: 6 })
+    expect(musicFadesOf(second, [first, second])).toEqual({ fadeIn: 6, fadeOut: 0 })
+  })
+
+  it('are not faded past half of either, nor when they only touch', () => {
+    const deep = piece('b', 4, 20)
+    expect(musicCrossfadeOf(deep, [first, deep]).into).toBe(10)
+    const touching = piece('b', 20, 20)
+    expect(musicCrossfadeOf(touching, [first, touching])).toEqual({ into: 0, out: 0 })
+  })
+
+  it('are mixed as they are when the later one says they are not faded', () => {
+    const second = piece('b', 14, 20, { crossfade: false })
+    expect(musicCrossfadeOf(second, [first, second])).toEqual({ into: 0, out: 0 })
+    expect(musicFadesOf(second, [first, second])).toEqual({ fadeIn: 0, fadeOut: 0 })
+    expect(filmEditSchema.safeParse(film([first, second])).success).toBe(true)
+    expect(
+      filmEditSchema.safeParse(film([first, { ...second, crossfade: true as never }])).success
+    ).toBe(false)
+  })
+
+  it('keep the length of a fade of their own over the default', () => {
+    const second = piece('b', 14, 20, { fade: 2 })
+    expect(musicCrossfadeOf(second, [first, second])).toEqual({ into: 2, out: 0 })
+  })
+
+  it('keep the two together as loud as one while one goes down and the other comes up', () => {
+    const second = piece('b', 14, 20)
+    const both = [first, second]
+    for (const t of [14, 15, 16, 17, 18, 19.9]) {
+      const sum = musicLevelAt(first, 0.15, [], t, both) + musicLevelAt(second, 0.15, [], t, both)
+      expect(sum).toBeCloseTo(1, 1)
+    }
+  })
+
+  it('are rendered with the fade out of the first and the fade in of the second, as the editor draws them', () => {
+    const second = piece('b', 14, 20)
+    const out = filmArgs({
+      edit: film([first, second]),
+      sources: new Map([
+        [
+          'a.mp4',
+          { name: 'a.mp4', path: '/o/a.mp4', play: '', seconds: 30, sound: false, marks: [] }
+        ]
+      ]),
+      music: new Map(
+        [first, second].map((one) => [
+          one.name,
+          { name: one.name, path: `/o/${one.name}`, seconds: 60 }
+        ])
+      ),
+      width: 1920,
+      height: 1080,
+      fonts: {},
+      textFileOf: () => '/tmp/x.txt',
+      out: '/out/f.mp4'
+    }).join(' ')
+
+    expect(out).toContain('afade=t=out:st=14:d=6')
+    expect(out).toContain('afade=t=in:d=6')
+  })
+})

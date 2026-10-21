@@ -63,6 +63,7 @@ const editMusicSchema = z
     fadeIn: fadeLength,
     fadeOut: fadeLength,
     fade: z.number().gt(0).finite().optional(),
+    crossfade: z.literal(false).optional(),
     markers: z.array(editMarkerSchema).optional()
   })
   .refine((music) => music.end > music.start, 'a piece of music ends after it starts')
@@ -298,7 +299,7 @@ const musicCrossfadeOf = (piece: EditMusic, music: EditMusic[] = []) => {
     Math.max(
       0,
       Math.min(
-        later.fade ?? 0,
+        later.fade ?? (later.crossfade === false ? 0 : Infinity),
         earlier.at + musicLength(earlier) - later.at,
         musicLength(earlier) / 2,
         musicLength(later) / 2
