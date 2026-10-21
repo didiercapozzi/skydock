@@ -45,6 +45,7 @@ const importOutcomeSchema = z.object({
   there: z.number(),
   kept: z.array(z.string()),
   failed: z.array(z.string()),
+  cancelled: z.number().optional(),
   where: z.string()
 })
 

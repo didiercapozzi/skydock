@@ -67,13 +67,15 @@ type Coming = {
 
 const importAnswerSchema = z.object({
   ok: z.boolean(),
-  outcome: z.enum(['added', 'moved', 'copied', 'there', 'kept']).optional(),
+  outcome: z.enum(['added', 'moved', 'copied', 'there', 'kept', 'cancelled']).optional(),
   filename: z.string().optional(),
   from: z.string().optional(),
   stays: z.string().optional(),
   reason: z.string().optional(),
   error: z.string().optional()
 })
+
+const askedSchema = z.object({ go: z.boolean(), stopped: z.boolean() })
 
 const droppedSchema = z.object({
   files: z.array(z.object({ path: z.string(), name: z.string(), size: z.number() }))
@@ -154,7 +156,15 @@ const tell = (batch: string, what: 'begin' | 'end', body?: object) =>
   }).catch(() => undefined)
 
 const importFiles = async (list: Coming[], target: string, where: string) => {
-  const tally: ImportOutcome = { added: [], moved: [], there: 0, kept: [], failed: [], where }
+  const tally: ImportOutcome = {
+    added: [],
+    moved: [],
+    there: 0,
+    kept: [],
+    failed: [],
+    cancelled: 0,
+    where
+  }
   const batch = crypto.randomUUID()
   await tell(batch, 'begin', {
     batch,
@@ -164,6 +174,18 @@ const importFiles = async (list: Coming[], target: string, where: string) => {
   for (const [index, coming] of list.entries()) {
     const { name, size } = coming
     let { what } = coming
+    const asked = await fetch(
+      `/api/import?${new URLSearchParams({ asks: '1', batch, key: keyFor(index) })}`,
+      { method: 'POST' }
+    )
+      .then((res) => res.json())
+      .then((said) => askedSchema.safeParse(said))
+      .catch(() => null)
+    if (asked?.success && !asked.data.go) {
+      tally.cancelled = (tally.cancelled ?? 0) + (asked.data.stopped ? list.length - index : 1)
+      if (asked.data.stopped) break
+      continue
+    }
     const watching = { batch, key: keyFor(index), size: String(size) }
     const send = (sending: File | string) =>
       fetch(
@@ -193,6 +215,7 @@ const importFiles = async (list: Coming[], target: string, where: string) => {
       if (!said?.ok) tally.failed.push(`${name}: ${said?.error ?? 'refused'}`)
       else if (said.outcome === 'moved')
         tally.moved.push({ name: said.filename ?? name, from: said.from ?? 'elsewhere' })
+      else if (said.outcome === 'cancelled') tally.cancelled = (tally.cancelled ?? 0) + 1
       else if (said.outcome === 'there') tally.there += 1
       else if (said.outcome === 'kept')
         tally.kept.push(`${name} stays where it is — ${said.reason ?? 'it cannot move'}`)

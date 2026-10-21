@@ -241,6 +241,10 @@ msgid "{camera} was unplugged during the copy — {tally}; plug it in again for 
 msgstr "{camera} wurde während des Kopierens getrennt — {tally}; schließ sie für den Rest erneut an"
 
 #: app/helpers/notes.ts
+msgid "{cancelled, plural, one {# file} other {# files}} cancelled"
+msgstr "{cancelled, plural, one {# Datei abgebrochen} other {# Dateien abgebrochen}}"
+
+#: app/helpers/notes.ts
 msgid "{copied, plural, one {# file} other {# files}} copied back off the camera — ready to process again."
 msgstr "{copied, plural, one {# Datei} other {# Dateien}} erneut von der Kamera kopiert — bereit zum erneuten Aufbereiten."
 
@@ -1275,9 +1279,22 @@ msgstr "abbrechen"
 msgid "Cancel"
 msgstr "Abbrechen"
 
+#. placeholder {0}: row.name
+#: app/components/progress-panel.tsx
+msgid "Cancel {0}"
+msgstr "{0} abbrechen"
+
+#: app/components/jobs-panel.tsx
+msgid "Cancel the whole list — what is already copied stays, the rest is left out"
+msgstr "Die ganze Liste abbrechen — was schon kopiert ist, bleibt, der Rest wird ausgelassen"
+
 #: app/components/transfers-panel.tsx
 msgid "cancelled"
 msgstr "abgebrochen"
+
+#: app/components/jobs-panel.tsx
+msgid "Cancelled"
+msgstr "Abgebrochen"
 
 #: app/components/jobs-panel.tsx
 msgid "Cancelling…"
@@ -3139,6 +3156,11 @@ msgstr "Letzter Schritt"
 #: app/components/film-part.tsx
 msgid "lasts {lasts}"
 msgstr "dauert {lasts}"
+
+#. placeholder {0}: row.name
+#: app/components/progress-panel.tsx
+msgid "Leave {0} out — the rest carries on"
+msgstr "{0} auslassen — der Rest läuft weiter"
 
 #. placeholder {0}: p.name
 #: app/components/upload-dialog.tsx

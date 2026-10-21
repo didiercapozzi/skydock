@@ -241,6 +241,10 @@ msgid "{camera} was unplugged during the copy — {tally}; plug it in again for 
 msgstr "{camera} a été débranchée pendant la copie — {tally} ; rebranchez-la pour le reste"
 
 #: app/helpers/notes.ts
+msgid "{cancelled, plural, one {# file} other {# files}} cancelled"
+msgstr "{cancelled, plural, one {# fichier annulé} other {# fichiers annulés}}"
+
+#: app/helpers/notes.ts
 msgid "{copied, plural, one {# file} other {# files}} copied back off the camera — ready to process again."
 msgstr "{copied, plural, one {# fichier recopié} other {# fichiers recopiés}} depuis la caméra — prêts à être préparés à nouveau."
 
@@ -1275,9 +1279,22 @@ msgstr "annuler"
 msgid "Cancel"
 msgstr "Annuler"
 
+#. placeholder {0}: row.name
+#: app/components/progress-panel.tsx
+msgid "Cancel {0}"
+msgstr "Annuler {0}"
+
+#: app/components/jobs-panel.tsx
+msgid "Cancel the whole list — what is already copied stays, the rest is left out"
+msgstr "Annuler toute la liste — ce qui est déjà copié reste, le reste est laissé de côté"
+
 #: app/components/transfers-panel.tsx
 msgid "cancelled"
 msgstr "annulé"
+
+#: app/components/jobs-panel.tsx
+msgid "Cancelled"
+msgstr "Annulé"
 
 #: app/components/jobs-panel.tsx
 msgid "Cancelling…"
@@ -3139,6 +3156,11 @@ msgstr "Dernière étape"
 #: app/components/film-part.tsx
 msgid "lasts {lasts}"
 msgstr "dure {lasts}"
+
+#. placeholder {0}: row.name
+#: app/components/progress-panel.tsx
+msgid "Leave {0} out — the rest carries on"
+msgstr "Laisser {0} de côté — le reste continue"
 
 #. placeholder {0}: p.name
 #: app/components/upload-dialog.tsx

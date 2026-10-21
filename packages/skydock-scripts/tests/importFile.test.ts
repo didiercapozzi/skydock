@@ -89,6 +89,29 @@ describe('adding a file from the computer', () => {
     expect(after.files[0]).toMatchObject({ path: dest, size: 5 })
   })
 
+  it('stops copying when told to, and leaves no file and no half of one behind', async () => {
+    await setup()
+    const stopper = new AbortController()
+    const never = new Readable({ read() {} })
+    never.push(Buffer.from('half of it'))
+
+    const copying = importFile({
+      outputDir,
+      filename: 'long.mp4',
+      lastModified: TAKEN,
+      body: never,
+      target: { kind: 'sort' },
+      signal: stopper.signal
+    })
+    setTimeout(() => stopper.abort(), 50)
+
+    await expect(copying).rejects.toThrow()
+    const after = (await loadManifestAsync(manifestPath()))!
+    expect(after.files).toEqual([])
+    expect(fs.existsSync(path.join(outputDir, 'original_files'))).toBe(false)
+    expect(fs.existsSync(path.join(outputDir, '.incoming'))).toBe(false)
+  })
+
   it('files it under a dropzone as a lone file', async () => {
     await setup()
     await add('clip.mp4', 'video', { kind: 'destination', name: 'Yverdon' })

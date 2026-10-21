@@ -15,6 +15,7 @@ type Row = {
   href?: string
   doing?: string
   tint?: boolean
+  cancel?: () => void
 }
 
 const TONE: Record<Row['at'], string> = {
@@ -64,6 +65,19 @@ const ProgressRows = ({ rows, doing, opened }: { rows: Row[]; doing: string; ope
               className='inline-flex h-chip flex-none items-center rounded-full bg-accent px-2.5 font-sans text-micro font-bold whitespace-nowrap text-white no-underline hover:opacity-90'>
               {t`Open in DSM`}
             </a>
+          )}
+          {row.cancel && (
+            <button
+              type='button'
+              onClick={row.cancel}
+              title={t`Leave ${row.name} out — the rest carries on`}
+              aria-label={t`Cancel ${row.name}`}
+              className='inline-grid size-4 flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent p-0 text-ink-3 hover:bg-well hover:text-ink'>
+              <Icon
+                name='close'
+                size={10}
+              />
+            </button>
           )}
           {opened && row.note !== stateOf(row.at) && (
             <span

@@ -737,7 +737,12 @@ of its own beside the one for the whole drop, because a card of fifty clips move
 fiftieth at a time and that reads as nothing happening. Once a file's bytes are in it is read, which
 is quick beside the copy and is said as well, so a bar that has filled is never a bar with nothing
 behind it. Nothing is asked and nothing waits on an answer: the list is there to be watched, the
-way making the proxies and copying a camera off are. A drop holding nothing SkyDock can show says so
+way making the proxies and copying a camera off are. **It can also be cancelled**, the whole list by
+the button on its panel and one file by the cross on its row, a file waiting its turn or the one
+being copied: the copy under way stops, the half of the file is thrown away and no trace of it is left
+in the originals, the rest of the list carries on (or, with the whole list cancelled, is left out),
+and what was already copied stays. Each file left out is marked _Cancelled_ on its row, said in the
+note the board gives of the drop, and listed in the transfers as left out, not as a failure. A drop holding nothing SkyDock can show says so
 and copies nothing.
 
 Footage already on the board is recognised by its contents, whatever the file is now called, and what

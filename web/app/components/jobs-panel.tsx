@@ -213,7 +213,12 @@ const looksOf = ({ type, label, stage, done, total, rows, phase }: Job): Looks =
         doing: t`Copying`,
         summary: t`${done} of ${total} copied into the originals`,
         bar: t`Copied into ${label}`,
-        note: (row) => (row.phase === 'reading' ? t`reading it…` : undefined)
+        note: (row) =>
+          row.phase === 'reading'
+            ? t`reading it…`
+            : row.phase === 'cancelled'
+              ? t`Cancelled`
+              : undefined
       }
   }
 }
@@ -230,6 +235,11 @@ const rowsOf = (job: Job, looks: Looks, dsmHost?: string | null): ProgressRow[] 
           part: row.at === 'now' ? row.part : undefined,
           note: looks.note?.(row),
           ...looks.extra?.(row, dsmHost),
+          ...(job.type === 'import' &&
+          job.stage === 'working' &&
+          (row.at === 'later' || row.at === 'now')
+            ? { cancel: () => stopImport(job.id, row.key) }
+            : {}),
           tint: looks.doneFirst ? row.at === 'done' : undefined
         }))
       : job.name
@@ -274,33 +284,45 @@ const cancelling = (actionArgs: ActionData, title: string): Stop => ({
   title
 })
 
+const stopImport = (job: string, key?: string) =>
+  void fetch(`/api/import?${new URLSearchParams({ cancel: '1', job, ...(key ? { key } : {}) })}`, {
+    method: 'POST'
+  }).catch(() => null)
+
 const stopOf = ({ type, id, groupIds }: Job): Stop | null =>
-  type === 'camera-copy'
+  type === 'import'
     ? {
-        run: () =>
-          void routingEngine
-            .action({ url: '/api/camera', actionArgs: { stop: true } })
-            .catch(() => null),
-        word: t`Stop`,
-        busy: t`Stopping…`,
-        title: t`Stop after the file under way — what came across stays, the rest stays on the card`
+        run: () => stopImport(id),
+        word: t`Cancel`,
+        busy: t`Cancelling…`,
+        title: t`Cancel the whole list — what is already copied stays, the rest is left out`
       }
-    : type === 'upload'
-      ? cancelling(
-          { intent: 'cancel-upload' },
-          t`Stop it now — nothing of it is recorded, and what already went up is found there next time`
-        )
-      : type === 'render'
+    : type === 'camera-copy'
+      ? {
+          run: () =>
+            void routingEngine
+              .action({ url: '/api/camera', actionArgs: { stop: true } })
+              .catch(() => null),
+          word: t`Stop`,
+          busy: t`Stopping…`,
+          title: t`Stop after the file under way — what came across stays, the rest stays on the card`
+        }
+      : type === 'upload'
         ? cancelling(
-            { intent: 'cancel-render', groupId: groupIds?.[0] },
-            t`Stop this film’s render now — the film as it was before stays as it is`
+            { intent: 'cancel-upload' },
+            t`Stop it now — nothing of it is recorded, and what already went up is found there next time`
           )
-        : type === 'process'
+        : type === 'render'
           ? cancelling(
-              { intent: 'cancel-process', jobId: id },
-              t`Stop it now — the copies already finished stay, and nothing of it counts as processed`
+              { intent: 'cancel-render', groupId: groupIds?.[0] },
+              t`Stop this film’s render now — the film as it was before stays as it is`
             )
-          : null
+          : type === 'process'
+            ? cancelling(
+                { intent: 'cancel-process', jobId: id },
+                t`Stop it now — the copies already finished stay, and nothing of it counts as processed`
+              )
+            : null
 
 const JobPanel = ({ job, dsmHost }: { job: Job; dsmHost?: string | null }) => {
   const looks = looksOf(job)

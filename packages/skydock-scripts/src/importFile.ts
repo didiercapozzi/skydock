@@ -112,7 +112,8 @@ const importFile = async ({
   body,
   target,
   drop,
-  size
+  size,
+  signal
 }: {
   outputDir: string
   filename: string
@@ -121,6 +122,7 @@ const importFile = async ({
   target: ImportTarget
   drop?: ImportDrop
   size?: number
+  signal?: AbortSignal
 }): Promise<ImportResult> => {
   const filename = path.basename(asked.replace(/\\/g, '/')).trim()
   if (!filename || filename.startsWith('.') || !MEDIA_EXTENSIONS_SET.has(getExtension(filename)))
@@ -147,7 +149,7 @@ const importFile = async ({
   const copyEnds = copyBegins()
   try {
     counted.begun()
-    await pipeline(body, counted.through, gentleWriter(partial))
+    await pipeline(body, counted.through, gentleWriter(partial), { signal })
     counted.reading()
     const when = new Date(
       Number.isFinite(lastModified) && lastModified > 0 ? lastModified : Date.now()

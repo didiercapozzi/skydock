@@ -5,7 +5,16 @@ import { Readable } from 'node:stream'
 import type { ReadableStream as NodeWebStream } from 'node:stream/web'
 import { z } from 'zod'
 import { getOutputDir, messageOf } from '@skydock/scripts'
-import { beginDrop, dropRow, endDrop } from '../../../packages/skydock-scripts/src/dropJobs'
+import {
+  beginDrop,
+  dropRow,
+  endDrop,
+  goingDrop,
+  leftRow,
+  stopDrop,
+  stopDropFile,
+  wanted
+} from '../../../packages/skydock-scripts/src/dropJobs'
 import { importFile } from '../../../packages/skydock-scripts/src/importFile'
 import type { ImportTarget } from '../../../packages/skydock-scripts/src/importFile'
 import { catchUp } from '../../../packages/skydock-scripts/src/catchUp'
@@ -65,6 +74,14 @@ const action = async ({ request }: Route.ActionArgs) => {
     beginDrop({ ...begun.data, outputDir: getOutputDir() })
     return Response.json({ ok: true })
   }
+  const stopping = url.searchParams.get('cancel') && url.searchParams.get('job')
+  if (stopping) {
+    const key = url.searchParams.get('key')
+    const done = key ? stopDropFile(stopping, key) : stopDrop(stopping)
+    return Response.json({ ok: done })
+  }
+  if (url.searchParams.get('asks') && batch)
+    return Response.json({ ok: true, ...wanted(batch, url.searchParams.get('key') ?? '') })
   if (url.searchParams.get('end') && batch) {
     endDrop(batch)
     return Response.json({ ok: true })
@@ -72,6 +89,11 @@ const action = async ({ request }: Route.ActionArgs) => {
   const target = targetOf(url.searchParams.get('target'))
   if (!target) return Response.json({ ok: false, error: 'Nothing to add.' }, { status: 400 })
   const key = url.searchParams.get('key') ?? undefined
+  if (batch && key && !wanted(batch, key).go) {
+    leftRow(batch, key)
+    return Response.json({ ok: true, outcome: 'cancelled' })
+  }
+  const going = goingDrop(batch, key)
   try {
     const carried = await handedOver(request, url)
     if (!carried) return Response.json({ ok: false, error: 'Nothing to add.' }, { status: 400 })
@@ -79,14 +101,21 @@ const action = async ({ request }: Route.ActionArgs) => {
       outputDir: getOutputDir(),
       ...carried,
       target,
-      drop: batch && key ? { batch, key } : undefined
+      drop: batch && key ? { batch, key } : undefined,
+      signal: going?.signal
     })
     if (key) dropRow(batch, { key, ...rowOf(result) })
     void catchUp()
     return Response.json({ ok: true, ...result })
   } catch (e) {
+    if (going?.signal.aborted && batch && key) {
+      leftRow(batch, key)
+      return Response.json({ ok: true, outcome: 'cancelled' })
+    }
     if (key) dropRow(batch, { key, at: 'failed', note: messageOf(e) })
     return Response.json({ ok: false, error: messageOf(e) }, { status: 422 })
+  } finally {
+    going?.done()
   }
 }
 

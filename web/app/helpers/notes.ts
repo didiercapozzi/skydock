@@ -2,7 +2,7 @@ import type { Busy, ImportOutcome, ScanResult } from '@skydock/scripts'
 import { plural, t } from '@lingui/core/macro'
 import { formatFilmSize, localeDate } from '../components/utils'
 
-const importNote = ({ added, moved, there, kept, failed, where }: ImportOutcome) => {
+const importNote = ({ added, moved, there, kept, failed, cancelled, where }: ImportOutcome) => {
   const file = added[0]
   const addedCount = added.length
   const { name, from } = moved[0] ?? { name: '', from: '' }
@@ -22,7 +22,8 @@ const importNote = ({ added, moved, there, kept, failed, where }: ImportOutcome)
           : null,
       there > 0 ? t`${there} already in ${where}` : null,
       kept.length > 0 ? kept.join('; ') : null,
-      failed.length > 0 ? t`not added — ${reasons}` : null
+      failed.length > 0 ? t`not added — ${reasons}` : null,
+      cancelled ? t`${plural(cancelled, { one: '# file', other: '# files' })} cancelled` : null
     ]
       .filter(Boolean)
       .join(' · ') || t`Nothing was added`
