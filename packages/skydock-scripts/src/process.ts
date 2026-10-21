@@ -58,13 +58,6 @@ const shownShape = async (src: string) => {
 
 const ORIGIN_TAG = 'skydock:from='
 
-const tagOrigin = async (dest: string, from: string | undefined) => {
-  if (!from || !(await hasCommand('exiftool'))) return
-  await exif(['-overwrite_original', '-q', `-Comment=${ORIGIN_TAG}${from}`, dest]).catch(
-    () => undefined
-  )
-}
-
 const turnPhoto = async (dest: string, rotation: 90 | 180 | 270) => {
   const current = Number.parseInt((await exif(['-n', '-s3', '-Orientation', dest])).trim(), 10)
   const next = orientationAfter(Number.isFinite(current) ? current : 1, rotation)
@@ -181,8 +174,10 @@ const recodeVideo = async (
   return { ok: false as const, reason: `${first.reason}; on the processor: ${again.reason}` }
 }
 
-const updateMetadata = async (files: string[]) => {
-  if (files.length === 0) return
+/* The copy's dates are made those of its name and what it came from is written into it, in one pass: a
+   video is rewritten whole each time exiftool writes it, so a second pass is minutes more on a big
+   one, and said nowhere, with every bar already full. */
+const stampCopy = async (dest: string, from: string | undefined) => {
   try {
     await exif([
       '-P',
@@ -197,11 +192,12 @@ const updateMetadata = async (files: string[]) => {
       '-ModifyDate<FileModifyDate',
       '-DateTimeOriginal<FileModifyDate',
       '-CreationDate<FileModifyDate',
-      ...files
+      ...(from ? [`-Comment=${ORIGIN_TAG}${from}`] : []),
+      dest
     ])
   } catch (e) {
     throw new Error(
-      `EXIF failed for ${path.basename(path.dirname(files[0]))}: ${messageOf(e)} — install exiftool`
+      `EXIF failed for ${path.basename(path.dirname(dest))}: ${messageOf(e)} — install exiftool`
     )
   }
 }
@@ -287,8 +283,8 @@ const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent
     await copyWhole(file.path, dest, onPercent)
     if (!video && file.rotation) await turnPhoto(dest, file.rotation)
   }
-  await tagOrigin(dest, file.copyOf ?? file.id)
   await utimes(dest, time, time)
+  await stampCopy(dest, file.copyOf ?? file.id)
 }
 
 let writing: ReturnType<typeof job> | null = null
@@ -355,7 +351,6 @@ const writeGroup = async (
     record(file, dest)
     written.push(dest)
   }
-  await updateMetadata(written)
   if (!flat) {
     const names = written.map((entry) => path.basename(entry))
     await pruneStaleMedia(dir, usedNames)
@@ -391,7 +386,6 @@ const writeLooseFiles = async (
     record(file, dest)
     written.push(dest)
   }
-  await updateMetadata(written)
   console.log(`[Process] ${destination}: copied ${written.length} loose file(s) to ${dir}`)
   return written.length
 }

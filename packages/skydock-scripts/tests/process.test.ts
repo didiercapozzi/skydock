@@ -523,6 +523,23 @@ describe('while a processing is running', () => {
   })
 })
 
+describe('the dates written into a copy', () => {
+  it('are written with what it came from, in one pass over each copy and none over all of them after', async () => {
+    const { manifestPath } = await write({
+      destination: 'Yverdon',
+      files: [clip('GX010001.MP4', 0), clip('GX010002.MP4', 1)]
+    })
+
+    await processJumps({ manifestPath, outputDir })
+
+    const writes = execSyncMock.mock.calls
+      .map((c) => String(c[0]))
+      .filter((line) => line.startsWith('exiftool') && line.includes('CreateDate<'))
+    expect(writes).toHaveLength(2)
+    expect(writes.every((line) => line.includes('skydock:from='))).toBe(true)
+  })
+})
+
 describe('what a delivered file says it came from', () => {
   const tagged = () =>
     execSyncMock.mock.calls.map((c) => String(c[0])).filter((l) => l.includes('skydock:from='))

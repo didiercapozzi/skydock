@@ -69,7 +69,9 @@ describe('cancelling files being added from the computer', () => {
 
     endDrop(batch)
 
-    const ended = heard.findLast((event) => event.kind === 'job' && event.stage === 'done')
+    const ended = [...heard]
+      .reverse()
+      .find((event) => event.kind === 'job' && event.stage === 'done')
     expect(ended).toMatchObject({ outcome: { state: 'stopped', copied: 1, skipped: 0 } })
   })
 
