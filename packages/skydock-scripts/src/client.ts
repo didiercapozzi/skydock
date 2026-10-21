@@ -1,4 +1,4 @@
-export { boardAnswerSchema } from './boardAnswer'
+export { boardAnswerSchema, importOutcomeSchema } from './boardAnswer'
 export { busyAmong } from './busyScope'
 export type { Busy, BusyScope, Work } from './busyScope'
 export { groupableCount, offGap, startOfFiles } from './clustering'
@@ -120,7 +120,13 @@ export {
   zipNameOf
 } from './sendNames'
 export { transfersFileSchema } from './transferShape'
-export { jumpTrackSchema, sendPlanSchema } from './types'
+export {
+  destinationSchema,
+  jumpTrackSchema,
+  manifestFileSchema,
+  manifestGroupSchema,
+  sendPlanSchema
+} from './types'
 export { montageUploadKey } from './uploadProgress'
 export {
   MONTAGES_FOLDER,

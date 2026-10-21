@@ -4,7 +4,7 @@ import {
   manifestFileSchema,
   manifestGroupSchema,
   sendPlanSchema
-} from '@skydock/scripts'
+} from '@skydock/scripts/client'
 import { z } from 'zod'
 
 /* Every change the board can ask for, by intent, with the fields the intents read. */
