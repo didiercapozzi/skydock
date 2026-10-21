@@ -854,6 +854,7 @@ const ManyPanel = ({
   montage,
   move,
   onSend,
+  onRetime,
   onClear
 }: {
   files: ManifestFile[]
@@ -865,6 +866,7 @@ const ManyPanel = ({
   montage?: MontageOffer
   move?: React.ReactNode
   onSend?: () => void
+  onRetime?: (anchorEpoch: number) => void
   onClear: () => void
 }) => {
   const [making, setMaking] = useState(false)
@@ -892,8 +894,32 @@ const ManyPanel = ({
           rows={[
             [t`Total size`, bytes(files)],
             [t`Not yet processed`, String(notYet)],
-            [t`From`, hhmm(Math.min(...times))],
-            [t`To`, hhmm(Math.max(...times))],
+            [
+              t`From`,
+              onRetime ? (
+                <span
+                  key='from'
+                  className='[&_input]:min-w-0 [&_input]:basis-full'>
+                  <JumpSpan
+                    from={Math.min(...times)}
+                    to={Math.max(...times)}
+                    withDate
+                    disabled={false}
+                    onShift={onRetime}
+                    hint={t`every picked file goes to this day, the first from this time and the others as far after it as they were in their own day`}
+                    tip={t`Wrong clock? Set the day and the time of the first of these — the others come the same day, as far after it as they were`}
+                  />
+                </span>
+              ) : (
+                hhmm(Math.min(...times))
+              )
+            ],
+            [
+              t`To`,
+              dateLabel(Math.min(...times)) === dateLabel(Math.max(...times))
+                ? hhmm(Math.max(...times))
+                : `${dateLabel(Math.max(...times))} ${hhmm(Math.max(...times))}`
+            ],
             ...tallied
               .slice(1)
               .filter(([, n]) => n > 0)

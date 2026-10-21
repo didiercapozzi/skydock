@@ -388,6 +388,12 @@ already filed never grows by itself. Every jump already there keeps its files, h
   when a file from another day is dropped into it, and only the order inside the jump changes. A loose
   file goes to whichever day its new time falls on. A wrong clock is usually wrong for everything it
   shot, which is what re-timing the whole jump is for.
+- **Several picked files can be re-timed together**, from the panel that says how many are picked: say
+  the day and the time, and every picked file goes to that day, whatever day it was shot on. The one
+  with the lowest time of day is set to the time, and each of the others to the time plus how far
+  after it its own time of day was — files shot days or weeks apart end up on one day, in the same
+  order of the day. Nothing else moves, and a jump that held only some of them keeps its day; a file
+  on the storage is past editing, so none is moved while one of the picked files is.
 - **A montage's files carry the jump's date; a dropzone's files carry their own.** A montage is one event
   for one name. A dropzone folder holds many days, so each file says which day it was shot.
 

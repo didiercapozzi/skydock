@@ -2224,6 +2224,10 @@ msgstr "tous les fichiers de cette machine restent tels quels, et le tableau con
 msgid "every original stays on this machine, exactly where it is"
 msgstr "chaque original reste sur cette machine, exactement où il est"
 
+#: app/components/inspector.tsx
+msgid "every picked file goes to this day, the first from this time and the others as far after it as they were in their own day"
+msgstr "chaque fichier choisi va à ce jour, le premier à cette heure et les autres aussi longtemps après qu’ils l’étaient dans leur propre journée"
+
 #: app/components/montage-steps.tsx
 msgid "Every step done"
 msgstr "Toutes les étapes faites"
@@ -3695,7 +3699,6 @@ msgstr "Aucun choisi pour l'instant"
 msgid "None yet"
 msgstr "Aucun pour l'instant"
 
-#: app/components/film-editor.tsx
 #: app/components/film-part.tsx
 msgid "Normal"
 msgstr "Normale"
@@ -6272,6 +6275,10 @@ msgstr "Écrivez {NAME_TOKEN} et {DAY_TOKEN} là où vont le nom et le jour."
 #: app/components/jump-time.tsx
 msgid "Wrong camera clock? Set when this jump really started — every file in it moves with it"
 msgstr "Horloge de la caméra fausse ? Indiquez quand ce saut a vraiment commencé — chacun de ses fichiers se décale avec lui"
+
+#: app/components/inspector.tsx
+msgid "Wrong clock? Set the day and the time of the first of these — the others come the same day, as far after it as they were"
+msgstr "Mauvaise horloge ? Indiquez le jour et l’heure du premier — les autres viennent le même jour, aussi longtemps après qu’ils l’étaient"
 
 #: app/components/inspector.tsx
 msgid "Wrong time on this one file? Set when it was really shot"

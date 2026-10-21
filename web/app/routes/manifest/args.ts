@@ -28,6 +28,8 @@ const actionArgs = z.object({
     'shift-group-time',
     /* one file's time, corrected on its own */
     'retime-file',
+    /* picked files put on one day, from one time, the gaps of their times of day kept */
+    'gather-files-time',
     /* where the jump is in a clip: a mark moved by hand */
     'set-moment',
     /* the marks of a clip put back where the camera measured them */

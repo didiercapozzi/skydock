@@ -180,6 +180,50 @@ const shiftGroupTo = (manifest: Manifest, group: ManifestGroup, anchorEpoch: num
   shiftFiles(manifest, new Set(idsOf(group.files)), offset)
 }
 
+const restamp = (manifest: Manifest, ids: Set<string>, next: (mtime: number) => number) => {
+  const everyone = [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]
+  const moved = new Map<string, number>()
+  for (const file of everyone)
+    if (file.id && ids.has(file.id) && !moved.has(file.id)) moved.set(file.id, next(file.mtime))
+  if (moved.size === 0) return false
+  const days = new Map(manifest.groups.map((g) => [g, g.day]))
+  for (const file of everyone) if (file.id && moved.has(file.id)) file.mtime = moved.get(file.id)!
+  for (const group of manifest.groups) {
+    const picked = group.files.filter((f) => f.id && moved.has(f.id))
+    if (picked.length === 0) continue
+    group.files.sort((a, b) => a.mtime - b.mtime)
+    group.day =
+      picked.length < group.files.length ? (days.get(group) ?? group.day) : dayOfFiles(group.files)
+  }
+  return true
+}
+
+const secondsIntoDay = (epoch: number) => {
+  const at = new Date(epoch * 1000)
+  return at.getHours() * 3600 + at.getMinutes() * 60 + at.getSeconds()
+}
+
+const gatherFilesAt = (manifest: Manifest, ids: Set<string>, anchorEpoch: number) => {
+  const times = [...manifest.files, ...manifest.groups.flatMap((g) => g.files)]
+    .filter((f) => f.id && ids.has(f.id))
+    .map((f) => f.mtime)
+  if (times.length === 0) return false
+  const anchor = new Date(Math.round(anchorEpoch) * 1000)
+  const lowest = Math.min(...times.map(secondsIntoDay))
+  return restamp(manifest, ids, (mtime) =>
+    Math.floor(
+      new Date(
+        anchor.getFullYear(),
+        anchor.getMonth(),
+        anchor.getDate(),
+        0,
+        0,
+        secondsIntoDay(anchorEpoch) + secondsIntoDay(mtime) - lowest
+      ).getTime() / 1000
+    )
+  )
+}
+
 const retimeFile = (manifest: Manifest, id: string, epoch: number) => {
   const touched = [...manifest.files, ...manifest.groups.flatMap((g) => g.files)].filter(
     (f) => f.id === id
@@ -203,6 +247,7 @@ export {
   regroupLooseFiles,
   retimeFile,
   shiftFiles,
+  gatherFilesAt,
   shiftGroupTo,
   splitByGap,
   startOfFiles

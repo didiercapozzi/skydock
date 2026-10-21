@@ -13,6 +13,7 @@ import {
   regroupLooseFiles,
   retimeFile,
   shiftFiles,
+  gatherFilesAt,
   shiftGroupTo,
   startOfFiles
 } from './clustering'
@@ -322,6 +323,7 @@ export {
   offGap,
   retimeFile,
   shiftFiles,
+  gatherFilesAt,
   shiftGroupTo,
   statProcessedOutputs,
   ORIGINAL_MISSING,

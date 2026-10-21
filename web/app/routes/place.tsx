@@ -1009,6 +1009,16 @@ const Inspector = ({
         montage={picked.some((f) => f.freed) ? undefined : model.montageOffer(picked, place)}
         move={picked.some((f) => f.freed) ? undefined : moveMenu({ files: ids })}
         onSend={picked.some((f) => f.freed) ? undefined : () => model.askSend(picked)}
+        onRetime={
+          picked.some((f) => lockReason(f, statusContext(f)))
+            ? undefined
+            : (epoch) =>
+                board.send('retime', {
+                  intent: 'gather-files-time',
+                  fileIds: ids,
+                  anchorEpoch: epoch
+                })
+        }
         onClear={selection.clear}
       />
     )
