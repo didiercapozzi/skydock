@@ -6,11 +6,11 @@ import { startOfFiles } from './clustering'
 import { outputKeyOf } from './fileStatus'
 import { counted } from './lib/counted'
 import { pathExists } from './lib/fs'
-import { loadManifestAsync, saveManifest } from './manifest'
+import { loadManifestAsync, pairStamp, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
 import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
-import { following, job } from './live'
+import { following, job, publish } from './live'
 import { keepEdit } from './projectHistory'
 import { lastComplaint, run, runWatched, stoppable } from './tools'
 import type { ManifestFile, ManifestGroup } from './types'
@@ -430,6 +430,14 @@ const cancelled = () =>
     'Processing was cancelled. What was not finished is left to process again.'
   )
 
+/* Processing is a task of its own: the request that started it is long answered when it ends, and the
+   board does not hear of the manifest this server wrote itself — so it is told, whatever the end. */
+const tellBoard = async (options?: ProcessOptions) => {
+  const manifestPath =
+    options?.manifestPath || getManifestPath(options?.outputDir || getOutputDir())
+  publish({ kind: 'board', stamp: await pairStamp(manifestPath).catch(() => 'gone') })
+}
+
 const processJumps = async (options?: ProcessOptions) => {
   const asked = JSON.stringify([
     options?.manifestPath,
@@ -471,6 +479,7 @@ const processJumps = async (options?: ProcessOptions) => {
     throw e
   } finally {
     queue = queue.filter((one) => one !== entry)
+    await tellBoard(options)
   }
 }
 

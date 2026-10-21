@@ -4,7 +4,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
-import { loadManifestAsync, saveManifest } from '../src/manifest'
+import { loadManifestAsync, pairStamp, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
 import {
   cancelProcessing,
@@ -77,6 +77,23 @@ afterEach(() => {
   fs.rmSync(outputDir, { recursive: true, force: true })
   vi.clearAllMocks()
   vi.unstubAllEnvs()
+})
+
+describe('telling the board when processing ends', () => {
+  it('announces the record it wrote, so a board that was not waiting on the request learns of it', async () => {
+    const { manifestPath } = await write({
+      montageJump: true,
+      passenger: { firstname: 'Luc', lastname: 'Favre' },
+      files: [clip('GX010001.MP4', 0)]
+    })
+    const heard: LiveEvent[] = []
+    const stop = subscribe((event) => event.kind === 'board' && heard.push(event))
+
+    await processJumps({ manifestPath, outputDir })
+    stop()
+
+    expect(heard).toEqual([{ kind: 'board', stamp: await pairStamp(manifestPath) }])
+  })
 })
 
 describe('where a montage lands', () => {
@@ -677,7 +694,9 @@ describe('changing the picture on an Intel or AMD card', () => {
 describe('processing, said as it happens', () => {
   const listening = () => {
     const heard: LiveEvent[] = []
-    const stop = subscribe((event) => event.kind !== 'job' && heard.push(event))
+    const stop = subscribe(
+      (event) => event.kind !== 'job' && event.kind !== 'board' && heard.push(event)
+    )
     return { heard, stop }
   }
 
