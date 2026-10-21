@@ -1477,7 +1477,6 @@ msgstr "close"
 msgid "Close"
 msgstr "Close"
 
-#: app/components/film-editor.tsx
 #: app/components/modal.tsx
 #: app/components/preview-drawer.tsx
 msgid "Close (Esc)"
@@ -1488,8 +1487,8 @@ msgid "Close the player"
 msgstr "Close the player"
 
 #: app/components/film-shortcuts.tsx
-msgid "close this list, or the editor"
-msgstr "close this list, or the editor"
+msgid "close this list"
+msgstr "close this list"
 
 #: app/components/montage-card.tsx
 msgid "Close what is inside"
@@ -1672,6 +1671,10 @@ msgstr "Copy subject"
 #: app/routes/place.tsx
 msgid "Copy the link"
 msgstr "Copy the link"
+
+#: app/components/film-shortcuts.tsx
+msgid "copy the picked clips, texts, pictures or music"
+msgstr "copy the picked clips, texts, pictures or music"
 
 #: app/components/camera-files.tsx
 msgid "Copy these back onto this machine — the one way back from having given them back"
@@ -2218,8 +2221,8 @@ msgid "Esc"
 msgstr "Esc"
 
 #: app/helpers/filmKeys.ts
-msgid "Esc closes the editor and its dialogs"
-msgstr "Esc closes the editor and its dialogs"
+msgid "Esc closes the dialogs"
+msgstr "Esc closes the dialogs"
 
 #: app/components/film-editor.tsx
 msgid "Estimating the size…"
@@ -3607,6 +3610,7 @@ msgid "Next"
 msgstr "Next"
 
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 msgid "Next clip"
 msgstr "Next clip"
 
@@ -4126,6 +4130,10 @@ msgstr "Password is required"
 msgid "Password must be at least 3 characters"
 msgstr "Password must be at least 3 characters"
 
+#: app/components/film-shortcuts.tsx
+msgid "paste them at the playhead"
+msgstr "paste them at the playhead"
+
 #: app/components/film-editor.tsx
 msgid "Pause"
 msgstr "Pause"
@@ -4194,6 +4202,14 @@ msgstr "Pick no new file"
 msgid "Pick none"
 msgstr "Pick none"
 
+#: app/components/film-shortcuts.tsx
+msgid "pick the clip after the picked one, and go to its start"
+msgstr "pick the clip after the picked one, and go to its start"
+
+#: app/components/film-shortcuts.tsx
+msgid "pick the clip before the picked one, and go to its start"
+msgstr "pick the clip before the picked one, and go to its start"
+
 #: app/components/inspector.tsx
 msgid "Picked"
 msgstr "Picked"
@@ -4201,6 +4217,10 @@ msgstr "Picked"
 #: app/components/inspector.tsx
 msgid "Picked in {where}"
 msgstr "Picked in {where}"
+
+#: app/components/film-shortcuts.tsx
+msgid "Picking"
+msgstr "Picking"
 
 #: app/components/inspector.tsx
 msgid "Picture"
@@ -4297,6 +4317,7 @@ msgid "Previous"
 msgstr "Previous"
 
 #: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
 msgid "Previous clip"
 msgstr "Previous clip"
 

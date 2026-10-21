@@ -685,6 +685,21 @@ describe('the film editor', () => {
       expect(Math.abs(secondClipX() - x)).toBeLessThan(2)
     })
 
+    test('scrolls along with the wheel alone, there and back', async () => {
+      await open()
+      wheel({ deltaY: -50, clientX: secondClipX(), ctrlKey: true })
+      await expect.poll(() => scroller().scrollWidth > scroller().clientWidth).toBe(true)
+      scroller().scrollLeft = 0
+
+      const taken = wheel({ deltaY: 120 })
+      await expect.poll(() => scroller().scrollLeft).toBeGreaterThan(0)
+      const moved = scroller().scrollLeft
+      expect(taken).toBe(false)
+
+      wheel({ deltaY: -60 })
+      await expect.poll(() => scroller().scrollLeft).toBeLessThan(moved)
+    })
+
     test('zooms with two fingers, about their middle', async () => {
       await open()
       const before = zoom()
@@ -1624,6 +1639,23 @@ describe('the film editor keys', () => {
     await userEvent.keyboard('{Enter}')
 
     await expect.element(stopped()).toBeVisible()
+  })
+
+  test('is not closed by Esc: only its Close button, Render and Back leave it', async () => {
+    const closed = vi.fn()
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) =>
+      Response.json(init?.method === 'POST' ? { ok: true } : answer)
+    )
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: closed }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+
+    await userEvent.keyboard('{Escape}')
+    await userEvent.keyboard('{Escape}')
+    await new Promise((done) => setTimeout(done, 400))
+    expect(closed).not.toHaveBeenCalled()
+
+    await userEvent.click(page.getByRole('button', { name: 'Close', exact: true }))
+    await expect.poll(() => closed.mock.calls.length).toBe(1)
   })
 
   test('does not close the editor with Esc after a click on the dead space of a dialog', async () => {
@@ -2598,6 +2630,121 @@ describe('the frame of a clip on the timeline', () => {
     expect(thumbs(FIRST)[0]!.style.getPropertyValue('object-view-box')).toBe('inset(60% 40% 10% 20%)')
     expect(thumbs(SECOND)[0]!.style.transform).toBe('')
     expect(thumbs(SECOND)[0]!.style.getPropertyValue('object-view-box')).toBe('')
+  })
+})
+
+describe('copying the picked items and pasting them at the playhead', () => {
+  const posts = async () => {
+    const sent: Array<{ edit: { clips: Array<{ id: string; name: string }> } }> = []
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push(JSON.parse(String(init.body)))
+        return Response.json({ ok: true })
+      }
+      return Response.json(answer)
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    return sent
+  }
+
+  test('Ctrl+C then Ctrl+V puts a copy of the picked clip in at the playhead, with a new id, in one step of Undo', async () => {
+    const sent = await posts()
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+
+    await userEvent.keyboard('{Control>}c{/Control}')
+    await userEvent.keyboard('{Control>}v{/Control}')
+
+    await expect.poll(() => sent.at(-1)?.edit.clips.length).toBe(3)
+    const clips = sent.at(-1)!.edit.clips
+    expect(clips.filter((one) => one.name === FIRST)).toHaveLength(2)
+    expect(new Set(clips.map((one) => one.id)).size).toBe(3)
+
+    await userEvent.keyboard('{Control>}z{/Control}')
+    await expect.poll(() => sent.at(-1)?.edit.clips.length).toBe(2)
+  })
+
+  test('a copied text is pasted at the playhead, as long as it is and with a new id', async () => {
+    const sent: Array<{ edit: { texts: Array<{ id: string; at: number; seconds: number }> } }> = []
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        sent.push(JSON.parse(String(init.body)))
+        return Response.json({ ok: true })
+      }
+      return Response.json(answer)
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+    await userEvent.keyboard('t')
+    await expect.poll(() => sent.at(-1)?.edit.texts.length).toBe(1)
+    const made = sent.at(-1)!.edit.texts[0]!
+
+    await userEvent.keyboard('{Control>}c{/Control}')
+    await playheadAt(4)
+    await userEvent.keyboard('{Control>}v{/Control}')
+
+    await expect.poll(() => sent.at(-1)?.edit.texts.length).toBe(2)
+    const [first, second] = sent.at(-1)!.edit.texts
+    expect(first!.id).toBe(made.id)
+    expect(second!.id).not.toBe(made.id)
+    expect(second!.seconds).toBe(made.seconds)
+    expect(second!.at).toBeCloseTo(4, 1)
+  })
+
+  test('Ctrl+V with nothing copied does nothing', async () => {
+    const sent = await posts()
+
+    await userEvent.keyboard('{Control>}v{/Control}')
+    await new Promise((done) => setTimeout(done, 300))
+
+    expect(sent).toEqual([])
+  })
+})
+
+describe('picking the previous and the next clip from the keyboard', () => {
+  const landing = () => page.getByRole('textbox', { name: 'Marker 1' })
+
+  const open = async () => {
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') return Response.json({ ok: true })
+      return Response.json({
+        ...answer,
+        edit: {
+          ...answer.edit,
+          clips: [
+            answer.edit.clips[0]!,
+            { ...answer.edit.clips[1]!, markers: [{ id: 'mark-1', label: 'Landing', at: 1 }] }
+          ]
+        }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+  }
+
+  test('E picks the clip after the picked one and Q the clip before it, and neither goes past the ends', async () => {
+    await open()
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await expect.element(landing()).not.toBeInTheDocument()
+
+    await userEvent.keyboard('e')
+    await expect.element(landing()).toHaveValue('Landing')
+
+    await userEvent.keyboard('e')
+    await expect.element(landing()).toHaveValue('Landing')
+
+    await userEvent.keyboard('q')
+    await expect.element(landing()).not.toBeInTheDocument()
+
+    await userEvent.keyboard('q')
+    await expect.element(landing()).not.toBeInTheDocument()
+  })
+
+  test('E with nothing picked picks the first clip and Q the last', async () => {
+    await open()
+
+    await userEvent.keyboard('q')
+    await expect.element(landing()).toHaveValue('Landing')
   })
 })
 

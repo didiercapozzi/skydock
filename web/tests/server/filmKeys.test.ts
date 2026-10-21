@@ -15,6 +15,8 @@ describe('the keys of the film editor', () => {
   it('have D, Delete and Backspace on delete by default', () => {
     expect(DEFAULT_KEYS.delete).toEqual(['d', 'Delete', 'Backspace'])
     expect(DEFAULT_KEYS.cut).toEqual(['c'])
+    expect(DEFAULT_KEYS.previous).toEqual(['q'])
+    expect(DEFAULT_KEYS.next).toEqual(['e'])
   })
 
   it('are the defaults when nothing or garbage is stored', () => {

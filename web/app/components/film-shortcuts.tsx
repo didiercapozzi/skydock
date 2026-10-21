@@ -31,7 +31,9 @@ const actionName = (action: FilmAction) =>
     snap: t`Snap`,
     title: t`Title`,
     delete: t`Delete`,
-    marker: t`Marker`
+    marker: t`Marker`,
+    previous: t`Previous clip`,
+    next: t`Next clip`
   })[action]
 
 type Capture = { action: FilmAction; replacing?: string }
@@ -155,6 +157,13 @@ const FilmShortcuts = ({ scratch, onClose }: { scratch: boolean; onClose: () => 
       ]
     ],
     [
+      t`Picking`,
+      [
+        ['previous', t`pick the clip before the picked one, and go to its start`],
+        ['next', t`pick the clip after the picked one, and go to its start`]
+      ]
+    ],
+    [
       t`Editing`,
       [
         ...(scratch
@@ -163,9 +172,11 @@ const FilmShortcuts = ({ scratch, onClose }: { scratch: boolean; onClose: () => 
               string,
               string
             ][])),
+        ['⌘/Ctrl + C', t`copy the picked clips, texts, pictures or music`],
+        ['⌘/Ctrl + V', t`paste them at the playhead`],
         ['⌘/Ctrl + Z', t`undo`],
         ['?', t`this list`],
-        ['Esc', t`close this list, or the editor`]
+        ['Esc', t`close this list`]
       ]
     ]
   ]

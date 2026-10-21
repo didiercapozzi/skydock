@@ -57,6 +57,7 @@ import {
   fadeMost,
   fitItemFades,
   insertClip,
+  nearestBoundary,
   nextId,
   placeClip,
   placed,
@@ -2116,6 +2117,86 @@ const FilmEditor = ({
     if (piece) setPicked({ kind: 'music', id: piece.id })
   }
 
+  const clipboard = useRef<{
+    clips: EditClip[]
+    music: EditMusic[]
+    texts: EditText[]
+    layers: EditLayer[]
+  } | null>(null)
+
+  const copyPicked = () => {
+    if (!edit || !picked) return false
+    const chosen = [picked, ...also]
+    const among = (kind: Selected['kind'], id: string) =>
+      chosen.some((one) => one.kind === kind && one.id === id)
+    const taken = {
+      clips: scratch ? [] : edit.clips.filter((one) => among('clip', one.id)),
+      music: edit.music.filter((one) => among('music', one.id)),
+      texts: edit.texts.filter((one) => among('text', one.id)),
+      layers: (edit.layers ?? []).filter((one) => among('layer', one.id))
+    }
+    if (taken.clips.length + taken.music.length + taken.texts.length + taken.layers.length === 0)
+      return false
+    clipboard.current = structuredClone(taken)
+    return true
+  }
+
+  const pasteHere = () => {
+    const copied = clipboard.current
+    if (!edit || !copied) return false
+    joined.current = false
+    const playhead = now.current
+    const picks: Selected[] = []
+    let next = edit
+    let index = nearestBoundary(edit, playhead).index
+    for (const clip of copied.clips) {
+      const { gap: _gap, fade: _fade, ...rest } = clip
+      const copy = { ...structuredClone(rest), id: nextId('clip', next.clips) }
+      next = insertClip(next, index++, copy, ripple)
+      picks.push({ kind: 'clip', id: copy.id })
+    }
+    const starts = [...copied.music, ...copied.texts, ...copied.layers].map((one) =>
+      'at' in one ? one.at : 0
+    )
+    const by = starts.length > 0 ? Math.max(0, playhead) - Math.min(...starts) : 0
+    for (const piece of copied.music) {
+      const { fade: _fade, ...rest } = piece
+      const copy = { ...structuredClone(rest), id: nextId('music', next.music), at: piece.at + by }
+      next = { ...next, music: [...next.music, copy] }
+      picks.push({ kind: 'music', id: copy.id })
+    }
+    for (const text of copied.texts) {
+      const copy = { ...structuredClone(text), id: nextId('text', next.texts), at: text.at + by }
+      next = { ...next, texts: [...next.texts, copy] }
+      picks.push({ kind: 'text', id: copy.id })
+    }
+    for (const layer of copied.layers) {
+      const copy = {
+        ...structuredClone(layer),
+        id: nextId('layer', next.layers ?? []),
+        at: layer.at + by
+      }
+      next = { ...next, layers: [...(next.layers ?? []), copy] }
+      picks.push({ kind: 'layer', id: copy.id })
+    }
+    if (picks.length === 0) return false
+    change(next)
+    setPicked(picks[0]!)
+    setAlso(picks.slice(1))
+    return true
+  }
+
+  const stepClip = (by: 1 | -1) => {
+    if (!edit) return
+    const all = placed(edit)
+    const at = picked?.kind === 'clip' ? all.findIndex((one) => one.clip.id === picked.id) : -1
+    const next = at === -1 ? (by === 1 ? all[0] : all.at(-1)) : all[at + by]
+    if (!next) return
+    setAlso([])
+    setPicked({ kind: 'clip', id: next.clip.id })
+    seek(next.from)
+  }
+
   const bound = useFilmKeys()
   const hint = (text: string, action: FilmAction) =>
     bound[action].length ? `${text} (${bound[action].map(keyLabel).join(', ')})` : text
@@ -2130,7 +2211,6 @@ const FilmEditor = ({
         target instanceof HTMLSelectElement ||
         (target instanceof HTMLInputElement && TEXT_INPUTS.test(target.type)))
     if (document.querySelector('[aria-modal="true"]')) return
-    if (e.key === 'Escape' && !part) void close()
     if (typing) return
     if (e.repeat && !REPEATING.test(e.key)) return
     const arrowed = target?.matches(ARROWED)
@@ -2151,6 +2231,17 @@ const FilmEditor = ({
       const from = placed(edit).find((one) => one.clip.id === picked.id)?.from ?? 0
       const by = (e.shiftKey ? 1 : 0.1) * (e.key === 'ArrowLeft' ? -1 : 1)
       change(placeClip(edit, picked.id, Math.round((from + by) * 1000) / 1000, ripple))
+    }
+    if (
+      command &&
+      !e.altKey &&
+      !e.shiftKey &&
+      !e.getModifierState('AltGraph') &&
+      !window.getSelection()?.toString()
+    ) {
+      const letter = e.key.toLowerCase()
+      if (letter === 'c' && copyPicked()) e.preventDefault()
+      if (letter === 'v' && pasteHere()) e.preventDefault()
     }
     if ((command || e.altKey) && !e.getModifierState('AltGraph')) return
     if (e.key === ' ' || e.key === 'Enter') {
@@ -2191,6 +2282,8 @@ const FilmEditor = ({
     if (has('ripple')) setRipple((was) => !was)
     if (has('snap')) setSnap((was) => !was)
     if (has('title')) addText(PRESETS[0]!)
+    if (has('previous')) stepClip(-1)
+    if (has('next')) stepClip(1)
   }
 
   const keyFocus = useRef(false)
@@ -2377,7 +2470,7 @@ const FilmEditor = ({
         )}
         <button
           type='button'
-          title={t`Close (Esc)`}
+          title={t`Close`}
           aria-label={t`Close`}
           onClick={() => void close()}
           className='tool-button'>

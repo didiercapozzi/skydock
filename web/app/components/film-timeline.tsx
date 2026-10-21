@@ -400,9 +400,22 @@ const FilmTimeline = ({
     const el = box.current
     if (!el) return
     const wheel = (e: WheelEvent) => {
-      if (!e.ctrlKey) return
+      const unit = e.deltaMode === 1 ? LINE : e.deltaMode === 2 ? el.clientWidth : 1
+      if (e.ctrlKey) {
+        e.preventDefault()
+        zoomer.current(Math.exp(-e.deltaY * unit * WHEEL_ZOOM), e.clientX)
+        return
+      }
+      const by = (e.deltaY || e.deltaX) * unit
+      if (e.shiftKey) {
+        if (el.scrollHeight <= el.clientHeight) return
+        e.preventDefault()
+        el.scrollTop += by
+        return
+      }
+      if (Math.abs(e.deltaX) > Math.abs(e.deltaY) || el.scrollWidth <= el.clientWidth) return
       e.preventDefault()
-      zoomer.current(Math.exp(-e.deltaY * (e.deltaMode === 1 ? LINE : 1) * WHEEL_ZOOM), e.clientX)
+      el.scrollLeft += by
     }
     const forget = () => fingers.current.clear()
     el.addEventListener('wheel', wheel, { passive: false })

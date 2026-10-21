@@ -1,7 +1,17 @@
 import { t } from '@lingui/core/macro'
 import { z } from 'zod'
 
-const FILM_ACTIONS = ['cut', 'fade', 'ripple', 'snap', 'title', 'delete', 'marker'] as const
+const FILM_ACTIONS = [
+  'cut',
+  'fade',
+  'ripple',
+  'snap',
+  'title',
+  'delete',
+  'marker',
+  'previous',
+  'next'
+] as const
 type FilmAction = (typeof FILM_ACTIONS)[number]
 type FilmKeys = Record<FilmAction, string[]>
 
@@ -12,13 +22,15 @@ const DEFAULT_KEYS: FilmKeys = {
   snap: ['s'],
   title: ['t'],
   delete: ['d', 'Delete', 'Backspace'],
-  marker: ['m']
+  marker: ['m'],
+  previous: ['q'],
+  next: ['e']
 }
 
 const refusedKey = (key: string) => {
   if (key === 'Delete' || key === 'Backspace') return null
   if (key === 'Enter' || key === ' ') return t`Enter and Space play and stop`
-  if (key === 'Escape') return t`Esc closes the editor and its dialogs`
+  if (key === 'Escape') return t`Esc closes the dialogs`
   if (key === 'Tab') return t`Tab moves between the controls`
   if (key === '?') return t`? opens the list of shortcuts`
   if (/^(Arrow\w+|Home|End)$/.test(key)) return t`The arrows, Home and End move the playhead`
