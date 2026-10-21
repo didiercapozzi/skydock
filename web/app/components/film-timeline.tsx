@@ -784,6 +784,56 @@ const FilmTimeline = ({
         </div>
 
         <Lane
+          name={t`Text`}
+          tag='T1'
+          note={t`Your titles`}
+          height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, textRowCount)]!}>
+          {edit.texts.map((text) => (
+            <div
+              key={text.id}
+              onPointerDown={(e) => moveBlock(e, 'text', text.id, 'body')}
+              style={{
+                left: text.at * pps,
+                width: Math.max(8, text.seconds * pps - 2),
+                top: `calc(${((textRows.get(text.id) ?? 0) / textRowCount) * 100}% + 6px)`,
+                height: `calc(${100 / textRowCount}% - 12px)`
+              }}
+              className={`group absolute cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
+                lit('text', text.id) || (picked?.kind === 'text' && picked.id === text.id)
+                  ? 'shadow-ring-2'
+                  : 'shadow-hairline'
+              }`}>
+              <Ramps
+                {...textFadesOf(text)}
+                pps={pps}
+              />
+              {fadeHandle(
+                'texts',
+                text.id,
+                'fadeIn',
+                text.text || t`Text`,
+                picked?.kind === 'text' && picked.id === text.id
+              )}
+              {fadeHandle(
+                'texts',
+                text.id,
+                'fadeOut',
+                text.text || t`Text`,
+                picked?.kind === 'text' && picked.id === text.id
+              )}
+              <span className='pointer-events-none flex h-full items-center'>
+                {text.text || t`Text`}
+              </span>
+              <span
+                onPointerDown={(e) => moveBlock(e, 'text', text.id, 'end')}
+                aria-label={t`Make the text longer or shorter`}
+                className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
+              />
+            </div>
+          ))}
+        </Lane>
+
+        <Lane
           name={t`Video`}
           tag='V1'
           note={t`Linked to Camera sound`}
@@ -1079,56 +1129,6 @@ const FilmTimeline = ({
             })}
           </Lane>
         )}
-
-        <Lane
-          name={t`Text`}
-          tag='T1'
-          note={t`Your titles`}
-          height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, textRowCount)]!}>
-          {edit.texts.map((text) => (
-            <div
-              key={text.id}
-              onPointerDown={(e) => moveBlock(e, 'text', text.id, 'body')}
-              style={{
-                left: text.at * pps,
-                width: Math.max(8, text.seconds * pps - 2),
-                top: `calc(${((textRows.get(text.id) ?? 0) / textRowCount) * 100}% + 6px)`,
-                height: `calc(${100 / textRowCount}% - 12px)`
-              }}
-              className={`group absolute cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
-                lit('text', text.id) || (picked?.kind === 'text' && picked.id === text.id)
-                  ? 'shadow-ring-2'
-                  : 'shadow-hairline'
-              }`}>
-              <Ramps
-                {...textFadesOf(text)}
-                pps={pps}
-              />
-              {fadeHandle(
-                'texts',
-                text.id,
-                'fadeIn',
-                text.text || t`Text`,
-                picked?.kind === 'text' && picked.id === text.id
-              )}
-              {fadeHandle(
-                'texts',
-                text.id,
-                'fadeOut',
-                text.text || t`Text`,
-                picked?.kind === 'text' && picked.id === text.id
-              )}
-              <span className='pointer-events-none flex h-full items-center'>
-                {text.text || t`Text`}
-              </span>
-              <span
-                onPointerDown={(e) => moveBlock(e, 'text', text.id, 'end')}
-                aria-label={t`Make the text longer or shorter`}
-                className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
-              />
-            </div>
-          ))}
-        </Lane>
 
         <Lane
           name={t`Music`}

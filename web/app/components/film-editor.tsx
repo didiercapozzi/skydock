@@ -57,7 +57,6 @@ import {
   fadeMost,
   fitItemFades,
   insertClip,
-  nearestBoundary,
   nextId,
   placeClip,
   placed,
@@ -2148,7 +2147,7 @@ const FilmEditor = ({
     const playhead = now.current
     const picks: Selected[] = []
     let next = edit
-    let index = nearestBoundary(edit, playhead).index
+    let index = edit.clips.length
     for (const clip of copied.clips) {
       const { gap: _gap, fade: _fade, ...rest } = clip
       const copy = { ...structuredClone(rest), id: nextId('clip', next.clips) }

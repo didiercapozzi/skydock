@@ -2691,6 +2691,34 @@ describe('copying the picked items and pasting them at the playhead', () => {
     expect(second!.at).toBeCloseTo(4, 1)
   })
 
+  test('picked clips are pasted after the last clip, in their order, wherever the playhead is', async () => {
+    const sent = await posts()
+    await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
+    await userEvent.keyboard('{Shift>}')
+    await userEvent.click(page.getByTitle(`${SECOND} · double-click to choose the part`))
+    await userEvent.keyboard('{/Shift}')
+    await userEvent.keyboard('{Control>}c{/Control}')
+    await playheadAt(2)
+
+    await userEvent.keyboard('{Control>}v{/Control}')
+
+    await expect.poll(() => sent.at(-1)?.edit.clips.length).toBe(4)
+    expect(sent.at(-1)!.edit.clips.map((one) => one.name)).toEqual([FIRST, SECOND, FIRST, SECOND])
+
+    await playheadAt(9)
+    await userEvent.keyboard('{Control>}v{/Control}')
+
+    await expect.poll(() => sent.at(-1)?.edit.clips.length).toBe(6)
+    expect(sent.at(-1)!.edit.clips.map((one) => one.name)).toEqual([
+      FIRST,
+      SECOND,
+      FIRST,
+      SECOND,
+      FIRST,
+      SECOND
+    ])
+  })
+
   test('Ctrl+V with nothing copied does nothing', async () => {
     const sent = await posts()
 
