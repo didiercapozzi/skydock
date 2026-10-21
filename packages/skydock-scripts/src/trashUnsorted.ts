@@ -2,7 +2,7 @@ import { access, rm } from 'node:fs/promises'
 import * as path from 'node:path'
 import { moveFile } from './lib/fs'
 import { inJob } from './live'
-import { getProxyPath } from './proxy'
+import { getProxyPath, stopProxiesOf } from './proxy'
 import { isMontage } from './filed'
 import { slugOf } from './sending'
 import { passengerOf } from './workspace'
@@ -64,6 +64,7 @@ const trashUnsorted = async (
   const from = places.size === 1 && only ? only : 'unsorted'
   const bin = path.join(trashDir, `${from}-${new Date().toISOString().replace(/[:.]/g, '-')}`)
 
+  stopProxiesOf(going.map((f) => f.path))
   await inJob({ type: 'trash', label: '', total: going.length }, async (binning) => {
     for (const file of going) {
       binning.working(file.filename)

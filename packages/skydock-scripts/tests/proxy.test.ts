@@ -9,7 +9,8 @@ import {
   needsProxy,
   resumeProxies,
   setProxyEncoder,
-  statProxies
+  statProxies,
+  stopProxiesOf
 } from '../src/proxy'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
@@ -74,6 +75,19 @@ describe('proxies', () => {
     expect(report.built).toBe(1)
     expect(manifest.files[0].proxy).toBe(path.join(outputDir, 'proxies', 'abc123.mp4'))
     expect(fs.existsSync(manifest.files[0].proxy!)).toBe(true)
+  })
+
+  it('does not make the small copy of a clip that was taken off the board while it waited its turn', async () => {
+    execSyncMock.mockImplementation(fakeTools())
+    const src = writeTempFile(outputDir, 'original_files/GX010023.MP4')
+    const manifest = manifestOf([fileEntry(src, 'abc123')])
+
+    stopProxiesOf([src])
+    const report = await ensureProxies(manifest, outputDir)
+
+    expect(report.built).toBe(0)
+    expect(report.failed).toEqual([])
+    expect(fs.existsSync(path.join(outputDir, 'proxies', 'abc123.mp4'))).toBe(false)
   })
 
   it('says as it happens that a proxy is being made, and what the clip plays once it lands', async () => {

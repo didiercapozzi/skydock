@@ -7,7 +7,7 @@ import { flushBoardChanges, loadManifestAsync, recordPass } from './manifest'
 import type { Manifest, ManifestFile } from './types'
 import { following, job } from './live'
 import { ORIGINAL_MISSING } from './proxyWait'
-import { lastComplaint, run, runWatched } from './tools'
+import { lastComplaint, run, runWatched, stoppable } from './tools'
 import {
   ffmpegPath,
   ffprobePath,
@@ -270,6 +270,22 @@ const cropProxy = async (
   return ran.ok
 }
 
+declare global {
+  var skydockProxyBuilds: Map<string, AbortController> | undefined
+  var skydockProxiesLeft: Set<string> | undefined
+}
+
+const proxyBuilds = () => (globalThis.skydockProxyBuilds ??= new Map())
+
+const proxiesLeft = () => (globalThis.skydockProxiesLeft ??= new Set())
+
+const stopProxiesOf = (paths: string[]) => {
+  for (const file of paths) {
+    proxiesLeft().add(file)
+    proxyBuilds().get(file)?.abort()
+  }
+}
+
 const needsProxy = (file: ManifestFile) => isVideoFile(file.path) && !!file.id && !file.freed
 
 type ProxyReport = { built: number; skipped: number; failed: string[]; reason?: string }
@@ -302,6 +318,11 @@ const ensureProxies = async (
       onProgress?.(index, candidates.length, file.filename)
       const proxyPath = getProxyPath(file, outputDir)
       if (!proxyPath) continue
+      if (proxiesLeft().has(file.path)) {
+        making?.row({ key: outputKeyOf(file), at: 'skipped' })
+        making?.step()
+        continue
+      }
       if (await pathExists(proxyPath)) {
         if (file.proxy !== proxyPath) {
           file.proxy = proxyPath
@@ -333,10 +354,22 @@ const ensureProxies = async (
       }
       const live = following('proxy', file.id)
       making?.row({ key: outputKeyOf(file), at: 'now', part: 0 })
-      const built = await buildProxy(file.path, proxyPath, shape, (percent) => {
-        live.at(percent)
-        making?.row({ key: outputKeyOf(file), at: 'now', part: percent / 100 })
-      })
+      const stopper = new AbortController()
+      proxyBuilds().set(file.path, stopper)
+      const built = await stoppable()
+        .run(stopper.signal, () =>
+          buildProxy(file.path, proxyPath, shape, (percent) => {
+            live.at(percent)
+            making?.row({ key: outputKeyOf(file), at: 'now', part: percent / 100 })
+          })
+        )
+        .finally(() => proxyBuilds().delete(file.path))
+      if (stopper.signal.aborted) {
+        await rm(proxyPath, { force: true })
+        making?.row({ key: outputKeyOf(file), at: 'skipped' })
+        making?.step()
+        continue
+      }
       making?.row(
         built.ok
           ? { key: outputKeyOf(file), at: 'done' }
@@ -387,6 +420,7 @@ const buildMissingProxies = singleFlight(async (outputDir?: string) => {
   const manifestPath = getManifestPath(dir)
   const report: ProxyReport = { built: 0, skipped: 0, failed: [] }
   for (;;) {
+    proxiesLeft().clear()
     const manifest = await loadManifestAsync(manifestPath)
     if (!manifest) break
     const pass = await ensureProxies(manifest, dir, undefined, () =>
@@ -484,6 +518,7 @@ export {
   getCutProxyDir,
   getProxyPath,
   needsProxy,
-  statProxies
+  statProxies,
+  stopProxiesOf
 }
 export type { ProxyEncoder }
