@@ -172,11 +172,7 @@ const Place = () => {
       ? groups.find((g) => g.id === folder.groups[0]?.id)
       : undefined
   const delivered = soleMontage?.uploaded && model.nas.connected ? soleMontage : undefined
-  const onScreen = plain
-    ? sections.filter((s) => s.key === looking.card)
-    : openCard
-      ? [openCard]
-      : sections
+  const onScreen = openCard ? [openCard] : plain ? [] : sections
   const order = onScreen.flatMap((s) =>
     s.kind === 'jump' && s.group.freed ? [] : lanesOf(s.files, kind, sortKey).flat()
   )
