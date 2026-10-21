@@ -455,6 +455,21 @@ const layerRows = (layers: Array<{ id: string; at: number; seconds: number }>) =
   return rows
 }
 
+/* The items that overlap one another, gathered into stacks: each is what the items of a track that are on at the
+   same moment, one after the other, make up, with the time it starts and the time it ends. An item that
+   overlaps nothing is a stack of its own. */
+const stackClusters = (items: Array<{ id: string; at: number; seconds: number }>) => {
+  const stacks: Array<{ ids: string[]; at: number; until: number }> = []
+  for (const item of [...items].sort((a, b) => a.at - b.at)) {
+    const last = stacks.at(-1)
+    if (last && item.at < last.until - HAIR) {
+      last.ids.push(item.id)
+      last.until = Math.max(last.until, item.at + item.seconds)
+    } else stacks.push({ ids: [item.id], at: item.at, until: item.at + item.seconds })
+  }
+  return stacks
+}
+
 const fadeBlock = (edit: FilmEdit, id: string) => {
   const index = edit.clips.findIndex((clip) => clip.id === id)
   const clip = edit.clips[index]
@@ -816,6 +831,7 @@ export {
   importMarkers,
   insertClip,
   layerRows,
+  stackClusters,
   lookGeometry,
   moveClip,
   nearestBoundary,

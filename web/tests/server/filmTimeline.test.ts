@@ -30,6 +30,7 @@ import {
   setClipFrame,
   musicFadeBlock,
   musicFadeOf,
+  stackClusters,
   setItemFade,
   toggleMusicFade,
   setMusicFade,
@@ -1372,5 +1373,31 @@ describe('a fade from the previous piece of music', () => {
 
   it('is held to half of the shorter piece', () => {
     expect(setMusicFade(two, 'b', 15).music[1]).toMatchObject({ at: 10, fade: 10 })
+  })
+})
+
+describe('the stacks of a track', () => {
+  it('gathers the items that overlap, one after the other, and leaves the ones that are alone', () => {
+    const items = [
+      { id: 'a', at: 0, seconds: 5 },
+      { id: 'b', at: 3, seconds: 5 },
+      { id: 'c', at: 7, seconds: 2 },
+      { id: 'd', at: 20, seconds: 3 },
+      { id: 'e', at: 8, seconds: 1 }
+    ]
+
+    expect(stackClusters(items)).toEqual([
+      { ids: ['a', 'b', 'c', 'e'], at: 0, until: 9 },
+      { ids: ['d'], at: 20, until: 23 }
+    ])
+  })
+
+  it('does not stack items that only touch', () => {
+    expect(
+      stackClusters([
+        { id: 'a', at: 0, seconds: 5 },
+        { id: 'b', at: 5, seconds: 5 }
+      ]).map((stack) => stack.ids)
+    ).toEqual([['a'], ['b']])
   })
 })

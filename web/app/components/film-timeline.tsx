@@ -1,4 +1,4 @@
-import { t } from '@lingui/core/macro'
+import { plural, t } from '@lingui/core/macro'
 import {
   clipLength,
   fadeInOf,
@@ -21,7 +21,7 @@ import type {
   FilmEdit,
   MusicSource
 } from '@skydock/scripts/client'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import {
   clockOf,
   FADE,
@@ -39,6 +39,7 @@ import {
   SINGULAR,
   placed,
   setFade,
+  stackClusters,
   snapPoints,
   snapBlock,
   snapTo,
@@ -49,6 +50,8 @@ import {
   zoomAround
 } from '../helpers/filmTimeline'
 import type { FadeKind, Selected } from '../helpers/filmTimeline'
+import { foldLane, useFoldedLanes } from '../hooks/useFoldedLanes'
+import type { Lane as LaneName } from '../hooks/useFoldedLanes'
 import { Icon } from './icons'
 import { getThumbUrl } from './utils'
 
@@ -77,6 +80,45 @@ const markName = (which: 'exit' | 'opening' | 'canopy' | 'landing') =>
 
 const HEAD = 150
 
+/* A lane of stacked items keeps one comfortable row when there is only one and slim rows when there are
+   several, and never grows past a few of them: the rest is squeezed in, so a crowded lane does not push
+   the video away. */
+const STACK_ROW = 22
+const STACK_MOST = 6
+
+const laneHeight = (rows: number, single: number) =>
+  rows <= 1 ? single : Math.max(single, Math.min(rows, STACK_MOST) * STACK_ROW + 8)
+
+const rowBox = (row: number, rows: number) =>
+  rows <= 1
+    ? { top: '6px', height: 'calc(100% - 12px)' }
+    : { top: `calc(${(row / rows) * 100}% + 2px)`, height: `calc(${100 / rows}% - 4px)` }
+
+const FOLDED_HEIGHT = 30
+
+const StackBar = ({
+  at,
+  until,
+  pps,
+  label,
+  onOpen
+}: {
+  at: number
+  until: number
+  pps: number
+  label: string
+  onOpen: () => void
+}) => (
+  <button
+    type='button'
+    onClick={onOpen}
+    title={t`Open this stack: ${label}`}
+    style={{ left: at * pps, width: Math.max(8, (until - at) * pps - 2), ...rowBox(0, 1) }}
+    className='absolute cursor-pointer truncate rounded-corner border border-dashed border-line-strong bg-well px-2 text-left text-micro font-semibold text-ink-2 hover:bg-accent-soft'>
+    {label}
+  </button>
+)
+
 const stepFor = (pps: number) => STEPS.find((step) => step * pps >= TICK_ROOM) ?? 300
 
 const Lane = ({
@@ -84,15 +126,19 @@ const Lane = ({
   tag,
   note,
   height,
+  fold,
   children
 }: {
   name: string
   tag: string
   note?: string
-  height: string
+  height: string | number
+  fold?: { folded: boolean; label: string; onToggle: () => void }
   children: React.ReactNode
 }) => (
-  <div className={`flex ${height} border-b border-line`}>
+  <div
+    style={typeof height === 'number' ? { height } : undefined}
+    className={`flex ${typeof height === 'string' ? height : ''} border-b border-line`}>
     <span
       style={{ width: HEAD }}
       className='sticky left-0 z-10 flex flex-none flex-col justify-center gap-px border-r border-line bg-pane px-2.5'>
@@ -101,6 +147,21 @@ const Lane = ({
         <span className='rounded-corner border border-line px-1 font-mono text-micro text-ink-3'>
           {tag}
         </span>
+        {fold && (
+          <button
+            type='button'
+            aria-label={fold.label}
+            aria-expanded={!fold.folded}
+            title={fold.label}
+            onClick={fold.onToggle}
+            className='inline-grid size-5 flex-none cursor-pointer place-items-center rounded-corner border-0 bg-transparent p-0 text-ink-3 hover:bg-well hover:text-ink'>
+            <Icon
+              name='chevron'
+              size={12}
+              className={fold.folded ? '-rotate-90' : ''}
+            />
+          </button>
+        )}
       </span>
       {note && <span className='text-micro text-ink-3'>{note}</span>}
     </span>
@@ -338,6 +399,49 @@ const FilmTimeline = ({
   )
   const musicRowCount = Math.max(1, ...[...musicRows.values()].map((row) => row + 1))
   const textRowCount = Math.max(1, ...[...textRows.values()].map((row) => row + 1))
+  const folds = useFoldedLanes()
+  const stacksOf = {
+    text: stackClusters(edit.texts),
+    images: stackClusters(layers),
+    music: stackClusters(
+      edit.music.map((piece) => {
+        const into = piece.fade === undefined ? 0 : musicCrossfadeOf(piece, edit.music).into
+        return { id: piece.id, at: piece.at + into, seconds: piece.end - piece.start - into }
+      })
+    )
+  }
+  const stackedIn = (lane: LaneName) => stacksOf[lane].some((stack) => stack.ids.length > 1)
+  const foldedIn = (lane: LaneName) => folds[lane] && stackedIn(lane)
+  const aloneIn = (lane: LaneName) =>
+    new Set(stacksOf[lane].filter((stack) => stack.ids.length === 1).flatMap((stack) => stack.ids))
+  const foldOf = (lane: LaneName, label: string) =>
+    stackedIn(lane) || folds[lane]
+      ? {
+          folded: foldedIn(lane),
+          label: foldedIn(lane)
+            ? t`Open the stacked rows of ${label}`
+            : t`Fold the stacked rows of ${label}`,
+          onToggle: () => foldLane(lane, !foldedIn(lane))
+        }
+      : undefined
+  const pickedLane: LaneName | null =
+    picked?.kind === 'text'
+      ? 'text'
+      : picked?.kind === 'layer'
+        ? 'images'
+        : picked?.kind === 'music'
+          ? 'music'
+          : null
+  const openWhatIsPicked = useEffectEvent(() => {
+    if (
+      picked &&
+      pickedLane &&
+      foldedIn(pickedLane) &&
+      stacksOf[pickedLane].some((stack) => stack.ids.length > 1 && stack.ids.includes(picked.id))
+    )
+      foldLane(pickedLane, false)
+  })
+  useEffect(() => openWhatIsPicked(), [picked?.kind, picked?.id])
   const total = timelineEnd(edit)
   const width = Math.max(room - HEAD, total * pps + 240)
   const step = stepFor(pps)
@@ -787,50 +891,68 @@ const FilmTimeline = ({
           name={t`Text`}
           tag='T1'
           note={t`Your titles`}
-          height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, textRowCount)]!}>
-          {edit.texts.map((text) => (
-            <div
-              key={text.id}
-              onPointerDown={(e) => moveBlock(e, 'text', text.id, 'body')}
-              style={{
-                left: text.at * pps,
-                width: Math.max(8, text.seconds * pps - 2),
-                top: `calc(${((textRows.get(text.id) ?? 0) / textRowCount) * 100}% + 6px)`,
-                height: `calc(${100 / textRowCount}% - 12px)`
-              }}
-              className={`group absolute cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
-                lit('text', text.id) || (picked?.kind === 'text' && picked.id === text.id)
-                  ? 'shadow-ring-2'
-                  : 'shadow-hairline'
-              }`}>
-              <Ramps
-                {...textFadesOf(text)}
-                pps={pps}
-              />
-              {fadeHandle(
-                'texts',
-                text.id,
-                'fadeIn',
-                text.text || t`Text`,
-                picked?.kind === 'text' && picked.id === text.id
-              )}
-              {fadeHandle(
-                'texts',
-                text.id,
-                'fadeOut',
-                text.text || t`Text`,
-                picked?.kind === 'text' && picked.id === text.id
-              )}
-              <span className='pointer-events-none flex h-full items-center'>
-                {text.text || t`Text`}
-              </span>
-              <span
-                onPointerDown={(e) => moveBlock(e, 'text', text.id, 'end')}
-                aria-label={t`Make the text longer or shorter`}
-                className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
-              />
-            </div>
-          ))}
+          fold={foldOf('text', t`Text`)}
+          height={foldedIn('text') ? FOLDED_HEIGHT : laneHeight(textRowCount, 40)}>
+          {foldedIn('text') &&
+            stacksOf.text
+              .filter((stack) => stack.ids.length > 1)
+              .map((stack) => (
+                <StackBar
+                  key={stack.ids.join('+')}
+                  at={stack.at}
+                  until={stack.until}
+                  pps={pps}
+                  label={plural(stack.ids.length, { one: '# text', other: '# texts' })}
+                  onOpen={() => foldLane('text', false)}
+                />
+              ))}
+          {edit.texts
+            .filter((text) => !foldedIn('text') || aloneIn('text').has(text.id))
+            .map((text) => (
+              <div
+                key={text.id}
+                onPointerDown={(e) => moveBlock(e, 'text', text.id, 'body')}
+                style={{
+                  left: text.at * pps,
+                  width: Math.max(8, text.seconds * pps - 2),
+                  ...rowBox(
+                    foldedIn('text') ? 0 : (textRows.get(text.id) ?? 0),
+                    foldedIn('text') ? 1 : textRowCount
+                  )
+                }}
+                className={`group absolute cursor-grab truncate rounded-corner bg-accent-soft px-2 text-micro leading-text font-semibold text-accent-ink ${
+                  lit('text', text.id) || (picked?.kind === 'text' && picked.id === text.id)
+                    ? 'shadow-ring-2'
+                    : 'shadow-hairline'
+                }`}>
+                <Ramps
+                  {...textFadesOf(text)}
+                  pps={pps}
+                />
+                {fadeHandle(
+                  'texts',
+                  text.id,
+                  'fadeIn',
+                  text.text || t`Text`,
+                  picked?.kind === 'text' && picked.id === text.id
+                )}
+                {fadeHandle(
+                  'texts',
+                  text.id,
+                  'fadeOut',
+                  text.text || t`Text`,
+                  picked?.kind === 'text' && picked.id === text.id
+                )}
+                <span className='pointer-events-none flex h-full items-center'>
+                  {text.text || t`Text`}
+                </span>
+                <span
+                  onPointerDown={(e) => moveBlock(e, 'text', text.id, 'end')}
+                  aria-label={t`Make the text longer or shorter`}
+                  className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
+                />
+              </div>
+            ))}
         </Lane>
 
         {layers.length > 0 && (
@@ -838,63 +960,79 @@ const FilmTimeline = ({
             name={t`Images`}
             tag='I1'
             note={t`Over the video`}
-            height={['h-10', 'h-10', 'h-20', 'h-30', 'h-40'][Math.min(4, rowCount)]!}>
-            {layers.map((layer) => {
-              const row = rows.get(layer.id) ?? 0
-              const chosen =
-                lit('layer', layer.id) || (picked?.kind === 'layer' && picked.id === layer.id)
-              return (
-                <div
-                  key={layer.id}
-                  title={layer.name ?? layer.colour}
-                  onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'body')}
-                  style={{
-                    left: layer.at * pps,
-                    width: Math.max(8, layer.seconds * pps - 2),
-                    top: `${(row / rowCount) * 100}%`,
-                    height: `${100 / rowCount}%`
-                  }}
-                  className='group absolute cursor-grab py-1'>
+            fold={foldOf('images', t`Images`)}
+            height={foldedIn('images') ? FOLDED_HEIGHT : laneHeight(rowCount, 40)}>
+            {foldedIn('images') &&
+              stacksOf.images
+                .filter((stack) => stack.ids.length > 1)
+                .map((stack) => (
+                  <StackBar
+                    key={stack.ids.join('+')}
+                    at={stack.at}
+                    until={stack.until}
+                    pps={pps}
+                    label={plural(stack.ids.length, { one: '# image', other: '# images' })}
+                    onOpen={() => foldLane('images', false)}
+                  />
+                ))}
+            {layers
+              .filter((layer) => !foldedIn('images') || aloneIn('images').has(layer.id))
+              .map((layer) => {
+                const row = foldedIn('images') ? 0 : (rows.get(layer.id) ?? 0)
+                const chosen =
+                  lit('layer', layer.id) || (picked?.kind === 'layer' && picked.id === layer.id)
+                return (
                   <div
-                    className={`relative size-full truncate rounded-corner bg-well px-2 text-micro leading-text font-semibold text-ink-2 ${
-                      chosen ? 'shadow-ring-2' : 'shadow-hairline'
-                    }`}>
-                    <Ramps
-                      {...layerFadesOf(layer)}
-                      pps={pps}
-                    />
-                    {fadeHandle(
-                      'layers',
-                      layer.id,
-                      'fadeIn',
-                      layer.name ?? layer.colour ?? '',
-                      chosen
-                    )}
-                    {fadeHandle(
-                      'layers',
-                      layer.id,
-                      'fadeOut',
-                      layer.name ?? layer.colour ?? '',
-                      chosen
-                    )}
-                    <span className='pointer-events-none flex h-full items-center gap-1.5'>
-                      {layer.colour !== undefined && (
-                        <i
-                          style={{ background: layer.colour }}
-                          className='size-3 flex-none rounded-corner shadow-hairline'
-                        />
+                    key={layer.id}
+                    title={layer.name ?? layer.colour}
+                    onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'body')}
+                    style={{
+                      left: layer.at * pps,
+                      width: Math.max(8, layer.seconds * pps - 2),
+                      top: `${(row / (foldedIn('images') ? 1 : rowCount)) * 100}%`,
+                      height: `${100 / (foldedIn('images') ? 1 : rowCount)}%`
+                    }}
+                    className={`group absolute cursor-grab ${rowCount > 1 && !foldedIn('images') ? 'py-0.5' : 'py-1'}`}>
+                    <div
+                      className={`relative size-full truncate rounded-corner bg-well px-2 text-micro leading-text font-semibold text-ink-2 ${
+                        chosen ? 'shadow-ring-2' : 'shadow-hairline'
+                      }`}>
+                      <Ramps
+                        {...layerFadesOf(layer)}
+                        pps={pps}
+                      />
+                      {fadeHandle(
+                        'layers',
+                        layer.id,
+                        'fadeIn',
+                        layer.name ?? layer.colour ?? '',
+                        chosen
                       )}
-                      {layer.name ?? layer.colour}
-                    </span>
-                    <span
-                      onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'end')}
-                      aria-label={t`Make the picture longer or shorter`}
-                      className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
-                    />
+                      {fadeHandle(
+                        'layers',
+                        layer.id,
+                        'fadeOut',
+                        layer.name ?? layer.colour ?? '',
+                        chosen
+                      )}
+                      <span className='pointer-events-none flex h-full items-center gap-1.5'>
+                        {layer.colour !== undefined && (
+                          <i
+                            style={{ background: layer.colour }}
+                            className='size-3 flex-none rounded-corner shadow-hairline'
+                          />
+                        )}
+                        {layer.name ?? layer.colour}
+                      </span>
+                      <span
+                        onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'end')}
+                        aria-label={t`Make the picture longer or shorter`}
+                        className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-accent/40'
+                      />
+                    </div>
                   </div>
-                </div>
-              )
-            })}
+                )
+              })}
           </Lane>
         )}
 
@@ -1134,7 +1272,21 @@ const FilmTimeline = ({
           name={t`Music`}
           tag='M1'
           note={t`From the music`}
-          height={['h-13', 'h-13', 'h-26', 'h-39', 'h-52'][Math.min(4, musicRowCount)]!}>
+          fold={foldOf('music', t`Music`)}
+          height={foldedIn('music') ? FOLDED_HEIGHT : laneHeight(musicRowCount, 52)}>
+          {foldedIn('music') &&
+            stacksOf.music
+              .filter((stack) => stack.ids.length > 1)
+              .map((stack) => (
+                <StackBar
+                  key={stack.ids.join('+')}
+                  at={stack.at}
+                  until={stack.until}
+                  pps={pps}
+                  label={plural(stack.ids.length, { one: '# piece', other: '# pieces' })}
+                  onOpen={() => foldLane('music', false)}
+                />
+              ))}
           {spans.map((span) => (
             <span
               key={span.from}
@@ -1143,68 +1295,72 @@ const FilmTimeline = ({
               className='pointer-events-none absolute inset-y-0 bg-accent-soft'
             />
           ))}
-          {edit.music.map((piece) => {
-            const length = piece.end - piece.start
-            return (
-              <div
-                key={piece.id}
-                onPointerDown={(e) => moveMusic(e, piece.id, 'body')}
-                title={piece.name}
-                style={{
-                  left: piece.at * pps,
-                  width: Math.max(8, length * pps - 2),
-                  top: `calc(${((musicRows.get(piece.id) ?? 0) / musicRowCount) * 100}% + 6px)`,
-                  height: `calc(${100 / musicRowCount}% - 12px)`
-                }}
-                className={`group absolute cursor-grab overflow-hidden rounded-corner bg-up-soft ${
-                  lit('music', piece.id) || (picked?.kind === 'music' && picked.id === piece.id)
-                    ? 'shadow-ring-2'
-                    : 'shadow-hairline'
-                }`}>
-                <MusicEnvelope
-                  piece={piece}
-                  music={edit.music}
-                  underSound={edit.underSound}
-                  spans={spans}
-                  pps={pps}
-                />
-                {fadeHandle(
-                  'music',
-                  piece.id,
-                  'fadeIn',
-                  piece.name,
-                  picked?.kind === 'music' && picked.id === piece.id
-                )}
-                {fadeHandle(
-                  'music',
-                  piece.id,
-                  'fadeOut',
-                  piece.name,
-                  picked?.kind === 'music' && picked.id === piece.id
-                )}
-                {markersWithin(piece).map((mark) => (
-                  <MarkerFlag
-                    key={mark.id}
-                    mark={mark}
-                    left={(mark.at - piece.start) * pps}
+          {edit.music
+            .filter((piece) => !foldedIn('music') || aloneIn('music').has(piece.id))
+            .map((piece) => {
+              const length = piece.end - piece.start
+              return (
+                <div
+                  key={piece.id}
+                  onPointerDown={(e) => moveMusic(e, piece.id, 'body')}
+                  title={piece.name}
+                  style={{
+                    left: piece.at * pps,
+                    width: Math.max(8, length * pps - 2),
+                    ...rowBox(
+                      foldedIn('music') ? 0 : (musicRows.get(piece.id) ?? 0),
+                      foldedIn('music') ? 1 : musicRowCount
+                    )
+                  }}
+                  className={`group absolute cursor-grab overflow-hidden rounded-corner bg-up-soft ${
+                    lit('music', piece.id) || (picked?.kind === 'music' && picked.id === piece.id)
+                      ? 'shadow-ring-2'
+                      : 'shadow-hairline'
+                  }`}>
+                  <MusicEnvelope
+                    piece={piece}
+                    music={edit.music}
+                    underSound={edit.underSound}
+                    spans={spans}
+                    pps={pps}
                   />
-                ))}
-                <span className='pointer-events-none absolute top-1 left-2 truncate text-micro font-semibold text-up'>
-                  {piece.name} · {Math.round(piece.volume * 100)}%
-                </span>
-                <span
-                  onPointerDown={(e) => moveMusic(e, piece.id, 'start')}
-                  aria-label={t`Make the music start later or earlier`}
-                  className='absolute inset-y-0 left-0 w-2 cursor-ew-resize hover:bg-up/40'
-                />
-                <span
-                  onPointerDown={(e) => moveMusic(e, piece.id, 'end')}
-                  aria-label={t`Make the music longer or shorter`}
-                  className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-up/40'
-                />
-              </div>
-            )
-          })}
+                  {fadeHandle(
+                    'music',
+                    piece.id,
+                    'fadeIn',
+                    piece.name,
+                    picked?.kind === 'music' && picked.id === piece.id
+                  )}
+                  {fadeHandle(
+                    'music',
+                    piece.id,
+                    'fadeOut',
+                    piece.name,
+                    picked?.kind === 'music' && picked.id === piece.id
+                  )}
+                  {markersWithin(piece).map((mark) => (
+                    <MarkerFlag
+                      key={mark.id}
+                      mark={mark}
+                      left={(mark.at - piece.start) * pps}
+                    />
+                  ))}
+                  <span className='pointer-events-none absolute top-1 left-2 truncate text-micro font-semibold text-up'>
+                    {piece.name} · {Math.round(piece.volume * 100)}%
+                  </span>
+                  <span
+                    onPointerDown={(e) => moveMusic(e, piece.id, 'start')}
+                    aria-label={t`Make the music start later or earlier`}
+                    className='absolute inset-y-0 left-0 w-2 cursor-ew-resize hover:bg-up/40'
+                  />
+                  <span
+                    onPointerDown={(e) => moveMusic(e, piece.id, 'end')}
+                    aria-label={t`Make the music longer or shorter`}
+                    className='absolute inset-y-0 right-0 w-2 cursor-ew-resize hover:bg-up/40'
+                  />
+                </div>
+              )
+            })}
         </Lane>
 
         {guide !== null && (

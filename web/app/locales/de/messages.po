@@ -117,6 +117,11 @@ msgstr "{0, plural, one {# Datei, auf dem Speicher} other {# Dateien, auf dem Sp
 msgid "{0, plural, one {# file} other {# files}}"
 msgstr "{0, plural, one {# Datei} other {# Dateien}}"
 
+#. placeholder {0}: stack.ids.length
+#: app/components/film-timeline.tsx
+msgid "{0, plural, one {# image} other {# images}}"
+msgstr "{0, plural, one {# Bild} other {# Bilder}}"
+
 #. placeholder {0}: here.length
 #. placeholder {0}: items.length
 #: app/components/montage-view.tsx
@@ -147,6 +152,16 @@ msgstr "{0, plural, one {# Montage} other {# Montagen}} · von diesem Rechner fr
 #: app/components/upload-dialog.tsx
 msgid "{0, plural, one {# photo} other {# photos}}"
 msgstr "{0, plural, one {# Foto} other {# Fotos}}"
+
+#. placeholder {0}: stack.ids.length
+#: app/components/film-timeline.tsx
+msgid "{0, plural, one {# piece} other {# pieces}}"
+msgstr "{0, plural, one {# Stück} other {# Stücke}}"
+
+#. placeholder {0}: stack.ids.length
+#: app/components/film-timeline.tsx
+msgid "{0, plural, one {# text} other {# texts}}"
+msgstr "{0, plural, one {# Text} other {# Texte}}"
 
 #. placeholder {0}: template.texts.length
 #. placeholder {1}: template.music.length
@@ -2517,6 +2532,10 @@ msgstr "Sprünge werden gesucht"
 msgid "Finish the edit and render the film. The board notices the film by itself."
 msgstr "Schließe den Schnitt ab und rendere den Film. Die Übersicht bemerkt den Film von selbst."
 
+#: app/components/film-timeline.tsx
+msgid "Fold the stacked rows of {label}"
+msgstr "Gestapelte Zeilen von {label} einklappen"
+
 #: app/components/file-browser.tsx
 msgid "Fold this day"
 msgstr "Diesen Tag einklappen"
@@ -4096,6 +4115,14 @@ msgstr "Nachricht öffnen in"
 #: app/components/preview-drawer.tsx
 msgid "Open the photo in this machine's own player — the file as it was shot, whatever the browser can decode"
 msgstr "Das Foto im Viewer dieses Rechners öffnen — die Datei so, wie sie aufgenommen wurde, egal was der Browser dekodieren kann"
+
+#: app/components/film-timeline.tsx
+msgid "Open the stacked rows of {label}"
+msgstr "Gestapelte Zeilen von {label} ausklappen"
+
+#: app/components/film-timeline.tsx
+msgid "Open this stack: {label}"
+msgstr "Diesen Stapel öffnen: {label}"
 
 #: app/components/film-timeline.tsx
 #: app/components/inspector.tsx

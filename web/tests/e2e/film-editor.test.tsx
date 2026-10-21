@@ -12,6 +12,7 @@ import { remembered } from '../../app/hooks/remembered'
 import Edit from '../../app/routes/edit'
 import { setFilmTemplateChoice } from '../../app/hooks/useFilmTemplateChoice'
 import { setFilmKeys } from '../../app/hooks/useFilmKeys'
+import { NO_FOLDED_LANES, setFoldedLanes } from '../../app/hooks/useFoldedLanes'
 import { DEFAULT_KEYS } from '../../app/helpers/filmKeys'
 import { liveJobs } from '../../app/hooks/liveStore'
 
@@ -3298,6 +3299,56 @@ describe('texts that are on at the same moment', () => {
     expect(block('Beta').top).toBeGreaterThan(block('Alpha').bottom - 1)
     expect(block('Gamma').top).toBe(block('Alpha').top)
   })
+
+  test('folds a stack of texts into one bar that opens again, and keeps the texts that are alone', async () => {
+    setFoldedLanes(NO_FOLDED_LANES)
+    await start([
+      { ...look, id: 'text-1', text: 'Alpha', at: 1 },
+      { ...look, id: 'text-2', text: 'Beta', at: 2 },
+      { ...look, id: 'text-3', text: 'Gamma', at: 8 }
+    ])
+    const lane = () =>
+      page.getByText('Your titles', { exact: true }).element().closest('.flex.border-b')!.getBoundingClientRect()
+    const open = lane().height
+
+    await userEvent.click(page.getByRole('button', { name: 'Fold the stacked rows of Text' }))
+
+    await expect.element(page.getByRole('button', { name: '2 texts' })).toBeVisible()
+    expect(lane().height).toBeLessThan(open)
+    expect(lane().height).toBeLessThanOrEqual(30)
+    await expect.element(page.getByText('Gamma', { exact: true })).toBeVisible()
+    await expect.element(page.getByText('Alpha', { exact: true })).not.toBeInTheDocument()
+
+    await userEvent.click(page.getByRole('button', { name: '2 texts' }))
+
+    await expect.element(page.getByText('Alpha', { exact: true })).toBeVisible()
+    expect(lane().height).toBe(open)
+    await expect
+      .element(page.getByRole('button', { name: 'Fold the stacked rows of Text' }))
+      .toBeVisible()
+    setFoldedLanes(NO_FOLDED_LANES)
+  })
+
+  test('has no fold button when nothing is stacked in the track', async () => {
+    setFoldedLanes(NO_FOLDED_LANES)
+    await start([{ ...look, id: 'text-1', text: 'Alpha', at: 1 }])
+
+    await expect
+      .element(page.getByRole('button', { name: 'Fold the stacked rows of Text' }))
+      .not.toBeInTheDocument()
+  })
+
+  test('keeps slim rows, and a lane that does not grow past a few of them, when many are stacked', async () => {
+    const names = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight']
+    await start(names.map((text, i) => ({ ...look, id: `text-${i + 1}`, text, at: 1 + i * 0.1 })))
+    const lane = () =>
+      page.getByText('Your titles', { exact: true }).element().closest('.flex.border-b')!.getBoundingClientRect()
+
+    expect(lane().height).toBeLessThanOrEqual(140)
+    const rows = names.map((name) => block(name))
+    for (const one of rows) expect(one.height).toBeGreaterThanOrEqual(12)
+    for (let i = 1; i < rows.length; i++) expect(rows[i]!.top).toBeGreaterThan(rows[i - 1]!.top)
+  })
 })
 
 describe('the music under the camera sound, clip by clip', () => {
@@ -3551,6 +3602,21 @@ describe('pieces of music that overlap', () => {
     const one = page.getByTitle('one.mp3', { exact: true }).last().element().getBoundingClientRect()
     const two = page.getByTitle('two.mp3', { exact: true }).last().element().getBoundingClientRect()
     expect(two.top).toBeGreaterThanOrEqual(one.bottom - 1)
+  })
+
+  test('are folded into one bar by the fold button of the Music track, and the Inspector opens them again', async () => {
+    setFoldedLanes(NO_FOLDED_LANES)
+    await start()
+
+    await userEvent.click(page.getByRole('button', { name: 'Fold the stacked rows of Music' }))
+
+    await expect.element(page.getByRole('button', { name: '2 pieces' })).toBeVisible()
+    await expect.element(page.getByTitle('two.mp3', { exact: true })).not.toBeInTheDocument()
+
+    await userEvent.click(page.getByRole('button', { name: '2 pieces' }))
+
+    await expect.element(page.getByTitle('two.mp3', { exact: true }).last()).toBeVisible()
+    setFoldedLanes(NO_FOLDED_LANES)
   })
 
   test('are mixed as they are when Fade from the previous piece is unticked, and faded again when it is ticked', async () => {

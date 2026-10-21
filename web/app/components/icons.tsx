@@ -186,6 +186,7 @@ const PATHS = {
   ),
   project: <path d='M4 7h8M4 12h16M4 17h11' />,
   narrow: <path d='M4 6h16M7 12h10M10 18h4' />,
+  chevron: <path d='M6 9l6 6 6-6' />,
   check: <path d='M5 12.5 10 17 19 7' />,
   moveTo: <path d='M5 12h14M13 6l6 6-6 6' />,
   scissors: (
