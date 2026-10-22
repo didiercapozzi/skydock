@@ -3365,6 +3365,7 @@ describe('texts that are on at the same moment', () => {
     page.getByText(text, { exact: true }).first().element().parentElement!.getBoundingClientRect()
 
   test('are stacked on rows of the Text track, so that none hides another', async () => {
+    setFoldedLanes(NO_FOLDED_LANES)
     await start([
       { ...look, id: 'text-1', text: 'Alpha', at: 1 },
       { ...look, id: 'text-2', text: 'Beta', at: 2 },

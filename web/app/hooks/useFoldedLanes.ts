@@ -6,6 +6,9 @@ type FoldedLanes = Record<Lane, boolean>
 
 const NONE: FoldedLanes = { text: false, images: false, music: false }
 
+/* the lanes begin folded: each stack of items is one bar, opened when it is wanted */
+const ALL: FoldedLanes = { text: true, images: true, music: true }
+
 const parseFolded = (stored: string): FoldedLanes | null => {
   try {
     const raw: unknown = JSON.parse(stored)
@@ -19,7 +22,7 @@ const parseFolded = (stored: string): FoldedLanes | null => {
 
 const folded = remembered<FoldedLanes>({
   key: 'skydock.foldedLanes',
-  fallback: NONE,
+  fallback: ALL,
   from: parseFolded,
   to: JSON.stringify
 })
