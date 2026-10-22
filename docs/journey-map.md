@@ -113,6 +113,7 @@ Rewrite it with `UPDATE_JOURNEY_MAP=1 npm run test:node -- journey-coverage`.
 | Text | **i1-film** — adds a title from a preset, and the saved edit carries it |
 | The picture plays the edit | **i1-film** — plays the edit in the picture, and stops where it is |
 | Rendering is one press | **i1-film** — renders the film into the montage’s folder, and the board takes it as the film |
+| A square drawn on the timeline picks what it touches | _not walked:_ the square and what it picks are walked by the editor tests of the film editor, which press and drag on the timeline; the journey does not draw one |
 | What the board did to a clip is the clip; what the editor does is the film's | _not walked:_ the length, the small copy, the start and the frame of a clip the board changed are walked by the scripts tests of the montage’s clips and of the render, which cut and render real clips; the journey has no clip changed on the board in its film |
 | A clip forgotten before the edit began is added from the editor | _not walked:_ the list of clips, the adding and the states of a clip being prepared are walked by the editor tests of the film editor and by the route tests of the clips and of the import into a montage; the journey does not open the film editor on a montage with a clip still to add |
 | The edit and the montage | **i1-edit** — notices an edit removed by hand, and one put back by hand |

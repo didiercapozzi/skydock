@@ -64,6 +64,8 @@ type Picked = Selected | null
 const ZOOM = { min: 2, max: 80 }
 const WHEEL_ZOOM = 0.0015
 const LINE = 16
+const RULER = 28
+const SWEEP_FROM = 4
 const STEPS = [1, 2, 5, 10, 15, 30, 60, 120]
 const TICK_ROOM = 70
 const ENVELOPE_STEP = 0.25
@@ -589,6 +591,13 @@ const FilmTimeline = ({
   const snapped = useRef<number | null>(null)
   const guideTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const box = useRef<HTMLDivElement>(null)
+  const content = useRef<HTMLDivElement>(null)
+  const [sweeping, setSweeping] = useState<{
+    left: number
+    top: number
+    width: number
+    height: number
+  } | null>(null)
   const asked = useRef<{ pps: number; scroll: number } | null>(null)
   const shown = useRef(pps)
   const fingers = useRef(new Map<number, { x: number; y: number }>())
@@ -1043,6 +1052,79 @@ const FilmTimeline = ({
     })
   }
 
+  /* A square drawn with the mouse on the empty timeline picks every item it touches — with Shift, in
+     addition to what is picked — and the usual actions then apply to all of them. */
+  const sweep = (e: React.PointerEvent<HTMLDivElement>) => {
+    const area = content.current
+    const scroller = box.current
+    if (e.button !== 0 || e.pointerType === 'touch' || !area || !scroller) return
+    if (
+      e.target instanceof Element &&
+      e.target.closest(
+        '[data-item], button, input, select, textarea, [role="slider"], [data-seam-chip], [data-seam-menu]'
+      )
+    )
+      return
+    const view = scroller.getBoundingClientRect()
+    if (e.clientX - view.left < HEAD || e.clientY - view.top < RULER) return
+    e.preventDefault()
+    if (document.activeElement instanceof HTMLElement) document.activeElement.blur()
+    const [x0, y0] = [e.clientX, e.clientY]
+    const additive = e.shiftKey
+    let moved = false
+    const square = (event: PointerEvent) => ({
+      left: Math.min(x0, event.clientX),
+      top: Math.min(y0, event.clientY),
+      right: Math.max(x0, event.clientX),
+      bottom: Math.max(y0, event.clientY)
+    })
+    const move = (event: PointerEvent) => {
+      if (!moved && Math.hypot(event.clientX - x0, event.clientY - y0) < SWEEP_FROM) return
+      moved = true
+      const hole = square(event)
+      const into = area.getBoundingClientRect()
+      setSweeping({
+        left: hole.left - into.left,
+        top: hole.top - into.top,
+        width: hole.right - hole.left,
+        height: hole.bottom - hole.top
+      })
+    }
+    const end = (event: PointerEvent) => {
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', end)
+      window.removeEventListener('pointercancel', end)
+      setSweeping(null)
+      if (!moved || event.type === 'pointercancel') return
+      const hole = square(event)
+      const touched = [...scroller.querySelectorAll<HTMLElement>('[data-item]')].flatMap((one) => {
+        const at = one.getBoundingClientRect()
+        const [kind, ...rest] = (one.dataset.item ?? '').split(':')
+        return at.left < hole.right &&
+          at.right > hole.left &&
+          at.top < hole.bottom &&
+          at.bottom > hole.top
+          ? [{ kind: kind as Selected['kind'], id: rest.join(':') }]
+          : []
+      })
+      const held = (item: Selected) =>
+        (picked?.kind === item.kind && picked.id === item.id) ||
+        also.some((one) => one.kind === item.kind && one.id === item.id)
+      if (additive) {
+        const added = touched.filter((item) => !held(item))
+        if (!picked && added[0]) onPick(added.shift()!)
+        for (const item of added) onAlso(item)
+        return
+      }
+      onAlso(null)
+      onPick(touched[0] ?? null)
+      for (const item of touched.slice(1)) onAlso(item)
+    }
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', end)
+    window.addEventListener('pointercancel', end)
+  }
+
   const overVideo = (e: React.DragEvent<HTMLDivElement>) => {
     if (!e.dataTransfer.types.includes(CLIP_DRAG)) return
     e.preventDefault()
@@ -1067,14 +1149,24 @@ const FilmTimeline = ({
         if (fingers.current.size >= 2) cancels.current.forEach((cancel) => cancel())
         apart.current = 0
       }}
+      onPointerDown={sweep}
       onPointerMove={pinch}
       onPointerUp={lift}
       onPointerCancel={lift}
       onLostPointerCapture={(e) => dragging.current.has(e.pointerId) || lift(e)}
       className='relative min-h-0 flex-1 touch-none overflow-auto bg-ground'>
       <div
+        ref={content}
         style={{ width: width + HEAD }}
         className='relative'>
+        {sweeping && (
+          <span
+            aria-hidden='true'
+            data-sweep
+            style={sweeping}
+            className='pointer-events-none absolute z-30 border border-accent bg-accent/15'
+          />
+        )}
         <div className='sticky top-0 z-20 flex h-7 border-b border-line bg-well'>
           <span
             style={{ width: HEAD }}
@@ -1132,6 +1224,7 @@ const FilmTimeline = ({
             .map((text) => (
               <div
                 key={text.id}
+                data-item={`text:${text.id}`}
                 onPointerDown={(e) => moveBlock(e, 'text', text.id, 'body')}
                 style={{
                   left: text.at * pps,
@@ -1205,6 +1298,7 @@ const FilmTimeline = ({
                 return (
                   <div
                     key={layer.id}
+                    data-item={`layer:${layer.id}`}
                     title={layer.name ?? layer.colour}
                     onPointerDown={(e) => moveBlock(e, 'layer', layer.id, 'body')}
                     style={{
@@ -1294,6 +1388,7 @@ const FilmTimeline = ({
               return (
                 <div
                   key={clip.id}
+                  data-item={`clip:${clip.id}`}
                   onPointerDown={(e) => pressClip(e, clip.id, source?.still)}
                   onKeyDown={(e) =>
                     (e.key === 'Enter' || e.key === ' ') && onPick({ kind: 'clip', id: clip.id })
@@ -1570,6 +1665,7 @@ const FilmTimeline = ({
               return (
                 <div
                   key={piece.id}
+                  data-item={`music:${piece.id}`}
                   onPointerDown={(e) => moveMusic(e, piece.id, 'body')}
                   title={piece.name}
                   style={{

@@ -11,6 +11,8 @@ const exempt: Record<string, string> = {
     'the marks, the filter and the button for photos are walked by the editor tests of the film editor; the journey does not open the editor on a montage with photos',
   "What the board did to a clip is the clip; what the editor does is the film's":
     'the length, the small copy, the start and the frame of a clip the board changed are walked by the scripts tests of the montage’s clips and of the render, which cut and render real clips; the journey has no clip changed on the board in its film',
+  'A square drawn on the timeline picks what it touches':
+    'the square and what it picks are walked by the editor tests of the film editor, which press and drag on the timeline; the journey does not draw one',
   'A montage hands over its origins':
     'what is sent of a file changed on the board and of one left alone is walked by the scripts tests of the upload and of freeing; the journey sends no file the board changed',
   'A montage is finished when the person says so':

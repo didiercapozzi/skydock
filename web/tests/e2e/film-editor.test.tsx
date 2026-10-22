@@ -4003,3 +4003,67 @@ describe('a film opened before the small copy of a clip was made', () => {
       .toBeVisible()
   })
 })
+
+describe('a square drawn on the timeline', () => {
+  const clipEl = (name: string) =>
+    page.getByTitle(`${name} · double-click to choose the part`).first().element() as HTMLElement
+  const scroller = () =>
+    (page.getByRole('slider', { name: 'Timeline ruler' }).element() as HTMLElement).closest(
+      '.overflow-auto'
+    ) as HTMLElement
+  const mouse = (target: EventTarget, type: string, x: number, y: number, more: PointerEventInit = {}) =>
+    target.dispatchEvent(
+      new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        pointerId: 7,
+        pointerType: 'mouse',
+        button: 0,
+        clientX: x,
+        clientY: y,
+        ...more
+      })
+    )
+  const sweep = (from: [number, number], to: [number, number], more: PointerEventInit = {}) => {
+    mouse(scroller(), 'pointerdown', from[0], from[1], more)
+    mouse(window, 'pointermove', to[0], to[1])
+    mouse(window, 'pointerup', to[0], to[1])
+  }
+  const row = () => {
+    const first = clipEl(FIRST).getBoundingClientRect()
+    return { y: first.top + first.height / 2, first, last: clipEl(SECOND).getBoundingClientRect() }
+  }
+
+  test('picks every clip it touches, and Delete takes them all out', async () => {
+    await open()
+    const { y, first, last } = row()
+
+    sweep([last.right + 80, y], [first.left + 10, y + 4])
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).not.toBeInTheDocument()
+    await expect.element(page.getByTitle(`${SECOND} · double-click to choose the part`)).not.toBeInTheDocument()
+  })
+
+  test('picks only the clip it touches, not the others', async () => {
+    await open()
+    const { y, first } = row()
+
+    sweep([first.right + 2, y + 6], [first.left + 20, y - 6])
+    await userEvent.click(page.getByRole('button', { name: 'Delete', exact: true }))
+
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).not.toBeInTheDocument()
+    await expect.element(page.getByTitle(`${SECOND} · double-click to choose the part`).first()).toBeVisible()
+  })
+
+  test('picks nothing when it is only a click, and starts nowhere on a clip', async () => {
+    await open()
+    const { y, last } = row()
+
+    sweep([last.right + 80, y], [last.right + 81, y])
+    await expect.element(page.getByRole('button', { name: 'Delete', exact: true })).toBeDisabled()
+
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`).first()).toBeVisible()
+    await expect.element(page.getByTitle(`${SECOND} · double-click to choose the part`).first()).toBeVisible()
+  })
+})
