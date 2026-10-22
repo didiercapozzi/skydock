@@ -1,20 +1,21 @@
 import type { MontageFact } from './boardAnswer'
-import { hasCompletePassenger } from './workspace'
 import type { ManifestGroup } from './types'
 
-const MONTAGE_STEPS = ['Named', 'Prepared', 'Project', 'Film', 'Uploaded', 'Sent'] as const
+const MONTAGE_STEPS = ['Prepared', 'Edited', 'Rendered', 'Uploaded', 'Emailed'] as const
 
 type MontageStep = (typeof MONTAGE_STEPS)[number]
 
 const NEXT: Record<MontageStep, { todo: string; how: string }> = {
-  Named: { todo: 'to name', how: 'Give it a name' },
   Prepared: { todo: 'to process', how: 'Process it' },
-  Project: { todo: 'to edit', how: 'Edit the film' },
-  Film: { todo: 'to render', how: 'Render the film' },
+  Edited: { todo: 'to edit', how: 'Edit the film' },
+  Rendered: { todo: 'to render', how: 'Render the film' },
   Uploaded: { todo: 'to upload', how: 'Upload it' },
-  Sent: { todo: 'to email', how: 'Email the link' }
+  Emailed: { todo: 'to email', how: 'Email the link' }
 }
 
+/* Only the copies are needed for a montage to be of use: the files are in its own folder. The steps after
+   them are what can be done with it, and none is forced. A montage is finished when the person says so, or
+   when it has been freed from this machine; until then it has a step to take next. */
 const montageSteps = ({
   group,
   facts,
@@ -25,18 +26,18 @@ const montageSteps = ({
   emailed: boolean
 }) => {
   const done: Record<MontageStep, boolean> = {
-    Named: hasCompletePassenger(group.passenger),
     Prepared: Boolean(group.processed || group.uploaded || group.freed),
-    Project: Boolean(facts?.edit || group.freed),
-    Film: Boolean(facts?.film || group.uploaded || group.freed),
+    Edited: Boolean(facts?.edit || group.freed),
+    Rendered: Boolean(facts?.film || group.uploaded || group.freed),
     Uploaded: Boolean(group.uploaded),
-    Sent: emailed
+    Emailed: emailed
   }
   const steps = MONTAGE_STEPS.map((name) => ({ name, done: done[name] }))
+  const kept = group.done !== undefined && !group.freed
   const found = steps.findIndex((step) => !step.done)
-  const at = found === -1 ? steps.length : found
+  const at = kept || found === -1 ? steps.length : found
   const step = steps[at]
-  return { steps, at, next: step ? NEXT[step.name] : null }
+  return { steps, at, next: step ? NEXT[step.name] : null, kept }
 }
 
 const montageLockOf = (group: ManifestGroup, facts?: MontageFact) =>

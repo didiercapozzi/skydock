@@ -2410,7 +2410,7 @@ const FilmEditor = ({
       onPointerCancel={() => (held.current = false)}
       tabIndex={-1}
       className={`flex h-dvh flex-col bg-ground text-ink ${cornered ? 'overflow-hidden rounded-corner' : ''}`}>
-      <header className='flex h-13 flex-none items-center gap-3 border-b border-line bg-pane px-4'>
+      <header className='drag-region flex h-13 flex-none items-center gap-3 border-b border-line bg-pane px-4'>
         <h2 className='m-0 flex min-w-0 items-center gap-2 truncate text-body font-normal text-ink-2'>
           <span className='max-desk:hidden'>{scratch ? t`Film templates` : t`Montages`}</span>
           <span className='text-ink-3 max-desk:hidden'>/</span>

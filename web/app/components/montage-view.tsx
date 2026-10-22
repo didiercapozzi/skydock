@@ -42,7 +42,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
   const facts = board.montageFacts[group.id]
   const linked = Boolean(group.uploaded?.shareUrl ?? group.publish?.shareUrl)
   const needsLink =
-    Boolean(group.uploaded) && !linked && progress.steps[progress.at]?.name === 'Sent'
+    Boolean(group.uploaded) && !linked && progress.steps[progress.at]?.name === 'Emailed'
   const actions = (compact: boolean) => (
     <MontageCardActions
       group={group}
@@ -55,14 +55,18 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       named={hasCompletePassenger(group.passenger)}
       onProcess={() => model.takeStep(group, 'Prepared')}
       onCancelProcess={() => model.cancelProcess({ groupIds: [group.id] })}
-      onMontage={() => model.takeStep(group, 'Project')}
-      onOpenMontage={() => model.takeStep(group, 'Film')}
+      onMontage={() => model.takeStep(group, 'Edited')}
+      onOpenMontage={() => model.takeStep(group, 'Rendered')}
       onUpload={() => model.takeStep(group, 'Uploaded')}
+      done={group.done !== undefined}
+      onDone={() => model.markDone(group, true)}
+      onReopen={() => model.markDone(group, false)}
+      onOpenFolder={() => model.openFolderOf(group)}
       onEmail={
-        group.uploaded && linked && progress.steps[progress.at]?.name === 'Sent'
+        group.uploaded && linked && progress.steps[progress.at]?.name === 'Emailed'
           ? {
               name: group.passenger?.firstname ?? '',
-              open: () => model.takeStep(group, 'Sent')
+              open: () => model.takeStep(group, 'Emailed')
             }
           : undefined
       }

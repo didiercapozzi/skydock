@@ -892,8 +892,8 @@ msgid "a montage"
 msgstr "a montage"
 
 #: app/components/delivered-list.tsx
-msgid "A montage comes here by itself once it is freed from this machine. Press Storage to see where its files are on the storage, or Open for its page."
-msgstr "A montage comes here by itself once it is freed from this machine. Press Storage to see where its files are on the storage, or Open for its page."
+msgid "A montage comes here once it is set as done, or freed from this machine. Press Storage to see where its files are on the storage, Folder to open its copies, or Open for its page."
+msgstr "A montage comes here once it is set as done, or freed from this machine. Press Storage to see where its files are on the storage, Folder to open its copies, or Open for its page."
 
 #: app/components/montage-card.tsx
 msgid "A name: a person, an event"
@@ -2020,9 +2020,22 @@ msgstr "Does not fit this film, left out: {list}"
 msgid "done"
 msgstr "done"
 
+#: app/components/montage-card.tsx
+#: app/components/montage-steps.tsx
+msgid "Done"
+msgstr "Done"
+
 #: app/components/email-dialog.tsx
 msgid "Done — back to this email"
 msgstr "Done — back to this email"
+
+#: app/components/montage-steps.tsx
+msgid "Done — kept on this machine"
+msgstr "Done — kept on this machine"
+
+#: app/components/montage-steps.tsx
+msgid "Done — kept on this machine as it is."
+msgstr "Done — kept on this machine as it is."
 
 #: app/routes/place.tsx
 msgid "Done — only the storage holds them now"
@@ -2158,6 +2171,10 @@ msgstr "Edit the film"
 msgid "Edit the template…"
 msgstr "Edit the template…"
 
+#: app/components/montage-steps.tsx
+msgid "Edited"
+msgstr "Edited"
+
 #: app/components/film-editor.tsx
 msgid "Edited on the proxies, rendered from the processed copies"
 msgstr "Edited on the proxies, rendered from the processed copies"
@@ -2210,6 +2227,7 @@ msgstr "Email the link…"
 
 #: app/components/delivered-list.tsx
 #: app/components/montage-panel.tsx
+#: app/components/montage-steps.tsx
 msgid "Emailed"
 msgstr "Emailed"
 
@@ -2452,7 +2470,6 @@ msgstr "film"
 
 #: app/components/film-editor.tsx
 #: app/components/montage-panel.tsx
-#: app/components/montage-steps.tsx
 msgid "Film"
 msgstr "Film"
 
@@ -2540,6 +2557,7 @@ msgstr "Fold the stacked rows of {label}"
 msgid "Fold this day"
 msgstr "Fold this day"
 
+#: app/components/delivered-list.tsx
 #: app/components/montage-panel.tsx
 msgid "Folder"
 msgstr "Folder"
@@ -2777,10 +2795,6 @@ msgstr "Gather the loose files here into jumps, by the gap rule — nothing is f
 msgid "Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump"
 msgstr "Give every other clip in this jump the same rectangle — a badly mounted camera is badly mounted for the whole jump"
 
-#: app/components/montage-steps.tsx
-msgid "Give it a name"
-msgstr "Give it a name"
-
 #: app/components/inspector.tsx
 msgid "Give it a name — a person or an event. The name becomes its folder and its film."
 msgstr "Give it a name — a person or an event. The name becomes its folder and its film."
@@ -2994,10 +3008,6 @@ msgstr "It is being processed — wait for it to finish"
 msgid "It is being uploaded — wait for the upload to finish"
 msgstr "It is being uploaded — wait for the upload to finish"
 
-#: app/components/montage-steps.tsx
-msgid "It needs a name first — a person, an event. The name becomes its folder, its file names and its film."
-msgstr "It needs a name first — a person, an event. The name becomes its folder, its file names and its film."
-
 #. placeholder {0}: edit.texts.length
 #. placeholder {1}: edit.music.length
 #: app/components/film-template-modals.tsx
@@ -3161,6 +3171,14 @@ msgstr "Kept aside in .projects, then taken away"
 msgid "Kept on the storage"
 msgstr "Kept on the storage"
 
+#: app/components/delivered-list.tsx
+msgid "Kept on this machine"
+msgstr "Kept on this machine"
+
+#: app/components/montage-steps.tsx
+msgid "Kept on this machine as it is: open its folder and use the files, or edit and upload it later."
+msgstr "Kept on this machine as it is: open its folder and use the files, or edit and upload it later."
+
 #: app/components/take-back-dialog.tsx
 msgid "Kept, ready to process again"
 msgstr "Kept, ready to process again"
@@ -3202,10 +3220,6 @@ msgstr "Language of the email"
 #: app/routes/board.tsx
 msgid "Last checked {checkedAt}."
 msgstr "Last checked {checkedAt}."
-
-#: app/components/montage-steps.tsx
-msgid "Last step"
-msgstr "Last step"
 
 #: app/components/film-part.tsx
 msgid "lasts {lasts}"
@@ -3426,8 +3440,8 @@ msgid "make them a montage, named first"
 msgstr "make them a montage, named first"
 
 #: app/components/montage-steps.tsx
-msgid "Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder."
-msgstr "Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder."
+msgid "Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder. That is all a montage needs — the rest is up to you."
+msgstr "Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder. That is all a montage needs — the rest is up to you."
 
 #: app/components/jobs-panel.tsx
 msgid "Making"
@@ -3634,10 +3648,6 @@ msgstr "Name the montage"
 msgid "name@example.com — or type it in Gmail"
 msgstr "name@example.com — or type it in Gmail"
 
-#: app/components/montage-steps.tsx
-msgid "Named"
-msgstr "Named"
-
 #: app/components/upload-dialog.tsx
 msgid "Named {stem}.….zip — you choose the end, or none."
 msgstr "Named {stem}.….zip — you choose the end, or none."
@@ -3817,6 +3827,10 @@ msgstr "not copied yet"
 #: app/components/jobs-panel.tsx
 msgid "not deleted"
 msgstr "not deleted"
+
+#: app/components/montage-card.tsx
+msgid "Not done after all: its next steps are offered again"
+msgstr "Not done after all: its next steps are offered again"
 
 #: app/routes/place.tsx
 msgid "Not in the list"
@@ -4036,6 +4050,10 @@ msgid "On this machine"
 msgstr "On this machine"
 
 #: app/components/delivered-list.tsx
+msgid "On this machine: everything, kept as it is."
+msgstr "On this machine: everything, kept as it is."
+
+#: app/components/delivered-list.tsx
 msgid "On this machine: nothing — everything is on the storage."
 msgstr "On this machine: nothing — everything is on the storage."
 
@@ -4084,13 +4102,13 @@ msgstr "Open it — trim, frame and turn"
 msgid "Open it out to see more"
 msgstr "Open it out to see more"
 
+#: app/components/montage-card.tsx
+msgid "Open its folder"
+msgstr "Open its folder"
+
 #: app/components/preview-drawer.tsx
 msgid "Open the clip in this machine's own player — the file as it was shot, whatever the browser can decode"
 msgstr "Open the clip in this machine's own player — the file as it was shot, whatever the browser can decode"
-
-#: app/components/montage-steps.tsx
-msgid "Open the editor"
-msgstr "Open the editor"
 
 #: app/components/shortcuts-dialog.tsx
 msgid "open the file"
@@ -4142,8 +4160,16 @@ msgid "Opening the player…"
 msgstr "Opening the player…"
 
 #: app/components/montage-steps.tsx
-msgid "Opens the film editor with the clips laid end to end. Trim them, add music and text, then render."
-msgstr "Opens the film editor with the clips laid end to end. Trim them, add music and text, then render."
+msgid "Opens the film editor with the clips laid end to end. Trim them, add music and text, then render. Or press Done to keep the copies as they are."
+msgstr "Opens the film editor with the clips laid end to end. Trim them, add music and text, then render. Or press Done to keep the copies as they are."
+
+#: app/components/montage-steps.tsx
+msgid "Optional"
+msgstr "Optional"
+
+#: app/components/montage-steps.tsx
+msgid "Optional · last step"
+msgstr "Optional · last step"
 
 #: app/routes/place.tsx
 msgid "Or drag a jump from Fresh files onto {name} in the sidebar."
@@ -4435,10 +4461,6 @@ msgstr "Processing cancelled. What was finished stays; the rest is left to proce
 msgid "Processing…"
 msgstr "Processing…"
 
-#: app/components/montage-steps.tsx
-msgid "Project"
-msgstr "Project"
-
 #: app/components/upload-dialog.tsx
 msgid "Project folder"
 msgstr "Project folder"
@@ -4701,6 +4723,10 @@ msgstr "Render the film into the montage’s folder, from the processed copies"
 msgid "Render…"
 msgstr "Render…"
 
+#: app/components/montage-steps.tsx
+msgid "Rendered"
+msgstr "Rendered"
+
 #: app/components/montage-card.tsx
 msgid "rendered {renderedAt}"
 msgstr "rendered {renderedAt}"
@@ -4717,6 +4743,10 @@ msgstr "Rendering {label}’s film"
 #: app/components/film-editor.tsx
 msgid "Rendering the film · {0}%"
 msgstr "Rendering the film · {0}%"
+
+#: app/components/montage-card.tsx
+msgid "Reopen"
+msgstr "Reopen"
 
 #: app/components/film-template-modals.tsx
 msgid "Replace it"
@@ -4937,10 +4967,6 @@ msgstr "Send these to the storage…"
 msgid "Sending"
 msgstr "Sending"
 
-#: app/components/montage-steps.tsx
-msgid "Sent"
-msgstr "Sent"
-
 #: app/components/email-dialog.tsx
 msgid "Sent {sentOn}"
 msgstr "Sent {sentOn}"
@@ -4960,6 +4986,10 @@ msgstr "Set"
 #: app/components/jump-name.tsx
 msgid "Set a date and a time"
 msgstr "Set a date and a time"
+
+#: app/components/montage-card.tsx
+msgid "Set it as done and keep it here as it is — nothing is uploaded, and it can be reopened"
+msgstr "Set it as done and keep it here as it is — nothing is uploaded, and it can be reopened"
 
 #: app/components/settings-menu.tsx
 msgid "Settings"
@@ -5045,6 +5075,11 @@ msgstr "Show only the {photos} photos"
 #: app/components/place-pane.tsx
 msgid "Show only the {videos} videos"
 msgstr "Show only the {videos} videos"
+
+#: app/components/delivered-list.tsx
+#: app/components/montage-card.tsx
+msgid "Show the folder of its copies, to use them on their own"
+msgstr "Show the folder of its copies, to use them on their own"
 
 #: app/components/progress-panel.tsx
 msgid "Show the list"
@@ -5521,8 +5556,8 @@ msgid "The film is rendered"
 msgstr "The film is rendered"
 
 #: app/components/montage-steps.tsx
-msgid "The film is rendered. Send it, the photos and the originals where you choose."
-msgstr "The film is rendered. Send it, the photos and the originals where you choose."
+msgid "The film is rendered. Upload it, the photos and the originals where you choose — or press Done to keep it here."
+msgstr "The film is rendered. Upload it, the photos and the originals where you choose — or press Done to keep it here."
 
 #: app/components/film-editor.tsx
 #: app/components/film-template-modals.tsx

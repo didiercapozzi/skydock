@@ -125,6 +125,7 @@ const manifestGroupSchema = z.object({
   publish: publishSchema.optional(),
   uploaded: montageUploadSchema.optional(),
   emailed: z.object({ at: z.number(), to: z.string().optional() }).optional(),
+  done: z.number().optional(),
   freed: z.object({ at: z.number(), bytes: z.number() }).optional(),
   freedBefore: z.object({ at: z.number(), bytes: z.number() }).optional(),
   day: z.string(),

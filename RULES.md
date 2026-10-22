@@ -570,21 +570,35 @@ film) and says that nothing of it is on this machine, and a button to open its o
 once and partly back — files copied back — is not freed, so it is among the montages again until it is freed
 a second time.
 
-**Where every montage has got to.** A montage walks the same six steps every time — _Named_,
-_Prepared_, _Project_, _Film_, _Uploaded_, _Sent_ — and the board shows every montage where it
-is on them, so nobody has to remember what comes after a render. Each montage's entry in the menu says
+**Where every montage has got to.** A montage walks the same five steps every time — _Prepared_,
+_Edited_, _Rendered_, _Uploaded_, _Emailed_ — and the board shows every montage where it
+is on them, so nobody has to remember what comes after a render. A montage has a name from the moment it
+is made, so naming is not a step. Only the first step is needed: once the copies are made, the files are
+in the montage's own folder and the montage is of use as it is — the other four are what can be done
+with it, said as _Optional_ on the card, and none is forced. Each montage's entry in the menu says
 the step that is next ("to render", "to email") with a segment per step beneath it, done ones in green
-and the one it is at in the same colour as those words; its card says the same. Its page shows the whole way in one row of six, a line joining them green as far as the step it is at,
+and the one it is at in the same colour as those words; its card says the same. Its page shows the whole way in one row of five, a line joining them green as far as the step it is at,
 each with a word under it — what it gave, or what it will be — and under the row one calm line saying
 which step it is at and what to do next, with the one button that takes it and a "?" that says what taking it
 does. Each step is read
-off what is there — the name, the copies, the edit, the film, the upload, the storage's list. A
+off what is there — the copies, the edit, the film, the upload, the storage's list. A
 freed montage went through every step up to the upload, with nothing left here to show for it. A
 montage with several jumps is where the one furthest behind is, since one name is one folder.
 
+**A montage is finished when the person says so.** Beside its next step, once its copies are made, a montage
+offers _Done_: it is kept on this machine as it is, with no upload and no film, and nothing is deleted or
+moved. A done montage has no next step, no longer counts among the montages _to do_ and leaves the menu for
+_Montages done_, where it is listed as kept on this machine, with its _Folder_ and its _Open_; its page says
+it is done and offers _Reopen_, which puts its steps back. Every jump of the same name is set and reopened
+together. A montage is also done once it has been freed from this machine, as before. A render never
+finishes a montage by itself: a rendered film is something to send or to keep, and the person says which.
+_Open its folder_ is on a montage's page whenever its copies are made, and shows the folder of them in the
+machine's own file manager, to use the files on their own; `SKYDOCK_FOLDER_COMMAND` says what opens it where
+the machine's own way does not, and a montage that was freed from here, or not yet prepared, says so.
+
 **A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — edit the film, process it again, start the edit again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
 
-**Montages done** lists the freed montages as a table — who it was for, the day, when its link was emailed (a dash while it has not been), how much is on the storage, whether its link still works — each with buttons for its storage cards and its page. With no montage left to do the Montages heading says so.
+**Montages done** lists the freed montages, and those set as done, as a table — who it was for, the day, when its link was emailed (a dash while it has not been), how much is on the storage, whether its link still works — each with buttons for its storage cards and its page. With no montage left to do the Montages heading says so.
 
 The menu lists no days: a date is only what a camera's clock said, and a clock that was wrong only adds
 a day that means nothing. Days are still there to be seen: each card carries its date, and a place can
@@ -910,9 +924,9 @@ to any.
 
 **Taking the next step from where it is said.** Where a montage's own buttons are not on screen —
 the Montages page with no montage open — the step it is at is taken from there:
-_Process_, _Edit the film_, _Open the editor_ to render, _Upload…_, _Email the link…_ —
+_Process_, _Edit the film_, _Render the film_, _Upload…_, _Email the link…_ —
 the same as each step's own button. Where its buttons are on screen, the trail only says; each thing
-is offered once. Naming is typed, so it has no button.
+is offered once. Naming is typed, asked when a montage is made.
 
 ## Cropping and turning
 
@@ -1332,7 +1346,7 @@ page, at `/edit/<the montage's id>`, which takes the whole window without the bo
 is read again, and stays, when the page is reloaded. Closing it and _Render the film_ go back to
 where it was opened from, or to the montage's page when it was the first page loaded; the browser's
 Back leaves it too, and an edit not yet saved is saved on the way out. A montage that is not on the
-board, and one that is not processed, are refused in the editor with the reason, and its close goes to the montages page. In the packed desktop window with its own frame the editor has the same rounded corners as the board. The page has the
+board, and one that is not processed, are refused in the editor with the reason, and its close goes to the montages page. In the packed desktop window with its own frame the editor has the same rounded corners as the board. Its header moves the window when dragged, as the board's does, from anywhere in it that is not a button or a box. The page has the
 montage's clips on the left, the picture in the middle with previous clip, play and next
 clip under it, what is picked on the right, and under them a toolbar with Select, Cut at playhead,
 Delete, Fade in, Ripple, Snap and the zoom, the timeline, and a line with the film's length, with a Shortcuts button beside Undo in the header. The timeline ends

@@ -290,7 +290,7 @@ const FilmNote = ({ locked }: { locked?: string | null }) =>
     </div>
   )
 
-const MontageCardActions = ({
+const StepActions = ({
   group,
   facts,
   busy,
@@ -787,6 +787,62 @@ const UploadedCards = ({
     quiet={quiet}
   />
 )
+
+type StepActionsProps = React.ComponentProps<typeof StepActions>
+
+/* What can always be done with a montage, beside its next step: set it as done — kept here as it is, without
+   being uploaded — or take that back, and open its folder to use the files on their own. */
+const MontageCardActions = ({
+  done = false,
+  onDone,
+  onReopen,
+  onOpenFolder,
+  ...rest
+}: StepActionsProps & {
+  done?: boolean
+  onDone?: () => void
+  onReopen?: () => void
+  onOpenFolder?: () => void
+}) => {
+  const { group, busy, held = null, compact = false } = rest
+  const prepared = Boolean(group.processed)
+  const folder = prepared && onOpenFolder && (
+    <Mini
+      disabled={busy !== null}
+      title={t`Show the folder of its copies, to use them on their own`}
+      onClick={onOpenFolder}>
+      {t`Open its folder`}
+    </Mini>
+  )
+  if (done)
+    return (
+      <span className='flex flex-wrap items-center gap-2'>
+        {onReopen && (
+          <Go
+            disabled={busy !== null}
+            title={t`Not done after all: its next steps are offered again`}
+            onClick={onReopen}>
+            {t`Reopen`}
+          </Go>
+        )}
+        {folder}
+      </span>
+    )
+  return (
+    <span className='flex flex-wrap items-center gap-2'>
+      <StepActions {...rest} />
+      {prepared && onDone && !compact && (
+        <Mini
+          disabled={busy !== null || held !== null}
+          title={t`Set it as done and keep it here as it is — nothing is uploaded, and it can be reopened`}
+          onClick={onDone}>
+          {t`Done`}
+        </Mini>
+      )}
+      {!compact && folder}
+    </span>
+  )
+}
 
 export {
   NameMontage,

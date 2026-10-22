@@ -554,7 +554,7 @@ describe('where every passenger has got to', () => {
     })
     await expect.poll(() => entry.element().textContent).toContain('to upload')
     await expect
-      .element(entry.getByRole('img', { name: /Next: Upload it — 4 of 6 steps done/ }))
+      .element(entry.getByRole('img', { name: /Next: Upload it — 3 of 5 steps done/ }))
       .toBeInTheDocument()
   })
 
@@ -565,7 +565,7 @@ describe('where every passenger has got to', () => {
     await expect
       .element(page.getByRole('button', { name: 'Upload…', exact: true }).first())
       .toBeInTheDocument()
-    expect(stepper()?.textContent).toContain('Film — done')
+    expect(stepper()?.textContent).toContain('Rendered — done')
   })
 
   test('marks each of a passenger’s montage cards with its step', async () => {
@@ -590,6 +590,69 @@ describe('where every passenger has got to', () => {
     await expect.element(page.getByRole('button', { name: /^Luc Favre, / })).not.toBeInTheDocument()
     await expect.poll(stepAt).toMatch(/Uploaded/)
     await expect.element(page.getByRole('heading', { name: 'Who it is for' })).toBeInTheDocument()
+  })
+})
+
+describe('a montage that is set as done', () => {
+  const sent: Array<Record<string, unknown>> = []
+  const withDone = (done?: number) => ({
+    ...board,
+    groups: [{ ...board.groups[0], ...(done ? { done } : {}) }]
+  })
+
+  const renderDone = async () => {
+    const Stub = createRoutesStub([
+      boardRoute(() => withDone(1_785_030_000)),
+      { path: '/api/manifest', action: async () => ({ ok: true }) }
+    ])
+    await render(createElement(Stub, { initialEntries: ['/montage/Luc%20Favre'] }))
+  }
+
+  test('has a Done button once it is prepared, which keeps it without any upload, and Open its folder', async () => {
+    await renderBoard(withDone(), false)
+
+    await expect.element(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Open its folder' })).toBeVisible()
+  })
+
+  test('asks for the montage to be set as done, and for its folder to be opened', async () => {
+    requests.length = 0
+    await renderBoard(withDone(), false)
+
+    await userEvent.click(page.getByRole('button', { name: 'Done', exact: true }))
+    await userEvent.click(page.getByRole('button', { name: 'Open its folder' }))
+
+    await expect
+      .poll(() =>
+        (requests as Array<Record<string, unknown>>).map((one) => [one.intent, one.groupId, one.done])
+      )
+      .toEqual([
+        ['mark-done', 'g1', true],
+        ['open-folder', 'g1', undefined]
+      ])
+  })
+
+  test('says it is done, kept on this machine, and can be reopened', async () => {
+    await renderDone()
+    await expect
+      .element(page.getByText('Done — kept on this machine as it is.', { exact: true }))
+      .toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Reopen' })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Done', exact: true })).not.toBeInTheDocument()
+    await expect.element(page.getByRole('button', { name: 'Upload…', exact: true })).not.toBeInTheDocument()
+    expect(sent).toEqual([])
+  })
+
+  test('leaves the montages for Montages done, listed as kept on this machine', async () => {
+    const Stub = createRoutesStub([boardRoute(() => withDone(1_785_030_000))])
+    await render(createElement(Stub, { initialEntries: ['/'] }))
+    const menu = page.getByRole('navigation', { name: 'Folders' })
+
+    await expect.element(menu.getByRole('link', { name: /Luc Favre/ })).not.toBeInTheDocument()
+    await userEvent.click(menu.getByRole('link', { name: /Montages done/ }))
+
+    await expect.element(page.getByText('Kept on this machine', { exact: true })).toBeVisible()
+    await expect.element(page.getByRole('button', { name: 'Folder' })).toBeVisible()
   })
 })
 
@@ -671,7 +734,7 @@ describe('a film the editor has just rendered', () => {
     )
     const waiting = { ...board, montages: { g1: { ...board.montages.g1, film: null } } }
     await renderBoard(waiting, false)
-    await expect.poll(stepAt).toContain('Film')
+    await expect.poll(stepAt).toContain('Rendered')
 
     stream!.onmessage?.({
       data: JSON.stringify({

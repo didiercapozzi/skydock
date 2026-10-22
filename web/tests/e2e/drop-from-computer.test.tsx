@@ -45,6 +45,10 @@ const machineTakes = () =>
       return new Response(JSON.stringify({ ok: true }), {
         headers: { 'Content-Type': 'application/json' }
       })
+    if (said.includes('asks=1'))
+      return new Response(JSON.stringify({ ok: true, go: true, stopped: false }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
     asked.push(said)
     return new Response(JSON.stringify({ ok: true, outcome: 'added', filename: 'from-phone.mp4' }), {
       headers: { 'Content-Type': 'application/json' }
@@ -60,6 +64,10 @@ const machineTakesItsTime = () => {
     if (said.includes('begin=1')) began.push(String(init?.body))
     if (said.includes('begin=1') || said.includes('end=1'))
       return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' }
+      })
+    if (said.includes('asks=1'))
+      return new Response(JSON.stringify({ ok: true, go: true, stopped: false }), {
         headers: { 'Content-Type': 'application/json' }
       })
     asked.push(said)

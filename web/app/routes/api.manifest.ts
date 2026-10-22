@@ -24,6 +24,8 @@ import { makeMontageIntent } from './manifest/make-montage'
 import { resetFreshIntent } from './manifest/reset-fresh'
 import { mergeGroupsIntent } from './manifest/merge-groups'
 import { deleteJumpIntent } from './manifest/delete-jump'
+import { markDone } from './manifest/mark-done'
+import { openMontageFolder } from './manifest/open-folder'
 import { moveFilesIntent } from './manifest/move-files'
 import { copyBackIntent } from './manifest/copy-back'
 import { fromBinIntent } from './manifest/from-bin'
@@ -68,6 +70,8 @@ const intents: Record<ActionData['intent'], Intent> = {
   'redo-moments': redoMomentsIntent,
   'move-files': moveFilesIntent,
   'delete-jump': deleteJumpIntent,
+  'mark-done': markDone,
+  'open-folder': openMontageFolder,
   'remove-destination': removeDestinationIntent,
   'regroup-loose': regroupLoose,
   'trash-unsorted': trashUnsortedIntent,

@@ -861,6 +861,81 @@ describe('changes made on the board', () => {
     })
   })
 
+  describe('setting a montage as done', () => {
+    const luc = (over: Partial<ManifestGroup> & { id: string }) =>
+      group({
+        montageJump: true,
+        passenger: { firstname: 'Luc', lastname: 'Favre' },
+        processed: true,
+        files: [file({ id: `f-${over.id}` })],
+        ...over
+      })
+
+    it('keeps every jump of the montage as done, whatever else it has been through, and saves it', async () => {
+      await writeManifest([luc({ id: 'g1' }), luc({ id: 'g2' }), group({ id: 'g3', files: [] })])
+
+      const res = answer(await send({ intent: 'mark-done', groupId: 'g1', done: true }))
+
+      expect(
+        res.groups
+          .filter((g) => g.done !== undefined)
+          .map((g) => g.id)
+          .sort()
+      ).toEqual(['g1', 'g2'])
+      const kept = JSON.parse(fs.readFileSync(path.join(tmpDir, 'groups.json'), 'utf-8')) as {
+        groups: ManifestGroup[]
+      }
+      expect(kept.groups.find((g) => g.id === 'g1')?.done).toBeGreaterThan(0)
+    })
+
+    it('takes it back, and nothing is deleted or moved', async () => {
+      await writeManifest([luc({ id: 'g1', done: 5 })])
+
+      const res = answer(await send({ intent: 'mark-done', groupId: 'g1', done: false }))
+
+      expect(res.groups[0]?.done).toBeUndefined()
+      expect(res.groups[0]?.files).toHaveLength(1)
+    })
+
+    it('says to process it first when its copies are not made', async () => {
+      await writeManifest([luc({ id: 'g1', processed: false })])
+
+      const res = refusal(await send({ intent: 'mark-done', groupId: 'g1', done: true }))
+
+      expect(res.globalErrors?.[0]).toContain('Process it first')
+    })
+
+    it('refuses a montage that was freed from this machine, and a jump that is not a montage', async () => {
+      await writeManifest([
+        luc({ id: 'g1', freed: { at: 1, bytes: 1 } }),
+        group({ id: 'g2', files: [file({ id: 'x' })] })
+      ])
+
+      expect(
+        refusal(await send({ intent: 'mark-done', groupId: 'g1', done: true })).globalErrors?.[0]
+      ).toContain('freed from this machine')
+      expect(
+        refusal(await send({ intent: 'mark-done', groupId: 'g2', done: true })).globalErrors?.[0]
+      ).toContain('no longer on the board')
+    })
+
+    it('has no folder to open until the copies are made, nor for a montage freed from here', async () => {
+      await writeManifest([
+        luc({ id: 'g1' }),
+        luc({
+          id: 'g2',
+          passenger: { firstname: 'Ana', lastname: 'Test' },
+          freed: { at: 1, bytes: 1 }
+        })
+      ])
+
+      expect(
+        refusal(await send({ intent: 'open-folder', groupId: 'g1' })).globalErrors?.[0]
+      ).toContain('not there yet')
+      expect(refusal(await send({ intent: 'open-folder', groupId: 'g2' })).success).toBe(false)
+    })
+  })
+
   describe('deleting a jump', () => {
     it('removes the jump and leaves every file loose in Fresh files', async () => {
       await writeManifest([

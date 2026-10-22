@@ -2730,6 +2730,22 @@ describe('copying the picked items and pasting them at the playhead', () => {
   })
 })
 
+describe('the header of the editor', () => {
+  test('moves the window when it is dragged, but not from its buttons', async () => {
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) =>
+      Response.json(init?.method === 'POST' ? { ok: true } : answer)
+    )
+    await render(createElement(FilmEditor, { groupId: 'g1', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`)).toBeVisible()
+
+    const header = document.querySelector('main header') as HTMLElement
+    const region = (el: Element) => getComputedStyle(el).getPropertyValue('-webkit-app-region')
+
+    expect(region(header)).toBe('drag')
+    expect(region(header.querySelector('button')!)).toBe('no-drag')
+  })
+})
+
 describe('picking the previous and the next clip from the keyboard', () => {
   const landing = () => page.getByRole('textbox', { name: 'Marker 1' })
 

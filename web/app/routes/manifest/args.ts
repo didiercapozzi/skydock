@@ -75,9 +75,14 @@ const actionArgs = z.object({
     /* one file fetched back off the storage */
     'bring-back',
     /* files taken back out of the bin, into Fresh files */
-    'from-bin'
+    'from-bin',
+    /* a montage set as done, or taken back, without being uploaded */
+    'mark-done',
+    /* a montage's folder of copies shown in the machine's file manager */
+    'open-folder'
   ]),
   groupId: z.string().optional(),
+  done: z.boolean().optional(),
   jobId: z.string().optional(),
   paths: z.array(z.string()).optional(),
   groupIds: z.array(z.string()).optional(),

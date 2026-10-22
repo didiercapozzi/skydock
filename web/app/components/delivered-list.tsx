@@ -54,6 +54,7 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
               .reduce((n, item) => n + (item.size ?? 0), 0)
             const linked = jumps.some((g) => g.uploaded?.shareUrl ?? g.publish?.shareUrl)
             const first = jumps[0]
+            const kept = jumps.every((g) => !g.freed)
             return (
               <li
                 key={name}
@@ -78,7 +79,9 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                   {first ? dayShort(startOfFiles(first.files)) : ''}
                 </span>
                 <span className='text-lead'>{emailed ? dayShort(emailed) : '—'}</span>
-                <b className='text-lead tabular-nums'>{size ? formatSize(size) : '—'}</b>
+                <b className='text-lead tabular-nums'>
+                  {size ? formatSize(size) : kept ? t`Kept on this machine` : '—'}
+                </b>
                 <span className='flex items-center gap-3'>
                   <span
                     className={`inline-flex h-6 w-22 items-center justify-center rounded-full text-small font-bold ${
@@ -86,18 +89,27 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                     }`}>
                     {linked ? t`active` : t`no link`}
                   </span>
-                  <Mini
-                    pressed={shown.has(name)}
-                    title={t`Where its files are on the storage: each folder, what is in it and how big`}
-                    onClick={() =>
-                      setShown((now) => {
-                        const next = new Set(now)
-                        if (!next.delete(name)) next.add(name)
-                        return next
-                      })
-                    }>
-                    {t`Storage`}
-                  </Mini>
+                  {kept && first && (
+                    <Mini
+                      title={t`Show the folder of its copies, to use them on their own`}
+                      onClick={() => model.openFolderOf(first)}>
+                      {t`Folder`}
+                    </Mini>
+                  )}
+                  {(!kept || parcels.length > 0) && (
+                    <Mini
+                      pressed={shown.has(name)}
+                      title={t`Where its files are on the storage: each folder, what is in it and how big`}
+                      onClick={() =>
+                        setShown((now) => {
+                          const next = new Set(now)
+                          if (!next.delete(name)) next.add(name)
+                          return next
+                        })
+                      }>
+                      {t`Storage`}
+                    </Mini>
+                  )}
                   <Link
                     to={placeHref({ kind: 'pax', name })}
                     className='no-underline [&>button]:h-control [&>button]:px-4'>
@@ -107,7 +119,9 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
                 {shown.has(name) && (
                   <div className='col-span-full pt-1 pb-2'>
                     <p className='m-0 mb-1 text-body text-ink-3'>
-                      {t`On this machine: nothing — everything is on the storage.`}
+                      {kept
+                        ? t`On this machine: everything, kept as it is.`
+                        : t`On this machine: nothing — everything is on the storage.`}
                     </p>
                     <ParcelCards
                       parcels={parcels}
@@ -121,7 +135,7 @@ const DeliveredList = ({ groups, query = '' }: { groups: ManifestGroup[]; query?
         </ul>
       </div>
       <p className='m-0 mt-auto pt-6 text-body text-ink-3'>
-        {t`A montage comes here by itself once it is freed from this machine. Press Storage to see where its files are on the storage, or Open for its page.`}
+        {t`A montage comes here once it is set as done, or freed from this machine. Press Storage to see where its files are on the storage, Folder to open its copies, or Open for its page.`}
       </p>
     </div>
   )

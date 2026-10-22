@@ -117,7 +117,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     group.emailed ??
     board.storage?.montages.find((m) => m.folder === folderOnStorage(group))?.emailed ??
     null
-  const finished = (group: ManifestGroup) => isMontage(group) && Boolean(group.freed)
+  const finished = (group: ManifestGroup) =>
+    isMontage(group) && (Boolean(group.freed) || group.done !== undefined)
   const progressOf = (group: ManifestGroup) =>
     isMontage(group)
       ? montageSteps({
@@ -317,9 +318,7 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     followedFreed.current = justFreed
     const freed = groups.find((g) => g.id === justFreed.groupId)
     if (!freed || place.kind !== 'pax' || place.name !== passengerOf(freed)) return
-    const stillHere = groups.some(
-      (g) => isMontage(g) && passengerOf(g) === place.name && !finished(g)
-    )
+    const stillHere = groups.some((g) => isMontage(g) && passengerOf(g) === place.name && !g.freed)
     if (!stillHere) goTo(placeHref({ kind: 'delivered' }, { kind: looking.kind }))
   })
 
@@ -615,14 +614,18 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   const openEditor = (group: ManifestGroup) => goTo(editHref(group.id))
   const takeStep = (group: ManifestGroup, step: MontageStep) => {
     if (step === 'Prepared') send(group.id, { intent: 'process', groupId: group.id })
-    if (step === 'Project' || step === 'Film') openEditor(group)
+    if (step === 'Edited' || step === 'Rendered') openEditor(group)
     if (step === 'Uploaded') {
       const gate = facts.gateFor(group.files)
       if (gate.blocked) board.setProblem(gate.message ?? t`It cannot be uploaded yet.`)
       else askUpload(group)
     }
-    if (step === 'Sent') setDialog({ kind: 'email', groupId: group.id })
+    if (step === 'Emailed') setDialog({ kind: 'email', groupId: group.id })
   }
+  const markDone = (group: ManifestGroup, done: boolean) =>
+    send(`done:${group.id}`, { intent: 'mark-done', groupId: group.id, done })
+  const openFolderOf = (group: ManifestGroup) =>
+    send(`folder:${group.id}`, { intent: 'open-folder', groupId: group.id })
   const cancelProcess = (scope?: BusyScope) => {
     const jobId = scope ? board.processingOf(scope) : null
     send('cancel-process', { intent: 'cancel-process', ...(jobId ? { jobId } : {}) })
@@ -705,6 +708,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
     confirmSend,
     openEditor,
     takeStep,
+    markDone,
+    openFolderOf,
     trimToJump,
     cancelProcess,
     heldOf,

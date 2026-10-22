@@ -31,24 +31,17 @@ const at = (group: ManifestGroup, fact?: MontageFact, emailed = false) => {
 }
 
 describe('where a montage has got to', () => {
-  it('waits for a name before anything else', () => {
-    expect(at(montage({ passenger: { firstname: '', lastname: '' } }))).toEqual({
-      step: 'Named',
-      next: 'to name'
-    })
-  })
-
-  it('is to be prepared once named', () => {
+  it('is to be prepared first', () => {
     expect(at(montage())).toEqual({ step: 'Prepared', next: 'to process' })
   })
 
   it('is to be edited once prepared', () => {
-    expect(at(montage({ processed: true }), facts())).toEqual({ step: 'Project', next: 'to edit' })
+    expect(at(montage({ processed: true }), facts())).toEqual({ step: 'Edited', next: 'to edit' })
   })
 
   it('is to be rendered once there is an edit', () => {
     expect(at(montage({ processed: true }), facts({ edit: true }))).toEqual({
-      step: 'Film',
+      step: 'Rendered',
       next: 'to render'
     })
   })
@@ -63,7 +56,7 @@ describe('where a montage has got to', () => {
   it('is to be emailed once uploaded', () => {
     const group = montage({ processed: true, uploaded: UPLOADED })
     expect(at(group, facts({ edit: true, film: FILM }))).toEqual({
-      step: 'Sent',
+      step: 'Emailed',
       next: 'to email'
     })
   })
@@ -78,7 +71,35 @@ describe('where a montage has got to', () => {
 
   it('counts a freed montage as having been through every step up to the upload', () => {
     const group = montage({ processed: true, uploaded: UPLOADED, freed: { at: 1, bytes: 1 } })
-    expect(at(group)).toEqual({ step: 'Sent', next: 'to email' })
+    expect(at(group)).toEqual({ step: 'Emailed', next: 'to email' })
+  })
+})
+
+describe('a montage that is done', () => {
+  const kept = (over: Partial<ManifestGroup> = {}) => montage({ processed: true, done: 1, ...over })
+
+  it('has no step to take next, whichever it has been through', () => {
+    expect(at(kept())).toEqual({ step: 'done', next: null })
+    expect(at(kept(), facts({ edit: true, film: FILM }))).toEqual({ step: 'done', next: null })
+  })
+
+  it('keeps the steps it was really through, and says it was kept by hand', () => {
+    const progress = montageSteps({ group: kept(), facts: facts({ edit: true }), emailed: false })
+
+    expect(progress.kept).toBe(true)
+    expect(progress.steps.map((step) => step.done)).toEqual([true, true, false, false, false])
+  })
+
+  it('is behind nothing, so a passenger whose jumps are all done is not to be done', () => {
+    const done = montageSteps({ group: kept(), emailed: false })
+    const other = montageSteps({ group: kept({ id: 'g2' }), emailed: false })
+
+    expect(furthestBehind([done, other])?.next).toBeNull()
+  })
+
+  it('is not a montage kept by hand once it has been freed from this machine', () => {
+    const group = kept({ uploaded: UPLOADED, freed: { at: 1, bytes: 1 } })
+    expect(montageSteps({ group, emailed: false }).kept).toBe(false)
   })
 })
 
