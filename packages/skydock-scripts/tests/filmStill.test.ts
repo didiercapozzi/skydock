@@ -8,7 +8,7 @@ import { STILL_MAX, STILL_SECONDS } from '../src/filmEditShape'
 import type { EditSource, FilmEdit } from '../src/filmEditShape'
 import { filmArgs } from '../src/filmRender'
 import { getGroupProcessedDir } from '../src/process'
-import type { Manifest, ManifestGroup } from '../src/types'
+import type { ManifestGroup } from '../src/types'
 import { durationOf, rgbAt } from './ffmpegFixtures'
 import { createTmpDir } from './fixtures'
 
@@ -24,13 +24,28 @@ const group: ManifestGroup = {
   files: []
 }
 
-const manifest = { files: [], groups: [group] } as unknown as Manifest
-
 const montageDir = () => getGroupProcessedDir(dir, group).dir
 
+const joins = (file: string, name: string, folder: 'videos' | 'photos') => {
+  group.files.push({
+    path: file,
+    size: 1,
+    mtime: group.files.length,
+    filename: name,
+    id: name,
+    processed: {
+      path: path.join(montageDir(), folder, name),
+      size: 1,
+      at: 1,
+      source: { id: name, size: 1, mtime: group.files.length }
+    }
+  })
+}
+
 const photo = (name: string, color: string) => {
-  const file = path.join(montageDir(), 'photos', name)
+  const file = path.join(dir, 'original_files', name)
   fs.mkdirSync(path.dirname(file), { recursive: true })
+  joins(file, name, 'photos')
   execFileSync('ffmpeg', [
     '-y',
     '-loglevel',
@@ -47,8 +62,9 @@ const photo = (name: string, color: string) => {
 }
 
 const video = (name: string, color: string, seconds: number) => {
-  const file = path.join(montageDir(), 'videos', name)
+  const file = path.join(dir, 'original_files', name)
   fs.mkdirSync(path.dirname(file), { recursive: true })
+  joins(file, name, 'videos')
   execFileSync('ffmpeg', [
     '-y',
     '-loglevel',
@@ -73,6 +89,7 @@ const colourAt = (file: string, at: number) => {
 
 beforeEach(() => {
   dir = createTmpDir('skydock-still-')
+  group.files = []
 })
 
 afterEach(() => {
@@ -83,9 +100,11 @@ describe('the photos of a montage in its film', () => {
   it('are sources like the videos, as long as a still may be and with no sound', async () => {
     video('a.mp4', 'blue', 2)
     photo('p.jpg', 'red')
-    fs.writeFileSync(path.join(montageDir(), 'photos', 'raw.dng'), 'x')
+    const raw = path.join(dir, 'original_files', 'raw.dng')
+    fs.writeFileSync(raw, 'x')
+    joins(raw, 'raw.dng', 'photos')
 
-    const sources = await editSources(manifest, dir, group)
+    const sources = await editSources(dir, group)
 
     expect(sources.map((s) => [s.name, s.still ?? false])).toEqual([
       ['a.mp4', false],
@@ -102,7 +121,7 @@ describe('the photos of a montage in its film', () => {
     video('a.mp4', 'blue', 2)
     photo('p.jpg', 'red')
 
-    const first = firstEdit(group, await editSources(manifest, dir, group))
+    const first = firstEdit(group, await editSources(dir, group))
 
     expect(first.clips.map((c) => c.name)).toEqual(['a.mp4'])
   })
@@ -111,7 +130,7 @@ describe('the photos of a montage in its film', () => {
     video('a.mp4', 'blue', 3)
     photo('p.jpg', 'red')
     const sources = new Map<string, EditSource>(
-      (await editSources(manifest, dir, group)).map((one) => [one.name, one])
+      (await editSources(dir, group)).map((one) => [one.name, one])
     )
     const edit: FilmEdit = {
       version: 1,

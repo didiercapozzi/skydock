@@ -110,13 +110,6 @@ describe('processing a montage again', () => {
     expect(second).not.toEqual(first)
   })
 
-  it('does the same for the cut proxies, which are named after the copies', async () => {
-    await prepare([clip('GX01.MP4', AT)])
-    await prepare([clip('GX01.MP4', AT + 60)])
-
-    expect(inside(path.join(outputDir, 'proxies', 'cut', 'g1'))).toHaveLength(1)
-  })
-
   it('keeps nothing aside — no bin, no copy of the copy — but the edit', async () => {
     await prepare([clip('GX01.MP4', AT), clip('GX02.MP4', AT + 5)])
     addEdit()

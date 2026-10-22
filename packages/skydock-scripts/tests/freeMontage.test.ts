@@ -41,8 +41,9 @@ const setup = async ({ projectInBackup = false } = {}) => {
     fs.writeFileSync(file, Buffer.alloc(bytes, fill))
     return file
   }
-  const entry = (id: string, src: string, out: string): ManifestFile => ({
+  const entry = (id: string, src: string, out: string, rotation?: 90): ManifestFile => ({
     id,
+    ...(rotation ? { rotation } : {}),
     path: src,
     filename: path.basename(src),
     size: fs.statSync(src).size,
@@ -51,12 +52,12 @@ const setup = async ({ projectInBackup = false } = {}) => {
       path: out,
       size: fs.statSync(out).size,
       at: 1,
-      source: { id, size: fs.statSync(src).size, mtime: AT }
+      source: { id, size: fs.statSync(src).size, mtime: AT, ...(rotation ? { rotation } : {}) }
     }
   })
   const files = [
     entry('v1', source('GX01.MP4', 400, 1), copy('videos', 'luc_1.mp4', 300, 1)),
-    entry('p1', source('G001.JPG', 100, 2), copy('photos', 'luc_2.jpg', 90, 2))
+    entry('p1', source('G001.JPG', 100, 2), copy('photos', 'luc_2.jpg', 90, 2), 90)
   ]
   const film = path.join(folder, 'luc.mp4')
   fs.writeFileSync(film, Buffer.alloc(200, 9))

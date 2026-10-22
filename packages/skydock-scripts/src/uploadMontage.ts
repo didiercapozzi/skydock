@@ -1,4 +1,4 @@
-import { rename } from 'node:fs/promises'
+import { mkdir, rename } from 'node:fs/promises'
 import * as path from 'node:path'
 import type { ArchiveProgress } from './archive'
 import type { CheckProgress, PlanProgress, UploadProgress, UploadVerdict } from './publish'
@@ -7,8 +7,10 @@ import { projectFolderOf, sendItems } from './sending'
 import type { SendItem } from './sending'
 import { filmNameOf, isNamedMontage, montageArtifacts } from './montageArtifacts'
 import type { Manifest, ManifestGroup, SendPart, SendPlan } from './types'
-import { pathExists } from './lib/fs'
-import { isVideoFile, sizeOf } from './utils'
+import { copiesOwed, outputKeyOf } from './fileStatus'
+import { loadManifestAsync, statProcessedOutputs } from './manifest'
+import { processJumps } from './process'
+import { getManifestPath, isVideoFile, sizeOf } from './utils'
 import { passengerName } from './workspace'
 import { sendPlanned } from './uploadItems'
 
@@ -50,8 +52,8 @@ const verdictIn = (files: UploadVerdict[], localPath: string, remoteDir: string)
 
 const uploadMontage = async ({
   outputDir,
-  manifest,
-  group,
+  manifest: given,
+  group: asked,
   session,
   plan,
   onArchive,
@@ -69,14 +71,26 @@ const uploadMontage = async ({
   onCheck?: (progress: CheckProgress) => void
   onPlan?: (plan: PlanProgress) => void
 }) => {
-  if (!isNamedMontage(group))
+  if (!isNamedMontage(asked))
     throw new Error('Only a montage is uploaded this way — give it a name first.')
-  if (!group.processed) throw new Error('Process this montage before uploading it.')
-  if (group.freed)
+  if (asked.freed)
     throw new Error('This montage lives only on the storage now — nothing here to upload.')
+  const manifestPath = getManifestPath(outputDir)
+  const outputs = await statProcessedOutputs(given)
+  const owed = copiesOwed(asked.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
+  if (owed.length > 0)
+    await processJumps({
+      manifestPath,
+      outputDir,
+      groupIds: [asked.id],
+      fileIds: owed.map(outputKeyOf)
+    })
+  /* the copies just made are in the record, not in what this was asked with */
+  const saved = owed.length > 0 ? await loadManifestAsync(manifestPath) : null
+  const manifest = saved ?? given
+  const group = saved?.groups.find((g) => g.id === asked.id) ?? asked
   const artifacts = await montageArtifacts(outputDir, group)
-  if (!(await pathExists(artifacts.dir)))
-    throw new Error('Processed files not found. Process it again.')
+  await mkdir(artifacts.dir, { recursive: true })
 
   const videos = group.files.filter((f) => isVideoFile(f.path))
   const film = await resolveFilm(artifacts, videos.length > 0)

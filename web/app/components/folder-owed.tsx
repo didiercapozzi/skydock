@@ -78,12 +78,11 @@ const FolderOwed = ({
   const by = (test: (g: ManifestGroup) => boolean) => live.filter(test).length
   const unnamed = by((g) => !hasCompletePassenger(g.passenger))
   const named = (g: ManifestGroup) => hasCompletePassenger(g.passenger)
-  const toProcess = by((g) => named(g) && !g.processed && !g.uploaded)
-  const toEdit = by((g) => Boolean(g.processed) && !facts[g.id]?.edit && !g.uploaded)
+  const toEdit = by((g) => named(g) && !facts[g.id]?.edit && !g.uploaded)
   const toRender = by((g) => Boolean(facts[g.id]?.edit) && !facts[g.id]?.film && !g.uploaded)
   const toUpload = by((g) => Boolean(facts[g.id]?.film) && !g.uploaded)
   const uploaded = groups.filter((g) => g.uploaded).length
-  if (unnamed + toProcess + toEdit + toRender + toUpload + uploaded === 0) return null
+  if (unnamed + toEdit + toRender + toUpload + uploaded === 0) return null
   return (
     <div className='flex flex-wrap items-center gap-x-3 gap-y-1.5 text-body'>
       {unnamed > 0 && (
@@ -93,7 +92,6 @@ const FolderOwed = ({
           {t`${unnamed} to name`}
         </Owed>
       )}
-      {toProcess > 0 && <Owed tone='todo'>{t`${toProcess} to process`}</Owed>}
       {toEdit > 0 && <Owed tone='todo'>{t`${toEdit} to edit`}</Owed>}
       {toRender > 0 && <Owed tone='todo'>{t`${toRender} to render`}</Owed>}
       {toUpload > 0 && <Owed tone='todo'>{t`${toUpload} to upload`}</Owed>}

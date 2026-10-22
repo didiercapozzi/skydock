@@ -5,7 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { z } from 'zod'
 import { harness } from './harness'
 import { filesUnder, filmFile, montageFolder, tool } from './media'
-import { makeAndPrepare } from './i1-helpers'
+import { makeMontage } from './i1-helpers'
 import { dialogNamed } from './steps'
 
 const j = harness({ name: 'i1-film', state: 'sorted', viewport: { width: 1440, height: 900 } })
@@ -58,8 +58,9 @@ const secondsOf = (file: string) =>
     ]).toString()
   )
 
+/* the end of the last clip: the end of the first is under the cross that makes a crossfade of the seam */
 const pull = async (selector: string, by: number) => {
-  const box = await j.page.locator(selector).first().boundingBox()
+  const box = await j.page.locator(selector).last().boundingBox()
   if (!box) throw new Error(`${selector} is not on screen`)
   const y = box.y + box.height / 2
   await j.page.mouse.move(box.x + box.width / 2, y)
@@ -69,8 +70,8 @@ const pull = async (selector: string, by: number) => {
 }
 
 describe('the film editor', () => {
-  test('opens on a prepared montage with its clips laid end to end, and writes the edit beside them only at the first change', async () => {
-    await makeAndPrepare(j)
+  test('opens on a montage with nothing processed, its clips laid end to end, and writes the edit beside them only at the first change', async () => {
+    await makeMontage(j)
     await j.page.getByRole('button', { name: 'Edit the film' }).first().click()
     await editor().waitFor()
     expect(j.page.url()).toContain('/edit/')
@@ -78,26 +79,29 @@ describe('the film editor', () => {
     await j.page.waitForTimeout(1_500)
     expect(filesUnder(montageFolder(j.world))).not.toContain(EDIT)
 
-    const before = secondsOf(path.join(montageFolder(j.world), 'videos', FIRST))
+    const original = filesUnder(path.join(j.world.output, 'original_files')).find((file) =>
+      file.includes('DJI_20260906090300_')
+    )
+    const before = secondsOf(path.join(j.world.output, 'original_files', original!))
     await pull('[aria-label="Trim the end"]', -80)
     await expect.poll(() => filesUnder(montageFolder(j.world)), { timeout: 10_000 }).toContain(EDIT)
     expect(savedEdit().texts.map((text) => text.text)).toEqual(['Luc Favre'])
     await expect
-      .poll(() => lengthOf(savedEdit().clips[0]!), { timeout: 10_000 })
+      .poll(() => lengthOf(savedEdit().clips[1]!), { timeout: 10_000 })
       .toBeLessThan(before - 0.5)
   })
 
   test('trims a clip by its edge, and the clips after it close the gap', async () => {
-    const before = lengthOf(savedEdit().clips[0]!)
+    const before = lengthOf(savedEdit().clips[1]!)
     await pull('[aria-label="Trim the end"]', -80)
     await expect
-      .poll(() => lengthOf(savedEdit().clips[0]!), { timeout: 10_000 })
+      .poll(() => lengthOf(savedEdit().clips[1]!), { timeout: 10_000 })
       .toBeLessThan(before - 0.5)
     expect(savedEdit().clips.map((clip) => clip.name)).toEqual([FIRST, SECOND])
   })
 
   test('puts a clip in again with Add, at the end of the film', async () => {
-    await editor().getByRole('button', { name: 'Add' }).first().click()
+    await editor().getByRole('button', { name: 'Add', exact: true }).first().click()
     await expect
       .poll(() => savedEdit().clips.map((clip) => clip.name), { timeout: 10_000 })
       .toEqual([FIRST, SECOND, FIRST])
@@ -123,7 +127,7 @@ describe('the film editor', () => {
   test('fades a clip in over the one before it with one click, which shortens the film, and a second click takes it off', async () => {
     const before = await endOnClock()
     await editor().getByTitle(`${SECOND} · double-click to choose the part`).click()
-    const fade = editor().getByRole('button', { name: 'Fade in', exact: true })
+    const fade = editor().getByRole('button', { name: 'Crossfade', exact: true })
     await fade.click()
     await expect.poll(() => savedEdit().clips[1]!.fade, { timeout: 10_000 }).toBeGreaterThan(0)
     await expect.poll(() => fade.getAttribute('aria-pressed')).toBe('true')
@@ -170,7 +174,7 @@ describe('the film editor', () => {
     await (await chooser).setFiles(song)
     await editor().getByText('Blue Sky.mp3').first().waitFor()
     expect(fs.existsSync(path.join(j.world.output, 'music', 'Blue Sky.mp3'))).toBe(true)
-    await editor().getByRole('button', { name: 'Add' }).first().click()
+    await editor().getByRole('button', { name: 'Add', exact: true }).first().click()
     await expect
       .poll(() => savedEdit().music.map((piece) => piece.name), { timeout: 10_000 })
       .toEqual(['Blue Sky.mp3'])

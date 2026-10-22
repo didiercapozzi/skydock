@@ -35,12 +35,12 @@ const TakeBackDialog = ({
   const processed =
     copies > 0
       ? plural(copies, { one: 'the # processed copy', other: 'the # processed copies' })
-      : t`the processed folder`
+      : t`its folder`
 
   return (
     <Modal
       label={reset ? t`Reset montage` : t`Delete montage`}
-      title={reset ? t`Reset ${who} to before processing` : t`Delete ${who}’s montage`}
+      title={reset ? t`Reset ${who} to just named` : t`Delete ${who}’s montage`}
       onClose={onClose}
       footer={
         <>
@@ -60,7 +60,7 @@ const TakeBackDialog = ({
         {uploaded && <Line mark='✕'>{t`the archives, and the record of what was uploaded`}</Line>}
       </Section>
 
-      <Section title={reset ? t`Kept, ready to process again` : t`Back to Fresh files, loose`}>
+      <Section title={reset ? t`Kept, ready to be edited again` : t`Back to Fresh files, loose`}>
         {reset ? (
           <>
             <Line mark='✓'>{t`the name, ${who}`}</Line>

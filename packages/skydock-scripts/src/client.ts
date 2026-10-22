@@ -3,7 +3,14 @@ export { busyAmong } from './busyScope'
 export type { Busy, BusyScope, Work } from './busyScope'
 export { groupableCount, offGap, startOfFiles } from './clustering'
 export { MOMENTS, nameOfMoment } from './moments'
-export { UPLOADED_LOCKED, fileChanged, fileStatus, outputKeyOf, uploadGate } from './fileStatus'
+export {
+  UPLOADED_LOCKED,
+  copiesOwed,
+  fileChanged,
+  fileStatus,
+  outputKeyOf,
+  uploadGate
+} from './fileStatus'
 export { isFiled, isMontage } from './filed'
 export {
   containCrop,
@@ -91,6 +98,7 @@ export { idsOf } from './lib/words'
 export { liveEventSchema, mergeRow } from './liveShape'
 export { folderOfUpload, lostOf } from './montageEntry'
 export { editNameOf, filmNameOf, FREED_LOCKED } from './montageNames'
+export { changedOnBoard, handedOver } from './boardChange'
 export { furthestBehind, montageLockOf, montageSteps } from './montageSteps'
 export {
   DEFAULT_TEMPLATES,

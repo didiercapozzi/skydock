@@ -15,8 +15,6 @@ const markDone: Intent = async ({ data, manifest, manifestPath, frozen, refuse, 
   const now = Math.floor(Date.now() / 1000)
   if (data.done === false) for (const jump of jumps) delete jump.done
   else {
-    if (jumps.some((g) => !g.processed))
-      return refuse('Process it first — there is nothing to keep until its copies are made.')
     for (const jump of jumps) jump.done = jump.done ?? now
   }
   await saveManifest(manifestPath, manifest)

@@ -9,7 +9,16 @@ const EVERY_MS = 2000
 
 const SETTLED_AFTER = 2
 
-type Seen = { signature: string; unchanged: number; told: string | null; toldFilm: string | null }
+/* `told` is what the board was last told of a montage while it stayed so; a change makes it none, since the
+   board may have heard of the change another way and be showing something else by now. `announced` is
+   whether it was ever told, which is what makes a film rendered again news and a film found at the start not. */
+type Seen = {
+  signature: string
+  unchanged: number
+  told: string | null
+  toldFilm: string | null
+  announced: boolean
+}
 
 type Watch = {
   watchers: number
@@ -61,8 +70,9 @@ const lookAtMontages = async (outputDir: string) => {
         : {
             signature,
             unchanged: 0,
-            told: before?.told ?? null,
-            toldFilm: before?.toldFilm ?? null
+            told: null,
+            toldFilm: before?.toldFilm ?? null,
+            announced: before?.announced ?? false
           }
     seen.set(group.id, state)
     if (state.unchanged < SETTLED_AFTER || state.told === signature) continue
@@ -74,9 +84,9 @@ const lookAtMontages = async (outputDir: string) => {
       groupId: group.id,
       who: passengerOf(group),
       fact,
-      rendered: state.told !== null && fact.film !== null && state.toldFilm !== film
+      rendered: state.announced && fact.film !== null && state.toldFilm !== film
     })
-    seen.set(group.id, { ...state, told: signature, toldFilm: film })
+    seen.set(group.id, { ...state, told: signature, toldFilm: film, announced: true })
   }
 }
 
@@ -102,4 +112,10 @@ const watchMontages = (outputDir: string) => {
   }
 }
 
-export { lookAtMontages, watchMontages }
+/* What the board was told of a montage is no longer what it holds once the montage was taken back: it is
+   looked at again from nothing, and told whatever it is found to be. */
+const forgetWatched = (groupIds: string[]) => {
+  for (const id of groupIds) watch().seen.delete(id)
+}
+
+export { forgetWatched, lookAtMontages, watchMontages }

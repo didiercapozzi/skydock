@@ -613,13 +613,8 @@ const useBoardModel = (loaded: Loaded & { outputDir: string }) => {
   }
   const openEditor = (group: ManifestGroup) => goTo(editHref(group.id))
   const takeStep = (group: ManifestGroup, step: MontageStep) => {
-    if (step === 'Prepared') send(group.id, { intent: 'process', groupId: group.id })
     if (step === 'Edited' || step === 'Rendered') openEditor(group)
-    if (step === 'Uploaded') {
-      const gate = facts.gateFor(group.files)
-      if (gate.blocked) board.setProblem(gate.message ?? t`It cannot be uploaded yet.`)
-      else askUpload(group)
-    }
+    if (step === 'Uploaded') askUpload(group)
     if (step === 'Emailed') setDialog({ kind: 'email', groupId: group.id })
   }
   const markDone = (group: ManifestGroup, done: boolean) =>

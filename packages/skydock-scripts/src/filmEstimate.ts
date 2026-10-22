@@ -6,7 +6,7 @@ import { clipLength, CRF_RANGE, estimateKey, sampleWindows, sourcesByName } from
 import type { EditSource, FilmEdit } from './filmEditShape'
 import { filmArgs, filmShape, isRendering } from './filmRender'
 import { run } from './tools'
-import type { Manifest, ManifestGroup } from './types'
+import type { ManifestGroup } from './types'
 import { ffmpegPath } from './utils'
 
 const measureFilm = async ({
@@ -76,12 +76,10 @@ declare global {
 const KEPT = 20
 
 const estimateFor = async ({
-  manifest,
   outputDir,
   group,
   edit
 }: {
-  manifest: Manifest
   outputDir: string
   group: ManifestGroup
   edit: FilmEdit
@@ -92,7 +90,7 @@ const estimateFor = async ({
   const known = kept.get(key)
   if (known) return known
   const pictures = await imageSources(outputDir)
-  const sources = sourcesByName(pictures, await editSources(manifest, outputDir, group))
+  const sources = sourcesByName(pictures, await editSources(outputDir, group, { waiting: true }))
   const first = edit.clips[0] ? sources.get(edit.clips[0].name) : undefined
   const measuring = measureFilm({ edit, sources, ...(await filmShape(first)) }).catch(() => {
     kept.delete(key)

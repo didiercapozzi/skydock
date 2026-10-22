@@ -155,8 +155,8 @@ const originalsOf = (world: { output: string }) => filesUnder(originalsDir(world
 const montageFolder = (world: { output: string }, who = WHO) =>
   path.join(world.output, 'processed', 'Montages', who)
 
-const editFile = (world: { output: string }, who = WHO) =>
-  path.join(montageFolder(world, who), EDIT)
+const editFile = (world: { output: string }, who = WHO, day = '20260906') =>
+  path.join(montageFolder(world, who), `${who.toLowerCase().replace(/\s+/g, '_')}_${day}.edit.json`)
 const filmFile = (world: { output: string }, who = WHO, name = FILM) =>
   path.join(montageFolder(world, who), name)
 

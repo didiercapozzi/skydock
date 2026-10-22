@@ -71,36 +71,6 @@ describe('uploading a montage is refused', () => {
     await j.quiet()
   })
 
-  test('when a file is still to process, and says how many', async () => {
-    fs.rmSync(path.join(montageFolder(j.world), 'videos', 'luc_favre_20260906_090300.mp4'))
-    await j.restart()
-    await j.open()
-    await j.page.getByRole('link', { name: /Luc Favre/ }).click()
-    await j.page.getByRole('button', { name: 'Upload…' }).first().waitFor()
-    await expect
-      .poll(() => j.page.getByRole('button', { name: 'Upload…' }).first().isDisabled(), {
-        timeout: 20_000
-      })
-      .toBe(true)
-    await expect
-      .poll(() => j.page.getByRole('button', { name: 'Upload…' }).first().getAttribute('title'))
-      .toMatch(/1 file needs processing/)
-    await j.quiet()
-  })
-
-  test('is possible again once the file that was missing is processed again', async () => {
-    await j.page.getByRole('button', { name: 'Process again' }).click()
-    await expect
-      .poll(() => j.page.getByRole('button', { name: 'Upload…' }).first().isDisabled(), {
-        timeout: 60_000
-      })
-      .toBe(false)
-    expect(
-      fs.existsSync(path.join(montageFolder(j.world), 'videos', 'luc_favre_20260906_090300.mp4'))
-    ).toBe(true)
-    await j.quiet()
-  })
-
   test('when there is no film yet, naming the film that was looked for', async () => {
     await arrangeAsUsual(j.page)
     const film = filmFile(j.world)

@@ -1,4 +1,4 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile } from 'node:fs/promises'
 import * as path from 'node:path'
 import {
   filmEditSchema,
@@ -14,9 +14,11 @@ import { pathExists, writeJsonAtomic } from './lib/fs'
 import { mediaHasSound, mediaSeconds } from './lib/media'
 import { MOMENTS } from './moments'
 import { editNameOf } from './montageNames'
-import { getGroupProcessedDir } from './process'
-import { getCutProxyDir, videoShape } from './proxy'
-import type { Manifest, ManifestGroup } from './types'
+import { isWholeFrame, pictureFilter, turnedSize } from './frameCrop'
+import { montageClips } from './montageClips'
+import { getGroupProcessedDir, shownShape } from './process'
+import { videoShape } from './proxy'
+import type { ManifestFile, ManifestGroup } from './types'
 import { mapWithLimit } from './utils'
 import { setEditAside } from './projectHistory'
 import { passengerOf } from './workspace'
@@ -49,56 +51,95 @@ const visibleFiles = async (dir: string, endings: readonly string[]) =>
 
 const SOURCES_PARALLEL = 4
 
-const editSources = async (
-  manifest: Manifest,
-  outputDir: string,
-  group: ManifestGroup
-): Promise<EditSource[]> => {
-  const { dir } = getGroupProcessedDir(outputDir, group)
-  const videos = path.join(dir, 'videos')
-  const names = (await readdir(videos, { withFileTypes: true }).catch(() => []))
-    .filter((entry) => entry.isFile() && !entry.name.startsWith('.'))
-    .map((entry) => entry.name)
-    .sort()
-  const copies = new Map(
-    group.files.flatMap((f) => (f.processed ? [[path.basename(f.processed.path), f]] : []))
-  )
-  const found = await mapWithLimit(names, SOURCES_PARALLEL, async (name) => {
-    const full = path.join(videos, name)
-    const proxy = path.join(getCutProxyDir(outputDir, group.id), `${path.parse(name).name}.mp4`)
-    const [length, sound] = await Promise.all([mediaSeconds(full), mediaHasSound(full)])
+/* The clips of a montage as the film is edited, from the clips themselves: what the board did to a clip
+   — its trim, its frame, its turn — is on the clip's small copy for playing and done again by the render.
+   A clip changed on the board whose small copy is not made yet cannot be played as it is in the montage:
+   it waits, and is listed apart. */
+const montageSources = async (outputDir: string, group: ManifestGroup) => {
+  const clips = montageClips(group, outputDir)
+  const found = await mapWithLimit(clips, SOURCES_PARALLEL, async (clip) => {
+    const { file } = clip
+    if (!(await pathExists(file.path))) return null
+    const made = clip.cut ? await pathExists(clip.cut) : true
+    if (!clip.video) {
+      if (!hasEnding(file.filename, STILL_EXTENSIONS)) return null
+      const picture = clip.cut ?? file.path
+      const source: EditSource = {
+        name: clip.name,
+        path: picture,
+        play: picture,
+        seconds: STILL_MAX,
+        sound: false,
+        marks: [],
+        still: true,
+        key: clip.key,
+        small: true
+      }
+      return { source, made, filename: file.filename }
+    }
+    const length = await mediaSeconds(file.path)
     if (length === null || length <= 0) return null
-    const measured = copies.get(name)
-    const source = measured && manifest.files.find((f) => f.id === measured.id)
-    const moments = measured?.moments ?? source?.moments ?? null
-    const cropStart = measured?.cropStart ?? 0
+    const from = file.cropStart ?? 0
+    const seconds = (file.cropEnd ?? length) - from
+    if (seconds <= 0) return null
+    const moments = file.moments ?? null
     const marks = moments
       ? MOMENTS.flatMap(({ which }) => {
           const second = moments[which]
-          const at = second === undefined ? -1 : second - cropStart
-          return at >= 0 && at <= length ? [{ which, at }] : []
+          const at = second === undefined ? -1 : second - from
+          return at >= 0 && at <= seconds ? [{ which, at }] : []
         })
       : []
-    return {
-      name,
-      path: full,
-      play: (await pathExists(proxy)) ? proxy : full,
-      seconds: length,
-      sound,
-      marks
+    const proxied = Boolean(file.proxy) && (await pathExists(file.proxy!))
+    const source: EditSource = {
+      name: clip.name,
+      path: file.path,
+      play: clip.cut ?? (proxied ? file.proxy! : file.path),
+      seconds,
+      sound: await mediaHasSound(file.path),
+      marks,
+      key: clip.key,
+      small: clip.cut ? made : proxied,
+      ...(clip.changed ? { origin: await originOf(file, from) } : {})
     }
+    return { source, made, filename: file.filename }
   })
-  const photos = path.join(dir, 'photos')
-  const stills = (await visibleFiles(photos, STILL_EXTENSIONS)).map((name) => ({
-    name,
-    path: path.join(photos, name),
-    play: path.join(photos, name),
-    seconds: STILL_MAX,
-    sound: false,
-    marks: [],
-    still: true
-  }))
-  return [...found.filter((one) => one !== null), ...stills]
+  const there = found.filter((one) => one !== null)
+  return {
+    sources: there.filter((one) => one.made).map((one) => one.source),
+    waiting: there
+      .filter((one) => !one.made)
+      .map((one) => ({ source: one.source, filename: one.filename }))
+  }
+}
+
+const originOf = async (file: ManifestFile, offset: number) => {
+  const shape = await shownShape(file.path)
+  const filter = shape
+    ? pictureFilter({ frame: file.frame, rotation: file.rotation, ...shape })
+    : null
+  const turned = shape ? turnedSize(shape.width, shape.height, file.rotation) : null
+  const cut = file.frame && !isWholeFrame({ ...file.frame, fill: undefined })
+  const width = turned ? turned.width * (cut && file.frame ? file.frame.width : 1) : 0
+  const height = turned ? turned.height * (cut && file.frame ? file.frame.height : 1) : 0
+  return {
+    offset,
+    filter,
+    upright: file.frame?.fill === 'blur' ? false : height > width,
+    ...(filter?.includes(';') ? { separate: true } : {})
+  }
+}
+
+/* the clips the film can use now; the render also takes those that are still waiting for their small copy */
+const editSources = async (
+  outputDir: string,
+  group: ManifestGroup,
+  options?: { waiting?: boolean }
+): Promise<EditSource[]> => {
+  const { sources, waiting } = await montageSources(outputDir, group)
+  return [...sources, ...(options?.waiting ? waiting.map((one) => one.source) : [])].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  )
 }
 
 const imageSources = async (outputDir: string) => {
@@ -178,7 +219,11 @@ const readOrSetAside = async (outputDir: string, editPath: string) => {
   }
 }
 
-const saveEdit = (editPath: string, edit: FilmEdit) => writeJsonAtomic(editPath, edit)
+/* the montage's folder is made with its first edit: nothing else is put in it before */
+const saveEdit = async (editPath: string, edit: FilmEdit) => {
+  await mkdir(path.dirname(editPath), { recursive: true })
+  await writeJsonAtomic(editPath, edit)
+}
 
 export {
   editPathOf,
@@ -189,6 +234,7 @@ export {
   imageSources,
   isImageFile,
   isMusicFile,
+  montageSources,
   musicSources,
   readOrSetAside,
   saveEdit

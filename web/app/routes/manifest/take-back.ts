@@ -4,12 +4,13 @@ import {
   resetMontage,
   startEditAgain
 } from '../../../../packages/skydock-scripts/src/resetMontage'
+import { forgetWatched } from '../../../../packages/skydock-scripts/src/montageWatch'
 import type { Manifest } from '@skydock/scripts'
 import type { ActionData } from './args'
 import type { Intent } from './change'
 import { boardAnswer } from '../../helpers/manifest'
 
-/* Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage
+/* Back to just named, keeping every decision — or undone altogether (RULES, Taking a montage
    back). Not while any jump of its folder is being processed, uploaded or rendered: taking it away
    underneath would leave half of it. */
 const takeBack =
@@ -19,13 +20,13 @@ const takeBack =
       outputDir: string,
       groupId: string,
       data: ActionData
-    ) => Promise<unknown>
+    ) => Promise<{ groupIds: string[] }>
   ): Intent =>
   async ({ data, manifest, manifestPath, outputDir, refuse, refuseBusy }) => {
     const busy = refuseBusy({ groupIds: jumpsOfMontage(manifest, outputDir, data.groupId ?? '') })
     if (busy) return busy
     try {
-      await take(manifest, outputDir, data.groupId ?? '', data)
+      forgetWatched((await take(manifest, outputDir, data.groupId ?? '', data)).groupIds)
     } catch (e) {
       return refuse(messageOf(e))
     }

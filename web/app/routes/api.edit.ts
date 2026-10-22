@@ -8,6 +8,7 @@ import {
   isNamedMontage,
   jumpsOfMontage,
   messageOf,
+  outputKeyOf,
   passengerOf,
   readRecordAsync
 } from '@skydock/scripts'
@@ -17,8 +18,8 @@ import { filmEditSchema } from '../../../packages/skydock-scripts/src/filmEditSh
 import {
   editPathOf,
   imageSources,
-  editSources,
   firstEdit,
+  montageSources,
   musicSources,
   readOrSetAside,
   saveEdit
@@ -29,6 +30,7 @@ import {
   isRendering,
   renderFilm
 } from '../../../packages/skydock-scripts/src/filmRender'
+import { cutProxiesOf } from '../../../packages/skydock-scripts/src/montageClips'
 import { estimateFor } from '../../../packages/skydock-scripts/src/filmEstimate'
 import { filmNameOf } from '../../../packages/skydock-scripts/src/montageNames'
 import { pathExists } from '../../../packages/skydock-scripts/src/lib/fs'
@@ -53,8 +55,6 @@ const montageOf = async (groupId: string) => {
     return { ok: false, refused: 'This montage is not on the board any more.' } as const
   if (!isNamedMontage(group))
     return { ok: false, refused: 'Give the montage a name first.' } as const
-  if (!group.processed)
-    return { ok: false, refused: 'Process the montage before editing its film.' } as const
   if (group.freed)
     return { ok: false, refused: 'This montage was freed from this machine.' } as const
   return { ok: true, manifest, group, outputDir } as const
@@ -66,14 +66,16 @@ const loader = async ({ request }: Route.LoaderArgs) => {
   if (!found.ok) return Response.json({ ok: false, reason: found.refused })
   const { manifest, group, outputDir } = found
   const { dir, baseName } = getGroupProcessedDir(outputDir, group)
-  const [sources, { edit: saved, setAside }, music, images, formats, hasFilm] = await Promise.all([
-    editSources(manifest, outputDir, group),
-    readOrSetAside(outputDir, editPathOf(outputDir, group)),
-    musicSources(outputDir),
-    imageSources(outputDir),
-    availableFormats(),
-    pathExists(path.join(dir, filmNameOf(baseName)))
-  ])
+  await cutProxiesOf(manifest, outputDir, group.id)
+  const [{ sources, waiting }, { edit: saved, setAside }, music, images, formats, hasFilm] =
+    await Promise.all([
+      montageSources(outputDir, group),
+      readOrSetAside(outputDir, editPathOf(outputDir, group)),
+      musicSources(outputDir),
+      imageSources(outputDir),
+      availableFormats(),
+      pathExists(path.join(dir, filmNameOf(baseName)))
+    ])
   return Response.json({
     ok: true,
     title: passengerOf(group).trim() || group.label,
@@ -81,6 +83,8 @@ const loader = async ({ request }: Route.LoaderArgs) => {
     saved: saved !== null,
     setAside,
     sources,
+    waiting: waiting.map((one) => ({ key: one.source.key ?? '', name: one.filename })),
+    members: group.files.map(outputKeyOf),
     music,
     images,
     rendering: isRendering(group.id),
@@ -101,7 +105,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
     const { manifest, group, outputDir } = found
     try {
       if (data.intent === 'estimate')
-        return { estimate: await estimateFor({ manifest, outputDir, group, edit: data.edit }) }
+        return { estimate: await estimateFor({ outputDir, group, edit: data.edit }) }
       await readOrSetAside(outputDir, editPathOf(outputDir, group))
       await saveEdit(editPathOf(outputDir, group), data.edit)
       if (data.intent === 'save') return { saved: true, rendering: isRendering(group.id) }
@@ -117,7 +121,7 @@ const action = createValidatedFormAction<Route.ActionArgs>()({
       const unmakable = await formatRefusal(data.edit)
       if (unmakable) return refuse(unmakable)
       if (isRendering(group.id)) return refuse('This film is already being rendered.')
-      void renderFilm({ manifest, outputDir, group, edit: data.edit }).catch((e) =>
+      void renderFilm({ outputDir, group, edit: data.edit }).catch((e) =>
         console.warn(`[Render] ${passengerOf(group)}: ${messageOf(e)}`)
       )
       return { saved: true, rendering: true }

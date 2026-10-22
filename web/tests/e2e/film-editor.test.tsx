@@ -3807,3 +3807,198 @@ describe('pieces of music that overlap', () => {
     await expect.element(page.getByRole('button', { name: /^Crossfade of 4.0/ })).toBeVisible()
   })
 })
+
+describe('a clip forgotten before the edit began', () => {
+  const NEW = 'luc_favre_20260906_091000.mp4'
+  const candidates = {
+    ok: true,
+    members: ['k1', 'k2'],
+    clips: [
+      {
+        id: 'near',
+        filename: 'GX010010.MP4',
+        path: '/o/GX010010.MP4',
+        mtime: 1_788_000_000,
+        origin: { kind: 'loose' },
+        freed: false,
+        still: false
+      },
+      {
+        id: 'hers',
+        filename: 'GX010011.MP4',
+        path: '/o/GX010011.MP4',
+        mtime: 1_788_000_600,
+        origin: { kind: 'montage', name: 'Marie Roth' },
+        freed: false,
+        still: false
+      },
+      {
+        id: 'there',
+        filename: 'GX010012.MP4',
+        path: '/o/GX010012.MP4',
+        mtime: 1_788_001_200,
+        origin: { kind: 'jump', name: 'Yverdon' },
+        freed: true,
+        still: false
+      }
+    ]
+  }
+
+  const start = (state: { added: boolean; small: boolean }) => {
+    const sent: Sent[] = []
+    vi.stubGlobal('fetch', async (url: string | URL, init?: RequestInit) => {
+      if (String(url).startsWith('/api/edit-clips')) {
+        if (init?.method === 'POST') {
+          sent.push({ url: String(url), body: JSON.parse(String(init.body)) })
+          state.added = true
+          return Response.json({ ok: true, added: 1, freed: 0 })
+        }
+        return Response.json(candidates)
+      }
+      if (init?.method === 'POST') return Response.json({ ok: true })
+      const made = {
+        name: NEW,
+        path: `/o/${NEW}`,
+        play: `/o/${NEW}`,
+        seconds: 5,
+        sound: false,
+        marks: [],
+        key: 'new~1',
+        small: state.small
+      }
+      return Response.json({
+        ...answer,
+        members: ['k1', 'k2'],
+        sources: state.added && state.small ? [...answer.sources, made] : answer.sources,
+        waiting: state.added && !state.small ? [{ key: 'new~1', name: 'GX010010.MP4' }] : []
+      })
+    })
+    return sent
+  }
+
+  const open = async () => {
+    await render(createElement(FilmEditor, { groupId: 'g1', day: '06.09.2026', onClose: () => {} }))
+    await expect.element(page.getByTitle(`${FIRST} · double-click to choose the part`).first()).toBeVisible()
+    await userEvent.click(page.getByRole('button', { name: 'Add a clip…' }))
+  }
+
+  test('lists what is on the board, where each clip is, and what is on the storage only', async () => {
+    start({ added: false, small: false })
+    await open()
+
+    const picker = page.getByRole('dialog', { name: 'Add a clip' })
+    await expect.element(picker.getByText('GX010010.MP4')).toBeVisible()
+    await expect.element(picker.getByText('Loose')).toBeVisible()
+    await expect.element(picker.getByText('In Marie Roth’s montage')).toBeVisible()
+    await expect.element(picker.getByText('On the storage only, bring it back first')).toBeVisible()
+    await expect.element(picker.getByRole('checkbox').last()).toBeDisabled()
+  })
+
+  test('searches the clips by name or by place', async () => {
+    start({ added: false, small: false })
+    await open()
+
+    await userEvent.fill(page.getByRole('searchbox', { name: 'Search the clips' }), 'marie')
+
+    const picker = page.getByRole('dialog', { name: 'Add a clip' })
+    await expect.element(picker.getByText('GX010011.MP4')).toBeVisible()
+    await expect.element(picker.getByText('GX010010.MP4')).not.toBeInTheDocument()
+  })
+
+  test('adds the ones picked, and shows the clip preparing in the library', async () => {
+    const sent = start({ added: false, small: false })
+    await open()
+
+    await userEvent.click(page.getByRole('checkbox').first())
+    await userEvent.click(page.getByRole('button', { name: 'Add 1 clip' }))
+
+    await expect.element(page.getByText('Preparing')).toBeVisible()
+    expect(sent.map((one) => one.body)).toEqual([
+      { intent: 'add', groupId: 'g1', fileIds: ['near'] }
+    ])
+  })
+
+  test('says it is ready once its copy for the film and its small copy are made', async () => {
+    const state = { added: false, small: false }
+    start(state)
+    await open()
+    await userEvent.click(page.getByRole('checkbox').first())
+    await userEvent.click(page.getByRole('button', { name: 'Add 1 clip' }))
+    await expect.element(page.getByText('Preparing')).toBeVisible()
+
+    state.small = true
+
+    await expect.element(page.getByText('Ready'), { timeout: 10_000 }).toBeVisible()
+  })
+})
+
+describe('finding what the film does not use yet', () => {
+  const library = () => page.getByRole('complementary', { name: 'Library' })
+
+  test('marks the clips that are in the film, and can list only the others', async () => {
+    await open({ clips: [answer.edit.clips[0]] })
+
+    await expect.element(library().getByText('In the film')).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: 'Not used yet' }))
+
+    await expect.element(library().getByText(SECOND, { exact: true })).toBeVisible()
+    await expect.element(library().getByText(FIRST, { exact: true })).not.toBeInTheDocument()
+  })
+
+  test('puts every photo that is not in the film at its end, once', async () => {
+    await open({}, [], [photo])
+    await expect.element(library().getByText('Photo')).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: 'Add all photos' }))
+
+    await expect.element(page.getByRole('button', { name: 'Add all photos' })).not.toBeInTheDocument()
+    await expect.element(library().getByText('In the film').last()).toBeVisible()
+  })
+
+  test('offers no button for photos when the montage has none', async () => {
+    await open()
+
+    await expect.element(page.getByRole('button', { name: 'Add all photos' })).not.toBeInTheDocument()
+  })
+})
+
+describe('a film opened before the small copy of a clip was made', () => {
+  test('is laid out again with that clip once it is made, as long as nobody has touched it', async () => {
+    const ONLY = 'luc_favre_20260906_091500.mp4'
+    let made = false
+    vi.stubGlobal('fetch', async (_url: string | URL, init?: RequestInit) => {
+      if (init?.method === 'POST') return Response.json({ ok: true })
+      const source = {
+        name: ONLY,
+        path: `/o/${ONLY}`,
+        play: `/o/${ONLY}`,
+        seconds: 5,
+        sound: false,
+        marks: [],
+        key: 'k1',
+        small: true
+      }
+      return Response.json({
+        ...answer,
+        saved: false,
+        members: ['k1'],
+        sources: made ? [source] : [],
+        waiting: made ? [] : [{ key: 'k1', name: 'GX010001.MP4' }],
+        edit: made
+          ? { ...answer.edit, clips: [{ id: 'clip-1', name: ONLY, start: 0, end: 5, sound: false }] }
+          : { ...answer.edit, clips: [] }
+      })
+    })
+    await render(createElement(FilmEditor, { groupId: 'g1', day: '06.09.2026', onClose: () => {} }))
+    await expect.element(page.getByText('GX010001.MP4')).toBeVisible()
+
+    made = true
+
+    await expect
+      .element(page.getByTitle(`${ONLY} · double-click to choose the part`).first(), {
+        timeout: 10_000
+      })
+      .toBeVisible()
+  })
+})

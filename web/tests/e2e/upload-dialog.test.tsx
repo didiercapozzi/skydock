@@ -554,7 +554,7 @@ describe('where every passenger has got to', () => {
     })
     await expect.poll(() => entry.element().textContent).toContain('to upload')
     await expect
-      .element(entry.getByRole('img', { name: /Next: Upload it — 3 of 5 steps done/ }))
+      .element(entry.getByRole('img', { name: /Next: Upload it — 2 of 4 steps done/ }))
       .toBeInTheDocument()
   })
 
@@ -572,7 +572,7 @@ describe('where every passenger has got to', () => {
     const second = {
       ...board.groups[0],
       id: 'g2',
-      processed: false,
+      uploaded: undefined,
       files: [{ ...files[0], id: 'v9', path: '/workspace/output/original_files/x/GX019999.MP4' }]
     }
     await renderBoard({ ...board, groups: [...board.groups, second] }, false)
@@ -580,7 +580,7 @@ describe('where every passenger has got to', () => {
     const cards = page.getByRole('button', { name: /^Luc Favre, / })
     await expect.poll(() => cards.elements().map((c) => c.textContent)).toEqual([
       expect.stringContaining('to upload'),
-      expect.stringContaining('to process')
+      expect.stringContaining('to edit')
     ])
   })
 
@@ -608,7 +608,7 @@ describe('a montage that is set as done', () => {
     await render(createElement(Stub, { initialEntries: ['/montage/Luc%20Favre'] }))
   }
 
-  test('has a Done button once it is prepared, which keeps it without any upload, and Open its folder', async () => {
+  test('has a Done button, which keeps it without any upload, and Open its folder', async () => {
     await renderBoard(withDone(), false)
 
     await expect.element(page.getByRole('button', { name: 'Done', exact: true })).toBeVisible()

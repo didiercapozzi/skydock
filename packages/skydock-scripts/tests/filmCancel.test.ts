@@ -13,7 +13,7 @@ import {
 } from '../src/filmRender'
 import { filmNameOf } from '../src/montageNames'
 import { getGroupProcessedDir } from '../src/process'
-import type { Manifest, ManifestGroup } from '../src/types'
+import type { ManifestGroup } from '../src/types'
 import { createTmpDir } from './fixtures'
 
 let dir: string
@@ -27,8 +27,6 @@ const group: ManifestGroup = {
   processed: true,
   files: []
 }
-
-const manifest = { files: [], groups: [group] } as unknown as Manifest
 
 const edit: FilmEdit = {
   version: 1,
@@ -51,7 +49,23 @@ beforeEach(() => {
 
 const encodeSource = () => {
   const { dir: montage } = getGroupProcessedDir(dir, group)
-  fs.mkdirSync(path.join(montage, 'videos'), { recursive: true })
+  const source = path.join(dir, 'original_files', 'a.mp4')
+  fs.mkdirSync(path.dirname(source), { recursive: true })
+  group.files = [
+    {
+      path: source,
+      size: 1,
+      mtime: 1,
+      filename: 'a.mp4',
+      id: 'a',
+      processed: {
+        path: path.join(montage, 'videos', 'a.mp4'),
+        size: 1,
+        at: 1,
+        source: { id: 'a', size: 1, mtime: 1 }
+      }
+    }
+  ]
   execFileSync('ffmpeg', [
     '-y',
     '-loglevel',
@@ -66,7 +80,7 @@ const encodeSource = () => {
     'ultrafast',
     '-pix_fmt',
     'yuv420p',
-    path.join(montage, 'videos', 'a.mp4')
+    source
   ])
 }
 
@@ -79,10 +93,11 @@ describe('cancelling a render', () => {
     encodeSource()
     const { dir: montage, baseName } = getGroupProcessedDir(dir, group)
     const before = path.join(montage, filmNameOf(baseName))
+    fs.mkdirSync(montage, { recursive: true })
     fs.writeFileSync(before, 'the earlier film')
     const partial = path.join(montage, `.${baseName}.rendering`)
 
-    const going = renderFilm({ manifest, outputDir: dir, group, edit })
+    const going = renderFilm({ outputDir: dir, group, edit })
     const failed = going.then(
       () => null,
       (error: Error) => error
@@ -100,12 +115,12 @@ describe('cancelling a render', () => {
 
   it('cannot be started twice by two quick presses on render', async () => {
     encodeSource()
-    const first = renderFilm({ manifest, outputDir: dir, group, edit })
+    const first = renderFilm({ outputDir: dir, group, edit })
     const firstEnded = first.then(
       () => null,
       (error: Error) => error
     )
-    const second = renderFilm({ manifest, outputDir: dir, group, edit })
+    const second = renderFilm({ outputDir: dir, group, edit })
 
     await expect(second).rejects.toThrow(/already being rendered/)
     expect(isRendering(group.id)).toBe(true)
@@ -120,7 +135,6 @@ describe('cancelling a render', () => {
 
     await expect(
       renderFilm({
-        manifest,
         outputDir: dir,
         group,
         edit: { ...edit, output: { format: 'h265' } }

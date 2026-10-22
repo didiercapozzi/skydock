@@ -89,11 +89,12 @@ import {
   trimClip
 } from '../helpers/filmTimeline'
 import { refusalSchema } from '../hooks/useBoardState'
-import { useJobs } from '../hooks/liveStore'
+import { useJobRow, useJobs } from '../hooks/liveStore'
 import { useLiveJobs } from '../hooks/useLiveProgress'
 import { useRoundedWindow } from '../hooks/useWindowFrame'
 import { routingEngine } from '../helpers/routing'
 import { Go, Mini, Seg } from './buttons'
+import { candidatesSchema, FilmClipPicker } from './film-clip-picker'
 import { FilmPart, SpeedSelect } from './film-part'
 import { askFilmTemplates, FilmTemplateModal, FilmTemplatePicker } from './film-template-modals'
 import type { Listed } from './film-template-modals'
@@ -158,6 +159,8 @@ const COLOURS = ['#ffffff', '#ffd84d', '#ff8a5c', '#7fd3ff', '#0f2f47'] as const
 const BACKGROUND_COLOURS = [...COLOURS, '#000000']
 
 const SIZE_AFTER = 600
+const READ_AGAIN_MS = 2500
+const WATCH_MS = 600_000
 
 const SAMPLE_SIZE = 0.07
 const SAMPLE_SCALE = { min: 0.7, max: 1.3 }
@@ -446,17 +449,44 @@ const BringIn = ({
   </label>
 )
 
+/* where a clip put in the film stands while its small copy is made: it can be used from the moment its
+   copy for the film exists, and plays at its full size until the small one lands */
+const SmallCopy = ({
+  id,
+  made,
+  ready,
+  watching = true
+}: {
+  id: string
+  made: boolean
+  ready: boolean
+  watching?: boolean
+}) => {
+  const making = useJobRow('proxy', id)
+  if (ready) return <span className='text-accent-ink'>{t`Ready`}</span>
+  if (making?.at === 'now')
+    return <span>{t`Making its small copy ${Math.round((making.part ?? 0) * 100)}%`}</span>
+  if (!made && watching) return <span>{t`Preparing`}</span>
+  return null
+}
+
 const FORMAT_NAMES = { h264: 'H.264', h265: 'H.265', av1: 'AV1' } as const
 
 const Library = ({
   tab,
   onTab,
   sources,
+  used,
+  waiting,
+  watching,
+  ready,
   music,
   images,
   title,
   scratch,
   onAddClip,
+  onAddPhotos,
+  onPickClips,
   onAddMusic,
   onAddImage,
   onAddBackground,
@@ -466,11 +496,17 @@ const Library = ({
   tab: Library
   onTab: (tab: Library) => void
   sources: EditSource[]
+  used: Set<string>
+  waiting: { key: string; name: string }[]
+  watching: boolean
+  ready: Set<string>
   music: MusicSource[]
   images: ImageSource[]
   title: string
   scratch: boolean
   onAddClip: (name: string) => void
+  onAddPhotos: () => void
+  onPickClips: () => void
   onAddMusic: (name: string) => void
   onAddImage: (name: string) => void
   onAddBackground: (colour: string) => void
@@ -478,6 +514,8 @@ const Library = ({
   onBroughtIn: () => void
 }) => {
   const [bringing, setBringing] = useState<string | null>(null)
+  const [unusedOnly, setUnusedOnly] = useState(false)
+  const unusedPhotos = sources.filter((one) => one.still && !used.has(one.name)).length
   const bringIn = async (
     files: FileList | null,
     url: '/api/images' | '/api/music',
@@ -540,41 +578,100 @@ const Library = ({
             <p className='mx-0.5 mb-1 text-small text-ink-3'>
               {t`Drag a clip onto the video track, between two clips or at either end.`}
             </p>
-            {sources.map((source) => (
-              <Item
-                key={source.name}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(CLIP_DRAG, source.name)
-                  e.dataTransfer.effectAllowed = 'copy'
-                }}
-                picture={
-                  <img
-                    src={getThumbUrl(source.play, Math.min(1, source.seconds / 2), 160)}
-                    alt=''
-                    draggable={false}
-                    className='size-full object-cover'
-                  />
-                }
-                name={source.name}
-                meta={
-                  <>
-                    <span>{source.still ? t`Photo` : clockOf(source.seconds)}</span>
-                    {source.marks.length > 0 && (
-                      <span>
-                        {plural(source.marks.length, { one: '# mark', other: '# marks' })}
-                      </span>
-                    )}
-                  </>
-                }
-                trailing={
-                  <Add
-                    title={t`Put it at the end of the film`}
-                    onClick={() => onAddClip(source.name)}
-                  />
-                }
+            <span className='mx-0.5 mb-1 flex flex-wrap gap-2'>
+              <Mini
+                pressed={unusedOnly}
+                onClick={() => setUnusedOnly(!unusedOnly)}>
+                {t`Not used yet`}
+              </Mini>
+              {unusedPhotos > 0 && (
+                <Mini
+                  title={t`Put every photo that is not in the film at the end of it`}
+                  onClick={onAddPhotos}>
+                  {t`Add all photos`}
+                </Mini>
+              )}
+            </span>
+            {sources
+              .filter((source) => !unusedOnly || !used.has(source.name))
+              .map((source) => (
+                <Item
+                  key={source.name}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(CLIP_DRAG, source.name)
+                    e.dataTransfer.effectAllowed = 'copy'
+                  }}
+                  picture={
+                    <img
+                      src={getThumbUrl(source.play, Math.min(1, source.seconds / 2), 160)}
+                      alt=''
+                      draggable={false}
+                      className='size-full object-cover'
+                    />
+                  }
+                  name={source.name}
+                  meta={
+                    <>
+                      <span>{source.still ? t`Photo` : clockOf(source.seconds)}</span>
+                      {used.has(source.name) && (
+                        <span className='text-accent-ink'>{t`In the film`}</span>
+                      )}
+                      {source.marks.length > 0 && (
+                        <span>
+                          {plural(source.marks.length, { one: '# mark', other: '# marks' })}
+                        </span>
+                      )}
+                      {source.key && !source.still && (
+                        <SmallCopy
+                          id={source.key}
+                          made={source.small !== false}
+                          ready={ready.has(source.key) && source.small !== false}
+                          watching={watching}
+                        />
+                      )}
+                    </>
+                  }
+                  trailing={
+                    <Add
+                      title={t`Put it at the end of the film`}
+                      onClick={() => onAddClip(source.name)}
+                    />
+                  }
+                />
+              ))}
+            {watching &&
+              waiting.map((one) => (
+                <Item
+                  key={one.key}
+                  picture={
+                    <Icon
+                      name='montage'
+                      size={18}
+                      className='text-ink-3'
+                    />
+                  }
+                  name={one.name}
+                  meta={
+                    <SmallCopy
+                      id={one.key}
+                      made={false}
+                      ready={false}
+                    />
+                  }
+                  trailing={null}
+                />
+              ))}
+            <button
+              type='button'
+              onClick={onPickClips}
+              className='mt-1 inline-flex h-control-sm items-center justify-center gap-1.5 rounded-corner bg-pane px-3.5 text-body font-bold text-accent-ink shadow-card hover:bg-accent-soft'>
+              <Icon
+                name='plus'
+                size={13}
               />
-            ))}
+              {t`Add a clip…`}
+            </button>
           </>
         )}
         {tab === 'music' && (
@@ -1572,7 +1669,21 @@ const FilmEditor = ({
   const [upright, setUpright] = useState(false)
   const [part, setPartOf] = useState<string | null>(null)
   const [renderAsked, setRenderAsked] = useState(false)
-  useLiveJobs(!scratch)
+  const [offered, setOffered] = useState(false)
+  const [watching, setWatching] = useState(false)
+  useLiveJobs(!scratch, () => {
+    if (watching || offered || !loaded || !groupId) return
+    void routingEngine
+      .loader({ url: '/api/edit-clips', searchParamsArgs: { groupId } })
+      .then((raw) => candidatesSchema.safeParse(raw))
+      .then((said) => {
+        if (!said.success || !said.data.ok) return
+        const now = new Set(loaded.members)
+        const there = said.data.members
+        if (there.length !== now.size || there.some((key) => !now.has(key))) setOffered(true)
+      })
+      .catch(() => undefined)
+  })
   const followed = useJobs().find((job) => job.type === 'render' && job.groupIds?.includes(groupId))
   const [renderSeen, setRenderSeen] = useState<string | null>(null)
   if (followed && followed.id !== renderSeen) setRenderSeen(followed.id)
@@ -1614,6 +1725,8 @@ const FilmEditor = ({
     }
   }, [sizeKey, groupId])
   const [readAgain, setReadAgain] = useState(0)
+  const [picking, setPicking] = useState(false)
+  const [ready, setReady] = useState<Set<string>>(new Set())
   const [starting, setStarting] = useState<Listed | null>(null)
   const [templating, setTemplating] = useState(false)
   const [typed, setTyped] = useState<string | null>(null)
@@ -1642,6 +1755,20 @@ const FilmEditor = ({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const unsaved = useRef(false)
   const stuck = useRef(false)
+
+  const unfinished =
+    loaded !== null &&
+    (loaded.waiting.length > 0 || loaded.sources.some((one) => !one.still && one.small === false))
+  useEffect(() => {
+    if (!watching) return
+    const stop = setTimeout(() => setWatching(false), WATCH_MS)
+    return () => clearTimeout(stop)
+  }, [watching])
+  useEffect(() => {
+    if (!watching || !unfinished) return
+    const timer = setTimeout(() => setReadAgain((n) => n + 1), READ_AGAIN_MS)
+    return () => clearTimeout(timer)
+  }, [watching, unfinished, readAgain])
 
   const sources = sourcesByName(loaded?.images ?? [], loaded?.sources ?? [])
   const music = new Map((loaded?.music ?? []).map((one) => [one.name, one]))
@@ -1758,13 +1885,28 @@ const FilmEditor = ({
         const parsed = editAnswerSchema.safeParse(raw)
         if (!parsed.success) return setProblem(t`The film could not be read.`)
         if (!parsed.data.ok) return setProblem(parsed.data.reason)
-        setLoaded(parsed.data)
+        const answer = parsed.data
+        setLoaded(answer)
+        if (answer.waiting.length > 0) setWatching(true)
+        setReady((kept) => {
+          const next = new Set(kept)
+          for (const one of answer.waiting) next.add(one.key)
+          for (const one of answer.sources) if (one.key && one.small === false) next.add(one.key)
+          return next.size === kept.size ? kept : next
+        })
         setRenderAsked(parsed.data.rendering)
         const aside = parsed.data.setAside
         if (aside)
           setProblem(
             t`The saved edit could not be read (${aside.reason}), so it was kept aside as ${aside.as} and the film starts again from its first edit.`
           )
+        /* a film nobody has touched is laid out again from what can be played now: the clips whose small
+           copy was still being made are in it once it is */
+        const untouched = !parsed.data.saved && lastChange.current === 0 && !unsaved.current
+        if (latest.current !== null && untouched && !scratch) {
+          latest.current = parsed.data.edit
+          setEditNow(parsed.data.edit)
+        }
         if (latest.current === null) {
           latest.current = parsed.data.edit
           setEditNow(parsed.data.edit)
@@ -2338,6 +2480,24 @@ const FilmEditor = ({
     setPicked({ kind: 'clip', id: clip.id })
   }
 
+  const addPhotos = () => {
+    if (!edit) return
+    const inFilm = new Set(edit.clips.map((one) => one.name))
+    let next = edit
+    for (const source of loaded?.sources ?? []) {
+      if (!source.still || inFilm.has(source.name)) continue
+      const clip = {
+        id: nextId('clip', next.clips),
+        name: source.name,
+        start: 0,
+        end: STILL_SECONDS,
+        sound: false
+      }
+      next = insertClip(next, next.clips.length, clip, ripple)
+    }
+    if (next !== edit) change(next)
+  }
+
   const addMusic = (name: string) => {
     const source = music.get(name)
     if (!edit || !source) return
@@ -2500,10 +2660,24 @@ const FilmEditor = ({
           <Mini onClick={() => setProblem(null)}>{t`Dismiss`}</Mini>
         </div>
       )}
+      {offered && (
+        <div className='flex items-center gap-3 bg-local-soft px-4 py-2 text-body text-local'>
+          <span className='flex-1'>{t`A clip was added to this montage — refresh the library to see it.`}</span>
+          <Mini
+            onClick={() => {
+              setOffered(false)
+              setWatching(true)
+              setReadAgain((n) => n + 1)
+            }}>
+            {t`Refresh the library`}
+          </Mini>
+          <Mini onClick={() => setOffered(false)}>{t`Dismiss`}</Mini>
+        </div>
+      )}
       {changedClips.gone.length + changedClips.shorter.length > 0 && (
         <div className='flex flex-col gap-1 bg-local-soft px-4 py-2 text-body text-local'>
           {changedClips.gone.length > 0 && (
-            <span>{t`Not in the montage any more: ${changedClips.gone.join(', ')} — take it out of the film, or process the montage again.`}</span>
+            <span>{t`Not in the montage any more: ${changedClips.gone.join(', ')} — take it out of the film.`}</span>
           )}
           {changedClips.shorter.length > 0 && (
             <span>{t`Shorter than when it was put in the film: ${changedClips.shorter.join(', ')} — look at its part again.`}</span>
@@ -2525,9 +2699,15 @@ const FilmEditor = ({
               onAddBackground={(colour) => addLayer({ colour, width: 1 })}
               scratch={scratch}
               onAddClip={(name) => addClip(name)}
+              onAddPhotos={addPhotos}
+              used={new Set(edit.clips.map((one) => one.name))}
               onAddMusic={addMusic}
               onAddText={addText}
               onBroughtIn={() => setReadAgain(readAgain + 1)}
+              onPickClips={() => setPicking(true)}
+              waiting={loaded.waiting}
+              watching={watching}
+              ready={ready}
             />
             <div className='flex min-h-0 min-w-0 flex-col justify-center bg-well max-wide:order-first max-wide:h-[40vh] max-wide:min-h-72 max-wide:col-span-2 max-wide:border-b max-wide:border-line max-desk:col-span-1'>
               <FilmPreview
@@ -2846,7 +3026,7 @@ const FilmEditor = ({
               <span>
                 {scratch
                   ? t`Texts and music that end with the film stay at the end, whatever its length.`
-                  : t`Edited on the proxies, rendered from the processed copies`}
+                  : t`Edited on the small copies, rendered from the clips themselves`}
               </span>
             </div>
           </div>
@@ -2882,6 +3062,17 @@ const FilmEditor = ({
         <FilmTemplatePicker
           templates={starting}
           onChoose={startFrom}
+        />
+      )}
+
+      {picking && !scratch && (
+        <FilmClipPicker
+          groupId={groupId}
+          onAdded={() => {
+            setWatching(true)
+            setReadAgain((n) => n + 1)
+          }}
+          onClose={() => setPicking(false)}
         />
       )}
 

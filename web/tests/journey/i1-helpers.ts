@@ -9,16 +9,16 @@ import { editFile, WHO } from './media'
 import { readJson } from './record'
 import { details, place } from './steps'
 
-const putEdit = (world: World, who = WHO) => {
-  fs.mkdirSync(path.dirname(editFile(world, who)), { recursive: true })
+const putEdit = (world: World, who = WHO, day?: string) => {
+  fs.mkdirSync(path.dirname(editFile(world, who, day)), { recursive: true })
   fs.writeFileSync(
-    editFile(world, who),
+    editFile(world, who, day),
     JSON.stringify({ version: 1, clips: [], music: [], texts: [], underSound: 0.15 })
   )
 }
 
-const makeEdit = async (j: Journey, who = WHO) => {
-  putEdit(j.world, who)
+const makeEdit = async (j: Journey, who = WHO, day?: string) => {
+  putEdit(j.world, who, day)
   await expect
     .poll(async () => await place(j.page, who).innerText(), { timeout: 30_000 })
     .toContain('to render')
@@ -73,12 +73,12 @@ const takeStep = async (page: Page, button: string, offered: string) => {
   await page.getByText(offered).first().waitFor({ timeout: 60_000 })
 }
 
-const makeAndPrepare = async (j: Journey) => {
+/* a montage needs nothing made for it: once it has its name, its film can be edited */
+const makeMontage = async (j: Journey) => {
   await j.open()
   await j.see('Jump 2')
   await nameJump(j.page, 'Jump 2', WHO)
-  await j.see('Prepare the files')
-  await takeStep(j.page, 'Process', 'Edit the film')
+  await j.see('Edit the film')
 }
 
 const putSlowFfmpeg = (world: World) => {
@@ -107,7 +107,7 @@ const slowFfmpegEnv = (world: World) => ({
 })
 
 export {
-  makeAndPrepare,
+  makeMontage,
   makeEdit,
   nameFile,
   nameJump,

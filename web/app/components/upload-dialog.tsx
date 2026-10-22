@@ -1,4 +1,5 @@
 import {
+  handedOver,
   itemsFrom,
   PARTS,
   partFileNames,
@@ -32,28 +33,23 @@ const partName = (part: SendPart) => i18n._(PART_NAMES[part])
 
 const SHOWN = 3
 
-const partsOf = (group: ManifestGroup, facts?: MontageFact, picked = false): Parts => ({
-  videos: group.files
-    .filter((f) => isVideoFile(f.path))
-    .map((f) => ({ file: f.path, name: f.filename, size: f.size })),
-  photos: group.files
-    .filter((f) => !isVideoFile(f.path))
-    .flatMap((f) => {
-      const made = picked ? { path: f.path, size: f.size } : f.processed
-      return made
-        ? [
-            {
-              file: made.path,
-              name: picked ? f.filename : made.path.slice(made.path.lastIndexOf('/') + 1),
-              size: made.size
-            }
-          ]
-        : []
-    })
-    .sort((a, b) => a.name.localeCompare(b.name)),
-  film: facts?.film ? [{ file: facts.film.path, name: 'film', size: facts.film.size }] : [],
-  project: (facts?.projectFiles ?? []).map((file) => ({ file, name: 'project', size: 0 }))
-})
+const partsOf = (group: ManifestGroup, facts?: MontageFact, picked = false): Parts => {
+  const sent = (f: ManifestGroup['files'][number]) =>
+    picked ? { path: f.path, filename: f.filename, size: f.size } : handedOver(f)
+  const named = (isVideo: boolean) =>
+    group.files
+      .filter((f) => isVideoFile(f.path) === isVideo)
+      .map((f) => {
+        const made = sent(f)
+        return { file: made.path, name: made.filename, size: made.size }
+      })
+  return {
+    videos: named(true),
+    photos: named(false).sort((a, b) => a.name.localeCompare(b.name)),
+    film: facts?.film ? [{ file: facts.film.path, name: 'film', size: facts.film.size }] : [],
+    project: (facts?.projectFiles ?? []).map((file) => ({ file, name: 'project', size: 0 }))
+  }
+}
 
 const sizeOfPart = (files: PartFile[]) => files.reduce((sum, f) => sum + f.size, 0)
 

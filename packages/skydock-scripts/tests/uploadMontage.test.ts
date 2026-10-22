@@ -87,6 +87,8 @@ type SceneOptions = {
   photos?: number
   processed?: boolean
   noPassenger?: boolean
+  /* the board turned the photos, so that what is sent of them is their copies */
+  turned?: boolean
 }
 
 const scene = (options: SceneOptions = {}) => {
@@ -95,7 +97,8 @@ const scene = (options: SceneOptions = {}) => {
     videos = 2,
     photos = 2,
     processed = true,
-    noPassenger = false
+    noPassenger = false,
+    turned = true
   } = options
   const passenger = noPassenger ? undefined : { firstname: 'Luc', lastname: 'Favre' }
   const outputDir = createTmpDir('skydock-upload-montage-')
@@ -136,6 +139,7 @@ const scene = (options: SceneOptions = {}) => {
       mtime: 2000 + i,
       filename: `G004200${i}.JPG`,
       id: `p${i}`,
+      ...(turned ? { rotation: 90 as const } : {}),
       processed: {
         path: output,
         size: 8,
@@ -230,6 +234,15 @@ describe('uploading a montage — where each item goes', () => {
       'luc_favre_20260802_113001.jpg'
     ])
     expect(into(uploads, '/Backup/luc-favre')).toEqual([`${stem}.videos.zip`])
+  })
+
+  it('sends the photos as they came off the camera when the board changed none of them', async () => {
+    const { uploads } = await upload({ turned: false })
+
+    expect(into(uploads, '/SkyDock/Passengers/luc-favre/photos')).toEqual([
+      'G0042000.JPG',
+      'G0042001.JPG'
+    ])
   })
 
   it('sends the same item to every destination it was put in, built once', async () => {
@@ -426,8 +439,8 @@ describe('uploading a montage — what is refused', () => {
     expect(await fails({ noPassenger: true })).toMatch(/give it a name/)
   })
 
-  it('refuses one that was never processed', async () => {
-    expect(await fails({ processed: false })).toMatch(/Process this montage/)
+  it('needs nothing processed when the board changed none of its files', async () => {
+    expect(await fails({ processed: false, turned: false })).toBeNull()
   })
 
   it('names the film it looked for when the render has not happened', async () => {

@@ -1,21 +1,21 @@
 import type { MontageFact } from './boardAnswer'
 import type { ManifestGroup } from './types'
 
-const MONTAGE_STEPS = ['Prepared', 'Edited', 'Rendered', 'Uploaded', 'Emailed'] as const
+const MONTAGE_STEPS = ['Edited', 'Rendered', 'Uploaded', 'Emailed'] as const
 
 type MontageStep = (typeof MONTAGE_STEPS)[number]
 
 const NEXT: Record<MontageStep, { todo: string; how: string }> = {
-  Prepared: { todo: 'to process', how: 'Process it' },
   Edited: { todo: 'to edit', how: 'Edit the film' },
   Rendered: { todo: 'to render', how: 'Render the film' },
   Uploaded: { todo: 'to upload', how: 'Upload it' },
   Emailed: { todo: 'to email', how: 'Email the link' }
 }
 
-/* Only the copies are needed for a montage to be of use: the files are in its own folder. The steps after
-   them are what can be done with it, and none is forced. A montage is finished when the person says so, or
-   when it has been freed from this machine; until then it has a step to take next. */
+/* A montage is of use from the moment it has a name: its clips are edited where they are, and nothing is
+   made until something is handed over. The steps are what can be done with it, and none is forced. A
+   montage is finished when the person says so, or when it has been freed from this machine; until then it
+   has a step to take next. */
 const montageSteps = ({
   group,
   facts,
@@ -26,7 +26,6 @@ const montageSteps = ({
   emailed: boolean
 }) => {
   const done: Record<MontageStep, boolean> = {
-    Prepared: Boolean(group.processed || group.uploaded || group.freed),
     Edited: Boolean(facts?.edit || group.freed),
     Rendered: Boolean(facts?.film || group.uploaded || group.freed),
     Uploaded: Boolean(group.uploaded),

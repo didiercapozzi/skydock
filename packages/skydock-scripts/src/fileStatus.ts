@@ -1,3 +1,4 @@
+import { changedOnBoard } from './boardChange'
 import { parentOf } from './paths'
 import type { OutputFact } from './boardAnswer'
 import { sameFrame } from './frameCrop'
@@ -81,7 +82,20 @@ const uploadGate = (files: ManifestFile[], context?: (file: ManifestFile) => Sta
   }
 }
 
+/* A montage hands over the files the board changed as copies, and the others as they are: only the changed
+   ones can be owed a copy. */
+const copiesOwed = (files: ManifestFile[], context?: (file: ManifestFile) => StatusContext) =>
+  files.filter((f) => changedOnBoard(f) && fileStatus(f, context?.(f)) === 'local')
+
 const outputKeyOf = (file: { id?: string; path: string }) => file.id ?? file.path
 
-export { fileChanged, fileStatus, outputKeyOf, remoteMatches, uploadGate, UPLOADED_LOCKED }
+export {
+  copiesOwed,
+  fileChanged,
+  fileStatus,
+  outputKeyOf,
+  remoteMatches,
+  uploadGate,
+  UPLOADED_LOCKED
+}
 export type { FileStatus, RemoteListing, StatusContext }

@@ -17,6 +17,7 @@ const routes = [
   route('api/import', 'routes/api.import.ts'),
   route('api/dropped', 'routes/api.dropped.ts'),
   route('api/edit', 'routes/api.edit.ts'),
+  route('api/edit-clips', 'routes/api.edit-clips.ts'),
   route('api/film-templates', 'routes/api.film-templates.ts'),
   route('api/film-template-export', 'routes/api.film-template-export.ts'),
   route('api/film-template-import', 'routes/api.film-template-import.ts'),

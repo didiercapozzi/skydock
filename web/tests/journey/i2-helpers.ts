@@ -6,7 +6,7 @@ import type { FakeStorage } from './fake-storage'
 import type { Journey } from './harness'
 import { makeEdit } from './i1-helpers'
 import { filesUnder, WHO } from './media'
-import { dialogNamed, pickInDialog } from './steps'
+import { dialogNamed, pickInDialog, place } from './steps'
 
 const makeMontageReady = async (j: Journey) => {
   const { page } = j
@@ -19,8 +19,7 @@ const makeMontageReady = async (j: Journey) => {
     .dragTo(page.getByRole('heading', { name: /^Montages/ }))
   await page.getByLabel('Name', { exact: true }).fill(WHO)
   await page.keyboard.press('Enter')
-  await j.see('Prepare the files')
-  await page.getByRole('button', { name: 'Process', exact: true }).click()
+  await place(page, WHO).click()
   await page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
   await makeEdit(j)
 }

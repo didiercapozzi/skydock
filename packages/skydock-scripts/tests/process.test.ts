@@ -6,16 +6,10 @@ import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { loadManifestAsync, pairStamp, saveManifest } from '../src/manifest'
 import { copyFiles } from '../src/moveFiles'
-import {
-  cancelProcessing,
-  processingAll,
-  processingNow,
-  processJumps,
-  writeCutProxy
-} from '../src/process'
-import { getCutProxyDir, setProxyEncoder } from '../src/proxy'
+import { cancelProcessing, processingAll, processingNow, processJumps } from '../src/process'
+import { setProxyEncoder } from '../src/proxy'
 import type { Manifest, ManifestFile, ManifestGroup } from '../src/types'
-import { createTmpDir, execSyncMock, fakeTools, tellTools, writeTempFile } from './fixtures'
+import { createTmpDir, execSyncMock, fakeTools, tellTools } from './fixtures'
 
 vi.mock('node:child_process', async (importOriginal) => {
   const actual = await importOriginal<typeof import('node:child_process')>()
@@ -584,22 +578,6 @@ describe('turning a file', () => {
     expect(cmd).not.toContain('-c copy')
   })
 
-  it('cuts the proxy of a montage clip to match, from the proxy itself', async () => {
-    const proxy = writeTempFile(outputDir, 'proxies/id0.mp4')
-    const { manifestPath } = await write({
-      montageJump: true,
-      passenger: { firstname: 'Luc', lastname: 'Favre' },
-      files: [{ ...clip('GX010001.MP4', 0), rotation: 90, proxy }]
-    })
-
-    await processJumps({ manifestPath, outputDir })
-
-    expect(ffmpegCalls().some((l) => l.includes(proxy) && l.includes('transpose'))).toBe(true)
-    expect(
-      fs.existsSync(path.join(outputDir, 'proxies', 'cut', 'g1', 'luc_favre_20260808_090909.mp4'))
-    ).toBe(true)
-  })
-
   it('turns a photo by its orientation tag, without encoding it', async () => {
     const { manifestPath } = await write({
       destination: 'Yverdon',
@@ -621,42 +599,6 @@ describe('turning a file', () => {
     await processJumps({ manifestPath, outputDir })
 
     expect((await loadManifestAsync(manifestPath))!.files[0]?.processed?.source.rotation).toBe(180)
-  })
-})
-
-describe('the proxy the editor opens on', () => {
-  const withProxy = (over: Partial<ManifestFile>): ManifestFile => {
-    const file = clip('GX010001.MP4', 0)
-    const proxy = path.join(outputDir, 'proxies', 'id0.mp4')
-    fs.mkdirSync(path.dirname(proxy), { recursive: true })
-    fs.writeFileSync(proxy, Buffer.from('proxy'))
-    return { ...file, proxy, ...over }
-  }
-
-  it('is cut and turned to match, and kept under the output folder', async () => {
-    const dest = path.join(outputDir, 'processed', 'Montages', 'luc_favre_20260808_090909.mp4')
-
-    const cut = await writeCutProxy(withProxy({ rotation: 90 }), dest, outputDir, 'group_1')
-
-    expect(cut).toBe(
-      path.join(getCutProxyDir(outputDir, 'group_1'), 'luc_favre_20260808_090909.mp4')
-    )
-    expect(fs.existsSync(cut!)).toBe(true)
-    expect(ffmpegCalls().some((l) => l.includes('transpose=1') && l.includes(cut!))).toBe(true)
-  })
-
-  it('is cut to the frame', async () => {
-    const dest = path.join(outputDir, 'processed', 'Montages', 'luc_favre_20260808_090909.mp4')
-
-    const cut = await writeCutProxy(
-      withProxy({ frame: { x: 0.1, y: 0, width: 0.9, height: 0.9 } }),
-      dest,
-      outputDir,
-      'group_1'
-    )
-
-    expect(cut?.startsWith(path.join(outputDir, 'proxies', 'cut', 'group_1'))).toBe(true)
-    expect(ffmpegCalls().some((l) => l.includes('crop='))).toBe(true)
   })
 })
 

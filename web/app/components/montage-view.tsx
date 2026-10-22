@@ -38,7 +38,8 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
   const model = useBoard()
   const { board } = model
   const progress = model.progressOf(group)
-  if (!isMontage(group) || group.freed || !progress) return null
+  if (!isMontage(group) || group.freed || !progress || !hasCompletePassenger(group.passenger))
+    return null
   const facts = board.montageFacts[group.id]
   const linked = Boolean(group.uploaded?.shareUrl ?? group.publish?.shareUrl)
   const needsLink =
@@ -50,11 +51,7 @@ const MontageActions = ({ group }: { group: ManifestGroup }) => {
       busy={board.busy}
       held={model.heldOf(group)}
       upload={board.uploading ? { key: board.uploading, label: board.uploadLabel ?? '' } : null}
-      blocked={model.gateFor(group.files)}
       proxiesWaiting={waitingForProxy(group.files, board.proxies).length}
-      named={hasCompletePassenger(group.passenger)}
-      onProcess={() => model.takeStep(group, 'Prepared')}
-      onCancelProcess={() => model.cancelProcess({ groupIds: [group.id] })}
       onMontage={() => model.takeStep(group, 'Edited')}
       onOpenMontage={() => model.takeStep(group, 'Rendered')}
       onUpload={() => model.takeStep(group, 'Uploaded')}
@@ -171,7 +168,7 @@ const MontageEnd = ({ who }: { who: string }) => {
           title={
             held
               ? heldNote(held)
-              : t`Back to before processing — keeps the name, the trims, the frames and the times`
+              : t`Back to just named — keeps the name, the trims, the frames and the times`
           }
           onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who })}>
           {t`Reset…`}
@@ -402,7 +399,7 @@ const MontageMenu = ({
           {emailed ? t`✓ Emailed · again…` : t`Email ${firstname}…`}
         </MenuItem>
       )}
-      {group.processed && !group.freed && (
+      {!group.freed && hasCompletePassenger(group.passenger) && (
         <MenuItem
           icon='montage'
           onClick={act(() => model.openEditor(group))}>
@@ -410,18 +407,6 @@ const MontageMenu = ({
         </MenuItem>
       )}
 
-      {group.processed && !group.freed && (
-        <MenuItem
-          icon='scan'
-          disabled={busy || held !== null}
-          title={
-            heldSaid ??
-            t`Make the copies again from the originals — the edit, the film and the archives are left alone`
-          }
-          onClick={act(() => model.takeStep(group, 'Prepared'))}>
-          {t`Process again`}
-        </MenuItem>
-      )}
       {facts?.film && !group.freed && (
         <MenuItem
           icon='upload'
@@ -461,8 +446,7 @@ const MontageMenu = ({
           icon='back'
           disabled={busy || held !== null}
           title={
-            heldSaid ??
-            t`Back to before processing — keeps the name, the trims, the frames and the times`
+            heldSaid ?? t`Back to just named — keeps the name, the trims, the frames and the times`
           }
           onClick={act(() =>
             model.setDialog({ kind: 'take-back', mode: 'reset', who: passengerOf(group) })

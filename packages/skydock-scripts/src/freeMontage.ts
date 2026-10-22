@@ -1,7 +1,8 @@
 import { readdir, rm } from 'node:fs/promises'
 import * as path from 'node:path'
 import { isArchiveFresh, readContents, sameContents } from './archive'
-import { outputKeyOf, uploadGate } from './fileStatus'
+import { handedOver } from './boardChange'
+import { copiesOwed, outputKeyOf } from './fileStatus'
 import { computeFileId } from './fileId'
 import { hashFile, moveFile, pathExists, statOrNull } from './lib/fs'
 import { statProcessedOutputs } from './manifest'
@@ -160,8 +161,11 @@ const proveOnStorage = async (
   }
 
   const outputs = await statProcessedOutputs(manifest)
-  const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
-  if (gate.blocked) throw new Error(`${gate.message} — it changed since it was uploaded.`)
+  const owed = copiesOwed(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
+  if (owed.length > 0)
+    throw new Error(
+      `${owed.length} file${owed.length === 1 ? '' : 's'} changed since it was uploaded.`
+    )
 
   const videos = group.files.filter((f) => isVideoFile(f.path))
   const problems: string[] = []
@@ -189,40 +193,41 @@ const proveOnStorage = async (
       const entries = rushes.holds
         ? await expected(rushes.holds)
         : [
-            ...videos.map((f) => ({ file: f.path, name: f.filename })),
+            ...videos.map((f) => ({ file: handedOver(f).path, name: handedOver(f).filename })),
             ...((await readContents(rushes.localPath)) ?? [])
-              .filter((n) => !videos.some((v) => v.filename === n))
+              .filter((n) => !videos.some((v) => handedOver(v).filename === n))
               .map((n) => ({ file: path.join(path.dirname(rushes.localPath), n), name: n }))
           ]
       if (!(await sameContents(rushes.localPath, entries)))
         problems.push('the backup zip does not hold exactly these originals')
       else {
-        const changed = await changedSince(rushes.localPath, videos, (v) => v.path)
+        const changed = await changedSince(rushes.localPath, videos, (v) => handedOver(v).path)
         if (changed.length > 0)
           problems.push(
             `${changed.map((v) => v.filename).join(', ')} changed since the backup zip was made — upload again`
           )
       }
-    } else if (!videos.every((v) => sentNames.has(v.filename))) {
+    } else if (!videos.every((v) => sentNames.has(handedOver(v).filename))) {
       problems.push('not every original is in the backup')
     }
   }
 
   const photos = group.files.filter((f) => !isVideoFile(f.path))
   if (photos.length > 0) {
-    const copies = photos.flatMap((f) => (f.processed ? [path.basename(f.processed.path)] : []))
+    const copies = photos.map((f) => handedOver(f).filename)
     if (record.photos?.holds) {
       const zip = record.photos.localPath
-      const stale = await changedSince(zip, photos, (f) => f.processed?.path)
+      const stale = await changedSince(zip, photos, (f) => handedOver(f).path)
       if (!(await sameContents(zip, await expected(record.photos.holds))) || stale.length > 0)
         problems.push('the photos zip does not hold exactly these photos')
     } else if (!record.photos) {
       if (copies.length !== photos.length || !copies.every((name) => sentNames.has(name)))
         problems.push('the photos were never uploaded')
     } else {
-      const entries = photos.flatMap((f) =>
-        f.processed ? [{ file: f.processed.path, name: path.basename(f.processed.path) }] : []
-      )
+      const entries = photos.map((f) => ({
+        file: handedOver(f).path,
+        name: handedOver(f).filename
+      }))
       if (
         entries.length !== photos.length ||
         !(await isArchiveFresh(record.photos.localPath, entries))

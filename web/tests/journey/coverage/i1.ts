@@ -1,6 +1,4 @@
-const SIX_STEPS = 'walks the montage through its six steps, each shown where it is'
-const BEFORE_REPROCESS =
-  'keeps the edit aside before preparing it again, and pressing the same button twice leaves one version'
+const FOUR_STEPS = 'walks the montage through its four steps, each shown where it is'
 const FILM_SHOWN =
   'shows the film above its montage with its name, how long it runs, its size and when it was rendered'
 const FILM_NOTICED =
@@ -21,14 +19,13 @@ const DONE_LIST =
   'lists the montage among the montages done once it is freed, and says no montage is left to do'
 const LINK_IN_PANEL =
   'keeps the link out of those cards, in the panel at the right, with the way to copy it or remove it and where the film and the originals went'
-const BUSY = 'cannot be reset or deleted until the processing is over'
 
 const FILM_OPENS =
-  'opens on a prepared montage with its clips laid end to end, and writes the edit beside them only at the first change'
+  'opens on a montage with nothing processed, its clips laid end to end, and writes the edit beside them only at the first change'
 
 const covers: Record<string, string[]> = {
   'The film editor': [FILM_OPENS],
-  "A processed montage's film is edited in SkyDock": [FILM_OPENS],
+  "A montage's film is edited in SkyDock": [FILM_OPENS],
   'Clips go in where they are dropped': [
     'trims a clip by its edge, and the clips after it close the gap',
     'puts a clip in again with Add, at the end of the film'
@@ -50,7 +47,7 @@ const covers: Record<string, string[]> = {
   'Rendering is one press': [
     'renders the film into the montage’s folder, and the board takes it as the film'
   ],
-  'Where every montage has got to': [SIX_STEPS, FILM_NOTICED, SHRINK],
+  'Where every montage has got to': [FOUR_STEPS, FILM_NOTICED, SHRINK],
   "A montage's page changes with where the montage is": [
     'keeps what else can be done in the menu of its page, so the page carries one next step',
     SHRINK,
@@ -82,29 +79,17 @@ const covers: Record<string, string[]> = {
     'plays the film rendered again, which replaces the one that was there',
     'lets the film that was rendered last be watched where it is shown'
   ],
-  'The edit and the montage': [
-    'notices an edit removed by hand, and one put back by hand',
-    BEFORE_REPROCESS
-  ],
-  'The edit is kept aside, every version of it': [
-    BEFORE_REPROCESS,
-    'keeps another version once the edit is not what was kept, and deletes none',
-    RESET_KEEPS_EDIT,
-    DELETE_KEEPS_EDIT
-  ],
-  'Preparing it again is allowed': [
-    'prepares a montage with an edit again from its originals, leaving the edit, the film and every name as they were'
-  ],
+  'The edit and the montage': ['notices an edit removed by hand, and one put back by hand'],
+  'The edit is kept aside, every version of it': [RESET_KEEPS_EDIT, DELETE_KEEPS_EDIT],
   'Taking a montage back': [
     BACK_ASKS,
-    'puts a processed montage back to before processing, and keeps its name and its trims',
+    'puts a montage back to just named, and keeps its name and its trims',
     RESET_KEEPS_EDIT,
     'asks first, and a montage that was only named goes back to loose files with its trims forgotten',
-    'removes its copies and sends its files back loose, leaving the originals where they are',
+    'removes its folder and sends its files back loose, leaving the originals where they are',
     DELETE_KEEPS_EDIT,
     'removes the film with the rest, and the film goes with it from the board',
-    'is asked first, says the record of what was uploaded goes with it, and leaves everything on the storage where it is',
-    BUSY
+    'is asked first, says the record of what was uploaded goes with it, and leaves everything on the storage where it is'
   ]
 }
 

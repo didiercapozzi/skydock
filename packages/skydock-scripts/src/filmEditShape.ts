@@ -137,8 +137,25 @@ const editSourceSchema = z.object({
   seconds: z.number(),
   sound: z.boolean(),
   marks: z.array(editMarkSchema),
-  still: z.boolean().optional()
+  still: z.boolean().optional(),
+  /* the clip of the montage it is, to follow its small copy being made; and whether the clip plays small */
+  key: z.string().optional(),
+  small: z.boolean().optional(),
+  /* what the board did to the clip, which the render does again on the clip itself: the start it takes
+     from, the filter that frames and turns it, and the shape it ends up in; or `separate`, when that
+     filter cannot be part of the film's own and the clip has to be made apart first */
+  origin: z
+    .object({
+      offset: z.number(),
+      filter: z.string().nullable(),
+      upright: z.boolean(),
+      separate: z.boolean().optional()
+    })
+    .optional()
 })
+
+/* a clip of the montage whose copy for the film is not there yet */
+const waitingClipSchema = z.object({ key: z.string(), name: z.string() })
 
 const imageSourceSchema = z.object({
   name: z.string(),
@@ -161,6 +178,9 @@ const editAnswerSchema = z.discriminatedUnion('ok', [
     edit: filmEditSchema,
     saved: z.boolean(),
     sources: z.array(editSourceSchema),
+    waiting: z.array(waitingClipSchema).default([]),
+    /* every clip the montage holds, to know when it changes elsewhere */
+    members: z.array(z.string()).default([]),
     music: z.array(musicSourceSchema),
     images: z.array(imageSourceSchema).default([]),
     rendering: z.boolean(),

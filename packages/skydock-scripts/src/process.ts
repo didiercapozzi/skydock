@@ -1,5 +1,5 @@
 import { createReadStream, createWriteStream } from 'node:fs'
-import { copyFile, mkdir, readdir, rm, stat, utimes } from 'node:fs/promises'
+import { mkdir, readdir, rm, stat, utimes } from 'node:fs/promises'
 import * as path from 'node:path'
 import * as streams from 'node:stream/promises'
 import { startOfFiles } from './clustering'
@@ -8,7 +8,7 @@ import { counted } from './lib/counted'
 import { pathExists } from './lib/fs'
 import { loadManifestAsync, pairStamp, saveManifest } from './manifest'
 import { isWholeFrame, orientationAfter, pictureFilter } from './frameCrop'
-import { cropProxy, DRI_DEVICE, getCutProxyDir, proxyEncoder, videoShape } from './proxy'
+import { cropProxy, DRI_DEVICE, proxyEncoder, videoShape } from './proxy'
 import type { ProxyEncoder } from './proxy'
 import { following, job, publish } from './live'
 import { keepEdit } from './projectHistory'
@@ -235,15 +235,10 @@ const getGroupProcessedDir = (outputDir: string, group: ManifestGroup) => {
   return { dir: path.join(parent, folder), baseName, dayEpoch, flat: false }
 }
 
-const writeCutProxy = async (
-  file: ManifestFile,
-  dest: string,
-  outputDir: string,
-  groupId: string
-) => {
+/* The small copy a film is edited on, cut from a clip's proxy to what the board did to the clip: trimmed,
+   framed and turned, so that it plays the way the clip is in the montage, only lighter. */
+const writeCutProxy = async (file: ManifestFile, target: string) => {
   if (!isVideoFile(file.path) || !file.proxy || !(await pathExists(file.proxy))) return null
-  const target = path.join(getCutProxyDir(outputDir, groupId), `${path.parse(dest).name}.mp4`)
-  const trimmed = isTrimmed(file)
   if (!isWholeFrame(file.frame) || file.rotation) {
     const shape = await shownShape(file.proxy)
     if (!shape) return null
@@ -253,13 +248,8 @@ const writeCutProxy = async (
       ? target
       : null
   }
-  if (trimmed) {
-    if (!(await cropProxy(file.proxy, target, file.cropStart, file.cropEnd))) return null
-  } else {
-    await mkdir(path.dirname(target), { recursive: true })
-    await copyFile(file.proxy, target)
-  }
-  return target
+  if (!isTrimmed(file)) return null
+  return (await cropProxy(file.proxy, target, file.cropStart, file.cropEnd)) ? target : null
 }
 
 const copyMedia = async (file: ManifestFile, dest: string, time: Date, onPercent?: OnPercent) => {
@@ -345,20 +335,11 @@ const writeGroup = async (
       ? `${toFileStem(group.destination!, 'destination')}_${formatGroupDay(file.mtime)}`
       : baseName
     const dest = path.join(targetDir, makeFileName(stem, file.mtime, ext, usedNames))
-    await writeOne(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime), async () => {
-      if (!flat) await writeCutProxy(file, dest, outputDir, group.id)
-    })
+    await writeOne(file, dest, buildFsTime(flat ? file.mtime : dayEpoch, file.mtime))
     record(file, dest)
     written.push(dest)
   }
-  if (!flat) {
-    const names = written.map((entry) => path.basename(entry))
-    await pruneStaleMedia(dir, usedNames)
-    await pruneTo(
-      getCutProxyDir(outputDir, group.id),
-      new Set(names.map((n) => `${path.parse(n).name}.mp4`))
-    )
-  }
+  if (!flat && !only) await pruneStaleMedia(dir, usedNames)
   group.processed = true
   delete group.publish
   console.log(`[Process] ${group.id}: copied ${written.length} file(s) to ${dir}`)
@@ -525,7 +506,9 @@ const runProcess = async (entry: Running, options?: ProcessOptions) => {
         : !options?.destination || g.destination === options.destination) &&
       (!only || g.files.some((f) => only.has(outputKeyOf(f))))
   )
-  const takenOf = (g: ManifestGroup) => (only && isFlatGroup(g) ? only : undefined)
+  /* a montage hands over the files the board changed only: given those, nothing else of it is touched */
+  const takenOf = (g: ManifestGroup) =>
+    only && (isFlatGroup(g) || isMontage(g)) ? only : undefined
 
   const namePools = new Map<string, Set<string>>()
   const poolFor = (dir: string) => {
@@ -639,6 +622,10 @@ export {
   isFlatGroup,
   processingAll,
   processingNow,
+  isTrimmed,
   processJumps,
+  recodeVideo,
+  shownShape,
+  turnPhoto,
   writeCutProxy
 }

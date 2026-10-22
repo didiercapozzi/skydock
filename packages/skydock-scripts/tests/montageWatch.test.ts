@@ -5,7 +5,7 @@ import * as path from 'node:path'
 import { subscribe } from '../src/live'
 import type { LiveEvent } from '../src/live'
 import { saveManifest } from '../src/manifest'
-import { lookAtMontages } from '../src/montageWatch'
+import { forgetWatched, lookAtMontages } from '../src/montageWatch'
 import type { Manifest } from '../src/types'
 import { createTmpDir, execSyncMock, tellTools } from './fixtures'
 
@@ -129,5 +129,27 @@ describe('a film rendered by the editor', () => {
     expect(montagesTold()).toHaveLength(1)
     expect(montagesTold()[0]).toMatchObject({ rendered: false })
     expect(montagesTold()[0]?.fact).toMatchObject({ edit: true })
+  })
+
+  it('tells again of an edit that comes back, even when the change away from it was never settled enough to tell', async () => {
+    await look(3)
+    expect(montagesTold().map((e) => e.fact.edit)).toEqual([true])
+    fs.rmSync(path.join(folder, 'luc_favre_20260801.edit.json'))
+    await look(1)
+
+    fs.writeFileSync(path.join(folder, 'luc_favre_20260801.edit.json'), '<mlt/>')
+    await look(3)
+
+    expect(montagesTold().map((e) => e.fact.edit)).toEqual([true, true])
+  })
+
+  it('tells again of a montage taken back, whatever it was found to be before', async () => {
+    await look(3)
+    expect(montagesTold()).toHaveLength(1)
+
+    forgetWatched(['g1'])
+    await look(3)
+
+    expect(montagesTold()).toHaveLength(2)
   })
 })

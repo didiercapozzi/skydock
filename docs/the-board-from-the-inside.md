@@ -63,7 +63,7 @@ Everything goes back one step at a time, and only a loose file in Fresh files �
 
 ```mermaid
 flowchart LR
-  pax[a montage] -->|reset-montage| before[back to before processing]
+  pax[a montage] -->|reset-montage| before[back to just named]
   pax -->|delete-montage| loose[loose in Fresh files]
   jump[a jump] -->|delete-jump| loose
   filed[a filed file] -->|move-files| loose
@@ -307,9 +307,9 @@ The rule itself is in [RULES.md](../RULES.md), under _Taking a montage back_.
 
 | asked for | what it does | what it reaches |
 | --- | --- | --- |
-| `reset-montage` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
-| `delete-montage` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
-| `start-edit-again` | Back to before processing, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
+| `reset-montage` | Back to just named, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
+| `delete-montage` | Back to just named, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
+| `start-edit-again` | Back to just named, keeping every decision — or undone altogether (RULES, Taking a montage back). | writes the record, works outside the record |
 
 <details><summary><code>reset-montage</code> refuses</summary>
 

@@ -23,6 +23,7 @@ import type { Route } from './+types/api.import'
 const targetOf = (raw: string | null): ImportTarget | null => {
   if (raw === 'sort') return { kind: 'sort' }
   if (raw?.startsWith('group:')) return { kind: 'group', groupId: raw.slice(6) }
+  if (raw?.startsWith('montage:')) return { kind: 'montage', groupId: raw.slice(8) }
   if (raw?.startsWith('dest:')) return { kind: 'destination', name: raw.slice(5) }
   return null
 }

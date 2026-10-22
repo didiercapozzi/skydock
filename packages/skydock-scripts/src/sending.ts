@@ -1,5 +1,5 @@
-import { readdir } from 'node:fs/promises'
 import * as path from 'node:path'
+import { handedOver } from './boardChange'
 import { filmNameOf } from './montageNames'
 import { montageArtifacts } from './montageArtifacts'
 import { itemsFrom, stemOf } from './sendNames'
@@ -25,7 +25,6 @@ const presentOf = async (files: { path: string; filename: string }[]) => {
 
 const partFiles = async (group: ManifestGroup, outputDir: string, film: string | null) => {
   const artifacts = await montageArtifacts(outputDir, group)
-  const photosDir = path.join(artifacts.dir, 'photos')
   const renderedFilm =
     film ??
     (artifacts.film
@@ -33,10 +32,9 @@ const partFiles = async (group: ManifestGroup, outputDir: string, film: string |
       : artifacts.strayFilms.length === 1
         ? path.join(artifacts.dir, artifacts.strayFilms[0]!)
         : null)
-  const photoNames = (await pathExists(photosDir)) ? (await readdir(photosDir)).sort() : []
   return {
-    videos: await presentOf(group.files.filter((f) => isVideoFile(f.path))),
-    photos: await mapWithLimit(photoNames, 16, (name) => one(path.join(photosDir, name))),
+    videos: await presentOf(group.files.filter((f) => isVideoFile(f.path)).map(handedOver)),
+    photos: await presentOf(group.files.filter((f) => !isVideoFile(f.path)).map(handedOver)),
     film: renderedFilm ? [await one(renderedFilm)] : [],
     project: await mapWithLimit(artifacts.projectFiles, 2, (file) => one(file))
   } satisfies Record<SendPart, PartFile[]>

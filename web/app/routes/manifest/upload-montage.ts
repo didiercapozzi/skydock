@@ -1,16 +1,13 @@
 import {
   ensureNasSession,
   listRemoteFiles,
-  outputKeyOf,
   passengerName,
   pastCancelling,
   planOf,
   saveManifest,
-  statProcessedOutputs,
   earlierMontagesDirs,
   montagesRemoteDir,
   montageUploadKey,
-  uploadGate,
   busyWith,
   jumpsOfMontage
 } from '@skydock/scripts'
@@ -41,9 +38,6 @@ const sendMontage = async (
     )
   const session = await ensureNasSession()
   if (!session) return refuse(connectFirst())
-  const outputs = await statProcessedOutputs(manifest)
-  const gate = uploadGate(group.files, (file) => ({ output: outputs[outputKeyOf(file)] }))
-  if (gate.blocked) return refuse(`${gate.message} — process before uploading.`)
   const key = montageUploadKey(group.id)
   const label = passengerName(group.passenger)
   const send = async (report: UploadReport) => {

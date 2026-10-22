@@ -280,6 +280,15 @@ deleting them.
 A server stopped half way through making them — restarted, or the machine put to sleep — finishes
 them once it runs again and a board connects, rather than waiting for the next scan; what was left
 half written is cleared first.
+A montage is edited on the **small copy of each of its clips**, and a clip that the board trimmed, framed or
+turned is edited on a small copy **cut to what the board did**: the clip's proxy trimmed, framed and turned, named
+by what was done (`<name>~<what>.mp4`, so that a clip changed again has another and the old one goes), under
+the proxies, for each montage. A clip the board left alone is edited on its proxy, with nothing cut. The cut
+is made when the editor is opened and each time a scan, an import or a pass of proxies ends, once the clip's
+proxy exists; until then the clip is listed in the library, marked as being prepared, and cannot be put in
+the film, since the film could not show it as the montage has it. A turned photo's copy is the photo with its
+orientation tag turned. Nothing of this is a copy of the montage's files to hand over: it is what the editor
+plays, and goes with the montage.
 
 Proxies are made on the graphics card when the machine has one that works, and on the processor
 otherwise. A clip whose proxy cannot be made says so where it is shown, with the reason, and is tried
@@ -410,7 +419,7 @@ Filing a jump answers one question: where does it go?
   belongs to no destination. It has **one name**, typed once — "Luc Favre", "Boogie 2026" — and a
   single word is a whole name. The name is its working folder on this machine, named as typed, with
   videos and photos kept apart inside it. Two jumps given the same name are one montage and share it.
-  A montage cannot be processed until it has a name, because the name is the folder. **Where its film
+  A montage cannot be edited, rendered or uploaded until it has a name, because the name is the folder. **Where its film
   and its backups go is chosen when it is uploaded**, among the destinations (Uploading a montage).
 - **A backup folder chosen before backups went into destinations** becomes a destination called
   Backup, so a backup can go where it always went. It is called Backup 2, Backup 3 ... when Backup is
@@ -448,7 +457,7 @@ output/
 │           ├── luc_favre_20260829.mp4         the film, once rendered
 │           ├── luc_favre_20260829.photos.zip  for whoever it is for
 │           └── luc_favre_20260829.rushes.zip  the originals, for the backup, when kept as one archive
-├── proxies/                  the small copies, and for each montage a set cut to match its processed clips
+├── proxies/                  the small copies, and for each montage the ones cut to what the board did to its clips
 ├── music/                    the music the film editor offers, brought in from the computer
 ├── film-templates/           one film template per file, for the film editor
 ├── .thumbs/                  the frames the board draws, cut once and kept
@@ -570,33 +579,33 @@ film) and says that nothing of it is on this machine, and a button to open its o
 once and partly back — files copied back — is not freed, so it is among the montages again until it is freed
 a second time.
 
-**Where every montage has got to.** A montage walks the same five steps every time — _Prepared_,
-_Edited_, _Rendered_, _Uploaded_, _Emailed_ — and the board shows every montage where it
-is on them, so nobody has to remember what comes after a render. A montage has a name from the moment it
-is made, so naming is not a step. Only the first step is needed: once the copies are made, the files are
-in the montage's own folder and the montage is of use as it is — the other four are what can be done
-with it, said as _Optional_ on the card, and none is forced. Each montage's entry in the menu says
+**Where every montage has got to.** A montage walks the same four steps every time — _Edited_, _Rendered_,
+_Uploaded_, _Emailed_ — and the board shows every montage where it is on them, so nobody has to remember
+what comes after a render. A montage has a name from the moment it is made, so naming is not a step, and
+nothing has to be processed first: a montage is edited where its clips are, and nothing is copied until
+something is handed over (A montage hands over its origins). The four steps are what can be done with it,
+said as _Optional_ on the card, and none is forced. Each montage's entry in the menu says
 the step that is next ("to render", "to email") with a segment per step beneath it, done ones in green
-and the one it is at in the same colour as those words; its card says the same. Its page shows the whole way in one row of five, a line joining them green as far as the step it is at,
+and the one it is at in the same colour as those words; its card says the same. Its page shows the whole way in one row of four, a line joining them green as far as the step it is at,
 each with a word under it — what it gave, or what it will be — and under the row one calm line saying
 which step it is at and what to do next, with the one button that takes it and a "?" that says what taking it
 does. Each step is read
-off what is there — the copies, the edit, the film, the upload, the storage's list. A
+off what is there — the edit, the film, the upload, the storage's list. A
 freed montage went through every step up to the upload, with nothing left here to show for it. A
 montage with several jumps is where the one furthest behind is, since one name is one folder.
 
-**A montage is finished when the person says so.** Beside its next step, once its copies are made, a montage
+**A montage is finished when the person says so.** Beside its next step, a montage
 offers _Done_: it is kept on this machine as it is, with no upload and no film, and nothing is deleted or
 moved. A done montage has no next step, no longer counts among the montages _to do_ and leaves the menu for
 _Montages done_, where it is listed as kept on this machine, with its _Folder_ and its _Open_; its page says
 it is done and offers _Reopen_, which puts its steps back. Every jump of the same name is set and reopened
 together. A montage is also done once it has been freed from this machine, as before. A render never
 finishes a montage by itself: a rendered film is something to send or to keep, and the person says which.
-_Open its folder_ is on a montage's page whenever its copies are made, and shows the folder of them in the
-machine's own file manager, to use the files on their own; `SKYDOCK_FOLDER_COMMAND` says what opens it where
-the machine's own way does not, and a montage that was freed from here, or not yet prepared, says so.
+_Open its folder_ is on a montage's page once its film is edited or rendered, and shows its folder — the film
+and the edit — in the machine's own file manager, to use them on their own; `SKYDOCK_FOLDER_COMMAND` says what opens it where
+the machine's own way does not, and a montage that was freed from here, or whose film was never edited, says so.
 
-**A montage's page changes with where the montage is.** While there is work to do, it has the way in six steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, each marked _prepared_ once its copy is made, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — edit the film, process it again, start the edit again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
+**A montage's page changes with where the montage is.** While there is work to do, it has the way in four steps, the next-step card, and under them _Its files_: one card listing every file, clips and photos together, in the same table as a destination's (picture, name, shot, size, state). Once the montage is delivered, the steps shrink to one line of names and the files give way to two cards side by side: _On this machine_ — how much is here, a line saying everything here is also on the storage, and _Free up space…_ with what it does — and _On the storage_, the folders it was handed over into, each with what is in it and a way to watch the film. The link is not on those cards: it is in the panel at the right, with _Copy link_ and _Remove link_ (or _Create link_ where there is none), and under it where the film and the originals went. Once the montage is freed, the page says so in three cards — what is stored, the link and when it was emailed, and that this machine holds nothing — over what is only on the storage now, and the panel tells when it was emailed and to whom. What else can be done to a montage — edit the film, start the edit again, upload again, free up space, email again, reset, delete — is in the ⋯ menu of its page, so the page carries only the one next step. A montage's address opens its page for as long as the montage exists, finished or not.
 
 **Montages done** lists the freed montages, and those set as done, as a table — who it was for, the day, when its link was emailed (a dash while it has not been), how much is on the storage, whether its link still works — each with buttons for its storage cards and its page. With no montage left to do the Montages heading says so.
 
@@ -1046,8 +1055,8 @@ file's details give the copy's size once it exists.
 ## Acting
 
 Each dropzone and each montage offers its next step, always in the same place, and never out of order.
-A dropzone is **processed**, then **uploaded**, as a whole. A montage is **processed**, then **edited**,
-then **uploaded**: the upload opens once there is an edit, and sends nothing until the
+A dropzone is **processed**, then **uploaded**, as a whole. A montage is edited, rendered, then uploaded,
+with nothing processed first: the upload opens once there is a film, and sends nothing until the
 film is rendered. Once it is uploaded, the last step — emailing the link to whoever the film is for — is the
 primary button, ahead of Upload again, which steps back to a quiet one. Freeing space is offered beside the upload once there is something to free.
 
@@ -1341,12 +1350,12 @@ about it is stored.
 
 ## The film editor
 
-**A processed montage's film is edited in SkyDock.** _Edit the film_ opens the film editor on its own
+**A montage's film is edited in SkyDock.** _Edit the film_ opens the film editor on its own
 page, at `/edit/<the montage's id>`, which takes the whole window without the board around it, and which
 is read again, and stays, when the page is reloaded. Closing it and _Render the film_ go back to
 where it was opened from, or to the montage's page when it was the first page loaded; the browser's
 Back leaves it too, and an edit not yet saved is saved on the way out. A montage that is not on the
-board, and one that is not processed, are refused in the editor with the reason, and its close goes to the montages page. In the packed desktop window with its own frame the editor has the same rounded corners as the board. Its header moves the window when dragged, as the board's does, from anywhere in it that is not a button or a box. The page has the
+board, and one that has no name, are refused in the editor with the reason, and nothing has to be processed for it to open, and its close goes to the montages page. In the packed desktop window with its own frame the editor has the same rounded corners as the board. Its header moves the window when dragged, as the board's does, from anywhere in it that is not a button or a box. The page has the
 montage's clips on the left, the picture in the middle with previous clip, play and next
 clip under it, what is picked on the right, and under them a toolbar with Select, Cut at playhead,
 Delete, Crossfade, Ripple, Snap and the zoom, the timeline, and a line with the film's length, with a Shortcuts button beside Undo in the header. The timeline ends
@@ -1367,14 +1376,16 @@ header says _Montages_, the person and the day of the montage, whether the edit 
 also Ctrl or Cmd and Z — and _Render the film_. Undo takes back the last change, a drag or a slider
 counting as one, as far back as the editor has been open. On a narrow window the picture takes the
 top and the two panes sit side by side below it, and on a phone they stack, the whole editor
-scrolling so the timeline is always reachable. The first time, every video of the montage is laid
+scrolling so the timeline is always reachable. The first time, every video of the montage that can be played is laid
 end to end in the order shot, whole, with no gap, with its camera sound off, and a title with the
-person's name opens the film. The edit is saved beside the montage's copies as `<name>_<date>.edit.json`, by
+person's name opens the film. While nobody has touched the film, it is laid out again each time the montage is read again, so a clip whose small copy was still being made is in it once it is. The edit is saved in the montage's folder, which is made with it, as `<name>_<date>.edit.json`, by
 itself, a moment after each change — the first change, or the film template the film is started from.
 Opening the editor only to look writes nothing: that first film is the same each time it is laid out, so
 nothing is lost, and a montage that was only looked at is not edited. Once written, that file is the
 montage's edit, so the edit step is done and the montage is held as that edit holds it (below), and it
 is kept aside in every version (The edit is kept aside, every version of it).
+
+**What the film does not use yet is easy to find.** A clip or photo that the film uses is marked _In the film_ in the library, and _Not used yet_ above the list shows only those it does not, so a clip forgotten, or footage from another camera that was only to be backed up, is not lost among the others. The photos are not laid on the timeline the first time, since a card of stills would give a film to clear before it could be edited; _Add all photos_, above the list while a photo is not in the film, puts every one that is not at the end of the film, in the order they are listed, five seconds each, as one step of Undo, and it is not there when every photo is in the film or the montage has none.
 
 Photos are clips too. The montage's photos (JPEG and PNG) are listed on the left with the videos, each marked _Photo_, and go in the same way — dropped on the video track or put at the end with _Add_ — as a clip that holds the picture for five seconds, with no sound, and that is not laid on the timeline the first time. It is shortened or lengthened by its edges or its _Length_ box, up to a minute, like a video; it can be cut at the playhead, given a gap, faded into and out of, and moved like one. There is no _Source in_ and _Source out_ for it and no part to choose, and the picture is shown in the editor and rendered fitted into the film's frame, with black around it, as a video is.
 
@@ -1552,6 +1563,10 @@ it in its header, with how far it has got and the same _Cancel_, and says when t
 why it was not; _Render…_ still opens the render panel, whose _Render the film_ waits for the render
 under way to end. While any job in the panel in the corner goes — a render, a copy, an upload, the files being prepared, the small copies — its line says the time left, and so does the header of the editor for the render of the film it holds; it is said as a number of minutes (_2 min left_), or of seconds (_40 s left_) under a minute, and is worked out from how far the percentage has come since the app first saw the job going, in proportion to the time that took, and said only after five seconds and two per cent of the way, so that the first moments say nothing rather than something wild; it is an estimate, and moves as the job speeds up or slows down.
 
+**What the board did to a clip is the clip; what the editor does is the film's.** A clip the board trimmed, framed or turned is, in the editor, the clip as the board left it: its length is what remains after the trim, its picture the framed and turned one, and its markers the moments inside what remains. The part, the frame, the turn and the speed chosen in the editor are the film's own, saved in the edit, applied on top of that, and never change the clip or what is handed over. The render reads the clip itself and does both again in the one pass that cuts the film: it starts from the board's trim, applies the board's frame and turn, then the edit's. A frame whose background is blurred cannot be part of that pass, so such a clip is made apart first, in the render's working folder, and goes away with it. The edit calls a clip by the name its copy has, or will have: a name made from the montage's name and the moment the clip was shot, the same before and after the montage is processed, and a name already given to a copy stays. A clip changed on the board after the film was edited changes length in the film; the editor says, as before, when a part is now shorter than the film takes of it.
+
+**A clip forgotten before the edit began is added from the editor.** _Add a clip…_, under the clips on the left, opens a list of every clip on the board that the montage does not hold, the nearest in time to the jump first, each with its time and where it is — _Loose_ in Fresh files, _In_ a jump or a dropzone, _In_ a person's montage — with a box to search by name or place and a box to tick on each. Clips are known by what they hold, so a clip the montage has already, or has a copy of, is not listed. A clip that lives on the storage only is listed greyed out, with _On the storage only, bring it back first_, and cannot be ticked. _Add_ puts the ticked clips in: a loose clip moves into the montage and leaves Fresh files; a clip that is in a jump, a dropzone or another montage is copied in and stays where it is, as when it is dropped on another jump, and that other montage is kept exactly as it was, edit and all. The montage is not put back to be processed, and the film, its edit and its other copies are not touched: only the copies of the added clips are made, by a processing that is told which clips, and that does not clear what it does not name. _From the computer…_ in the same list brings clips in from the computer straight into the montage, the same way as a drop on a montage does it (a clip the board already has is moved or copied, not copied twice), with the same rule about the montage staying as it is. The clip is made its own small copy, as every clip is, and its copy for the film in parallel; the library lists it with _Making its small copy_ and its percentage while that is made, then _Preparing_ while its copy for the film is made, then _Ready_, and the editor reads the montage again by itself every few seconds while that goes on, up to ten minutes after the clips were added. A clip can be put in the film as soon as its copy for the film exists, before its small copy does: it then plays at its full size, and plays from the small copy once that is made. When the montage is changed from elsewhere, a clip added from the board's page for instance, the editor says so at the top — _A clip was added to this montage_ — with _Refresh the library_, and does not change what it shows until that is pressed.
+
 ## The edit and the montage
 
 A montage's edit is its film editor's edit: one file in the montage's folder, `<name>.edit.json`,
@@ -1564,7 +1579,7 @@ and at moments inside them, and a film is rendered from it.
   each time it opens, so files and jumps come in and go out, and clips are trimmed, framed, turned and
   re-timed as on any montage: a new copy is one more clip to choose from, and a clip whose copy is gone,
   or is now shorter than the part the edit takes of it, is named at the top of the editor — take it out,
-  or process the montage again — instead of breaking the film. A **new name renames the montage whole**:
+  or look at its part again — instead of breaking the film. A **new name renames the montage whole**:
   every name in it is SkyDock's own, so its folder, its copies and their working copies, its film and its
   edit take the new name, the edit calls its clips by their new names and a title that said the old name
   says the new one, and nothing has to be processed again. The edit is kept aside first; a name another
@@ -1592,13 +1607,17 @@ editor allows — **is never written over.** Opening the editor puts it whole am
 name of its own (`<name>_<date>-<moment>.unreadable.json`), says so and why, and starts the film again
 from its first edit; the hours in it are still there for whoever can read them.
 
-**Preparing it again is allowed.** Preparing writes the copies and nothing else: the edit, the film
-and the archives are left exactly where they are, and each copy keeps the name the montage and the
-clip's own time give it — the name the edit calls it by. So a montage with an edit can be prepared
-again from its originals whenever what is on the disk is not what it should be. What changes is what
-those copies hold, so a clip whose trim was corrected comes out a different length and its place on the
-timeline may want a look; that is the editor's to judge, and an afternoon lost to a correction nobody
-can apply is worse.
+**A montage hands over its origins.** Nothing of a montage is copied to edit it or to render it, and
+nothing has to be processed for it to be uploaded: what is handed over of a file is its **origin**. A file the
+board left alone is its own origin — the file as it came off the camera, which is on this machine, the camera
+not needed — and is sent as it is. A clip or a photo that the board trimmed, framed or turned has a new origin,
+the copy made of it, and that copy is what is sent. The copy is made when it is wanted, for the files that
+have changed and for no other: uploading a montage first makes the copies of the files the board changed
+since they were last made, and sends the rest as they are. The same holds for the photos as for the videos,
+whichever camera they came from, whether or not the film uses them. What is changed inside the editor is not
+part of any origin. Making copies writes the copies and nothing else: the edit, the film and the
+archives are left exactly where they are, and each copy keeps the name the montage and the clip's own time
+give it — the name the edit calls it by.
 
 ## Taking a montage back
 
@@ -1611,10 +1630,10 @@ and the record of what was uploaded. They differ in what they leave behind.
 
 |                                 | The montage's name | Crops, turns, corrected times | Its jumps                                     |
 | ------------------------------- | ------------------ | ----------------------------- | --------------------------------------------- |
-| **Reset**, to before processing | kept               | kept                          | kept, still a montage                         |
+| **Reset**, to just named        | kept               | kept                          | kept, still a montage                         |
 | **Delete**, undoing the montage | forgotten          | forgotten                     | loose in Fresh files, on their cameras' times |
 
-Starting the edit again is how an edit alone is started over; Reset goes back to before processing. Delete works at whatever step the montage has reached — named,
+Starting the edit again is how an edit alone is started over; Reset goes back to just named. Delete works at whatever step the montage has reached — named,
 processed, edited, rendered, uploaded or emailed — and is offered on the montage's own panel as well as
 on its page; regrouping puts its files back into jumps. Only a freed montage cannot be
 deleted: nothing of it is left on this machine to put back.
@@ -1626,8 +1645,7 @@ asked.
 ## Uploading a montage
 
 A montage belongs to no destination, so uploading it says where each thing goes. It has four parts to
-send, each taken whole and never file by file: its **original videos**, its **original photos** as
-prepared, **the montage** itself (the rendered film), and **its edit** — the film
+send, each taken whole and never file by file: its **original videos**, its **original photos** (A montage hands over its origins), **the montage** itself (the rendered film), and **its edit** — the film
 editor's edit, called by what it is. A part the montage does not have — no
 photos, say — is simply not offered. Uploading is two steps, side by side in one
 dialog — the zips on the left, where it all goes on the right — and nothing is sent until its own
@@ -1644,8 +1662,7 @@ A zip is named `<name>_<date>_<time>.<ending>.zip`: the ending is chosen for eac
 lowercase letters, digits and dashes, and no two zips end the same way. One zip can be given no ending
 at all, and is then `<name>_<date>_<time>.zip`. A new zip ends with the part
 it was started with. The date and the time are when the montage's first jump started. The edit
-calls the clips by their names in the montage's `videos` folder, so from a backup it is of use with
-the videos put back there.
+calls the clips by the names their copies have or would have (A montage's film is edited in SkyDock), so from a backup it is of use with the same clips on the board.
 
 **2. Where it goes.** Every zip, and every part as it is, is listed with its whole name, never cut
 short. Beside them are the destinations something is already in; any other is added with **+ Add a

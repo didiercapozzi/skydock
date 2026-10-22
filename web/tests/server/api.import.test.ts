@@ -1,11 +1,18 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 import { loadManifestAsync, saveManifest, subscribe } from '@skydock/scripts'
 import type { LiveEvent } from '@skydock/scripts'
 import { computeFileId } from '../../../packages/skydock-scripts/src/fileId'
 import { action } from '../../app/routes/api.import'
 import { createTmpDir } from './fixtures'
+
+const processing = vi.hoisted(() => vi.fn(() => Promise.resolve({ copied: 0, processedGroups: 0 })))
+
+vi.mock('../../../packages/skydock-scripts/src/process', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../../packages/skydock-scripts/src/process')>()),
+  processJumps: processing
+}))
 
 type Answer = { ok: boolean; outcome?: string; filename?: string; error?: string }
 
@@ -226,5 +233,43 @@ describe('a file being copied in from the computer', () => {
     expect(heard.some((e) => e.kind === 'job' && e.type === 'import' && e.stage === 'done')).toBe(
       true
     )
+  })
+})
+
+describe('a file added from the computer to a montage that is prepared', () => {
+  const work = useWorkFolder('skydock-api-import-montage-')
+
+  it('joins it, and keeps the montage as prepared', async () => {
+    const manifestPath = path.join(work.path, 'manifest.json')
+    await saveManifest(manifestPath, {
+      version: 1,
+      createdAt: '2026-08-01',
+      files: [],
+      groups: [
+        {
+          id: 'g1',
+          label: 'jump',
+          day: '01.08.2026',
+          montageJump: true,
+          passenger: { firstname: 'Luc', lastname: 'Favre' },
+          processed: true,
+          files: []
+        }
+      ],
+      destinations: []
+    })
+    processing.mockClear()
+
+    const said = await dropped({
+      target: 'montage:g1',
+      filename: 'late.mp4',
+      lastModified: String(SHOT.getTime())
+    })
+
+    expect(said.ok).toBe(true)
+    const after = (await loadManifestAsync(manifestPath))!
+    expect(after.groups[0]?.processed).toBe(true)
+    expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['late.mp4'])
+    expect(processing).not.toHaveBeenCalled()
   })
 })

@@ -34,14 +34,17 @@ const takeJob = (event: Extract<LiveEvent, { kind: 'job' }>) => {
   })
 }
 
-const useLiveJobs = (on: boolean) => {
+const useLiveJobs = (on: boolean, onBoard?: () => void) => {
+  const heard = useEffectEvent(() => onBoard?.())
   useEffect(() => {
     if (!on) return
     forgetLive()
     const source = new EventSource(routingEngine.href({ url: '/api/events' }))
     source.onmessage = (message) => {
       const parsed = jsonText.pipe(liveEventSchema).safeParse(String(message.data))
-      if (parsed.success && parsed.data.kind === 'job') takeJob(parsed.data)
+      if (!parsed.success) return
+      if (parsed.data.kind === 'job') takeJob(parsed.data)
+      else if (parsed.data.kind === 'board') heard()
     }
     return () => source.close()
   }, [on])

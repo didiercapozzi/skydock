@@ -268,3 +268,29 @@ describe('adding a file from the computer', () => {
     expect((await loadManifestAsync(manifestPath()))!.groups[0]?.files).toHaveLength(1)
   })
 })
+
+describe('adding a file from the computer to a montage that is prepared', () => {
+  it('joins it without putting the montage back to be processed', async () => {
+    await setup()
+
+    const answer = await add('GX010003.MP4', 'video', { kind: 'montage', groupId: 'g1' })
+
+    const after = (await loadManifestAsync(manifestPath()))!
+    expect(after.groups[0]?.processed).toBe(true)
+    expect(after.groups[0]?.files.map((f) => f.filename)).toEqual(['GX010003.MP4'])
+    expect(answer).toMatchObject({ outcome: 'added' })
+  })
+
+  it('copies in a clip the board has already', async () => {
+    await twoMontages()
+    const first = await add('GX010003.MP4', 'video', { kind: 'group', groupId: 'g2' })
+    expect(first.outcome).toBe('added')
+
+    const answer = await add('GX010003.MP4', 'video', { kind: 'montage', groupId: 'g1' })
+
+    const after = (await loadManifestAsync(manifestPath()))!
+    expect(answer.outcome).toBe('copied')
+    expect(after.groups[1]?.files).toHaveLength(1)
+    expect(after.groups[0]?.files).toHaveLength(1)
+  })
+})

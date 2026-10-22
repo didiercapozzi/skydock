@@ -20,7 +20,6 @@ const covers: Record<string, string[]> = {
     'when it has no name: a jump is not made a montage until it is named',
     'when nothing is put anywhere, and says so',
     'when a destination has no folder on the storage, and says so',
-    'when a file is still to process, and says how many',
     'when there is no film yet, naming the film that was looked for',
     'while the film is still being written',
     'while another upload is going, naming it',

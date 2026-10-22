@@ -3,7 +3,7 @@ import * as path from 'node:path'
 import type { Locator } from 'playwright'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import { seedTrim, takeStep } from './i1-helpers'
+import { seedTrim } from './i1-helpers'
 import { filesUnder, montageFolder, originalsDir, originalsOf, WHO } from './media'
 import { groupsOf } from './record'
 import { details, dialogNamed, preview } from './steps'
@@ -70,41 +70,23 @@ describe('making a montage', () => {
     await quiet()
   })
 
-  test('walks the montage through its six steps, each shown where it is', async () => {
+  test('walks the montage through its four steps, each shown where it is', async () => {
     await montageMenu()
       .getByRole('link', { name: /Luc Favre/ })
       .click()
     await j.page.getByRole('heading', { name: WHO, level: 1 }).waitFor()
     await stepsRow().first().waitFor()
-    expect(await stepsRow().count()).toBe(6)
+    expect(await stepsRow().count()).toBe(4)
     const words = await stepsRow().locator('b').allInnerTexts()
-    expect(words[0]).toContain('done')
     expect(words.map((w) => w.split('\n')[0])).toEqual([
-      'Named',
-      'Prepared',
-      'Project',
-      'Film',
+      'Edited',
+      'Rendered',
       'Uploaded',
-      'Sent'
+      'Emailed'
     ])
-    await expect.poll(async () => await atStep().innerText()).toContain('Prepared')
+    await expect.poll(async () => await atStep().innerText()).toContain('Edited')
     await montageMenu()
-      .getByRole('img', { name: /1 of 6 steps done/ })
-      .waitFor()
-    await expect
-      .poll(
-        async () =>
-          await montageMenu()
-            .getByRole('link', { name: /Luc Favre/ })
-            .innerText()
-      )
-      .toContain('to process')
-    await see('Prepare the files')
-
-    await takeStep(j.page, 'Process', 'Edit the film')
-    await expect.poll(async () => await atStep().innerText()).toContain('Project')
-    await montageMenu()
-      .getByRole('img', { name: /2 of 6 steps done/ })
+      .getByRole('img', { name: /0 of 4 steps done/ })
       .waitFor()
     await expect
       .poll(
@@ -114,25 +96,22 @@ describe('making a montage', () => {
             .innerText()
       )
       .toContain('to edit')
-    expect(filesUnder(montageFolder(j.world))).toEqual([
-      'photos/luc_favre_20260906_090130.jpg',
-      'videos/luc_favre_20260906_090000.mp4',
-      'videos/luc_favre_20260906_090300.mp4'
-    ])
+    await see('Edit the film')
+    expect(filesUnder(montageFolder(j.world))).toEqual([])
     await quiet()
   })
 
   test('lists a montage’s files as a destination’s are, each with its picture, name, time, size and state', async () => {
     const files = j.page.getByRole('region', { name: WHO }).last()
-    await files.getByText('prepared').first().waitFor()
+    await files.getByText('DJI_20260906090000_0006_D.MP4').first().waitFor()
     const text = await j.page.locator('main').innerText()
     expect(text).toMatch(/2 videos/)
-    for (const copy of [
-      'luc_favre_20260906_090000.mp4',
-      'luc_favre_20260906_090300.mp4',
-      'luc_favre_20260906_090130.jpg'
+    for (const file of [
+      'DJI_20260906090000_0006_D.MP4',
+      'DJI_20260906090300_0007_D.MP4',
+      'DJI_20260906090130_0008_D.JPG'
     ])
-      expect(text).toContain(copy)
+      expect(text).toContain(file)
     await quiet()
   })
 })
@@ -141,12 +120,10 @@ describe('what else can be done to a montage', () => {
   test('keeps what else can be done in the menu of its page, so the page carries one next step', async () => {
     const page = j.page.getByRole('region', { name: WHO }).last()
     expect(await page.getByRole('button', { name: 'Edit the film' }).count()).toBe(1)
-    expect(await page.getByRole('button', { name: /^(Upload|Process again|Reset)/ }).count()).toBe(
-      0
-    )
+    expect(await page.getByRole('button', { name: /^(Upload|Process|Reset)/ }).count()).toBe(0)
     await j.page.getByRole('button', { name: 'More' }).click()
     expect(await j.page.getByRole('group', { name: 'More' }).innerText()).toBe(
-      'Process again\nReset…\nDelete montage…'
+      'Edit the film\nReset…\nDelete montage…'
     )
     await j.page.keyboard.press('Escape')
     await quiet()
@@ -182,7 +159,7 @@ describe('joining and copying', () => {
             .getByRole('link', { name: /Luc Favre/ })
             .innerText()
       )
-      .toContain('to process')
+      .toContain('to edit')
     await j.page.getByText('2 jumps · 5 files').waitFor()
     await quiet()
   })

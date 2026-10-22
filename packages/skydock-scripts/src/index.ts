@@ -17,7 +17,14 @@ import {
   shiftGroupTo,
   startOfFiles
 } from './clustering'
-import { fileChanged, fileStatus, outputKeyOf, uploadGate, UPLOADED_LOCKED } from './fileStatus'
+import {
+  copiesOwed,
+  fileChanged,
+  fileStatus,
+  outputKeyOf,
+  uploadGate,
+  UPLOADED_LOCKED
+} from './fileStatus'
 import type { FileStatus, RemoteListing, StatusContext } from './fileStatus'
 import { forgetLostFiles } from './forgetLost'
 import { busySaid, busyWith, busyWithFiles, jumpsOfMontage } from './busy'
@@ -254,6 +261,7 @@ export {
   dsmLogout,
   dsmValidateSession,
   ensureNasSession,
+  copiesOwed,
   fileChanged,
   fileStatus,
   filmNameOf,

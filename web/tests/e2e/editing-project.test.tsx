@@ -24,10 +24,7 @@ const actions = (
     createElement(MontageCardActions, {
       group: processed,
       busy: null,
-      blocked: { blocked: false, message: null },
       proxiesWaiting,
-      named: true,
-      onProcess: () => {},
       onMontage,
       onOpenMontage: () => {},
       onUpload: () => {},
@@ -41,7 +38,7 @@ const made = {
   baseName: 'luc'
 }
 
-describe('a processed montage with no edit yet', () => {
+describe('a montage with no edit yet', () => {
   test('opens the film editor at once while clips are still getting their proxy', async () => {
     const onMontage = vi.fn()
     await actions(2, onMontage)
@@ -49,6 +46,13 @@ describe('a processed montage with no edit yet', () => {
     await expect.element(page.getByText('waiting for 2 proxies')).toBeVisible()
     await userEvent.click(page.getByRole('button', { name: 'Edit the film' }))
     expect(onMontage).toHaveBeenCalledTimes(1)
+  })
+
+  test('offers no processing before the edit, even for a montage nothing was made for', async () => {
+    await actions(0, vi.fn(), { group: { ...processed, processed: undefined } })
+
+    await expect.element(page.getByRole('button', { name: 'Edit the film' })).toBeEnabled()
+    await expect.element(page.getByRole('button', { name: /^Process/ })).not.toBeInTheDocument()
   })
 
   test('says nothing of proxies once every clip has its own, or has failed to', async () => {
@@ -70,7 +74,7 @@ describe('a processed montage with no edit yet', () => {
 })
 
 describe('a montage held by work under way', () => {
-  test('greys what would change it while its film is rendered, saying why, and still opens the editor', async () => {
+  test('greys the upload while its film is rendered, saying why, and still opens the editor', async () => {
     const onOpenMontage = vi.fn()
     await actions(0, vi.fn(), {
       held: 'rendering',
@@ -79,30 +83,16 @@ describe('a montage held by work under way', () => {
     })
 
     const why = 'Its film is being rendered — wait for the render to finish, or cancel it'
-    const again = page.getByRole('button', { name: 'Process again' })
-    await expect.element(again).toBeDisabled()
-    await expect.element(again).toHaveAttribute('title', why)
-    await expect.element(page.getByRole('button', { name: /Upload/ })).toBeDisabled()
+    const upload = page.getByRole('button', { name: /Upload/ })
+    await expect.element(upload).toBeDisabled()
+    await expect.element(upload).toHaveAttribute('title', why)
     await userEvent.click(page.getByRole('button', { name: 'Edit the film' }))
     expect(onOpenMontage).toHaveBeenCalledTimes(1)
-  })
-
-  test('says it is processing, with a Cancel, while a run holds it', async () => {
-    const onCancelProcess = vi.fn()
-    await actions(0, vi.fn(), {
-      group: { ...processed, processed: false },
-      held: 'processing',
-      onCancelProcess
-    })
-
-    await expect.element(page.getByRole('button', { name: 'Processing…' })).toBeDisabled()
-    await userEvent.click(page.getByRole('button', { name: 'Cancel' }))
-    expect(onCancelProcess).toHaveBeenCalledTimes(1)
   })
 
   test('is free while nothing holds it, whatever runs elsewhere', async () => {
     await actions(0, vi.fn(), { held: null, facts: made })
 
-    await expect.element(page.getByRole('button', { name: 'Process again' })).toBeEnabled()
+    await expect.element(page.getByRole('button', { name: /Upload/ })).toBeEnabled()
   })
 })

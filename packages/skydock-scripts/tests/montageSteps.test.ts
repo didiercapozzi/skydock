@@ -31,12 +31,17 @@ const at = (group: ManifestGroup, fact?: MontageFact, emailed = false) => {
 }
 
 describe('where a montage has got to', () => {
-  it('is to be prepared first', () => {
-    expect(at(montage())).toEqual({ step: 'Prepared', next: 'to process' })
+  it('is to be edited first, with nothing processed', () => {
+    expect(at(montage())).toEqual({ step: 'Edited', next: 'to edit' })
   })
 
-  it('is to be edited once prepared', () => {
-    expect(at(montage({ processed: true }), facts())).toEqual({ step: 'Edited', next: 'to edit' })
+  it('has no step for the copies, which are made when something is handed over', () => {
+    expect(montageSteps({ group: montage(), emailed: false }).steps.map((s) => s.name)).toEqual([
+      'Edited',
+      'Rendered',
+      'Uploaded',
+      'Emailed'
+    ])
   })
 
   it('is to be rendered once there is an edit', () => {
@@ -87,7 +92,7 @@ describe('a montage that is done', () => {
     const progress = montageSteps({ group: kept(), facts: facts({ edit: true }), emailed: false })
 
     expect(progress.kept).toBe(true)
-    expect(progress.steps.map((step) => step.done)).toEqual([true, true, false, false, false])
+    expect(progress.steps.map((step) => step.done)).toEqual([true, false, false, false])
   })
 
   it('is behind nothing, so a passenger whose jumps are all done is not to be done', () => {
@@ -106,13 +111,13 @@ describe('a montage that is done', () => {
 describe('where a passenger has got to', () => {
   it('is where their jump furthest behind is', () => {
     const ahead = montageSteps({
-      group: montage({ processed: true }),
+      group: montage(),
       facts: facts({ edit: true, film: FILM }),
       emailed: false
     })
     const behind = montageSteps({ group: montage({ id: 'g2' }), emailed: false })
 
-    expect(furthestBehind([ahead, behind])?.next?.todo).toBe('to process')
+    expect(furthestBehind([ahead, behind])?.next?.todo).toBe('to edit')
   })
 
   it('has nowhere to be without a montage', () => {

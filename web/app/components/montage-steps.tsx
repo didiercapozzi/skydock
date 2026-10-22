@@ -10,7 +10,6 @@ import { Icon } from './icons'
 import type { ManifestGroup } from './types'
 
 const STEP_ACTION: Partial<Record<MontageStep, MessageDescriptor>> = {
-  Prepared: msg`Process`,
   Edited: msg`Edit the film`,
   Rendered: msg`Render the film`,
   Uploaded: msg`Upload…`,
@@ -31,7 +30,7 @@ const StepButton = ({
   const action = STEP_ACTION[step]
   if (!action) return null
   const Button = step === 'Emailed' ? Go : Mini
-  const holds = held !== null && (step === 'Prepared' || step === 'Uploaded')
+  const holds = held !== null && step === 'Uploaded'
   const navigates = step === 'Edited' || step === 'Rendered'
   return (
     <Button
@@ -44,7 +43,6 @@ const StepButton = ({
 }
 
 const STEP_ABOUT: Record<MontageStep, MessageDescriptor> = {
-  Prepared: msg`Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder. That is all a montage needs — the rest is up to you.`,
   Edited: msg`Opens the film editor with the clips laid end to end. Trim them, add music and text, then render. Or press Done to keep the copies as they are.`,
   Rendered: msg`Finish the edit and render the film. The board notices the film by itself.`,
   Uploaded: msg`The film is rendered. Upload it, the photos and the originals where you choose — or press Done to keep it here.`,
@@ -52,7 +50,6 @@ const STEP_ABOUT: Record<MontageStep, MessageDescriptor> = {
 }
 
 const STEP_WORD: Record<MontageStep, MessageDescriptor> = {
-  Prepared: msg`Prepared`,
   Edited: msg`Edited`,
   Rendered: msg`Rendered`,
   Uploaded: msg`Uploaded`,
@@ -192,7 +189,6 @@ const StepMeter = ({
 }
 
 const STEP_HINT: Record<MontageStep, { later: MessageDescriptor; done: MessageDescriptor }> = {
-  Prepared: { later: msg`Prepare the files`, done: msg`Files ready` },
   Edited: { later: msg`Edit the film`, done: msg`Film edited` },
   Rendered: { later: msg`Render the film`, done: msg`Film rendered` },
   Uploaded: { later: msg`Upload to the storage`, done: msg`On the storage` },
@@ -200,7 +196,6 @@ const STEP_HINT: Record<MontageStep, { later: MessageDescriptor; done: MessageDe
 }
 
 const STEP_TITLE: Record<MontageStep, MessageDescriptor> = {
-  Prepared: msg`Prepare the files`,
   Edited: msg`Edit the film`,
   Rendered: msg`Render the film`,
   Uploaded: msg`Upload it to the storage`,
@@ -314,8 +309,6 @@ const NextStep = ({
   const [explained, explain] = useState(false)
   const { steps, at, kept } = progress
   const step = steps[at]
-  const n = at + 1
-  const total = steps.length
   return (
     <div className='flex w-full basis-full flex-col gap-4'>
       <StepLine
@@ -348,11 +341,7 @@ const NextStep = ({
               </b>
               {step && (
                 <span className='text-micro font-bold tracking-eyebrow text-accent-ink uppercase'>
-                  {step.name === 'Prepared'
-                    ? t`Step ${n} of ${total}`
-                    : step.name === 'Emailed'
-                      ? t`Optional · last step`
-                      : t`Optional`}
+                  {step.name === 'Emailed' ? t`Optional · last step` : t`Optional`}
                 </span>
               )}
             </div>

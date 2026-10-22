@@ -175,6 +175,11 @@ msgstr "{0, plural, one {# texte} other {# textes}} · {1, plural, one {# morcea
 msgid "{0, plural, one {# video} other {# videos}}"
 msgstr "{0, plural, one {# vidéo} other {# vidéos}}"
 
+#. placeholder {0}: chosen.length
+#: app/components/film-clip-picker.tsx
+msgid "{0, plural, one {Add # clip} other {Add # clips}}"
+msgstr "{0, plural, one {Ajouter # clip} other {Ajouter # clips}}"
+
 #. placeholder {0}: files.length
 #: app/components/free-place-dialog.tsx
 msgid "{0, plural, one {each of the # copy that went up is hashed here and by the storage, and both must match what was sent} other {each of the # copies that went up is hashed here and by the storage, and both must match what was sent}}"
@@ -657,10 +662,6 @@ msgid "{toMake, plural, one {# zip to make} other {# zips to make}}"
 msgstr "{toMake, plural, one {# zip à faire} other {# zips à faire}}"
 
 #: app/components/folder-owed.tsx
-msgid "{toProcess} to process"
-msgstr "{toProcess} à préparer"
-
-#: app/components/folder-owed.tsx
 msgid "{toRender} to render"
 msgstr "{toRender} à rendre"
 
@@ -719,11 +720,11 @@ msgstr "Le montage de {who} a été libéré de cette machine — donnez un autr
 
 #: app/components/work-folder-dialog.tsx
 msgid "{working} — choosing another folder asks first"
-msgstr ""
+msgstr "{working} — choisir un autre dossier demande d’abord confirmation"
 
 #: app/components/work-folder-dialog.tsx
 msgid "{working} — choosing another folder now stops it, so SkyDock asks first."
-msgstr ""
+msgstr "{working} — choisir un autre dossier l’arrête maintenant, alors SkyDock demande d’abord."
 
 #: app/components/transfers-panel.tsx
 msgid "{wrong} not done"
@@ -834,6 +835,10 @@ msgstr "Une caméra que SkyDock ne connaît pas encore"
 #: app/components/film-editor.tsx
 msgid "A clip shorter than 0.4 seconds cannot crossfade"
 msgstr "Un clip de moins de 0,4 seconde ne peut pas faire de fondu enchaîné"
+
+#: app/components/film-editor.tsx
+msgid "A clip was added to this montage — refresh the library to see it."
+msgstr "Un clip a été ajouté à ce montage — actualisez la bibliothèque pour le voir."
 
 #: app/components/file-list.tsx
 msgid "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
@@ -965,10 +970,19 @@ msgstr "Horizontal"
 msgid "active"
 msgstr "actif"
 
+#: app/components/film-clip-picker.tsx
 #: app/components/film-editor.tsx
 #: app/components/places-tree.tsx
 msgid "Add"
 msgstr "Ajouter"
+
+#: app/components/film-clip-picker.tsx
+msgid "Add a clip"
+msgstr "Ajouter un clip"
+
+#: app/components/film-editor.tsx
+msgid "Add a clip…"
+msgstr "Ajouter un clip…"
 
 #. placeholder {0}: edit.clips[index - 1]?.name ?? ''
 #. placeholder {1}: clip.name
@@ -1007,6 +1021,10 @@ msgstr "Ajouter un repère à la tête de lecture, sur le clip ou la musique cho
 #: app/components/film-shortcuts.tsx
 msgid "add a text at the playhead"
 msgstr "ajouter un texte à la tête de lecture"
+
+#: app/components/film-editor.tsx
+msgid "Add all photos"
+msgstr "Ajouter toutes les photos"
 
 #: app/components/email-dialog.tsx
 msgid "Add link"
@@ -1138,14 +1156,14 @@ msgstr "Revenir à la taille d'origine"
 msgid "Back to as shot"
 msgstr "Revenir tel que filmé"
 
-#: app/components/montage-panel.tsx
-#: app/components/montage-view.tsx
-msgid "Back to before processing — keeps the name, the trims, the frames and the times"
-msgstr "Revenir à avant la préparation — garde le nom, les coupes, les cadrages et les heures"
-
 #: app/components/take-back-dialog.tsx
 msgid "Back to Fresh files, loose"
 msgstr "Retour dans Nouveaux fichiers, en vrac"
+
+#: app/components/montage-panel.tsx
+#: app/components/montage-view.tsx
+msgid "Back to just named — keeps the name, the trims, the frames and the times"
+msgstr "Retour au simple nom — garde le nom, les découpes, les cadrages et les heures"
 
 #: app/components/film-editor.tsx
 msgid "Back to the film"
@@ -2222,8 +2240,8 @@ msgid "Edited"
 msgstr "Monté"
 
 #: app/components/film-editor.tsx
-msgid "Edited on the proxies, rendered from the processed copies"
-msgstr "Monté sur les proxies, rendu depuis les copies traitées"
+msgid "Edited on the small copies, rendered from the clips themselves"
+msgstr "Monté sur les petites copies, rendu à partir des clips eux-mêmes"
 
 #: app/components/film-shortcuts.tsx
 msgid "Editing"
@@ -2322,6 +2340,10 @@ msgstr "Échap ferme les fenêtres de dialogue"
 #: app/components/film-editor.tsx
 msgid "Estimating the size…"
 msgstr "Estimation de la taille…"
+
+#: app/components/film-clip-picker.tsx
+msgid "Every clip on the board is already in this film."
+msgstr "Tous les clips du tableau sont déjà dans ce film."
 
 #: app/components/jump-time.tsx
 msgid "every file in the jump moves with it"
@@ -2475,10 +2497,6 @@ msgstr "Fichiers de {jump}"
 #: app/components/jobs-panel.tsx
 msgid "Files prepared"
 msgstr "Fichiers préparés"
-
-#: app/components/montage-steps.tsx
-msgid "Files ready"
-msgstr "Fichiers prêts"
 
 #: app/components/email-dialog.tsx
 msgid "film"
@@ -2774,6 +2792,10 @@ msgstr "à partir de {start}"
 msgid "From the cameras"
 msgstr "Venant des caméras"
 
+#: app/components/film-clip-picker.tsx
+msgid "From the computer…"
+msgstr "Depuis l’ordinateur…"
+
 #: app/components/preview-drawer.tsx
 msgid "From the exit to a few seconds after the landing"
 msgstr "De la sortie d’avion à quelques secondes après l’atterrissage"
@@ -2958,6 +2980,16 @@ msgstr "Importer…"
 msgid "Imported {name}."
 msgstr "{name} est importé."
 
+#. placeholder {0}: origin.name
+#: app/components/film-clip-picker.tsx
+msgid "In {0}"
+msgstr "Dans {0}"
+
+#. placeholder {0}: origin.name
+#: app/components/film-clip-picker.tsx
+msgid "In {0}’s montage"
+msgstr "Dans le montage de {0}"
+
 #: app/components/file-browser.tsx
 msgid "in no jump"
 msgstr "dans aucun saut"
@@ -2974,6 +3006,10 @@ msgstr "dans la corbeille"
 #: app/components/bin-files.tsx
 msgid "In the bin"
 msgstr "Dans la corbeille"
+
+#: app/components/film-editor.tsx
+msgid "In the film"
+msgstr "Dans le film"
 
 #: app/components/preview-drawer.tsx
 msgid "In the machine's player"
@@ -3008,21 +3044,17 @@ msgstr "Inspecteur"
 msgid "is filled from their montage. A line whose variables are all empty for a montage — no film, no photos — is left out of their email."
 msgstr "est rempli à partir de son montage. Une ligne dont toutes les variables sont vides pour un montage — pas de film, pas de photos — est retirée de son e-mail."
 
-#: app/hooks/useBoardModel.ts
-msgid "It cannot be uploaded yet."
-msgstr "Il ne peut pas encore être envoyé."
-
 #: app/components/camera-dialogs.tsx
 msgid "It holds {fresh, plural, one {# file} other {# files}} that {fresh, plural, one {is} other {are}} not on this machine yet. SkyDock will remember this camera, so it is in the list next time even when it is not plugged in."
 msgstr "Elle contient {fresh, plural, one {# fichier qui n’est} other {# fichiers qui ne sont}} pas encore sur cette machine. SkyDock mémorisera cette caméra : elle sera dans la liste la prochaine fois, même débranchée."
 
 #: app/helpers/notes.ts
 msgid "It is being processed — wait for it to finish"
-msgstr ""
+msgstr "Il est en cours de traitement — attendez la fin"
 
 #: app/helpers/notes.ts
 msgid "It is being uploaded — wait for the upload to finish"
-msgstr ""
+msgstr "Il est en cours d’envoi — attendez la fin de l’envoi"
 
 #. placeholder {0}: edit.texts.length
 #. placeholder {1}: edit.music.length
@@ -3065,12 +3097,13 @@ msgstr "Ses fichiers déjà ici restent où ils sont. La prochaine fois qu’ell
 
 #: app/helpers/notes.ts
 msgid "Its film is being rendered — wait for the render to finish, or cancel it"
-msgstr ""
+msgstr "Son film est en cours de rendu — attendez la fin du rendu, ou annulez-le"
 
 #: app/components/inspector.tsx
 msgid "Its film is edited here — a new name renames its folder, its copies, its edit and its film, with nothing to process again."
 msgstr "Son film est monté ici — un nouveau nom renomme son dossier, ses copies, son montage et son film, sans rien à préparer à nouveau."
 
+#: app/components/take-back-dialog.tsx
 #: app/routes/place.tsx
 msgid "its folder"
 msgstr "son dossier"
@@ -3196,8 +3229,8 @@ msgid "Kept on this machine as it is: open its folder and use the files, or edit
 msgstr "Gardé tel quel sur cette machine : ouvrez son dossier et utilisez les fichiers, ou montez-le et envoyez-le plus tard."
 
 #: app/components/take-back-dialog.tsx
-msgid "Kept, ready to process again"
-msgstr "Conservé, prêt à être préparé à nouveau"
+msgid "Kept, ready to be edited again"
+msgstr "Gardé, prêt à être monté à nouveau"
 
 #: app/components/board-header.tsx
 #: app/components/shortcuts-dialog.tsx
@@ -3366,6 +3399,7 @@ msgid "Looking…"
 msgstr "Recherche…"
 
 #: app/components/file-browser.tsx
+#: app/components/film-clip-picker.tsx
 msgid "Loose"
 msgstr "En vrac"
 
@@ -3419,11 +3453,6 @@ msgstr "Le réduire de nouveau"
 msgid "Make montage"
 msgstr "Créer le montage"
 
-#: app/components/montage-card.tsx
-#: app/components/montage-view.tsx
-msgid "Make the copies again from the originals — the edit, the film and the archives are left alone"
-msgstr "Refaire les copies à partir des originaux — le montage du film, le film et les archives ne sont pas touchés"
-
 #: app/routes/place.tsx
 msgid "Make the copies that get handed over, for everything in {name} that has none — {toProcess, plural, one {# file} other {# files}}, whatever the search or the filter is showing."
 msgstr "Créer les copies à livrer pour tout ce qui n’en a pas dans {name} — {toProcess, plural, one {# fichier} other {# fichiers}}, quels que soient la recherche ou le filtre affichés."
@@ -3456,13 +3485,14 @@ msgstr "Créer les zips"
 msgid "make them a montage, named first"
 msgstr "en faire un montage, nommé d’abord"
 
-#: app/components/montage-steps.tsx
-msgid "Makes the copies that get handed over: each clip and photo trimmed, framed and turned, in the montage’s own folder. That is all a montage needs — the rest is up to you."
-msgstr "Fait les copies qui sont remises : chaque clip et chaque photo coupé, cadré et tourné, dans le dossier propre du montage. C’est tout ce dont un montage a besoin — le reste dépend de vous."
-
 #: app/components/jobs-panel.tsx
 msgid "Making"
 msgstr "Création"
+
+#. placeholder {0}: Math.round((making.part ?? 0) * 100)
+#: app/components/film-editor.tsx
+msgid "Making its small copy {0}%"
+msgstr "Création de sa petite copie {0} %"
 
 #: app/components/jobs-panel.tsx
 msgid "Making small copies"
@@ -3726,6 +3756,10 @@ msgstr "Suivant : {how} — {at} étapes sur {total} faites"
 msgid "No clip in this jump has an exit found — trim them by hand."
 msgstr "Aucun clip de ce saut n’a de sortie d’avion trouvée — coupez-les à la main."
 
+#: app/components/film-clip-picker.tsx
+msgid "No clip matches that."
+msgstr "Aucun clip ne correspond."
+
 #: app/components/upload-dialog.tsx
 msgid "No destination yet."
 msgstr "Pas encore de destination."
@@ -3869,8 +3903,8 @@ msgstr "Pas dans la liste"
 
 #. placeholder {0}: changedClips.gone.join(', ')
 #: app/components/film-editor.tsx
-msgid "Not in the montage any more: {0} — take it out of the film, or process the montage again."
-msgstr "N’est plus dans le montage : {0} — retirez-le du film, ou préparez le montage à nouveau."
+msgid "Not in the montage any more: {0} — take it out of the film."
+msgstr "Plus dans le montage : {0} — retirez-le du film."
 
 #: app/components/film-editor.tsx
 #: app/components/film-template-modals.tsx
@@ -3912,6 +3946,10 @@ msgstr "Pas envoyé : il reste à envoyer"
 #: app/components/preview-drawer.tsx
 msgid "Not trimmed, framed or turned — the file goes out as shot."
 msgstr "Ni coupé, ni recadré, ni pivoté — le fichier part tel que filmé."
+
+#: app/components/film-editor.tsx
+msgid "Not used yet"
+msgstr "Pas encore utilisés"
 
 #: app/components/inspector.tsx
 msgid "Not yet processed"
@@ -3981,6 +4019,10 @@ msgstr "Rien sur la carte de la caméra."
 #: app/components/inspector.tsx
 msgid "Nothing selected"
 msgstr "Rien de sélectionné"
+
+#: app/components/film-clip-picker.tsx
+msgid "Nothing there is a video or a photo SkyDock can show."
+msgstr "Rien là n’est une vidéo ou une photo que SkyDock sait afficher."
 
 #: app/components/upload-dialog.tsx
 msgid "nothing this montage has"
@@ -4067,6 +4109,10 @@ msgstr "Sur le stockage"
 #: app/hooks/useBoardModel.ts
 msgid "On the storage already, so it cannot move — hold alt while dropping to copy it instead."
 msgstr "Déjà sur le stockage, il ne peut donc pas être déplacé — maintenez Alt en le déposant pour le copier à la place."
+
+#: app/components/film-clip-picker.tsx
+msgid "On the storage only, bring it back first"
+msgstr "Sur le stockage uniquement, rapatriez-le d’abord"
 
 #: app/helpers/notes.ts
 msgid "On the storage only. {files, plural, one {# file} other {# files}} freed from this machine on {day} — {size} given back. The edit is kept here; everything else is on the storage, as above."
@@ -4155,7 +4201,7 @@ msgstr "Ouvrir l’éditeur de film avec les clips mis bout à bout"
 
 #: app/components/montage-card.tsx
 msgid "Open the film editor with the clips laid end to end — {proxiesWaiting, plural, one {# clip plays} other {# clips play}} at full size until its small copy is made"
-msgstr ""
+msgstr "Ouvrir l’éditeur de film avec les clips mis bout à bout — {proxiesWaiting, plural, one {# clip se lit} other {# clips se lisent}} en taille réelle jusqu’à ce que sa petite copie soit faite"
 
 #: app/components/email-dialog.tsx
 msgid "Open the message in"
@@ -4398,17 +4444,13 @@ msgstr "Pop"
 msgid "Portrait"
 msgstr "Portrait"
 
-#: app/components/montage-steps.tsx
-msgid "Prepare the files"
-msgstr "Préparer les fichiers"
-
 #: app/components/file-status.tsx
 msgid "prepared"
 msgstr "préparé"
 
-#: app/components/montage-steps.tsx
-msgid "Prepared"
-msgstr "Préparé"
+#: app/components/film-editor.tsx
+msgid "Preparing"
+msgstr "Préparation"
 
 #: app/components/jobs-panel.tsx
 msgid "Preparing the files"
@@ -4449,19 +4491,9 @@ msgstr "Précédent"
 msgid "Previous clip"
 msgstr "Clip précédent"
 
-#: app/components/montage-card.tsx
-#: app/components/montage-steps.tsx
-msgid "Process"
-msgstr "Préparer"
-
 #: app/routes/place.tsx
 msgid "Process {toProcess, plural, one {# file} other {# files}}"
 msgstr "Préparer {toProcess, plural, one {# fichier} other {# fichiers}}"
-
-#: app/components/montage-card.tsx
-#: app/components/montage-view.tsx
-msgid "Process again"
-msgstr "Préparer à nouveau"
 
 #: app/components/file-status.tsx
 msgid "processed"
@@ -4487,7 +4519,6 @@ msgstr "Préparation"
 msgid "Processing cancelled. What was finished stays; the rest is left to process again."
 msgstr "Préparation annulée. Ce qui était fini reste ; le reste est à préparer à nouveau."
 
-#: app/components/montage-card.tsx
 #: app/routes/place.tsx
 msgid "Processing…"
 msgstr "Préparation…"
@@ -4541,6 +4572,10 @@ msgstr "Placez au moins un élément dans une destination"
 #: app/components/preview-drawer.tsx
 msgid "Put every mark back where the camera measured it"
 msgstr "Remettre chaque repère là où la caméra l’a mesuré"
+
+#: app/components/film-editor.tsx
+msgid "Put every photo that is not in the film at the end of it"
+msgstr "Mettre à la fin du film toutes les photos qui n’y sont pas"
 
 #: app/components/folder-owed.tsx
 #: app/routes/place.tsx
@@ -4640,6 +4675,14 @@ msgstr "Lecture des modèles de film…"
 #: app/components/jump-graph.tsx
 msgid "Reading what the camera measured…"
 msgstr "Lecture des mesures de la caméra…"
+
+#: app/components/film-editor.tsx
+msgid "Ready"
+msgstr "Prêt"
+
+#: app/components/film-editor.tsx
+msgid "Refresh the library"
+msgstr "Actualiser la bibliothèque"
 
 #: app/components/camera-dialogs.tsx
 msgid "Remember this camera and open its page, to tick the files to copy"
@@ -4773,7 +4816,7 @@ msgstr "Rendu du film de {label}"
 #. placeholder {0}: Math.round(partOf(followed) * 100)
 #: app/components/film-editor.tsx
 msgid "Rendering the film · {0}%"
-msgstr ""
+msgstr "Rendu du film · {0} %"
 
 #: app/components/montage-card.tsx
 msgid "Reopen"
@@ -4803,8 +4846,8 @@ msgid "Reset {tool}"
 msgstr "Rétablir {tool}"
 
 #: app/components/take-back-dialog.tsx
-msgid "Reset {who} to before processing"
-msgstr "Remettre {who} comme avant la préparation"
+msgid "Reset {who} to just named"
+msgstr "Remettre {who} au simple nom"
 
 #: app/components/reset-fresh-dialog.tsx
 msgid "Reset Fresh files"
@@ -4957,6 +5000,14 @@ msgstr "Molette sur la ligne de temps pour zoomer · le graphique suit"
 msgid "Search"
 msgstr "Rechercher"
 
+#: app/components/film-clip-picker.tsx
+msgid "Search by name or place"
+msgstr "Chercher par nom ou lieu"
+
+#: app/components/film-clip-picker.tsx
+msgid "Search the clips"
+msgstr "Chercher dans les clips"
+
 #: app/components/preview-drawer.tsx
 msgid "See the clip full screen, at its own size (F)"
 msgstr "Voir le clip en plein écran, à sa taille réelle (F)"
@@ -5108,9 +5159,12 @@ msgid "Show only the {videos} videos"
 msgstr "N’afficher que les {videos} vidéos"
 
 #: app/components/delivered-list.tsx
-#: app/components/montage-card.tsx
 msgid "Show the folder of its copies, to use them on their own"
 msgstr "Montrer le dossier de ses copies, pour les utiliser telles quelles"
+
+#: app/components/montage-card.tsx
+msgid "Show the folder of its film and its edit, to use them on their own"
+msgstr "Afficher le dossier de son film et de son montage, pour s’en servir seuls"
 
 #: app/components/progress-panel.tsx
 msgid "Show the list"
@@ -5301,10 +5355,6 @@ msgstr "État"
 msgid "Stay connected"
 msgstr "Rester connecté"
 
-#: app/components/montage-steps.tsx
-msgid "Step {n} of {total}"
-msgstr "Étape {n} sur {total}"
-
 #: app/components/shortcuts-dialog.tsx
 msgid "step through the files"
 msgstr "parcourir les fichiers"
@@ -5327,11 +5377,11 @@ msgstr "L’arrêter maintenant — rien n’en est enregistré, et ce qui est d
 
 #: app/components/jobs-panel.tsx
 msgid "Stop it now — the copies already finished stay, and nothing of it counts as processed"
-msgstr ""
+msgstr "L’arrêter maintenant — les copies déjà terminées restent, et rien n’est compté comme traité"
 
 #: app/components/jobs-panel.tsx
 msgid "Stop this film’s render now — the film as it was before stays as it is"
-msgstr ""
+msgstr "Arrêter le rendu de ce film maintenant — le film tel qu’il était reste inchangé"
 
 #: app/components/jobs-panel.tsx
 #: app/components/pending.tsx
@@ -5500,6 +5550,14 @@ msgstr "la caméra"
 msgid "The camera could not be copied."
 msgstr "La caméra n’a pas pu être copiée."
 
+#: app/components/film-clip-picker.tsx
+msgid "The clips could not be added."
+msgstr "Les clips n’ont pas pu être ajoutés."
+
+#: app/components/film-clip-picker.tsx
+msgid "The clips on the board could not be read."
+msgstr "Les clips du tableau n’ont pas pu être lus."
+
 #: app/components/connection-dialog.tsx
 msgid "The code is 6 digits"
 msgstr "Le code comporte 6 chiffres"
@@ -5561,6 +5619,7 @@ msgstr "Le fichier lui-même, dans la qualité où il a été filmé"
 msgid "The files could not be copied."
 msgstr "Les fichiers n’ont pas pu être copiés."
 
+#: app/components/film-clip-picker.tsx
 #: app/helpers/parcels.ts
 msgid "the film"
 msgstr "le film"
@@ -5596,7 +5655,7 @@ msgstr "Le film est sur le stockage, mais il n’a pas de lien à envoyer — cr
 
 #: app/components/film-editor.tsx
 msgid "The film is rendered"
-msgstr ""
+msgstr "Le film est rendu"
 
 #: app/components/montage-steps.tsx
 msgid "The film is rendered. Upload it, the photos and the originals where you choose — or press Done to keep it here."
@@ -5709,6 +5768,10 @@ msgstr "le nom, chaque coupe et cadrage, et chaque heure corrigée"
 msgid "the name, every trim and frame, and every corrected time — each file goes back to the time its camera gave it"
 msgstr "le nom, chaque coupe et cadrage, et chaque heure corrigée — chaque fichier reprend l’heure donnée par sa caméra"
 
+#: app/components/film-clip-picker.tsx
+msgid "The nearest in time to this jump come first."
+msgstr "Les plus proches dans le temps de ce saut viennent en premier."
+
 #: app/components/jump-graph.tsx
 msgid "the opening"
 msgstr "l’ouverture"
@@ -5737,10 +5800,6 @@ msgstr "Les images n’ont pas pu être importées."
 #: app/components/free-dialog.tsx
 msgid "the processed copies and the working copies made for the editor"
 msgstr "les copies préparées et les copies de travail faites pour le logiciel de montage"
-
-#: app/components/take-back-dialog.tsx
-msgid "the processed folder"
-msgstr "le dossier préparé"
 
 #: app/components/file-list.tsx
 msgid "The proxy could not be made: {reason}. It is tried again on the next pass; meanwhile the clip plays as it is."
@@ -6321,11 +6380,11 @@ msgstr "en attente"
 
 #: app/components/jobs-panel.tsx
 msgid "Waiting"
-msgstr ""
+msgstr "En attente"
 
 #: app/components/jobs-panel.tsx
 msgid "Waiting for the processing asked for before it — it starts by itself"
-msgstr ""
+msgstr "Attend le traitement demandé avant lui — il démarre tout seul"
 
 #: app/components/email-dialog.tsx
 msgid "Was the email sent?"

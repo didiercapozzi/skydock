@@ -24,6 +24,8 @@ type ImportDrop = { batch: string; key: string }
 
 type ImportTarget =
   | { kind: 'group'; groupId: string }
+  /* a montage that is prepared already: the clip joins it, its copies and its edit stay as they are */
+  | { kind: 'montage'; groupId: string }
   | { kind: 'destination'; name: string }
   | { kind: 'sort' }
 
@@ -33,6 +35,22 @@ type ImportResult =
   | { filename: string; outcome: 'copied'; stays: string }
   | { filename: string; outcome: 'there' }
   | { filename: string; outcome: 'kept'; reason: string }
+
+const joiningOf = (target: ImportTarget) =>
+  target.kind === 'group' || target.kind === 'montage' ? target.groupId : undefined
+
+/* what a montage that is prepared keeps while a clip joins it */
+const joinedMontage = (manifest: Manifest, target: ImportTarget) => {
+  const groupId = target.kind === 'montage' ? target.groupId : undefined
+  const find = () => manifest.groups.find((g) => g.id === groupId)
+  const was = find()?.processed
+  return {
+    keep: () => {
+      const group = find()
+      if (group) group.processed = was
+    }
+  }
+}
 
 const placeOf = (manifest: Manifest, id: string) => {
   const group = manifest.groups.find((g) => g.files.some((f) => f.id === id))
@@ -53,13 +71,13 @@ const placeExisting = async (
   const inGroup = manifest.groups.find((g) => g.files.some((f) => f.id === id))
   const holds = (group: { files: { path: string }[] }) =>
     group.files.some((f) => f.path === file.path)
-  const joining =
-    target.kind === 'group' ? manifest.groups.find((g) => g.id === target.groupId) : undefined
-  const there =
-    target.kind === 'group'
-      ? joining !== undefined && holds(joining)
-      : !inGroup &&
-        (target.kind === 'sort' ? !file.destination : file.destination === target.name.trim())
+  const joining = manifest.groups.find((g) => g.id === joiningOf(target))
+  const there = joiningOf(target)
+    ? joining !== undefined && holds(joining)
+    : !inGroup &&
+      (target.kind === 'sort'
+        ? !file.destination
+        : target.kind === 'destination' && file.destination === target.name.trim())
   if (there) return { filename: file.filename, outcome: 'there' }
   if (file.freed)
     return { filename: file.filename, outcome: 'kept', reason: 'it lives on the storage only' }
@@ -75,10 +93,9 @@ const placeExisting = async (
       reason: `${placeOf(manifest, id)}’s montage lives on the storage only, so nothing leaves it — drop it on a jump to put it in that jump as well`
     }
   const from = placeOf(manifest, id)
-  const to =
-    target.kind === 'group'
-      ? { targetGroupId: target.groupId }
-      : { destination: target.kind === 'destination' ? target.name.trim() : null }
+  const to = joining
+    ? { targetGroupId: joining.id }
+    : { destination: target.kind === 'destination' ? target.name.trim() : null }
   await moveFiles(manifest, new Set([id]), {
     ...to,
     shot: await shotTimesFor(manifest, new Set([id]), to)
@@ -134,8 +151,9 @@ const importFile = async ({
   const checkTarget = async () => {
     const manifest = await loadManifestAsync(manifestPath)
     if (!manifest) throw new Error('No manifest found. Run a scan first.')
-    if (target.kind === 'group') {
-      const group = manifest.groups.find((g) => g.id === target.groupId)
+    const joining = joiningOf(target)
+    if (joining) {
+      const group = manifest.groups.find((g) => g.id === joining)
       if (!group) throw new Error('That jump is no longer there.')
       if (group.freed)
         throw new Error('This montage lives on the storage only — nothing can join it.')
@@ -167,14 +185,17 @@ const importFile = async ({
         await saveManifest(manifestPath, manifest)
       }
       await rm(partial, { force: true })
+      const joined = joinedMontage(manifest, target)
       const result = await placeExisting(
         manifest,
         outputDir,
         manifest.files.find((f) => f.id === id)!,
         target
       )
-      if (result.outcome === 'moved' || result.outcome === 'copied')
+      if (result.outcome === 'moved' || result.outcome === 'copied') {
+        joined.keep()
         await saveManifest(manifestPath, manifest)
+      }
       return result
     }
 
@@ -188,12 +209,12 @@ const importFile = async ({
       ...(target.kind === 'destination' ? { destination: target.name.trim() } : {})
     }
     manifest.files.push(file)
-    if (target.kind === 'group') {
-      const group = manifest.groups.find((g) => g.id === target.groupId)!
+    const group = manifest.groups.find((g) => g.id === joiningOf(target))
+    if (group) {
       group.files = [...group.files, { ...file, destination: undefined }].sort(
         (a, b) => a.mtime - b.mtime
       )
-      group.processed = undefined
+      if (target.kind === 'group') group.processed = undefined
     }
     await saveManifest(manifestPath, manifest)
     return { filename: file.filename, outcome: 'added' }

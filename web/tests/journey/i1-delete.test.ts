@@ -36,7 +36,7 @@ describe('deleting a montage that has only been named', () => {
     await j.open()
     await see('Jump 2')
     await nameJump(j.page, 'Jump 2', WHO)
-    await see('Prepare the files')
+    await see('Edit the film')
     await details(j.page).getByRole('button', { name: 'Delete montage…' }).click()
     const ask = dialogNamed(j.page, 'Delete montage')
     await ask.waitFor()
@@ -67,16 +67,16 @@ describe('deleting a montage that has only been named', () => {
   })
 })
 
-describe('deleting a prepared montage', () => {
-  test('removes its copies and sends its files back loose, leaving the originals where they are', async () => {
+describe('deleting a montage that was edited', () => {
+  test('removes its folder and sends its files back loose, leaving the originals where they are', async () => {
     const before = originalsOf(j.world)
     await j.page.getByText('Jump 1', { exact: true }).first().click()
     await j.page.getByRole('button', { name: /Make a montage/ }).click()
     await j.page.getByLabel('Name', { exact: true }).fill('Anna Roux')
     await j.page.keyboard.press('Enter')
-    await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
-    expect(filesUnder(montageFolder(j.world, 'Anna Roux'))).toHaveLength(2)
+    await makeEdit(j, 'Anna Roux', '20260905')
+    expect(filesUnder(montageFolder(j.world, 'Anna Roux'))).toHaveLength(1)
 
     await deleteIt('Anna Roux')
     await expect.poll(() => fs.existsSync(montageFolder(j.world, 'Anna Roux'))).toBe(false)
@@ -91,7 +91,6 @@ describe('deleting a prepared montage', () => {
 describe('deleting a montage that has an edit', () => {
   test('names the edit on its own, removes it, and keeps every version of it aside', async () => {
     await nameFile(j.page, 'DJI_20260906090000_0006_D.MP4', 'Marc Roux')
-    await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     await makeEdit(j, 'Marc Roux')
     const folder = montageFolder(j.world, 'Marc Roux')
@@ -124,7 +123,6 @@ describe('deleting a montage that has its film', () => {
   test('removes the film with the rest, and the film goes with it from the board', async () => {
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await nameFile(j.page, 'DJI_20260906090300_0007_D.MP4', 'Eva Roux')
-    await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     await makeEdit(j, 'Eva Roux')
     const film = path.join(montageFolder(j.world, 'Eva Roux'), 'eva_roux_20260906.mp4')

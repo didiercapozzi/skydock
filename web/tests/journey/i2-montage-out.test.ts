@@ -233,11 +233,11 @@ describe('uploading a montage: what went up', () => {
       'videos/DJI_20260906090300_0007_D.MP4'
     ])
     expect(zipEntries(path.join(storage.root, 'club', 'Backup', 'luc-favre', PHOTOS))).toEqual([
-      'photos/luc_favre_20260906_090130.jpg'
+      'photos/DJI_20260906090130_0008_D.JPG'
     ])
     expect(stored(storage, 'Films')).toEqual([
       `${STEM}.mp4`,
-      'photos/luc_favre_20260906_090130.jpg'
+      'photos/DJI_20260906090130_0008_D.JPG'
     ])
     expect(
       fs
@@ -284,7 +284,7 @@ describe('uploading a montage: what was handed over, shown afterwards', () => {
     await j.page.getByRole('button', { name: 'Check the storage again' }).click()
     await answered
     await j.page.getByRole('button', { name: 'Check the storage again' }).waitFor()
-    expect(stored(storage, 'Films')).toContain('photos/luc_favre_20260906_090130.jpg')
+    expect(stored(storage, 'Films')).toContain('photos/DJI_20260906090130_0008_D.JPG')
     await said(j.page.locator('main')).not.toContain('no longer on the storage')
     await j.quiet()
   })

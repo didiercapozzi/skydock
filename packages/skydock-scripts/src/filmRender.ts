@@ -1,4 +1,4 @@
-import { mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rename, rm, stat, writeFile } from 'node:fs/promises'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { editSources, imageSources, musicSources } from './filmEdit'
@@ -35,10 +35,10 @@ import type {
 import { isWholeFrame, ROTATE_FILTER } from './frameCrop'
 import { inJob } from './live'
 import { filmNameOf } from './montageNames'
-import { getGroupProcessedDir } from './process'
+import { getGroupProcessedDir, recodeVideo } from './process'
 import { videoShape } from './proxy'
 import { lastComplaint, run, runWatched, stoppable } from './tools'
-import type { Manifest, ManifestGroup } from './types'
+import type { ManifestGroup } from './types'
 import { ffmpegPath, hasCommand } from './utils'
 import { passengerOf } from './workspace'
 
@@ -179,11 +179,17 @@ const filmArgs = ({
     const speed = speedOf(clip)
     const tempo = speed < 0.5 ? `atempo=0.5,atempo=${n(speed / 0.5)}` : `atempo=${n(speed)}`
     const seeks = !source.still
+    const offset = source.origin?.offset ?? 0
+    const boardFilter = source.origin?.separate ? null : (source.origin?.filter ?? null)
     const held = clip.end - clip.start
     inputs.push(
       ...(source.still
         ? ['-loop', '1', '-framerate', String(fps), '-t', n(clip.end)]
-        : [...(clip.start > 0 ? ['-ss', n(clip.start)] : []), '-t', n(held + SEEK_MARGIN)]),
+        : [
+            ...(clip.start + offset > 0 ? ['-ss', n(clip.start + offset)] : []),
+            '-t',
+            n(held + SEEK_MARGIN)
+          ]),
       '-i',
       source.path
     )
@@ -198,7 +204,7 @@ const filmArgs = ({
       ...(fadeOut > 0 ? [`${filter}=t=out:st=${n(length - fadeOut)}:d=${n(fadeOut)}`] : [])
     ]
     graph.push(
-      `[${index}:v]trim=start=${n(from)}:end=${n(to)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${fps},${[...framed(clip), ''].join(',')}scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
+      `[${index}:v]trim=start=${n(from)}:end=${n(to)},setpts=(PTS-STARTPTS)/${n(speed)},fps=${fps},${[...(boardFilter ? [boardFilter] : []), ...framed(clip), ''].join(',')}scale=${width}:${height}:force_original_aspect_ratio=decrease,pad=${width}:${height}:(ow-iw)/2:(oh-ih)/2:black,setsar=1,format=yuv420p${['', ...dim('fade')].join(',')}[v${index}]`
     )
     graph.push(
       clip.sound && source.sound
@@ -326,12 +332,14 @@ const fontFile = async (font: TextFont) => {
 }
 
 const filmShape = async (first: EditSource | undefined) => {
-  const shape = first ? await videoShape(first.path) : null
-  const upright = shape
-    ? shape.turned
-      ? shape.width > shape.height
-      : shape.height > shape.width
-    : false
+  const shape = first && !first.origin ? await videoShape(first.path) : null
+  const upright = first?.origin
+    ? first.origin.upright
+    : shape
+      ? shape.turned
+        ? shape.width > shape.height
+        : shape.height > shape.width
+      : false
   return upright
     ? { width: SHORT_SIDE, height: LONG_SIDE }
     : { width: LONG_SIDE, height: SHORT_SIDE }
@@ -384,13 +392,33 @@ const cancelRendering = (groupId?: string) => {
   return going.length > 0
 }
 
+/* A clip whose frame cannot be done inside the film's own filters is made apart first, as the board has it. */
+const separately = async (sources: EditSource[], edit: FilmEdit, folder: string) => {
+  const used = new Set(edit.clips.map((clip) => clip.name))
+  return await Promise.all(
+    sources.map(async (source) => {
+      const { origin } = source
+      if (!origin?.separate || !origin.filter || !used.has(source.name)) return source
+      const made = path.join(folder, `${path.parse(source.name).name}.mp4`)
+      const done = await recodeVideo(
+        source.path,
+        made,
+        origin.filter,
+        origin.offset,
+        origin.offset + source.seconds
+      )
+      if (!done.ok) throw new Error(`${source.name} could not be framed: ${done.reason}`)
+      const { origin: _, ...plain } = source
+      return { ...plain, path: made }
+    })
+  )
+}
+
 const renderFilm = async ({
-  manifest,
   outputDir,
   group,
   edit
 }: {
-  manifest: Manifest
   outputDir: string
   group: ManifestGroup
   edit: FilmEdit
@@ -410,6 +438,7 @@ const renderFilm = async ({
     if (refused) throw new Error(refused)
     const folder = await mkdtemp(path.join(os.tmpdir(), 'skydock-render-'))
     scratch = folder
+    await mkdir(dir, { recursive: true })
     return await inJob(
       {
         type: 'render',
@@ -421,7 +450,10 @@ const renderFilm = async ({
         rendering.rows([{ key: 'film', name, size: 0 }])
         rendering.row({ key: 'film', at: 'now', part: 0 })
         const pictures = await imageSources(outputDir)
-        const sources = sourcesByName(pictures, await editSources(manifest, outputDir, group))
+        const sources = sourcesByName(
+          pictures,
+          await separately(await editSources(outputDir, group, { waiting: true }), edit, folder)
+        )
         const music = new Map((await musicSources(outputDir)).map((one) => [one.name, one]))
         const images = new Map(pictures.map((one) => [one.name, one]))
         const used = [...new Set(edit.texts.map((text) => text.font))]

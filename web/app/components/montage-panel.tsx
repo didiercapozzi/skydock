@@ -285,7 +285,7 @@ const WaysBack = ({ who }: { who: string }) => {
       <span className='flex flex-wrap items-center gap-2'>
         <Mini
           disabled={busy}
-          title={t`Back to before processing — keeps the name, the trims, the frames and the times`}
+          title={t`Back to just named — keeps the name, the trims, the frames and the times`}
           onClick={() => setDialog({ kind: 'take-back', mode: 'reset', who })}>
           {t`Reset…`}
         </Mini>

@@ -897,12 +897,12 @@ describe('changes made on the board', () => {
       expect(res.groups[0]?.files).toHaveLength(1)
     })
 
-    it('says to process it first when its copies are not made', async () => {
+    it('sets a montage as done with nothing processed, since nothing has to be', async () => {
       await writeManifest([luc({ id: 'g1', processed: false })])
 
-      const res = refusal(await send({ intent: 'mark-done', groupId: 'g1', done: true }))
+      const res = answer(await send({ intent: 'mark-done', groupId: 'g1', done: true }))
 
-      expect(res.globalErrors?.[0]).toContain('Process it first')
+      expect(res.groups[0]?.done).toBeGreaterThan(0)
     })
 
     it('refuses a montage that was freed from this machine, and a jump that is not a montage', async () => {
@@ -919,7 +919,7 @@ describe('changes made on the board', () => {
       ).toContain('no longer on the board')
     })
 
-    it('has no folder to open until the copies are made, nor for a montage freed from here', async () => {
+    it('has no folder to open until the film is first edited, nor for a montage freed from here', async () => {
       await writeManifest([
         luc({ id: 'g1' }),
         luc({

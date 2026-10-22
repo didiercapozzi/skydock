@@ -6,7 +6,7 @@ import type { FakeStorage } from './fake-storage'
 import { harness } from './harness'
 import { dragPart, openUpload, region, sendAsUsual, uploadDialog } from './i2-helpers'
 import { filesUnder, montageFolder, renderFilm, WHO } from './media'
-import { makeAndPrepare, makeEdit, nameJump } from './i1-helpers'
+import { makeMontage, makeEdit, nameJump } from './i1-helpers'
 import { groupsOf } from './record'
 import { addDestination, connectStorage, details, dialogNamed, folders, PASSWORD } from './steps'
 
@@ -24,8 +24,8 @@ const { quiet } = j
 const main = () => j.page.getByRole('region', { name: WHO }).last()
 
 describe('a montage that is delivered', () => {
-  test('is made, prepared, edited and given its film, and sent to the storage', async () => {
-    await makeAndPrepare(j)
+  test('is made, edited and given its film, and sent to the storage', async () => {
+    await makeMontage(j)
     await addDestination(j.page, 'Backup')
     await addDestination(j.page, 'Club')
     await folders(j.page)
@@ -42,9 +42,9 @@ describe('a montage that is delivered', () => {
 
   test('shrinks the steps to one line of names and gives way to two cards, what is here and what is on the storage', async () => {
     const steps = j.page.locator('ol[aria-hidden="true"] > li')
-    expect(await steps.count()).toBe(6)
+    expect(await steps.count()).toBe(4)
     const text = await main().innerText()
-    expect((text.match(/— done/g) ?? []).length).toBe(5)
+    expect((text.match(/— done/g) ?? []).length).toBe(3)
     expect(text).not.toContain('Next up')
     expect(text).not.toContain('Its files')
     for (const title of ['On this machine', 'On the storage'])
@@ -55,7 +55,7 @@ describe('a montage that is delivered', () => {
     expect(text).toContain('/club/Backup/luc-favre')
     await main().getByRole('button', { name: 'Watch' }).waitFor()
     await folders(j.page)
-      .getByRole('img', { name: /5 of 6 steps done/ })
+      .getByRole('img', { name: /3 of 4 steps done/ })
       .waitFor()
     await quiet()
   })
@@ -80,9 +80,10 @@ describe('a montage that is delivered', () => {
     const items = (await j.page.getByRole('group', { name: 'More' }).innerText()).split('\n')
     expect(items).toEqual([
       'Email Luc…',
-      'Process again',
+      'Edit the film',
       'Upload again…',
       'Free up space…',
+      'Start the edit again…',
       'Reset…',
       'Delete montage…'
     ])
@@ -149,9 +150,8 @@ describe('deleting a montage that was uploaded', () => {
       .waitFor()
     await j.page.getByRole('link', { name: /^Fresh files/ }).click()
     await nameJump(j.page, 'Jump 1', ANNA)
-    await j.page.getByRole('button', { name: 'Process', exact: true }).click()
     await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
-    await makeEdit(j, ANNA)
+    await makeEdit(j, ANNA, '20260905')
     renderFilm(j.world, ANNA, FILM_OF_ANNA)
     await j.page.getByRole('button', { name: 'Upload…' }).first().waitFor({ timeout: 30_000 })
     await openUpload(j.page)

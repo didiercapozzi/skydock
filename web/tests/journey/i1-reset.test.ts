@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { describe, expect, test } from 'vitest'
 import { harness } from './harness'
-import { makeAndPrepare, makeEdit, seedTrim } from './i1-helpers'
+import { makeMontage, makeEdit, seedTrim } from './i1-helpers'
 import { EDIT, filesUnder, montageFolder, originalsOf, renderFilm, WHO } from './media'
 import { groupsOf } from './record'
 import { details, dialogNamed, place } from './steps'
@@ -21,23 +21,23 @@ const luc = () => groupsOf(j.world).find((g) => g.passenger?.lastname === 'Favre
 
 describe('resetting a montage', () => {
   test('asks first, saying what goes and what stays, and changes nothing when told to cancel', async () => {
-    await makeAndPrepare(j)
+    await makeMontage(j)
+    await makeEdit(j)
     await details(j.page).getByRole('button', { name: 'Reset…' }).click()
     const ask = dialogNamed(j.page, /Reset montage/)
     await ask.waitFor()
     const text = await ask.innerText()
-    expect(text).toContain('Reset Luc Favre to before processing')
+    expect(text).toContain('Reset Luc Favre to just named')
     expect(text).toContain('Deleted from this machine')
-    expect(text).toContain('Kept, ready to process again')
+    expect(text).toContain('Kept, ready to be edited again')
     expect(text).toContain('never touched')
     await ask.getByRole('button', { name: 'Cancel' }).click()
     await ask.waitFor({ state: 'detached' })
-    expect(filesUnder(folder())).toHaveLength(3)
-    expect(luc()?.processed).toBe(true)
+    expect(filesUnder(folder())).toEqual([EDIT])
     await quiet()
   })
 
-  test('puts a processed montage back to before processing, and keeps its name and its trims', async () => {
+  test('puts a montage back to just named, and keeps its name and its trims', async () => {
     const before = originalsOf(j.world)
     await details(j.page).getByRole('button', { name: 'Reset…' }).click()
     await dialogNamed(j.page, /Reset montage/)
@@ -45,17 +45,14 @@ describe('resetting a montage', () => {
       .click()
     await expect.poll(() => fs.existsSync(folder())).toBe(false)
 
-    await expect.poll(async () => await place(j.page, WHO).innerText()).toContain('to process')
-    expect(luc()?.processed).toBeFalsy()
+    await expect.poll(async () => await place(j.page, WHO).innerText()).toContain('to edit')
     expect(luc()?.files.some((f) => f.cropStart === 1)).toBe(true)
     expect(originalsOf(j.world)).toEqual(before)
-    await j.page.getByRole('button', { name: 'Process', exact: true }).waitFor()
+    await j.page.getByRole('button', { name: 'Edit the film' }).first().waitFor()
     await quiet()
   })
 
   test('names the edit on its own in the question, and keeps it aside when the montage is reset', async () => {
-    await j.page.getByRole('button', { name: 'Process', exact: true }).click()
-    await j.page.getByText('Edit the film').first().waitFor({ timeout: 60_000 })
     await makeEdit(j)
     renderFilm(j.world)
     await expect
@@ -77,7 +74,7 @@ describe('resetting a montage', () => {
     expect(
       fs.readFileSync(path.join(j.world.output, '.projects', WHO, kept[0]!)).equals(project)
     ).toBe(true)
-    await expect.poll(async () => await place(j.page, WHO).innerText()).toContain('to process')
+    await expect.poll(async () => await place(j.page, WHO).innerText()).toContain('to edit')
     expect(luc()?.passenger).toEqual({ firstname: 'Luc', lastname: 'Favre' })
     expect(luc()?.files.some((f) => f.cropStart === 1)).toBe(true)
     await j.page.getByRole('button', { name: 'Change the name' }).waitFor()

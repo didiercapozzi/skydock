@@ -296,11 +296,7 @@ const StepActions = ({
   busy,
   held = null,
   upload = null,
-  blocked,
   proxiesWaiting = 0,
-  named,
-  onProcess,
-  onCancelProcess,
   onMontage,
   onOpenMontage,
   onUpload,
@@ -314,11 +310,7 @@ const StepActions = ({
   busy: string | null
   held?: Busy | null
   upload?: { key: string; label: string } | null
-  blocked: { blocked: boolean; message: string | null }
   proxiesWaiting?: number
-  named: boolean
-  onProcess: () => void
-  onCancelProcess?: () => void
   onMontage: () => void
   onOpenMontage: () => void
   onUpload: () => void
@@ -328,22 +320,9 @@ const StepActions = ({
   children?: React.ReactNode
 }) => {
   const working = busy !== null
-  const processing = busy === group.id || held === 'processing'
   const heldSaid = held ? heldNote(held) : undefined
   const uploadKey = montageUploadKey(group.id)
   const uploading = upload?.label ?? ''
-  if (!group.processed)
-    return (
-      <span className='flex flex-wrap items-center gap-2'>
-        <Go
-          disabled={working || !named || held !== null}
-          title={heldSaid}
-          onClick={onProcess}>
-          {processing ? t`Processing…` : t`Process`}
-        </Go>
-        {processing && onCancelProcess && <Mini onClick={onCancelProcess}>{t`Cancel`}</Mini>}
-      </span>
-    )
   if (!facts?.edit)
     return (
       <span className='flex flex-wrap items-center gap-2'>
@@ -386,8 +365,8 @@ const StepActions = ({
     if (!group.uploaded)
       return (
         <Go
-          disabled={working || blocked.blocked || upload !== null || held !== null}
-          title={blocked.message ?? heldSaid}
+          disabled={working || upload !== null || held !== null}
+          title={heldSaid}
           onClick={onUpload}>
           {upload?.key === uploadKey ? t`Uploading…` : t`Upload…`}
         </Go>
@@ -420,12 +399,11 @@ const StepActions = ({
         </Go>
       )}
       <Upload
-        disabled={working || blocked.blocked || upload !== null || held !== null}
+        disabled={working || upload !== null || held !== null}
         title={
           upload && upload.key !== uploadKey
             ? t`Uploading ${uploading} — wait for it, or cancel it`
-            : (blocked.message ??
-              heldSaid ??
+            : (heldSaid ??
               t`Zip the photos and the rushes, then send the film and the photos to the montage’s folder`)
         }
         onClick={onUpload}>
@@ -446,16 +424,6 @@ const StepActions = ({
         />
         {t`Edit the film`}
       </Mini>
-      <Mini
-        disabled={working || held !== null}
-        title={
-          heldSaid ??
-          t`Make the copies again from the originals — the edit, the film and the archives are left alone`
-        }
-        onClick={onProcess}>
-        {processing ? t`Processing…` : t`Process again`}
-      </Mini>
-      {processing && onCancelProcess && <Mini onClick={onCancelProcess}>{t`Cancel`}</Mini>}
       {group.uploaded && onFree && (
         <Mini
           disabled={working || held !== null}
@@ -804,12 +772,11 @@ const MontageCardActions = ({
   onReopen?: () => void
   onOpenFolder?: () => void
 }) => {
-  const { group, busy, held = null, compact = false } = rest
-  const prepared = Boolean(group.processed)
-  const folder = prepared && onOpenFolder && (
+  const { facts, busy, held = null, compact = false } = rest
+  const folder = Boolean(facts?.edit || facts?.film) && onOpenFolder && (
     <Mini
       disabled={busy !== null}
-      title={t`Show the folder of its copies, to use them on their own`}
+      title={t`Show the folder of its film and its edit, to use them on their own`}
       onClick={onOpenFolder}>
       {t`Open its folder`}
     </Mini>
@@ -831,7 +798,7 @@ const MontageCardActions = ({
   return (
     <span className='flex flex-wrap items-center gap-2'>
       <StepActions {...rest} />
-      {prepared && onDone && !compact && (
+      {onDone && !compact && (
         <Mini
           disabled={busy !== null || held !== null}
           title={t`Set it as done and keep it here as it is — nothing is uploaded, and it can be reopened`}

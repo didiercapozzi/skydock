@@ -52,7 +52,7 @@ const actionArgs = z.object({
     'camera-copied',
     /* unsorted files nobody wants, out of the originals and into the bin */
     'trash-unsorted',
-    /* back to before processing, keeping every decision — or undone altogether */
+    /* back to just named, keeping every decision — or undone altogether */
     'reset-montage',
     'delete-montage',
     'start-edit-again',
