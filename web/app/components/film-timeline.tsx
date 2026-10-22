@@ -25,6 +25,7 @@ import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 're
 import {
   clockOf,
   FADE,
+  fadeBlock,
   fadeMost,
   groupOf,
   markersWithin,
@@ -33,10 +34,12 @@ import {
   nearestBoundary,
   placeClip,
   setItemFade,
+  setMusicFade,
   SHORTEST,
   SHORTEST_MUSIC,
   shiftItems,
   SINGULAR,
+  overlapsOf,
   placed,
   setFade,
   stackClusters,
@@ -45,11 +48,12 @@ import {
   snapTo,
   trimMusicStart,
   timelineEnd,
+  toggleMusicFade,
   trimClip,
   unturnedFrame,
   zoomAround
 } from '../helpers/filmTimeline'
-import type { FadeKind, Selected } from '../helpers/filmTimeline'
+import type { FadeKind, Overlap, Selected } from '../helpers/filmTimeline'
 import { foldLane, useFoldedLanes } from '../hooks/useFoldedLanes'
 import type { Lane as LaneName } from '../hooks/useFoldedLanes'
 import { Icon } from './icons'
@@ -96,6 +100,73 @@ const rowBox = (row: number, rows: number) =>
 
 const FOLDED_HEIGHT = 30
 
+const HATCH =
+  'repeating-linear-gradient(135deg, transparent 0 4px, color-mix(in srgb, currentColor 22%, transparent) 4px 8px)'
+
+/* Where one item gives way to another — or, for music that is mixed, does not — drawn the same on the video
+   and on the music: a band over the stretch they share, with a cross where they are faded one into the other
+   and hatching where both are heard as they are, and a small button that picks the item that comes in, whose
+   Inspector holds the transition. The band takes no pointer of its own, so the clips and pieces under it are
+   moved and trimmed as ever. */
+const OverlapBand = ({
+  overlap,
+  names,
+  pps,
+  open = false,
+  onPick
+}: {
+  overlap: Overlap
+  names: { before: string; after: string }
+  pps: number
+  open?: boolean
+  onPick: () => void
+}) => {
+  const length = overlap.seconds.toFixed(1)
+  const said = overlap.crossfade
+    ? t`Crossfade of ${length} seconds, from ${names.before} into ${names.after}`
+    : t`Mixed: ${names.before} and ${names.after} are heard together for ${length} seconds`
+  return (
+    <span
+      style={{
+        left: overlap.at * pps,
+        width: Math.max(10, overlap.seconds * pps),
+        ...(overlap.crossfade ? {} : { backgroundImage: HATCH })
+      }}
+      className={`pointer-events-none absolute inset-y-0 z-10 flex items-start justify-center overflow-hidden border-x ${
+        overlap.crossfade
+          ? 'border-accent bg-accent/15 text-accent-ink'
+          : 'border-line-strong bg-well/50 text-ink-3'
+      }`}>
+      <button
+        type='button'
+        aria-label={said}
+        title={said}
+        aria-expanded={open}
+        data-seam-chip=''
+        onPointerDown={(e) => {
+          e.stopPropagation()
+          onPick()
+        }}
+        className='pointer-events-auto mt-0.5 inline-flex h-4.5 max-w-full cursor-pointer items-center gap-0.5 rounded-corner border-0 bg-pane px-1 font-mono text-micro leading-none font-bold text-current shadow-card'>
+        <svg
+          aria-hidden='true'
+          viewBox='0 0 24 24'
+          width='10'
+          height='10'
+          fill='none'
+          stroke='currentColor'
+          strokeWidth='3'
+          strokeLinecap='round'>
+          {overlap.crossfade ? <path d='M4 4l16 16M20 4 4 20' /> : <path d='M4 9h16M4 15h16' />}
+        </svg>
+        <span className={overlap.seconds * pps >= 56 ? '' : 'sr-only'}>
+          {overlap.crossfade ? `${length}s` : t`Mixed`}
+        </span>
+      </button>
+    </span>
+  )
+}
+
 const StackBar = ({
   at,
   until,
@@ -118,6 +189,143 @@ const StackBar = ({
     {label}
   </button>
 )
+
+/* Where two clips meet with no crossfade, a small button adds one — the same transition that the Inspector
+   shows, put where it happens. It is only where a crossfade can be made. */
+const SeamButton = ({
+  at,
+  pps,
+  label,
+  onAdd
+}: {
+  at: number
+  pps: number
+  label: string
+  onAdd: () => void
+}) => (
+  <button
+    type='button'
+    aria-label={label}
+    title={label}
+    onPointerDown={(e) => {
+      e.stopPropagation()
+      onAdd()
+    }}
+    style={{ left: at * pps - 9 }}
+    className='absolute top-1/2 z-10 grid size-4.5 -translate-y-1/2 cursor-pointer place-items-center rounded-full border border-line-strong bg-pane p-0 text-ink-3 opacity-70 shadow-card hover:border-accent hover:text-accent-ink hover:opacity-100 focus-visible:opacity-100'>
+    <svg
+      aria-hidden='true'
+      viewBox='0 0 24 24'
+      width='10'
+      height='10'
+      fill='none'
+      stroke='currentColor'
+      strokeWidth='3'
+      strokeLinecap='round'>
+      <path d='M4 4l16 16M20 4 4 20' />
+    </svg>
+  </button>
+)
+
+/* What the band's button opens: the length of a crossfade and the way to take it off, for two clips; for
+   two pieces of music, to mix them as they are or to crossfade them. */
+const SeamMenu = ({
+  overlap,
+  edit,
+  ripple,
+  pps,
+  above = false,
+  onChange,
+  onClose
+}: {
+  overlap: Overlap
+  edit: FilmEdit
+  ripple: boolean
+  pps: number
+  above?: boolean
+  onChange: (edit: FilmEdit) => void
+  onClose: () => void
+}) => {
+  const clip = edit.clips.find((one) => one.id === overlap.id)
+  const piece = edit.music.find((one) => one.id === overlap.id)
+  const length = overlap.seconds
+  return (
+    <div
+      role='dialog'
+      aria-label={t`The transition`}
+      data-seam-menu=''
+      onPointerDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          e.stopPropagation()
+          onClose()
+        }
+      }}
+      style={{ left: Math.max(0, overlap.at * pps - 8), ...(above ? { bottom: 26 } : { top: 26 }) }}
+      className='absolute z-30 flex w-56 flex-col gap-2 rounded-corner border border-line bg-pane p-2.5 text-small text-ink shadow-float'>
+      {overlap.kind === 'clips' && clip ? (
+        <>
+          <label className='flex flex-col gap-1'>
+            <span>{t`Length of the crossfade`}</span>
+            <input
+              type='range'
+              aria-label={t`Length of the crossfade`}
+              min={FADE.least}
+              max={fadeMost(edit, clip.id)}
+              step={0.1}
+              value={length}
+              onChange={(e) => onChange(setFade(edit, clip.id, Number(e.target.value), ripple))}
+              className='accent-accent'
+            />
+            <span className='font-mono text-micro text-ink-3'>{length.toFixed(1)}s</span>
+          </label>
+          <button
+            type='button'
+            onClick={() => {
+              onChange(setFade(edit, clip.id, 0, ripple))
+              onClose()
+            }}
+            className='h-control-sm cursor-pointer rounded-corner border-0 bg-well px-3 text-body font-bold text-accent-ink hover:bg-accent-soft'>
+            {t`Take the crossfade off`}
+          </button>
+        </>
+      ) : piece ? (
+        <>
+          <span className='text-ink-2'>
+            {overlap.crossfade
+              ? t`The two pieces are faded one into the other over what they share.`
+              : t`The two pieces are heard together, each as loud as it is.`}
+          </span>
+          {piece.fade !== undefined && (
+            <label className='flex flex-col gap-1'>
+              <span>{t`Length of the crossfade`}</span>
+              <input
+                type='range'
+                aria-label={t`Length of the crossfade`}
+                min={FADE.least}
+                max={Math.max(FADE.least, (piece.end - piece.start) / 2)}
+                step={0.1}
+                value={piece.fade}
+                onChange={(e) => onChange(setMusicFade(edit, piece.id, Number(e.target.value)))}
+                className='accent-accent'
+              />
+              <span className='font-mono text-micro text-ink-3'>{piece.fade.toFixed(1)}s</span>
+            </label>
+          )}
+          <button
+            type='button'
+            onClick={() => {
+              onChange(toggleMusicFade(edit, piece.id))
+              onClose()
+            }}
+            className='h-control-sm cursor-pointer rounded-corner border-0 bg-well px-3 text-body font-bold text-accent-ink hover:bg-accent-soft'>
+            {overlap.crossfade ? t`Mix them as they are` : t`Crossfade them`}
+          </button>
+        </>
+      ) : null}
+    </div>
+  )
+}
 
 const stepFor = (pps: number) => STEPS.find((step) => step * pps >= TICK_ROOM) ?? 300
 
@@ -400,6 +608,19 @@ const FilmTimeline = ({
   const musicRowCount = Math.max(1, ...[...musicRows.values()].map((row) => row + 1))
   const textRowCount = Math.max(1, ...[...textRows.values()].map((row) => row + 1))
   const folds = useFoldedLanes()
+  const overlaps = overlapsOf(edit)
+  const [seam, setSeam] = useState<string | null>(null)
+  useEffect(() => {
+    if (seam === null) return
+    const away = (e: PointerEvent) => {
+      if (e.target instanceof Element && !e.target.closest('[data-seam-menu], [data-seam-chip]'))
+        setSeam(null)
+    }
+    document.addEventListener('pointerdown', away)
+    return () => document.removeEventListener('pointerdown', away)
+  }, [seam])
+  const nameOf = (kind: Overlap['kind'], id: string) =>
+    (kind === 'clips' ? edit.clips : edit.music).find((one) => one.id === id)?.name ?? ''
   const stacksOf = {
     text: stackClusters(edit.texts),
     images: stackClusters(layers),
@@ -1149,11 +1370,11 @@ const FilmTimeline = ({
                   key={`fade-${clip.id}`}
                   role='slider'
                   tabIndex={0}
-                  aria-label={t`Fade into ${clip.name}`}
+                  aria-label={t`Crossfade into ${clip.name}`}
                   aria-valuemin={FADE.least}
                   aria-valuemax={fadeMost(edit, clip.id)}
                   aria-valuenow={fade}
-                  title={t`Drag to make the fade longer or shorter`}
+                  title={t`Drag to make the crossfade longer or shorter`}
                   onPointerDown={(e) => {
                     onPick({ kind: 'clip', id: clip.id })
                     drag(e, (seconds, original) =>
@@ -1194,6 +1415,53 @@ const FilmTimeline = ({
                 </div>
               )
             })}
+            {overlaps
+              .filter((one) => one.kind === 'clips')
+              .map((overlap) => (
+                <OverlapBand
+                  key={`overlap-${overlap.id}`}
+                  overlap={overlap}
+                  pps={pps}
+                  names={{
+                    before: nameOf('clips', overlap.beforeId),
+                    after: nameOf('clips', overlap.id)
+                  }}
+                  open={seam === `clips:${overlap.id}`}
+                  onPick={() => {
+                    onPick({ kind: 'clip', id: overlap.id })
+                    setSeam((now) => (now === `clips:${overlap.id}` ? null : `clips:${overlap.id}`))
+                  }}
+                />
+              ))}
+            {placed(edit).map(({ clip, index, from }) =>
+              index > 0 &&
+              fadeBlock(edit, clip.id) === null &&
+              fadeInto(edit.clips, index) === 0 ? (
+                <SeamButton
+                  key={`seam-${clip.id}`}
+                  at={from}
+                  pps={pps}
+                  label={t`Add a crossfade from ${edit.clips[index - 1]?.name ?? ''} into ${clip.name}`}
+                  onAdd={() => {
+                    onChange(setFade(edit, clip.id, FADE.default, ripple))
+                    onPick({ kind: 'clip', id: clip.id })
+                  }}
+                />
+              ) : null
+            )}
+            {overlaps
+              .filter((one) => one.kind === 'clips' && seam === `clips:${one.id}`)
+              .map((overlap) => (
+                <SeamMenu
+                  key={`menu-${overlap.id}`}
+                  overlap={overlap}
+                  edit={edit}
+                  ripple={ripple}
+                  pps={pps}
+                  onChange={onChange}
+                  onClose={() => setSeam(null)}
+                />
+              ))}
             {dropAt !== null && (
               <span
                 style={{ left: dropAt * pps - 1 }}
@@ -1361,6 +1629,40 @@ const FilmTimeline = ({
                 </div>
               )
             })}
+          {!foldedIn('music') &&
+            overlaps
+              .filter((one) => one.kind === 'music')
+              .map((overlap) => (
+                <OverlapBand
+                  key={`overlap-${overlap.id}`}
+                  overlap={overlap}
+                  pps={pps}
+                  names={{
+                    before: nameOf('music', overlap.beforeId),
+                    after: nameOf('music', overlap.id)
+                  }}
+                  open={seam === `music:${overlap.id}`}
+                  onPick={() => {
+                    onPick({ kind: 'music', id: overlap.id })
+                    setSeam((now) => (now === `music:${overlap.id}` ? null : `music:${overlap.id}`))
+                  }}
+                />
+              ))}
+          {!foldedIn('music') &&
+            overlaps
+              .filter((one) => one.kind === 'music' && seam === `music:${one.id}`)
+              .map((overlap) => (
+                <SeamMenu
+                  key={`menu-${overlap.id}`}
+                  overlap={overlap}
+                  edit={edit}
+                  ripple={ripple}
+                  pps={pps}
+                  above
+                  onChange={onChange}
+                  onClose={() => setSeam(null)}
+                />
+              ))}
         </Lane>
 
         {guide !== null && (

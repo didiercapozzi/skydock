@@ -1,4 +1,11 @@
-import { clipLength, fadeInto, filmLength, speedOf, timelineEnd } from '@skydock/scripts/client'
+import {
+  clipLength,
+  fadeInto,
+  filmLength,
+  musicCrossfadeOf,
+  speedOf,
+  timelineEnd
+} from '@skydock/scripts/client'
 import type {
   EditClip,
   EditLayer,
@@ -455,6 +462,58 @@ const layerRows = (layers: Array<{ id: string; at: number; seconds: number }>) =
   return rows
 }
 
+type Overlap = {
+  kind: 'clips' | 'music'
+  /* the item that comes in over the other: it is the one picked to change the transition */
+  id: string
+  beforeId: string
+  at: number
+  seconds: number
+  /* faded one into the other, or — music only — both heard as they are */
+  crossfade: boolean
+}
+
+/* Where two items of a track are on at the same moment, whatever the track draws them as: two clips share
+   only what they crossfade over, on one row; two pieces of music share all they overlap, on two rows, and are
+   crossfaded over it or mixed as they are. Every one is the same thing to the person — a stretch where one
+   item gives way to another, or does not — so each is said by the same band. */
+const overlapsOf = (edit: FilmEdit): Overlap[] => {
+  const found: Overlap[] = []
+  placed(edit).forEach(({ clip, index, from }) => {
+    const seconds = fadeInto(edit.clips, index)
+    const before = edit.clips[index - 1]
+    if (seconds > 0 && before)
+      found.push({
+        kind: 'clips',
+        id: clip.id,
+        beforeId: before.id,
+        at: from,
+        seconds,
+        crossfade: true
+      })
+  })
+  const sorted = [...edit.music].sort((a, b) => a.at - b.at)
+  sorted.forEach((piece, index) => {
+    const before = sorted[index - 1]
+    if (!before) return
+    const shared = Math.min(
+      before.at + (before.end - before.start) - piece.at,
+      piece.end - piece.start
+    )
+    if (shared <= 0.001) return
+    const into = musicCrossfadeOf(piece, edit.music).into
+    found.push({
+      kind: 'music',
+      id: piece.id,
+      beforeId: before.id,
+      at: piece.at,
+      seconds: into > 0 ? into : shared,
+      crossfade: into > 0
+    })
+  })
+  return found
+}
+
 /* The items that overlap one another, gathered into stacks: each is what the items of a track that are on at the
    same moment, one after the other, make up, with the time it starts and the time it ends. An item that
    overlaps nothing is a stack of its own. */
@@ -831,6 +890,7 @@ export {
   importMarkers,
   insertClip,
   layerRows,
+  overlapsOf,
   stackClusters,
   lookGeometry,
   moveClip,
@@ -871,4 +931,4 @@ export {
   ungroup,
   zoomAround
 }
-export type { FadeKind, Grouped, Placed, Selected }
+export type { Overlap, FadeKind, Grouped, Placed, Selected }

@@ -117,12 +117,12 @@ import { getFileUrl, getThumbUrl } from './utils'
 
 const fadeWhy = (blocked: ReturnType<typeof fadeBlock>) =>
   blocked === 'first'
-    ? t`The first clip has no clip before it to fade from`
+    ? t`The first clip has no clip before it to crossfade with`
     : blocked === 'gap'
       ? t`A gap separates the two clips: close it first`
       : blocked === 'short'
-        ? t`A clip shorter than 0.4 seconds cannot fade`
-        : t`Fade the picked clip in over the end of the clip before it`
+        ? t`A clip shorter than 0.4 seconds cannot crossfade`
+        : t`Crossfade the picked clip with the clip before it`
 
 type Loaded = Extract<z.infer<typeof editAnswerSchema>, { ok: true }>
 type SizePoint = { crf: number; bytesPerSecond: number }
@@ -715,6 +715,7 @@ const FadeLengths = ({
   max,
   whyIn,
   whyOut,
+  note,
   onChange
 }: {
   fadeIn: number
@@ -722,6 +723,7 @@ const FadeLengths = ({
   max: number
   whyIn?: string
   whyOut?: string
+  note?: string
   onChange: (change: { fadeIn?: number; fadeOut?: number }) => void
 }) => {
   const within = (seconds: number) => Math.min(max, Math.max(0, Math.round(seconds * 10) / 10))
@@ -737,6 +739,7 @@ const FadeLengths = ({
         value={fadeOut}
         onCommit={whyOut ? undefined : (seconds) => onChange({ fadeOut: within(seconds) })}
       />
+      {note && <p className='col-span-2 m-0 text-small text-ink-3'>{note}</p>}
       {[whyIn, whyOut].map(
         (why) =>
           why && (
@@ -968,14 +971,15 @@ const Inspector = ({
                         fadeIn={fadeInOf(edit.clips, clipIndex)}
                         fadeOut={fadeOutOf(edit.clips, clipIndex)}
                         max={clipLength(clip) / 2}
+                        note={t`A fade in or out goes from and to black, and the sound from and to silence. Between two clips, use the crossfade below.`}
                         whyIn={
                           fade > 0
-                            ? t`The fade from the previous clip already fades this clip in.`
+                            ? t`The crossfade with the previous clip already fades this clip in.`
                             : undefined
                         }
                         whyOut={
                           fadeInto(edit.clips, clipIndex + 1) > 0
-                            ? t`The next clip fades in over this one, which fades it out.`
+                            ? t`The crossfade into the next clip already fades this clip out.`
                             : undefined
                         }
                         onChange={changeClip}
@@ -1034,29 +1038,34 @@ const Inspector = ({
                 />
               </>
             )}
-            <label className='flex items-center gap-2 text-body'>
-              <input
-                type='checkbox'
-                checked={fade > 0}
-                disabled={fadeBlock(edit, clip.id) !== null}
-                title={fadeWhy(fadeBlock(edit, clip.id))}
-                onChange={(e) =>
-                  onChange(setFade(edit, clip.id, e.target.checked ? FADE.default : 0, ripple))
-                }
-                className='accent-accent'
-              />
-              {t`Fade from the previous clip`}
-            </label>
-            {fade > 0 && (
-              <Slider
-                label={t`Length of the fade`}
-                value={fade}
-                min={FADE.least}
-                max={fadeMost(edit, clip.id)}
-                step={0.1}
-                shown={`${fade.toFixed(1)}s`}
-                onChange={(seconds) => onChange(setFade(edit, clip.id, seconds, ripple))}
-              />
+            {(fadeBlock(edit, clip.id) === null || fade > 0) && (
+              <>
+                <span className='text-micro text-ink-2'>{t`Transition from the previous clip`}</span>
+                <label className='flex items-center gap-2 text-body'>
+                  <input
+                    type='checkbox'
+                    checked={fade > 0}
+                    disabled={fadeBlock(edit, clip.id) !== null}
+                    title={fadeWhy(fadeBlock(edit, clip.id))}
+                    onChange={(e) =>
+                      onChange(setFade(edit, clip.id, e.target.checked ? FADE.default : 0, ripple))
+                    }
+                    className='accent-accent'
+                  />
+                  {t`Crossfade`}
+                </label>
+                {fade > 0 && (
+                  <Slider
+                    label={t`Length of the crossfade`}
+                    value={fade}
+                    min={FADE.least}
+                    max={fadeMost(edit, clip.id)}
+                    step={0.1}
+                    shown={`${fade.toFixed(1)}s`}
+                    onChange={(seconds) => onChange(setFade(edit, clip.id, seconds, ripple))}
+                  />
+                )}
+              </>
             )}
             <Markers
               edit={edit}
@@ -1087,49 +1096,55 @@ const Inspector = ({
                 fadeIn={musicFadesOf(piece, edit.music).fadeIn}
                 fadeOut={musicFadesOf(piece, edit.music).fadeOut}
                 max={(piece.end - piece.start) / 2}
+                note={t`A fade in or out goes from and to silence. Between two pieces, use the crossfade below.`}
                 whyIn={
                   musicCrossfadeOf(piece, edit.music).into > 0
-                    ? t`The fade from the previous piece already fades this piece in.`
+                    ? t`The crossfade with the previous piece already fades this piece in.`
                     : undefined
                 }
                 whyOut={
                   musicCrossfadeOf(piece, edit.music).out > 0
-                    ? t`The next piece fades in over this one, which fades it out.`
+                    ? t`The crossfade into the next piece already fades this piece out.`
                     : undefined
                 }
                 onChange={changePiece}
               />
             </div>
-            <label className='flex items-center gap-2 text-body'>
-              <input
-                type='checkbox'
-                checked={musicFadeOf(edit, piece.id).on}
-                disabled={musicFadeBlock(edit, piece.id) !== null}
-                title={
-                  musicFadeBlock(edit, piece.id) !== null
-                    ? t`There is no piece of music before this one to fade from`
-                    : undefined
-                }
-                onChange={() => onChange(toggleMusicFade(edit, piece.id))}
-                className='accent-accent'
-              />
-              {t`Fade from the previous piece`}
-            </label>
-            {musicFadeOf(edit, piece.id).on && piece.fade === undefined && (
-              <span className='text-micro leading-normal text-ink-3'>
-                {t`Over everything the two pieces share — drag the piece to share more or less, or untick to mix them as they are.`}
-              </span>
-            )}
-            {piece.fade !== undefined && (
-              <Slider
-                label={t`Length of the fade`}
-                value={piece.fade}
-                min={FADE.least}
-                max={Math.max(FADE.least, (piece.end - piece.start) / 2)}
-                step={0.1}
-                shown={`${piece.fade.toFixed(1)}s`}
-                onChange={(seconds) => onChange(setMusicFade(edit, piece.id, seconds))}
-              />
+            {musicFadeBlock(edit, piece.id) === null && (
+              <>
+                <span className='text-micro text-ink-2'>{t`Transition from the previous piece`}</span>
+                <label className='flex items-center gap-2 text-body'>
+                  <input
+                    type='checkbox'
+                    checked={musicFadeOf(edit, piece.id).on}
+                    disabled={musicFadeBlock(edit, piece.id) !== null}
+                    title={
+                      musicFadeBlock(edit, piece.id) !== null
+                        ? t`There is no piece of music before this one to crossfade with`
+                        : undefined
+                    }
+                    onChange={() => onChange(toggleMusicFade(edit, piece.id))}
+                    className='accent-accent'
+                  />
+                  {t`Crossfade`}
+                </label>
+                {musicFadeOf(edit, piece.id).on && piece.fade === undefined && (
+                  <span className='text-micro leading-normal text-ink-3'>
+                    {t`Over everything the two pieces share — drag the piece to share more or less, or untick to mix them as they are.`}
+                  </span>
+                )}
+                {piece.fade !== undefined && (
+                  <Slider
+                    label={t`Length of the crossfade`}
+                    value={piece.fade}
+                    min={FADE.least}
+                    max={Math.max(FADE.least, (piece.end - piece.start) / 2)}
+                    step={0.1}
+                    shown={`${piece.fade.toFixed(1)}s`}
+                    onChange={(seconds) => onChange(setMusicFade(edit, piece.id, seconds))}
+                  />
+                )}
+              </>
             )}
             <Markers
               edit={edit}
@@ -2713,11 +2728,11 @@ const FilmEditor = ({
                 title={hint(
                   pickedMusic
                     ? musicBlocked !== null
-                      ? t`There is no piece of music before this one to fade from`
-                      : t`Fade the picked piece in over the end of the piece before it`
+                      ? t`There is no piece of music before this one to crossfade with`
+                      : t`Crossfade the picked piece with the piece before it`
                     : pickedId
                       ? fadeWhy(blocked)
-                      : t`Pick a clip or a piece of music to fade it in over the one before it`,
+                      : t`Pick a clip or a piece of music to crossfade it with the one before it`,
                   'fade'
                 )}
                 onClick={fadeHere}>
@@ -2725,7 +2740,7 @@ const FilmEditor = ({
                   name='fade'
                   size={13}
                 />
-                {t`Fade in`}
+                {t`Crossfade`}
               </Mini>
               <span className='h-4.5 w-px flex-none bg-line' />
               <Mini

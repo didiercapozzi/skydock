@@ -798,8 +798,8 @@ describe('the film editor', () => {
 })
 
 describe('a crossfade between two clips', () => {
-  const fadeButton = () => page.getByRole('button', { name: 'Fade in', exact: true })
-  const handle = () => page.getByRole('slider', { name: `Fade into ${SECOND}` })
+  const fadeButton = () => page.getByRole('button', { name: 'Crossfade', exact: true })
+  const handle = () => page.getByRole('slider', { name: `Crossfade into ${SECOND}` })
 
   test('is added with one click on the picked clip, shortens the film, and is taken off with a second click', async () => {
     await open()
@@ -823,7 +823,7 @@ describe('a crossfade between two clips', () => {
     await expect.element(fadeButton()).toBeDisabled()
     await pick(FIRST)
     await expect.element(fadeButton()).toBeDisabled()
-    await expect.element(fadeButton()).toHaveAttribute('title', 'The first clip has no clip before it to fade from (F)')
+    await expect.element(fadeButton()).toHaveAttribute('title', 'The first clip has no clip before it to crossfade with (F)')
   })
 
   test('is not offered beside a gap, and says why', async () => {
@@ -849,7 +849,7 @@ describe('a crossfade between two clips', () => {
     await pick(SECOND)
 
     await expect.element(fadeButton()).toBeDisabled()
-    await expect.element(fadeButton()).toHaveAttribute('title', 'A clip shorter than 0.4 seconds cannot fade (F)')
+    await expect.element(fadeButton()).toHaveAttribute('title', 'A clip shorter than 0.4 seconds cannot crossfade (F)')
   })
 
   test('is taken back in one step by Undo', async () => {
@@ -861,7 +861,7 @@ describe('a crossfade between two clips', () => {
     await userEvent.click(page.getByRole('button', { name: 'Undo' }))
 
     expect(clock()).toBe('0:00.0 / 0:16.0')
-    await expect.element(page.getByRole('slider', { name: `Fade into ${SECOND}` }).query()).toBeNull()
+    await expect.element(page.getByRole('slider', { name: `Crossfade into ${SECOND}` }).query()).toBeNull()
   })
 
   test('is drawn as an overlap at the start of the clip, with a handle that arrow keys and the pointer change', async () => {
@@ -934,17 +934,17 @@ describe('a crossfade between two clips', () => {
   test('has the same switch and a length in the inspector of the picked clip', async () => {
     await open()
     await pick(SECOND)
-    const fade = page.getByRole('checkbox', { name: 'Fade from the previous clip' })
+    const fade = page.getByRole('checkbox', { name: 'Crossfade' })
     await expect.element(fade).not.toBeChecked()
 
     await userEvent.click(fade)
 
     await expect.element(fade).toBeChecked()
     await expect.element(fadeButton()).toHaveAttribute('aria-pressed', 'true')
-    await userEvent.fill(page.getByRole('slider', { name: 'Length of the fade' }), '2')
+    await userEvent.fill(page.getByRole('slider', { name: 'Length of the crossfade' }), '2')
     await expect.element(handle()).toHaveAttribute('aria-valuenow', '2')
     expect(clock()).toBe('0:00.0 / 0:14.0')
-    await userEvent.fill(page.getByRole('slider', { name: 'Length of the fade' }), '0.2')
+    await userEvent.fill(page.getByRole('slider', { name: 'Length of the crossfade' }), '0.2')
     await expect.element(handle()).toHaveAttribute('aria-valuenow', '0.2')
     await userEvent.click(fade)
     await expect.element(fade).not.toBeChecked()
@@ -1588,7 +1588,7 @@ describe('the film editor keys', () => {
   test('plays instead of ticking a checkbox that the mouse focused', async () => {
     await open()
     await pick(SECOND)
-    const box = page.getByRole('checkbox', { name: 'Fade from the previous clip' })
+    const box = page.getByRole('checkbox', { name: 'Crossfade' })
     await userEvent.click(box)
     await expect.element(box).toBeChecked()
     await userEvent.keyboard(' ')
@@ -1724,15 +1724,15 @@ describe('the film editor keys', () => {
   test('toggles Fade in with F for the picked clip, only where the button is enabled', async () => {
     await open()
     await userEvent.keyboard('f')
-    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'false')
+    await expect.element(tool('Crossfade')).toHaveAttribute('aria-pressed', 'false')
     await pick(FIRST)
     await userEvent.keyboard('f')
-    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'false')
+    await expect.element(tool('Crossfade')).toHaveAttribute('aria-pressed', 'false')
     await pick(SECOND)
     await userEvent.keyboard('f')
-    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'true')
+    await expect.element(tool('Crossfade')).toHaveAttribute('aria-pressed', 'true')
     await userEvent.keyboard('f')
-    await expect.element(tool('Fade in')).toHaveAttribute('aria-pressed', 'false')
+    await expect.element(tool('Crossfade')).toHaveAttribute('aria-pressed', 'false')
   })
 
   test('deletes the picked clip with Delete and with Backspace', async () => {
@@ -1813,7 +1813,7 @@ describe('the film editor keys', () => {
     const keyed: Array<[string, string, string]> = [
       ['Cut at playhead', 'C', 'C'],
       ['Delete', 'D, Delete, Backspace', 'D Delete Backspace'],
-      ['Fade in', 'F', 'F'],
+      ['Crossfade', 'F', 'F'],
       ['Ripple', 'R', 'R'],
       ['Snap', 'S', 'S']
     ]
@@ -2035,13 +2035,13 @@ describe('the keys of the film editor that can be changed', () => {
     await edited()
     await userEvent.click(button('C, change the key of Cut'))
     await userEvent.keyboard('x')
-    await userEvent.click(button('F, change the key of Fade in'))
+    await userEvent.click(button('F, change the key of Crossfade'))
     await userEvent.keyboard('g')
     await userEvent.click(button('Reset Cut'))
     await expect.element(button('C, change the key of Cut')).toBeVisible()
-    await expect.element(button('G, change the key of Fade in')).toBeVisible()
+    await expect.element(button('G, change the key of Crossfade')).toBeVisible()
     await userEvent.click(button('Reset to defaults'))
-    await expect.element(button('F, change the key of Fade in')).toBeVisible()
+    await expect.element(button('F, change the key of Crossfade')).toBeVisible()
     await userEvent.click(help().getByRole('button', { name: 'Close', exact: true }))
 
     expect(localStorage.getItem('skydock.filmKeys')).toBeNull()
@@ -2257,7 +2257,7 @@ describe('the fade in and the fade out of clips, texts and music', () => {
     await pick(FIRST)
     await expect.element(box('Fade out')).toHaveAttribute('readonly')
     await expect.element(box('Fade in')).not.toHaveAttribute('readonly')
-    await expect.element(page.getByText('The next clip fades in over this one', { exact: false })).toBeVisible()
+    await expect.element(page.getByText('The crossfade into the next clip already fades this clip out', { exact: false })).toBeVisible()
     await pick(SECOND)
     await expect.element(box('Fade in')).toHaveAttribute('readonly')
     await expect.element(box('Fade out')).not.toHaveAttribute('readonly')
@@ -2330,6 +2330,65 @@ describe('the fade handles on the timeline', () => {
     expect(grown).toBeGreaterThan(0.5)
     await userEvent.click(page.getByTitle(`${FIRST} · double-click to choose the part`))
     await expect.element(page.getByRole('textbox', { name: 'Fade in' })).toHaveValue(clockOf(grown))
+  })
+
+  test('are said by a band over the stretch the two clips share, which picks the clip that comes in', async () => {
+    await open({ clips: [answer.edit.clips[0]!, { ...answer.edit.clips[1]!, fade: 1 }] })
+
+    const band = page.getByRole('button', {
+      name: `Crossfade of 1.0 seconds, from ${FIRST} into ${SECOND}`
+    })
+    await expect.element(band).toBeVisible()
+
+    await userEvent.click(band)
+
+    await expect.element(page.getByRole('checkbox', { name: 'Crossfade' })).toBeChecked()
+  })
+
+  test('are crossfaded from a button on the seam, which then has a band with a menu to change or remove it', async () => {
+    await open()
+
+    await userEvent.click(
+      page.getByRole('button', { name: `Add a crossfade from ${FIRST} into ${SECOND}` })
+    )
+
+    const band = page.getByRole('button', { name: /^Crossfade of 1.0 seconds/ })
+    await expect.element(band).toBeVisible()
+    await expect
+      .element(page.getByRole('button', { name: /^Add a crossfade from/ }))
+      .not.toBeInTheDocument()
+
+    await userEvent.click(band)
+    await userEvent.fill(page.getByRole('slider', { name: 'Length of the crossfade' }).first(), '2')
+    await expect.element(page.getByRole('button', { name: /^Crossfade of 2.0 seconds/ })).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: 'Take the crossfade off' }))
+
+    await expect.element(page.getByRole('button', { name: /^Crossfade of / })).not.toBeInTheDocument()
+    await expect
+      .element(page.getByRole('button', { name: `Add a crossfade from ${FIRST} into ${SECOND}` }))
+      .toBeVisible()
+  })
+
+  test('has no transition to offer for the first clip, and none where a gap or a short clip forbids it', async () => {
+    await open({ clips: [answer.edit.clips[0]!, { ...answer.edit.clips[1]!, gap: 1 }] })
+    await pick(FIRST)
+
+    await expect.element(page.getByRole('heading', { name: FIRST })).toBeInTheDocument()
+    await expect
+      .element(page.getByRole('checkbox', { name: 'Crossfade' }))
+      .not.toBeInTheDocument()
+    await expect
+      .element(page.getByRole('button', { name: /^Add a crossfade from/ }))
+      .not.toBeInTheDocument()
+  })
+
+  test('have no band when the clips are not faded one into the other', async () => {
+    await open()
+
+    await expect
+      .element(page.getByRole('button', { name: /^Crossfade of / }))
+      .not.toBeInTheDocument()
   })
 
   test('are not offered where a crossfade already fades the clip in', async () => {
@@ -3603,12 +3662,12 @@ describe('pieces of music that overlap', () => {
     expect(two.top).toBeGreaterThanOrEqual(one.bottom - 1)
 
     await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
-    await expect.element(page.getByRole('heading', { name: 'two.mp3' })).toBeVisible()
+    await expect.element(page.getByRole('heading', { name: 'two.mp3' })).toBeInTheDocument()
   })
 
   test('are faded one into the other over everything they share, by default, and stay stacked', async () => {
     await start()
-    const box = page.getByRole('checkbox', { name: 'Fade from the previous piece' })
+    const box = page.getByRole('checkbox', { name: 'Crossfade' })
 
     await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
 
@@ -3635,9 +3694,27 @@ describe('pieces of music that overlap', () => {
     setFoldedLanes(NO_FOLDED_LANES)
   })
 
-  test('are mixed as they are when Fade from the previous piece is unticked, and faded again when it is ticked', async () => {
+  test('are said by a band over what they share: a crossfade by default, mixed once it is unticked', async () => {
+    await start()
+    const crossfade = page.getByRole('button', {
+      name: 'Crossfade of 4.0 seconds, from one.mp3 into two.mp3'
+    })
+    const mixed = page.getByRole('button', {
+      name: 'Mixed: one.mp3 and two.mp3 are heard together for 4.0 seconds'
+    })
+    await expect.element(crossfade).toBeVisible()
+    await expect.element(mixed).not.toBeInTheDocument()
+
+    await userEvent.click(crossfade)
+    await userEvent.click(page.getByRole('checkbox', { name: 'Crossfade' }))
+
+    await expect.element(mixed).toBeVisible()
+    await expect.element(crossfade).not.toBeInTheDocument()
+  })
+
+  test('are mixed as they are when Crossfade is unticked, and faded again when it is ticked', async () => {
     const sent = await start()
-    const box = page.getByRole('checkbox', { name: 'Fade from the previous piece' })
+    const box = page.getByRole('checkbox', { name: 'Crossfade' })
     await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
 
     await userEvent.click(box)
@@ -3665,10 +3742,10 @@ describe('pieces of music that overlap', () => {
     expect(songs(sent)?.[1]?.at).toBe(8)
   })
 
-  test('that only follow one another are faded with Fade from the previous piece, which makes them share that much', async () => {
+  test('that only follow one another are faded with Crossfade, which makes them share that much', async () => {
     const sent = await start(12)
     await userEvent.click(page.getByTitle('two.mp3', { exact: true }).last())
-    const box = page.getByRole('checkbox', { name: 'Fade from the previous piece' })
+    const box = page.getByRole('checkbox', { name: 'Crossfade' })
     await expect.element(box).not.toBeChecked()
 
     await userEvent.click(box)
@@ -3704,12 +3781,29 @@ describe('pieces of music that overlap', () => {
       .toBe(page.getByTitle('one.mp3', { exact: true }).last().element().getBoundingClientRect().top)
   })
 
-  test('has no fade from the previous piece for the first one', async () => {
+  test('has no transition to offer for the first piece, which has none before it', async () => {
     await start()
     await userEvent.click(page.getByTitle('one.mp3', { exact: true }).last())
 
+    await expect.element(page.getByRole('heading', { name: 'one.mp3' })).toBeInTheDocument()
     await expect
-      .element(page.getByRole('checkbox', { name: 'Fade from the previous piece' }))
-      .toBeDisabled()
+      .element(page.getByRole('checkbox', { name: 'Crossfade' }))
+      .not.toBeInTheDocument()
+    await expect.element(page.getByText('Transition from the previous piece')).not.toBeInTheDocument()
+  })
+
+  test('are mixed or crossfaded from the menu of the button on their band', async () => {
+    setFoldedLanes(NO_FOLDED_LANES)
+    await start()
+
+    await userEvent.click(page.getByRole('button', { name: /^Crossfade of 4.0/ }))
+    await userEvent.click(page.getByRole('button', { name: 'Mix them as they are' }))
+
+    await expect.element(page.getByRole('button', { name: /^Mixed: / })).toBeVisible()
+
+    await userEvent.click(page.getByRole('button', { name: /^Mixed: / }))
+    await userEvent.click(page.getByRole('button', { name: 'Crossfade them' }))
+
+    await expect.element(page.getByRole('button', { name: /^Crossfade of 4.0/ })).toBeVisible()
   })
 })

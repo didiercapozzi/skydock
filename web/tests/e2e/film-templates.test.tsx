@@ -418,7 +418,7 @@ describe('the film template editor', () => {
 
     await expect.element(page.getByRole('button', { name: 'Delete', exact: true })).toBeDisabled()
     await expect.element(page.getByRole('button', { name: 'Cut at playhead' })).toBeDisabled()
-    await expect.element(page.getByRole('button', { name: 'Fade in' })).toBeDisabled()
+    await expect.element(page.getByRole('button', { name: 'Crossfade' })).toBeDisabled()
     await expect.element(page.getByLabelText('Trim the end')).not.toBeInTheDocument()
   })
 

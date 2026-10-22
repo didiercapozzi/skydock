@@ -832,8 +832,8 @@ msgid "A camera SkyDock has not seen before"
 msgstr "A camera SkyDock has not seen before"
 
 #: app/components/film-editor.tsx
-msgid "A clip shorter than 0.4 seconds cannot fade"
-msgstr "A clip shorter than 0.4 seconds cannot fade"
+msgid "A clip shorter than 0.4 seconds cannot crossfade"
+msgstr "A clip shorter than 0.4 seconds cannot crossfade"
 
 #: app/components/file-list.tsx
 msgid "A copy — the same clip is in another jump too. This one has its own trim and time, and is processed for this jump. Taken out of the jump, it simply ends: the original stays where it is."
@@ -854,6 +854,14 @@ msgstr "A dead key cannot be set"
 #: app/helpers/places.ts
 msgid "A dropzone needs a name."
 msgstr "A dropzone needs a name."
+
+#: app/components/film-editor.tsx
+msgid "A fade in or out goes from and to black, and the sound from and to silence. Between two clips, use the crossfade below."
+msgstr "A fade in or out goes from and to black, and the sound from and to silence. Between two clips, use the crossfade below."
+
+#: app/components/film-editor.tsx
+msgid "A fade in or out goes from and to silence. Between two pieces, use the crossfade below."
+msgstr "A fade in or out goes from and to silence. Between two pieces, use the crossfade below."
 
 #: app/components/film-template-modals.tsx
 msgid "A film template called {name} is already there."
@@ -961,6 +969,12 @@ msgstr "active"
 #: app/components/places-tree.tsx
 msgid "Add"
 msgstr "Add"
+
+#. placeholder {0}: edit.clips[index - 1]?.name ?? ''
+#. placeholder {1}: clip.name
+#: app/components/film-timeline.tsx
+msgid "Add a crossfade from {0} into {1}"
+msgstr "Add a crossfade from {0} into {1}"
 
 #: app/components/upload-dialog.tsx
 msgid "Add a destination"
@@ -1801,6 +1815,38 @@ msgstr "Create and open"
 msgid "Create link"
 msgstr "Create link"
 
+#: app/components/film-editor.tsx
+#: app/components/film-shortcuts.tsx
+msgid "Crossfade"
+msgstr "Crossfade"
+
+#. placeholder {0}: clip.name
+#: app/components/film-timeline.tsx
+msgid "Crossfade into {0}"
+msgstr "Crossfade into {0}"
+
+#. placeholder {0}: names.before
+#. placeholder {1}: names.after
+#: app/components/film-timeline.tsx
+msgid "Crossfade of {length} seconds, from {0} into {1}"
+msgstr "Crossfade of {length} seconds, from {0} into {1}"
+
+#: app/components/film-shortcuts.tsx
+msgid "crossfade the picked clip or piece of music with the one before it, or take the crossfade off"
+msgstr "crossfade the picked clip or piece of music with the one before it, or take the crossfade off"
+
+#: app/components/film-editor.tsx
+msgid "Crossfade the picked clip with the clip before it"
+msgstr "Crossfade the picked clip with the clip before it"
+
+#: app/components/film-editor.tsx
+msgid "Crossfade the picked piece with the piece before it"
+msgstr "Crossfade the picked piece with the piece before it"
+
+#: app/components/film-timeline.tsx
+msgid "Crossfade them"
+msgstr "Crossfade them"
+
 #: app/components/film-shortcuts.tsx
 msgid "Ctrl, Cmd and Alt are for other things"
 msgstr "Ctrl, Cmd and Alt are for other things"
@@ -2090,8 +2136,8 @@ msgid "Drag the rectangle to move it, a corner to resize. What is dimmed is cut 
 msgstr "Drag the rectangle to move it, a corner to resize. What is dimmed is cut away."
 
 #: app/components/film-timeline.tsx
-msgid "Drag to make the fade longer or shorter"
-msgstr "Drag to make the fade longer or shorter"
+msgid "Drag to make the crossfade longer or shorter"
+msgstr "Drag to make the crossfade longer or shorter"
 
 #: app/components/video-cropper.tsx
 msgid "Drag to trim the end"
@@ -2363,19 +2409,6 @@ msgid "Fade"
 msgstr "Fade"
 
 #: app/components/film-editor.tsx
-msgid "Fade from the previous clip"
-msgstr "Fade from the previous clip"
-
-#: app/components/film-editor.tsx
-msgid "Fade from the previous piece"
-msgstr "Fade from the previous piece"
-
-#: app/components/film-editor.tsx
-#: app/components/film-shortcuts.tsx
-msgid "Fade in"
-msgstr "Fade in"
-
-#: app/components/film-editor.tsx
 msgctxt "a fade from black, not a crossfade"
 msgid "Fade in"
 msgstr "Fade in"
@@ -2384,11 +2417,6 @@ msgstr "Fade in"
 msgid "Fade in of {name}"
 msgstr "Fade in of {name}"
 
-#. placeholder {0}: clip.name
-#: app/components/film-timeline.tsx
-msgid "Fade into {0}"
-msgstr "Fade into {0}"
-
 #: app/components/film-editor.tsx
 msgid "Fade out"
 msgstr "Fade out"
@@ -2396,18 +2424,6 @@ msgstr "Fade out"
 #: app/components/film-timeline.tsx
 msgid "Fade out of {name}"
 msgstr "Fade out of {name}"
-
-#: app/components/film-editor.tsx
-msgid "Fade the picked clip in over the end of the clip before it"
-msgstr "Fade the picked clip in over the end of the clip before it"
-
-#: app/components/film-shortcuts.tsx
-msgid "fade the picked clip in over the one before it, or take the fade off"
-msgstr "fade the picked clip in over the one before it, or take the fade off"
-
-#: app/components/film-editor.tsx
-msgid "Fade the picked piece in over the end of the piece before it"
-msgstr "Fade the picked piece in over the end of the piece before it"
 
 #: app/components/progress-panel.tsx
 #: app/components/transfers-panel.tsx
@@ -3260,8 +3276,9 @@ msgid "Length"
 msgstr "Length"
 
 #: app/components/film-editor.tsx
-msgid "Length of the fade"
-msgstr "Length of the fade"
+#: app/components/film-timeline.tsx
+msgid "Length of the crossfade"
+msgstr "Length of the crossfade"
 
 #: app/routes/place.tsx
 msgid "Let go of it as the desktop does, so it can be unplugged — nothing on it is touched"
@@ -3507,6 +3524,20 @@ msgstr "min"
 #: app/components/window-bar.tsx
 msgid "Minimise"
 msgstr "Minimise"
+
+#: app/components/film-timeline.tsx
+msgid "Mix them as they are"
+msgstr "Mix them as they are"
+
+#: app/components/film-timeline.tsx
+msgid "Mixed"
+msgstr "Mixed"
+
+#. placeholder {0}: names.before
+#. placeholder {1}: names.after
+#: app/components/film-timeline.tsx
+msgid "Mixed: {0} and {1} are heard together for {length} seconds"
+msgstr "Mixed: {0} and {1} are heard together for {length} seconds"
 
 #: app/components/delivered-list.tsx
 #: app/components/inspector.tsx
@@ -4260,8 +4291,8 @@ msgid "Pick {name}"
 msgstr "Pick {name}"
 
 #: app/components/film-editor.tsx
-msgid "Pick a clip or a piece of music to fade it in over the one before it"
-msgstr "Pick a clip or a piece of music to fade it in over the one before it"
+msgid "Pick a clip or a piece of music to crossfade it with the one before it"
+msgstr "Pick a clip or a piece of music to crossfade it with the one before it"
 
 #: app/components/film-editor.tsx
 msgid "Pick a clip, a piece of music or a text on the timeline to change it. Double-click a clip to choose its part."
@@ -5370,6 +5401,10 @@ msgstr "Take {0} out of {name}"
 msgid "Take away the marker {name}"
 msgstr "Take away the marker {name}"
 
+#: app/components/film-timeline.tsx
+msgid "Take the crossfade off"
+msgstr "Take the crossfade off"
+
 #: app/components/storage-folder.tsx
 msgid "Take the link away — the file stays where it is"
 msgstr "Take the link away — the file stays where it is"
@@ -5481,6 +5516,22 @@ msgstr "the copies, and the film rendered last"
 msgid "the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn{alreadySet}. The gap rule makes the jumps again"
 msgstr "the corrected times, the jumps made and named by hand, any copies, and every trim, frame and turn{alreadySet}. The gap rule makes the jumps again"
 
+#: app/components/film-editor.tsx
+msgid "The crossfade into the next clip already fades this clip out."
+msgstr "The crossfade into the next clip already fades this clip out."
+
+#: app/components/film-editor.tsx
+msgid "The crossfade into the next piece already fades this piece out."
+msgstr "The crossfade into the next piece already fades this piece out."
+
+#: app/components/film-editor.tsx
+msgid "The crossfade with the previous clip already fades this clip in."
+msgstr "The crossfade with the previous clip already fades this clip in."
+
+#: app/components/film-editor.tsx
+msgid "The crossfade with the previous piece already fades this piece in."
+msgstr "The crossfade with the previous piece already fades this piece in."
+
 #: app/helpers/parcels.ts
 msgid "the edit"
 msgstr "the edit"
@@ -5496,14 +5547,6 @@ msgstr "the edit itself — a copy of it is kept aside in .projects"
 #: app/components/free-dialog.tsx
 msgid "the edit, and the record of what went where"
 msgstr "the edit, and the record of what went where"
-
-#: app/components/film-editor.tsx
-msgid "The fade from the previous clip already fades this clip in."
-msgstr "The fade from the previous clip already fades this clip in."
-
-#: app/components/film-editor.tsx
-msgid "The fade from the previous piece already fades this piece in."
-msgstr "The fade from the previous piece already fades this piece in."
 
 #: app/components/camera-preview.tsx
 #: app/components/preview-drawer.tsx
@@ -5566,8 +5609,8 @@ msgid "The film templates could not be read."
 msgstr "The film templates could not be read."
 
 #: app/components/film-editor.tsx
-msgid "The first clip has no clip before it to fade from"
-msgstr "The first clip has no clip before it to fade from"
+msgid "The first clip has no clip before it to crossfade with"
+msgstr "The first clip has no clip before it to crossfade with"
 
 #: app/components/work-folder-dialog.tsx
 msgid "The folder could not be changed."
@@ -5666,14 +5709,6 @@ msgstr "the name, every trim and frame, and every corrected time"
 msgid "the name, every trim and frame, and every corrected time — each file goes back to the time its camera gave it"
 msgstr "the name, every trim and frame, and every corrected time — each file goes back to the time its camera gave it"
 
-#: app/components/film-editor.tsx
-msgid "The next clip fades in over this one, which fades it out."
-msgstr "The next clip fades in over this one, which fades it out."
-
-#: app/components/film-editor.tsx
-msgid "The next piece fades in over this one, which fades it out."
-msgstr "The next piece fades in over this one, which fades it out."
-
 #: app/components/jump-graph.tsx
 msgid "the opening"
 msgstr "the opening"
@@ -5765,9 +5800,21 @@ msgstr "the times that were corrected — every file goes back to the time its c
 msgid "The titles and music a film is started from — make one, or tidy them"
 msgstr "The titles and music a film is started from — make one, or tidy them"
 
+#: app/components/film-timeline.tsx
+msgid "The transition"
+msgstr "The transition"
+
 #: app/components/preview-drawer.tsx
 msgid "The trim, frame or turn you set has not been saved yet."
 msgstr "The trim, frame or turn you set has not been saved yet."
+
+#: app/components/film-timeline.tsx
+msgid "The two pieces are faded one into the other over what they share."
+msgstr "The two pieces are faded one into the other over what they share."
+
+#: app/components/film-timeline.tsx
+msgid "The two pieces are heard together, each as loud as it is."
+msgstr "The two pieces are heard together, each as loud as it is."
 
 #: app/components/film-template-modals.tsx
 msgid "The videos end to end, and the name as the title"
@@ -5799,8 +5846,8 @@ msgid "Then it is ready to go to the storage."
 msgstr "Then it is ready to go to the storage."
 
 #: app/components/film-editor.tsx
-msgid "There is no piece of music before this one to fade from"
-msgstr "There is no piece of music before this one to fade from"
+msgid "There is no piece of music before this one to crossfade with"
+msgstr "There is no piece of music before this one to crossfade with"
 
 #: app/components/inspector.tsx
 msgid "these"
@@ -5956,6 +6003,14 @@ msgstr "Total size"
 #: app/components/transfers-panel.tsx
 msgid "Transfers"
 msgstr "Transfers"
+
+#: app/components/film-editor.tsx
+msgid "Transition from the previous clip"
+msgstr "Transition from the previous clip"
+
+#: app/components/film-editor.tsx
+msgid "Transition from the previous piece"
+msgstr "Transition from the previous piece"
 
 #: app/components/file-list.tsx
 #: app/components/preview-drawer.tsx

@@ -30,6 +30,7 @@ import {
   setClipFrame,
   musicFadeBlock,
   musicFadeOf,
+  overlapsOf,
   stackClusters,
   setItemFade,
   toggleMusicFade,
@@ -1399,5 +1400,65 @@ describe('the stacks of a track', () => {
         { id: 'b', at: 5, seconds: 5 }
       ]).map((stack) => stack.ids)
     ).toEqual([['a'], ['b']])
+  })
+})
+
+describe('where two items overlap', () => {
+  const clip = (id: string, end: number, more = {}) => ({
+    id,
+    name: `${id}.mp4`,
+    start: 0,
+    end,
+    sound: false,
+    ...more
+  })
+  const piece = (id: string, at: number, end: number, more = {}) => ({
+    id,
+    name: `${id}.mp3`,
+    at,
+    start: 0,
+    end,
+    volume: 1,
+    ...more
+  })
+  const film = (clips: FilmEdit['clips'], music: FilmEdit['music'] = []): FilmEdit => ({
+    ...edit,
+    clips,
+    music,
+    texts: []
+  })
+
+  it('says the clips that are faded one into the other, over what they crossfade, on the one that comes in', () => {
+    const found = overlapsOf(film([clip('a', 10), clip('b', 6, { fade: 2 })]))
+
+    expect(found).toEqual([
+      { kind: 'clips', id: 'b', beforeId: 'a', at: 8, seconds: 2, crossfade: true }
+    ])
+  })
+
+  it('says nothing for clips that only follow one another', () => {
+    expect(overlapsOf(film([clip('a', 10), clip('b', 6)]))).toEqual([])
+  })
+
+  it('says pieces of music that overlap as a crossfade over what they share, by default', () => {
+    const found = overlapsOf(film([], [piece('a', 0, 20), piece('b', 14, 20)]))
+
+    expect(found).toEqual([
+      { kind: 'music', id: 'b', beforeId: 'a', at: 14, seconds: 6, crossfade: true }
+    ])
+  })
+
+  it('says them as mixed, over everything they share, once the later one is not faded', () => {
+    const found = overlapsOf(
+      film([], [piece('a', 0, 20), piece('b', 14, 20, { crossfade: false })])
+    )
+
+    expect(found).toEqual([
+      { kind: 'music', id: 'b', beforeId: 'a', at: 14, seconds: 6, crossfade: false }
+    ])
+  })
+
+  it('says nothing for pieces that only touch', () => {
+    expect(overlapsOf(film([], [piece('a', 0, 20), piece('b', 20, 20)]))).toEqual([])
   })
 })

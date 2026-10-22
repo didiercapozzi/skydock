@@ -26,7 +26,7 @@ const HIT =
 const actionName = (action: FilmAction) =>
   ({
     cut: t`Cut`,
-    fade: t`Fade in`,
+    fade: t`Crossfade`,
     ripple: t`Ripple`,
     snap: t`Snap`,
     title: t`Title`,
@@ -148,7 +148,10 @@ const FilmShortcuts = ({ scratch, onClose }: { scratch: boolean; onClose: () => 
             ? t`cut at the playhead; Cut is off here, so this key does nothing`
             : t`cut at the playhead`
         ],
-        ['fade', t`fade the picked clip in over the one before it, or take the fade off`],
+        [
+          'fade',
+          t`crossfade the picked clip or piece of music with the one before it, or take the crossfade off`
+        ],
         ['delete', t`delete the picked item`],
         ['ripple', t`turn Ripple on or off`],
         ['snap', t`turn Snap on or off`],
