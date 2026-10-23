@@ -216,22 +216,24 @@ const runningNow = async (window: BrowserWindow) => {
   try {
     const address = new URL('/api/busy', window.webContents.getURL())
     const said = z
-      .object({ running: z.string().nullable() })
+      .object({ running: z.string().nullable(), ifStopped: z.array(z.string()).default([]) })
       .safeParse(await (await fetch(address, { signal: AbortSignal.timeout(2000) })).json())
-    return said.success ? said.data.running : null
+    return said.success && said.data.running ? said.data : null
   } catch {
     return null
   }
 }
 
 const goAheadDespite = async (window: BrowserWindow, doing: string) => {
-  const running = await runningNow(window)
-  if (!running) return true
+  const busy = await runningNow(window)
+  if (!busy) return true
   const { response } = await dialog.showMessageBox(window, {
     type: 'warning',
     title: 'SkyDock is working',
-    message: `${running}.`,
-    detail: `${doing} now stops it halfway. What was finished stays; the rest has to be done again.`,
+    message: `${busy.running}.`,
+    detail: `${doing} now stops it halfway. ${
+      busy.ifStopped.join(' ') || 'What was finished stays; the rest has to be done again.'
+    }`,
     buttons: ['Keep working', `${doing} anyway`],
     defaultId: 0,
     cancelId: 0

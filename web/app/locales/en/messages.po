@@ -6257,6 +6257,14 @@ msgstr "Upload again…"
 msgid "Upload cancelled — nothing was recorded; what already went up is found there next time."
 msgstr "Upload cancelled — nothing was recorded; what already went up is found there next time."
 
+#: app/hooks/useLiveProgress.ts
+msgid "Upload failed"
+msgstr "Upload failed"
+
+#: app/hooks/useLiveProgress.ts
+msgid "Upload finished"
+msgstr "Upload finished"
+
 #: app/components/montage-steps.tsx
 msgid "Upload it to the storage"
 msgstr "Upload it to the storage"

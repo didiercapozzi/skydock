@@ -19,7 +19,20 @@ type KnownCamera = Extract<LiveEvent, { kind: 'cameras' }>['known'][number]
 
 type Job = Omit<Extract<LiveEvent, { kind: 'job' }>, 'kind' | 'row' | 'rows'> & { rows: JobRow[] }
 
+const tellUploadEnded = (event: Extract<LiveEvent, { kind: 'job' }>) => {
+  const ended = event.stage === 'done' || event.stage === 'failed'
+  if (event.type !== 'upload' || !ended || event.outcome?.state === 'stopped') return
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return
+  if (document.hasFocus()) return
+  const sent = event.stage === 'done'
+  new Notification(sent ? t`Upload finished` : t`Upload failed`, {
+    body: sent ? event.label : [event.label, event.reason].filter(Boolean).join(' — '),
+    tag: `upload:${event.id}`
+  })
+}
+
 const takeJob = (event: Extract<LiveEvent, { kind: 'job' }>) => {
+  tellUploadEnded(event)
   const { kind: _, row, rows, outcome: _outcome, ...fields } = event
   liveJobs.update((jobs) => {
     if (event.stage === 'done') {

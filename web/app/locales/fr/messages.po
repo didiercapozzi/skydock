@@ -6257,6 +6257,14 @@ msgstr "Envoyer à nouveau…"
 msgid "Upload cancelled — nothing was recorded; what already went up is found there next time."
 msgstr "Envoi annulé — rien n’a été enregistré ; ce qui est déjà en ligne sera retrouvé la prochaine fois."
 
+#: app/hooks/useLiveProgress.ts
+msgid "Upload failed"
+msgstr "Échec de l’envoi"
+
+#: app/hooks/useLiveProgress.ts
+msgid "Upload finished"
+msgstr "Envoi terminé"
+
 #: app/components/montage-steps.tsx
 msgid "Upload it to the storage"
 msgstr "L'envoyer sur le stockage"

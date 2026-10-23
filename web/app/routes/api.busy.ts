@@ -17,11 +17,22 @@ const SAID: Record<string, (label: string) => string> = {
   'camera-delete': () => 'Files are being deleted off a camera'
 }
 
+const IF_STOPPED: Record<string, string> = {
+  upload:
+    'The files already sent stay on the storage and are passed over next time; the one being sent is sent again from its start.',
+  process: 'The files already processed stay; the rest is left to process again.',
+  render: 'The film is as it was before; it has to be rendered again from its start.',
+  'camera-copy':
+    'The files already copied stay; the rest is copied the next time the card is plugged in.'
+}
+
 const loader = () => {
+  const work = workUnderWay()
   const said = [
-    ...new Set(workUnderWay().map(({ type, label }) => SAID[type]?.(label) ?? 'SkyDock is working'))
+    ...new Set(work.map(({ type, label }) => SAID[type]?.(label) ?? 'SkyDock is working'))
   ]
-  return Response.json({ running: said.length > 0 ? said.join(' · ') : null })
+  const ifStopped = [...new Set(work.map(({ type }) => IF_STOPPED[type]))].filter(Boolean)
+  return Response.json({ running: said.length > 0 ? said.join(' · ') : null, ifStopped })
 }
 
 export { loader }

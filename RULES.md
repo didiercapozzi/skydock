@@ -39,9 +39,10 @@ its board exactly as it always does.
 the menu or the keyboard, installing an update, choosing another work folder — asks first while
 something is under way, saying what: an upload, processing, a film being rendered, a camera being
 copied, files coming in, a scan, freeing space, a file brought back. Keeping on working is the choice
-offered first. Only the small copies and the finding of jumps go without asking, because they take up
+offered first, with what stopping would cost for what is running: an upload keeps the files already sent and sends the one under way again from its start, processing leaves the rest to process again, a film is rendered again from its start, a card copy takes up the next time the card is plugged in. Only the small copies and the finding of jumps go without asking, because they take up
 again by themselves. While any of them is under way the machine is kept from going to sleep, and
-sleeps as usual once it is done.
+sleeps as usual once it is done. When an upload ends — sent or failed, not cancelled — while the window is not the one
+being looked at, the machine says so in a notification, with the upload's name.
 
 The first time it is opened it shows a welcome page of its own, before anything else: what SkyDock
 does in three steps, what the work folder will hold — the originals, the copies and films, and the
