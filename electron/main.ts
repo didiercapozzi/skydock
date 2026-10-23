@@ -1,5 +1,14 @@
 import type { WebContents } from 'electron'
-import { BrowserWindow, Menu, app, dialog, ipcMain, nativeTheme, shell } from 'electron'
+import {
+  BrowserWindow,
+  Menu,
+  app,
+  dialog,
+  ipcMain,
+  nativeTheme,
+  powerSaveBlocker,
+  shell
+} from 'electron'
 import updater from 'electron-updater'
 import type { ChildProcessWithoutNullStreams } from 'node:child_process'
 import { spawn } from 'node:child_process'
@@ -230,6 +239,25 @@ const goAheadDespite = async (window: BrowserWindow, doing: string) => {
   return response === 1
 }
 
+const KEEP_AWAKE_CHECK_MS = 5000
+
+const keepAwakeWhileWorking = (window: BrowserWindow) => {
+  let blocker: number | null = null
+  const check = async () => {
+    const working = !window.isDestroyed() && (await runningNow(window)) !== null
+    if (working && blocker === null) blocker = powerSaveBlocker.start('prevent-app-suspension')
+    if (!working && blocker !== null) {
+      powerSaveBlocker.stop(blocker)
+      blocker = null
+    }
+  }
+  const timer = setInterval(() => void check(), KEEP_AWAKE_CHECK_MS)
+  window.on('closed', () => {
+    clearInterval(timer)
+    if (blocker !== null) powerSaveBlocker.stop(blocker)
+  })
+}
+
 let leaving = false
 
 const askBeforeClosing = (window: BrowserWindow) => {
@@ -327,6 +355,7 @@ const openWindow = (address: string) => {
   })
   zoomHotkeys(window.webContents)
   askBeforeClosing(window)
+  keepAwakeWhileWorking(window)
   tellMaximizedOf(window)
   void window.loadURL(address)
   console.log(`[SkyDock] the window is open on ${address}`)

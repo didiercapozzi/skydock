@@ -40,7 +40,8 @@ the menu or the keyboard, installing an update, choosing another work folder —
 something is under way, saying what: an upload, processing, a film being rendered, a camera being
 copied, files coming in, a scan, freeing space, a file brought back. Keeping on working is the choice
 offered first. Only the small copies and the finding of jumps go without asking, because they take up
-again by themselves.
+again by themselves. While any of them is under way the machine is kept from going to sleep, and
+sleeps as usual once it is done.
 
 The first time it is opened it shows a welcome page of its own, before anything else: what SkyDock
 does in three steps, what the work folder will hold — the originals, the copies and films, and the
